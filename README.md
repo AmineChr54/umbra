@@ -1,6 +1,6 @@
 # Umbra
 
-**Desktop widgets that live on your wallpaper.** Umbra pins small, crisp, true-black widgets to the Windows desktop. They sit under your apps, stay visible with Win+D and start with Windows. The first widget is a live **S&P 500** card, and anyone can publish more through a pull request.
+**Desktop widgets that live on your wallpaper.** Umbra pins small, crisp, true-black widgets to the Windows desktop. They sit under your apps, stay visible with Win+D and start with Windows. A live **S&P 500** card is one click away in Browse, and anyone can publish more through a pull request.
 
 ![S&P 500 widget](docs/demo-umbra.png)
 
@@ -66,7 +66,7 @@ Under the hood, both talk to the running app over a per-user named pipe with one
 
 ## How it works
 
-**Host app (C#, .NET 10 WinForms + WebView2).** It discovers widgets in `widgets/*/widget.json` (built-in) and `%APPDATA%\Umbra\widgets` (community), and opens one borderless window per enabled widget.
+**Host app (C#, .NET 10 WinForms + WebView2).** It discovers widgets in `widgets/*/widget.json` (the catalog source, installed from Browse) and `%APPDATA%\Umbra\widgets` (installed widgets), and opens one borderless window per enabled widget.
 
 - **Desktop pinning** (`DesktopPin.cs`): the window is owned by `Progman`, the desktop shell window, which keeps it visible on Win+D. It's a tool window that never takes focus on its own (it gets the keyboard only when you click into one of its text fields), and every `WM_WINDOWPOSCHANGING` is rewritten to `HWND_BOTTOM`, so apps always cover it.
 - **Why it's sharp:** Rainmeter-style skins draw on translucent layered windows, where Windows disables ClearType. Umbra's windows are opaque black, with rounded corners and a hairline border drawn by DWM. On OLED, black pixels are off, so the card still looks like it floats on your wallpaper.

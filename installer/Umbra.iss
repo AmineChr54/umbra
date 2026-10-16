@@ -45,6 +45,9 @@ Name: "startup"; Description: "Start Umbra when I sign in to Windows (recommende
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
 Name: "addtopath"; Description: "Add umbractl (command line and AI agent control) to PATH"; GroupDescription: "Automation:"
 
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\widgets\sp500"
+
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

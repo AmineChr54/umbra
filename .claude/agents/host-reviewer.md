@@ -7,7 +7,7 @@ tools: Read, Glob, Grep, Bash, PowerShell
 You review Umbra host changes. Read `CLAUDE.md`, then the diff (`git diff main...HEAD` or the PR).
 
 Check, in order:
-1. **Sandbox invariants** (CLAUDE.md "Security invariants"): request filtering in `WebHost.InitAsync`, `AllowsUrl`, path and extension checks in `Community.cs`, the `CurrentUserOnly` pipe, and that built-ins can't be shadowed. Any new way for page content, catalog data or a pipe client to reach the file system, the network or native code is a blocker unless explicitly justified.
+1. **Sandbox invariants** (CLAUDE.md "Security invariants"): request filtering in `WebHost.InitAsync`, `AllowsUrl`, path and extension checks in `Community.cs`, the `CurrentUserOnly` pipe, and that built-ins (none ship today) can't be shadowed. Also check the startup restore (`Restore.cs`, `App.RestoreMissingAsync`) goes through `Community.InstallAsync`, tries once per start and never blocks startup. Any new way for page content, catalog data or a pipe client to reach the file system, the network or native code is a blocker unless explicitly justified.
 2. **Threading:** WinForms and WebView2 objects only on the UI thread (pipe handlers must go through `App.OnUi`). There's no `.Result` or `.Wait()` on the UI thread, and `async void` is only allowed for event handlers, with try/catch.
 3. **Win32:** window styles (`WS_EX_TOOLWINDOW|NOACTIVATE`), Progman ownership, `HWND_BOTTOM` handling, DPI scaling (logical vs physical pixels).
 4. **Protocol drift:** each command is in `Protocol.Commands`, `Control.Execute`, umbractl `CommandLine.TranslateAsync`, an MCP tool, and tests.

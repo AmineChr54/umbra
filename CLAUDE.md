@@ -35,7 +35,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |
 | `src/Umbra.Cli/` | `umbractl.exe`: CLI (`Program.cs`, argument mapping in `CommandLine.cs`), MCP stdio server (`McpServer.cs`), scaffold (`Scaffold.cs`) |
 | `shared/umbra.js`, `umbra.css` | Widget SDK and design tokens, served to every widget |
-| `widgets/<id>/` | Built-in (`sp500`) and catalog widgets; `widgets/index.json` is generated, never hand-edited |
+| `widgets/<id>/` | Catalog widgets (nothing is built in; `sp500` is installed from Browse); `widgets/index.json` is generated, never hand-edited |
 | `schemas/widget.schema.json`, `docs/widget-sdk.md` | Manifest schema and SDK reference (both ship next to umbractl for agents) |
 | `installer/Umbra.iss`, `build.ps1` | Inno Setup per-user installer; the version comes from `Directory.Build.props` |
 | `tests/Umbra.Tests/` | Unit tests for host and CLI (the CLI project is referenced with `extern alias cli`) |
@@ -71,7 +71,7 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
   `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
-- Built-in widgets cannot be removed or shadowed by community or agent ids.
+- Built-in widgets (the generic `<Content>` mechanism, none shipped today) cannot be removed or shadowed by community or agent ids.
 - Self-update (`Updates.cs`) runs in the host only; the installer must be HTTPS from `github.com/AmineChr54/umbra/releases/download/` and named `UmbraSetup-<release version>.exe`. Control commands may check for updates but never install one.
 
 ## Verifying UI changes

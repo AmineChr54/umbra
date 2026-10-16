@@ -10,6 +10,7 @@ Screenshots come from WebView2 itself (`CapturePreviewAsync`), so they never inc
 ```powershell
 umbractl status                                   # Umbra running? It starts if needed
 foreach ($p in "general","widgets","browse","about") { umbractl capture "settings:$p" "docs/settings-$p.png" }
+umbractl install sp500   # S&P 500 is a catalog widget, install it first
 umbractl capture sp500 docs/demo-umbra.png        # widget demo for the README
 umbractl capture <id> widgets/<id>/preview.png    # catalog preview for a widget
 ```

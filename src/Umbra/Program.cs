@@ -35,7 +35,7 @@ static class Program
 
         // First run (no settings yet) opens Settings so the user sees what Umbra can do.
         var firstRun = !File.Exists(Path.Combine(AppPaths.DataDir, "settings.json"));
-        var app = new App(openSettings: !background && firstRun);
+        var app = new App(openSettings: !background && firstRun, background);
         app.SaveSettings();
         instance.Listen(new Control(app).HandleLineAsync);
         Application.Run(app);

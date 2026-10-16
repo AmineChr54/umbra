@@ -23,7 +23,7 @@ sealed class App : ApplicationContext
     /// </summary>
     public bool EditMode { get; private set; }
 
-    public App(bool openSettings)
+    public App(bool openSettings, bool background = false)
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
@@ -38,7 +38,54 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
 
         SyncWindows();
-        if (openSettings) ShowSettings();
+
+        // Former built-in widgets are fetched again once; a fresh install starts on Browse.
+        var restore = Restore.ToRestore(Settings, Manifests);
+        if (restore.Count > 0)
+        {
+            _restoring.UnionWith(restore);
+            _ = RestoreMissingAsync();
+        }
+        else if (!Settings.General.LegacyRestoreDone) Settings.General.LegacyRestoreDone = true;
+        var showBrowse = openSettings && Manifests.Count == 0 && restore.Count == 0;
+        if (openSettings)
+        {
+            var win = ShowSettings();
+            if (showBrowse) _ = ShowBrowseAsync(win);
+        }
+    }
+
+    static async Task ShowBrowseAsync(SettingsWindow win)
+    {
+        try { await win.ShowPageAsync("browse"); }
+        catch (Exception ex) { Log.Write($"Could not open Browse: {ex.Message}"); }
+    }
+
+    /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
+    readonly HashSet<string> _restoring = new();
+
+    /// <summary>One attempt per start, never blocks startup; the marker is only set when it finished, so offline retries next start.</summary>
+    async Task RestoreMissingAsync()
+    {
+        try
+        {
+            var r = await Restore.RunAsync(
+                () => OnUi(() => Task.FromResult(Restore.ToRestore(Settings, Manifests))),
+                Community.FetchCatalogAsync, Community.InstallAsync, Log.Write);
+            await OnUi(() =>
+            {
+                _restoring.Clear();
+                if (r.Installed.Count > 0) { ReloadWidgets(); SettingsChangedElsewhere(); }
+                if (r.Done) { Settings.General.LegacyRestoreDone = true; SaveSettings(); }
+                return Task.FromResult(0);
+            });
+            Log.Write($"Restore finished: installed [{string.Join(", ", r.Installed)}], done={r.Done}");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Restore failed: {ex.Message}");
+            await OnUi(() => { _restoring.Clear(); return Task.FromResult(0); });
+        }
     }
 
     /// <summary>Runs work on the UI thread (pipe requests arrive on worker threads) and returns its result.</summary>
@@ -191,12 +238,13 @@ sealed class App : ApplicationContext
     /// </summary>
     void ForgetOrphans()
     {
-        foreach (var key in Settings.Widgets.Keys.Where(k => InstanceId.IsExtra(k) && Manifests.All(m => m.Id != InstanceId.WidgetOf(k))).ToList())
+        var known = Manifests.Select(m => m.Id).ToList();
+        foreach (var key in Restore.Orphans(Settings.Widgets.Keys.Where(InstanceId.IsExtra), known, _restoring))
         {
             CloseWidget(key);
             Settings.Widgets.Remove(key);
         }
-        foreach (var inst in WidgetStore.CopyIds().Where(i => Manifests.All(m => m.Id != InstanceId.WidgetOf(i))))
+        foreach (var inst in Restore.Orphans(WidgetStore.CopyIds(), known, _restoring))
             WidgetStore.Delete(inst);
     }
 

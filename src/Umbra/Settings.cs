@@ -12,6 +12,8 @@ public sealed class GeneralSettings
     public string Theme { get; set; } = Umbra.Theme.DefaultId;
     /// <summary>Look for a newer Umbra release on GitHub at start and daily.</summary>
     public bool CheckForUpdates { get; set; } = true;
+    /// <summary>Set once the one-time restore of former built-in widgets (sp500) has finished; see <see cref="Restore"/>.</summary>
+    public bool LegacyRestoreDone { get; set; }
 }
 
 public sealed class WidgetSettings
@@ -121,6 +123,7 @@ public sealed class Settings
     {
         var extras = Instances(widgetId).Skip(1).ToList();
         foreach (var e in extras) Widgets.Remove(e);
+        Widgets.Remove(widgetId); // removed means gone: no stale entry that a restore could bring back
         return extras;
     }
 
