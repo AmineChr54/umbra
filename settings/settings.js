@@ -20,6 +20,7 @@ const ICONS = {
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
 };
 function icons(root = document) {
@@ -33,6 +34,8 @@ function icons(root = document) {
 let state = null;      // { version, startup, repo, settings, widgets[] }
 let catalog = null;    // [{ id, name, ..., installed, updateAvailable }]
 let catalogError = null;
+let themes = null;     // [{ id, name, tokens, installed, builtin, updateAvailable }]
+let themesError = null;
 const busy = new Map(); // id -> "install" | "remove"
 
 // ---------- navigation ----------
@@ -41,6 +44,7 @@ function show(page) {
   $$(".page").forEach((p) => p.classList.toggle("active", p.dataset.page === page));
   $("#content").scrollTop = 0;
   if (page === "browse" && !catalog) loadCatalog();
+  if (page === "themes" && !themes) loadThemes();
 }
 $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
 
@@ -280,6 +284,75 @@ function renderCatalog() {
   }
 }
 
+// ---------- Themes ----------
+// The host sends the active theme as one generated :root rule (validated tokens only); apply it to this page too.
+function applyTheme(css) {
+  let el = document.getElementById("umbra-theme");
+  if (!css) { el && el.remove(); return; }
+  if (!el) { el = document.createElement("style"); el.id = "umbra-theme"; document.head.append(el); }
+  if (el.textContent !== css) el.textContent = css;
+}
+
+function loadThemes() {
+  themes = null;
+  themesError = null;
+  renderThemes();
+  post({ type: "themes" });
+}
+$("#reloadThemes").addEventListener("click", loadThemes);
+
+function renderThemes() {
+  const grid = $("#themeGrid");
+  grid.textContent = "";
+  if (!themes) {
+    for (let i = 0; i < 3; i++) grid.append(Object.assign(document.createElement("div"), { className: "skeleton" }));
+    return;
+  }
+  const active = (state && state.settings.general.theme) || "default";
+  if (themesError) grid.append(Object.assign(document.createElement("div"), {
+    className: "empty", textContent: `Couldn't reach the theme catalog (${themesError}). Installed themes still work.`,
+  }));
+  for (const t of themes) {
+    const card = $("#tpl-theme").content.firstElementChild.cloneNode(true);
+    const tk = t.tokens || {};
+    // Swatch colors come from validated tokens (host side); the fallbacks are the default look.
+    const sw = $(".swatch", card);
+    for (const [prop, token] of [["--t-bg", "--bg"], ["--t-surface", "--surface-2"], ["--t-line", "--line-strong"], ["--t-text", "--text"], ["--t-text2", "--text-3"], ["--t-accent", "--accent"], ["--t-radius", "--radius-m"]])
+      if (tk[token]) sw.style.setProperty(prop, tk[token]);
+    $(".cname", card).textContent = t.name;
+    $(".cver", card).textContent = t.builtin ? "" : `v${t.version}`;
+    $(".cauthor", card).textContent = t.author ? `by ${t.author}` : "";
+    $(".cdesc", card).textContent = t.description || "";
+    card.classList.toggle("active", t.id === active);
+
+    const btn = $(".action", card);
+    const remove = $(".remove", card);
+    if (!t.installed || t.builtin || t.id === "") remove.remove();
+    else remove.addEventListener("click", () => job(t.id, "removeTheme", remove));
+    if (busy.has(t.id)) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span>Working';
+    } else if (!t.installed) {
+      btn.classList.add("primary");
+      btn.innerHTML = '<span class="ico" data-icon="download"></span>Install';
+      btn.addEventListener("click", () => job(t.id, "installTheme", btn));
+    } else if (t.updateAvailable) {
+      btn.classList.add("primary");
+      btn.innerHTML = `<span class="ico" data-icon="download"></span>Update to v${escapeHtml(t.version)}`;
+      btn.addEventListener("click", () => job(t.id, "installTheme", btn));
+    } else if (t.id === active) {
+      btn.classList.add("done");
+      btn.innerHTML = '<span class="ico" data-icon="check"></span>In use';
+    } else {
+      btn.classList.add("primary");
+      btn.textContent = "Use theme";
+      btn.addEventListener("click", () => { post({ type: "setTheme", id: t.id }); toast(`${t.name} applied`); });
+    }
+    icons(card);
+    grid.append(card);
+  }
+}
+
 function job(id, type, btn) {
   busy.set(id, type);
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Working'; }
@@ -298,7 +371,9 @@ bridge && bridge.addEventListener("message", (e) => {
       state = m;
       $("#ver").textContent = `Version ${m.version}`;
       $("#aboutVer").textContent = `Version ${m.version}`;
+      applyTheme(m.themeCss);
       renderGeneral();
+      if (themes) renderThemes();
       $("#editMode").checked = !!m.editMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
@@ -308,11 +383,17 @@ bridge && bridge.addEventListener("message", (e) => {
       catalog = m.error && !m.widgets.length ? null : m.widgets;
       renderCatalog();
       break;
+    case "themes":
+      themesError = m.error;
+      themes = m.error && !m.themes.length ? null : m.themes;
+      renderThemes();
+      break;
     case "jobDone": {
       const kind = busy.get(m.id);
       busy.delete(m.id);
-      const name = (catalog || []).find((w) => w.id === m.id)?.name || m.id;
-      m.error ? toast(`${name}: ${m.error}`, true) : toast(kind === "remove" ? `${name} removed` : `${name} installed`);
+      const isTheme = kind === "installTheme" || kind === "removeTheme";
+      const name = ((isTheme ? themes : catalog) || []).find((w) => w.id === m.id)?.name || m.id;
+      m.error ? toast(`${name}: ${m.error}`, true) : toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
       break;
     }
   }

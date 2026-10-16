@@ -27,9 +27,14 @@ static class Community
 
     const long MaxWidgetBytes = 5 * 1024 * 1024;
 
-    static async Task<byte[]> GetBytes(string relative)
+    /// <summary>Themes live in a themes/ folder next to widgets/ (same override: UMBRA_CATALOG_BASE points at widgets).</summary>
+    static string ThemesBase => RawBase.EndsWith("/widgets", StringComparison.OrdinalIgnoreCase) ? RawBase[..^"/widgets".Length] + "/themes" : RawBase + "/themes";
+
+    static Task<byte[]> GetBytes(string relative) => GetBytes(RawBase, relative);
+
+    static async Task<byte[]> GetBytes(string baseUrl, string relative)
     {
-        var url = $"{RawBase}/{relative}";
+        var url = $"{baseUrl}/{relative}";
         // A local folder (file:///...) can stand in for GitHub when testing a catalog before pushing.
         if (url.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
             return await File.ReadAllBytesAsync(new Uri(url.Split('?')[0]).LocalPath);
@@ -42,6 +47,72 @@ static class Community
         var bytes = await GetBytes($"index.json?t={DateTime.UtcNow.Ticks}");
         var root = JsonNode.Parse(bytes);
         return root?["widgets"] as JsonArray ?? new JsonArray();
+    }
+
+    /// <summary>Downloads themes/index.json. Each entry: id, name, description, author, version, tokens, preview, files[].</summary>
+    public static async Task<JsonArray> FetchThemeCatalogAsync()
+    {
+        var bytes = await GetBytes(ThemesBase, $"index.json?t={DateTime.UtcNow.Ticks}");
+        return JsonNode.Parse(bytes)?["themes"] as JsonArray ?? new JsonArray();
+    }
+
+    const long MaxThemeBytes = 1024 * 1024;
+    static readonly string[] ThemeFileTypes = { ".json", ".png", ".jpg", ".jpeg", ".webp" };
+
+    /// <summary>Installs or updates a catalog theme. Only theme.json and its preview image are fetched; all validated before anything is written.</summary>
+    public static async Task InstallThemeAsync(JsonNode entry)
+    {
+        var id = entry["id"]?.GetValue<string>() ?? "";
+        if (!WidgetManifest.IdPattern().IsMatch(id) || id == Theme.DefaultId) throw new InvalidOperationException($"Invalid theme id '{id}'");
+        var files = (entry["files"] as JsonArray)?.Select(f => f?.GetValue<string>() ?? "").ToList() ?? new();
+        if (!files.Contains("theme.json")) throw new InvalidOperationException("Catalog entry has no theme.json");
+
+        foreach (var rel in files)
+            if (!IsSafeRelativePath(rel) || rel.Contains('/') || !ThemeFileTypes.Contains(Path.GetExtension(rel), StringComparer.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Unsafe or disallowed theme file '{rel}'");
+
+        var staged = new Dictionary<string, byte[]>();
+        long total = 0;
+        foreach (var rel in files)
+        {
+            var data = await GetBytes(ThemesBase, $"{id}/{rel}");
+            total += data.Length;
+            if (total > MaxThemeBytes) throw new InvalidOperationException("Theme is larger than 1 MB");
+            staged[rel] = data;
+        }
+        CommitTheme(id, staged);
+        Log.Write($"Installed community theme {id} {entry["version"]}");
+    }
+
+    /// <summary>
+    /// Validates theme.json (id = folder, allow-listed tokens, safe values) and replaces the theme folder.
+    /// Nothing is written until everything passed.
+    /// </summary>
+    internal static void CommitTheme(string id, IReadOnlyDictionary<string, byte[]> files)
+    {
+        if (!files.TryGetValue("theme.json", out var json)) throw new InvalidOperationException("Missing theme.json");
+        var theme = Theme.Parse(System.Text.Encoding.UTF8.GetString(json));
+        if (theme.Id != id) throw new InvalidOperationException($"theme.json id is '{theme.Id}', expected '{id}'");
+        if (theme.Preview is not null && !files.ContainsKey(theme.Preview)) throw new InvalidOperationException($"Preview '{theme.Preview}' is missing");
+
+        var target = Path.Combine(Theme.Dir, id);
+        var tmp = target + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+        Directory.CreateDirectory(tmp);
+        try
+        {
+            foreach (var (rel, data) in files) File.WriteAllBytes(Path.Combine(tmp, rel), data);
+            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+            Directory.Move(tmp, target);
+        }
+        catch { try { Directory.Delete(tmp, recursive: true); } catch { } throw; }
+    }
+
+    public static void RemoveTheme(string id)
+    {
+        if (!WidgetManifest.IdPattern().IsMatch(id)) return;
+        var target = Path.Combine(Theme.Dir, id);
+        if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+        Log.Write($"Removed community theme {id}");
     }
 
     /// <summary>Preview image as a data: URL, so the Settings page never hot-links remote files.</summary>

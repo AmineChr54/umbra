@@ -101,6 +101,35 @@ sealed class Control(App app)
                 };
             }
 
+            case "theme":
+                if (a["id"] is not null) app.SetTheme(Str(a, "id"));
+                return new JsonObject { ["theme"] = app.Settings.General.Theme };
+
+            case "themes":
+                return await Themes();
+
+            case "install-theme":
+            {
+                var id = Str(a, "id");
+                var entry = (await Community.FetchThemeCatalogAsync()).FirstOrDefault(t => t?["id"]?.GetValue<string>() == id)
+                            ?? throw new CommandException($"'{id}' is not in the theme catalog");
+                await Community.InstallThemeAsync(entry);
+                if (app.Settings.General.Theme == id) app.SetTheme(id); // re-push the updated colors
+                app.SettingsChangedElsewhere();
+                return await Themes();
+            }
+
+            case "remove-theme":
+            {
+                var id = Str(a, "id");
+                if (id == Theme.DefaultId) throw new CommandException("The default theme is built in");
+                if (Theme.DiscoverAll().All(t => t.Id != id)) throw new CommandException($"No installed theme '{id}'");
+                Community.RemoveTheme(id);
+                if (app.Settings.General.Theme == id) app.SetTheme(Theme.DefaultId);
+                app.SettingsChangedElsewhere();
+                return await Themes();
+            }
+
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
                 return new JsonObject { ["editMode"] = app.EditMode };
@@ -271,6 +300,16 @@ sealed class Control(App app)
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         await File.WriteAllBytesAsync(full, png);
         return new JsonObject { ["path"] = full, ["bytes"] = png.Length };
+    }
+
+    /// <summary>Installed themes and the community catalog merged by id; a failed catalog fetch only sets "catalogError".</summary>
+    async Task<JsonObject> Themes()
+    {
+        JsonArray? catalog = null;
+        string? error = null;
+        try { catalog = await Community.FetchThemeCatalogAsync(); }
+        catch (Exception ex) { error = ex.Message; Log.Write($"Theme catalog fetch failed: {ex.Message}"); }
+        return new JsonObject { ["active"] = app.Settings.General.Theme, ["themes"] = Theme.Listing(catalog), ["catalogError"] = error };
     }
 
     JsonObject Describe(WidgetManifest m)

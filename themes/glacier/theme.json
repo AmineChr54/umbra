@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "glacier",
+  "name": "Glacier",
+  "description": "Cool cyan accent, navy-tinted surfaces and rounder corners.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#070b10",
+    "--surface-2": "#0c121a",
+    "--surface-3": "#121a25",
+    "--line": "rgba(170, 215, 255, 0.08)",
+    "--line-strong": "rgba(170, 215, 255, 0.15)",
+    "--text": "#eef6fc",
+    "--text-2": "#9fb3c4",
+    "--text-3": "#62778a",
+    "--accent": "#45d4e8",
+    "--accent-strong": "#8be6f2",
+    "--accent-soft": "rgba(69, 212, 232, 0.14)",
+    "--radius-s": "10px",
+    "--radius-m": "16px",
+    "--radius-l": "24px"
+  }
+}

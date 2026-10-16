@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "title": "Umbra theme (theme.json)",
+  "description": "A theme is data only: design tokens for shared/umbra.css. The same rules are enforced by scripts/catalog.mjs in CI and by the app when it installs a theme. No code, no url(), no custom CSS.",
+  "type": "object",
+  "required": ["id", "name", "description", "author", "version", "tokens"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "not": { "const": "default" },
+      "description": "Lowercase letters, digits and dashes (2-40 chars). Must equal the folder name. \"default\" is the built-in theme."
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Shown on the Themes page." },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300, "description": "One sentence." },
+    "author": { "type": "string", "minLength": 1, "maxLength": 300, "description": "GitHub user name." },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$", "description": "Semantic version. Bump it on every change so users see an Update button." },
+    "preview": { "type": "string", "pattern": "^[^/\\\\]+\\.(png|jpg|jpeg|webp)$", "description": "Optional image next to theme.json." },
+    "tokens": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Only the tokens below. Anything you leave out keeps the default look.",
+      "properties": {
+        "--bg": { "$ref": "#/$defs/color", "description": "Window background. Default #000 (true black for OLED); change it only on purpose." },
+        "--surface-1": { "$ref": "#/$defs/color" },
+        "--surface-2": { "$ref": "#/$defs/color" },
+        "--surface-3": { "$ref": "#/$defs/color" },
+        "--line": { "$ref": "#/$defs/color" },
+        "--line-strong": { "$ref": "#/$defs/color" },
+        "--text": { "$ref": "#/$defs/color" },
+        "--text-2": { "$ref": "#/$defs/color" },
+        "--text-3": { "$ref": "#/$defs/color" },
+        "--accent": { "$ref": "#/$defs/color" },
+        "--accent-strong": { "$ref": "#/$defs/color" },
+        "--accent-soft": { "$ref": "#/$defs/color" },
+        "--up": { "$ref": "#/$defs/color" },
+        "--down": { "$ref": "#/$defs/color" },
+        "--flat": { "$ref": "#/$defs/color" },
+        "--radius-s": { "$ref": "#/$defs/length" },
+        "--radius-m": { "$ref": "#/$defs/length" },
+        "--radius-l": { "$ref": "#/$defs/length" }
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^(?:rgb|rgba|hsl|hsla)\\(\\s*[0-9.]+(?:%|deg)?\\s*[, ]\\s*[0-9.]+%?\\s*[, ]\\s*[0-9.]+%?\\s*(?:[,/]\\s*[0-9.]+%?\\s*)?\\)$",
+      "description": "#rgb, #rrggbb, #rrggbbaa, rgb()/rgba() or hsl()/hsla()."
+    },
+    "length": {
+      "type": "string",
+      "pattern": "^(?:[0-9]|[1-9][0-9])(?:\\.[0-9]{1,3})?(?:px|rem)$",
+      "description": "0-99 px or rem, e.g. 12px."
+    }
+  }
+}

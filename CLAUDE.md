@@ -27,6 +27,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
 | `src/Umbra/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
+| `src/Umbra/Themes.cs` | `Theme`: theme.json model, token allow-list and value validation, generated `:root` CSS (applied by `shared/umbra.js`); installed in `%APPDATA%\Umbra\themes\<id>`, catalog in `themes/` |
 | `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on remove) |
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
@@ -58,6 +59,8 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   (`WidgetWindow.TakeKeyboardFocus`), so a widget can't pull focus while the user types elsewhere.
 - A widget can't resize or zoom itself: the page's `resize` and `zoom` messages are honoured only in edit mode, for an
   unlocked widget, with a physical mouse press (resize) or Ctrl held (zoom) over that window.
+- Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
+  `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
 - Built-in widgets cannot be removed or shadowed by community or agent ids.
 

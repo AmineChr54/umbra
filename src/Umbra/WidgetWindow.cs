@@ -462,6 +462,7 @@ sealed class WidgetWindow : Form
         {
             ["refreshSeconds"] = _app.Settings.General.RefreshSeconds,
             ["animations"] = _app.Settings.General.Animations,
+            ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
             ["scale"] = ws.Scale,
             ["editMode"] = _app.EditMode,

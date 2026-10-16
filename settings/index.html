@@ -36,6 +36,7 @@
         <button data-page="general" class="active"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
+        <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
         <button data-page="about"><span class="ico" data-icon="info"></span>About</button>
       </nav>
 
@@ -128,6 +129,20 @@
         <div class="grid" id="catalog"></div>
       </section>
 
+      <!-- Themes -->
+      <section class="page" data-page="themes">
+        <header class="page-head">
+          <h1>Themes</h1>
+          <p>Colors and corner radius for every widget. Themes are plain data with no code, so they can't run anything or load files from the internet.</p>
+        </header>
+        <div class="grid" id="themeGrid"></div>
+        <div class="hint">
+          <span class="ico" data-icon="plus"></span>
+          <span class="hint-grow">Made a theme? Add themes/&lt;id&gt;/theme.json in a pull request and it shows up here for everyone.</span>
+          <button class="btn small ghost" id="reloadThemes"><span class="ico" data-icon="refresh"></span>Refresh</button>
+        </div>
+      </section>
+
       <!-- About -->
       <section class="page" data-page="about">
         <div class="about">
@@ -186,6 +201,23 @@
         <div class="chips"></div>
       </div>
       <div class="cfoot"><button class="btn small action"></button></div>
+    </article>
+  </template>
+
+  <template id="tpl-theme">
+    <article class="ccard tcard">
+      <div class="cthumb swatch">
+        <div class="sw-card"><i class="sw-title"></i><i class="sw-line"></i><i class="sw-line short"></i><b class="sw-dot"></b></div>
+      </div>
+      <div class="cbody">
+        <div class="ctitle"><span class="cname"></span><span class="cver"></span></div>
+        <div class="cauthor"></div>
+        <p class="cdesc"></p>
+      </div>
+      <div class="cfoot tfoot">
+        <button class="btn small action"></button>
+        <button class="btn small danger remove" title="Remove theme"><span class="ico" data-icon="trash"></span></button>
+      </div>
     </article>
   </template>
 

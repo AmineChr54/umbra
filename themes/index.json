@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "themes": [
+    {
+      "id": "ember",
+      "name": "Ember",
+      "description": "Warm orange accent on deep brown-black surfaces.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#0e0a08",
+        "--surface-2": "#16100c",
+        "--surface-3": "#1e1610",
+        "--line": "rgba(255, 220, 190, 0.08)",
+        "--line-strong": "rgba(255, 220, 190, 0.14)",
+        "--text": "#f7f1ec",
+        "--text-2": "#b5a79d",
+        "--text-3": "#7a6c62",
+        "--accent": "#ff8a3d",
+        "--accent-strong": "#ffab73",
+        "--accent-soft": "rgba(255, 138, 61, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier",
+      "description": "Cool cyan accent, navy-tinted surfaces and rounder corners.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#070b10",
+        "--surface-2": "#0c121a",
+        "--surface-3": "#121a25",
+        "--line": "rgba(170, 215, 255, 0.08)",
+        "--line-strong": "rgba(170, 215, 255, 0.15)",
+        "--text": "#eef6fc",
+        "--text-2": "#9fb3c4",
+        "--text-3": "#62778a",
+        "--accent": "#45d4e8",
+        "--accent-strong": "#8be6f2",
+        "--accent-soft": "rgba(69, 212, 232, 0.14)",
+        "--radius-s": "10px",
+        "--radius-m": "16px",
+        "--radius-l": "24px"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "mono",
+      "name": "Mono",
+      "description": "Pure grayscale with a white accent and sharper corners.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#0b0b0b",
+        "--surface-2": "#121212",
+        "--surface-3": "#1a1a1a",
+        "--line": "rgba(255, 255, 255, 0.08)",
+        "--line-strong": "rgba(255, 255, 255, 0.16)",
+        "--text": "#ffffff",
+        "--text-2": "#b0b0b0",
+        "--text-3": "#737373",
+        "--accent": "#e6e6e6",
+        "--accent-strong": "#ffffff",
+        "--accent-soft": "rgba(255, 255, 255, 0.12)",
+        "--flat": "#a0a0a0",
+        "--radius-s": "4px",
+        "--radius-m": "6px",
+        "--radius-l": "10px"
+      },
+      "files": [
+        "theme.json"
+      ]
+    }
+  ]
+}
