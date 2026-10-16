@@ -101,6 +101,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.store.set(key, value)` | Saves a JSON value. Rejects when the widget's data would pass 1 MB |
 | `umbra.store.remove(key)`, `umbra.store.keys()` | Delete one key; list the keys |
 | `umbra.store.onChange(fn)` | `fn(key)` runs when the data was changed from outside the widget (`umbractl data`, MCP). `key` is `null` when everything was cleared |
+| `umbra.requestFocus()` | Ask for the keyboard, e.g. before focusing an input you create on double-click. Only honoured right after the user pressed the mouse on the widget (inputs and textareas ask automatically) |
 | `umbra.openUrl(url)` | Opens an http(s) link in the user's browser (links never navigate the widget) |
 | `umbra.rendered()` | Call once the first real frame is drawn; screenshots wait for it |
 | `umbra.tween(from, to, ms, onFrame)` | Ease-out-cubic number animation; jumps straight to `to` when motion is off or the window is hidden |
@@ -121,7 +122,13 @@ umbra.store.onChange(async () => render(await umbra.store.get("tasks", [])));
 ```
 
 **Dragging** is built in: holding the mouse button and moving more than 4 px moves the window (unless the
-user locked it). Put `data-no-drag` on buttons, inputs or links that need normal clicks.
+user locked it). Put `data-no-drag` on buttons or links that need normal clicks; inputs, textareas, selects and
+`contenteditable` elements never start a drag.
+
+**Typing.** Widgets never steal focus from the app you're using. Pressing the mouse on a text field hands the
+widget the keyboard. Umbra checks that a mouse button is physically down over the widget, so a widget can't take
+focus on its own. If you create an input in code (say, rename on double-click), call `umbra.requestFocus()` first.
+See `widgets/todo` for an example.
 
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.

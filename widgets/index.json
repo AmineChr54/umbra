@@ -33,6 +33,23 @@
         "sp500.js",
         "widget.json"
       ]
+    },
+    {
+      "id": "todo",
+      "name": "To Do",
+      "description": "Today's tasks with daily, weekday, weekly and every-N-days repeats, streaks and a calm progress bar. Everything stays on your PC.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "index.html",
+        "preview.png",
+        "repeat.js",
+        "todo.css",
+        "todo.js",
+        "widget.json"
+      ]
     }
   ]
 }

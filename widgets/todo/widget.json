@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "todo",
+  "name": "To Do",
+  "description": "Today's tasks with daily, weekday, weekly and every-N-days repeats, streaks and a calm progress bar. Everything stays on your PC.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 340,
+  "height": 440,
+  "defaultPosition": { "x": 24, "y": 400 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "My Day" },
+    "dayStart": { "label": "New day starts at (hour)", "type": "number", "default": 0, "min": 0, "max": 6, "step": 1,
+                  "hint": "Night owl? Set 4 and tasks done at 1 am still count for the day before." },
+    "clearCompleted": { "label": "Clear finished one-off tasks the next day", "type": "toggle", "default": true },
+    "streaks": { "label": "Show streaks on repeating tasks", "type": "toggle", "default": true }
+  }
+}

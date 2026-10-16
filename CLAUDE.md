@@ -53,6 +53,8 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
 - Top-level navigation off the virtual hosts is cancelled and links open in the user's browser.
 - Community and agent-written files: relative forward-slash paths only, no `..`, allowed extensions only, 5 MB,
   id equals folder, all staged in temp and validated before `Commit` (`Community.cs`).
+- Widget windows never activate themselves. They get keyboard focus only right after a physical mouse press on them
+  (`WidgetWindow.TakeKeyboardFocus`), so a widget can't pull focus while the user types elsewhere.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
 - Built-in widgets cannot be removed or shadowed by community or agent ids.
 
