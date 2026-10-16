@@ -90,6 +90,44 @@
       ]
     },
     {
+      "id": "study-timelapse",
+      "name": "Study Time-Lapse",
+      "description": "Start and stop a Study Time-Lapse capture session and open the renderer from your desktop, with a live estimate of photos, time studied and finish time. Needs a one-time setup (see the widget).",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "commands": [
+        {
+          "id": "status",
+          "run": "tasklist /FI \"IMAGENAME eq Capture.exe\" /NH /FO CSV",
+          "description": "Checks whether Study Time-Lapse Capture.exe is running"
+        },
+        {
+          "id": "start",
+          "run": "schtasks /Run /TN \"StudyTimeLapse Capture\"",
+          "description": "Starts the 'StudyTimeLapse Capture' scheduled task (which runs Capture.exe)"
+        },
+        {
+          "id": "stop",
+          "run": "taskkill /IM Capture.exe",
+          "description": "Asks Capture.exe to close (no force)"
+        },
+        {
+          "id": "render",
+          "run": "schtasks /Run /TN \"StudyTimeLapse Render\"",
+          "description": "Starts the 'StudyTimeLapse Render' scheduled task (which runs Render.exe)"
+        }
+      ],
+      "files": [
+        "index.html",
+        "preview.png",
+        "study.css",
+        "study.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "todo",
       "name": "To Do",
       "description": "Today's tasks with daily, weekday, weekly and every-N-days repeats, streaks and a calm progress bar. Everything stays on your PC.",
