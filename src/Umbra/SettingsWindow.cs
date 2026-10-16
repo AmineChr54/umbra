@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form
     readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static readonly string[] Pages = { "general", "widgets", "browse", "about" };
+    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "about" };
 
     public SettingsWindow(App app)
     {
@@ -137,6 +137,34 @@ sealed class SettingsWindow : Form
                 await SendCatalog();
                 break;
 
+            case "themes":
+                await SendThemes();
+                break;
+
+            case "setTheme":
+                try { _app.SetTheme(id); } catch (InvalidOperationException ex) { Log.Write(ex.Message); }
+                await SendThemes(refetch: false);
+                break;
+
+            case "installTheme":
+                await ThemeJob(id, async () =>
+                {
+                    var entry = _themeCatalog.FirstOrDefault(t => t?["id"]?.GetValue<string>() == id)
+                                ?? throw new InvalidOperationException("Theme not in catalog");
+                    await Community.InstallThemeAsync(entry);
+                    if (_app.Settings.General.Theme == id) _app.SetTheme(id);
+                });
+                break;
+
+            case "removeTheme":
+                await ThemeJob(id, () =>
+                {
+                    Community.RemoveTheme(id);
+                    if (_app.Settings.General.Theme == id) _app.SetTheme(Theme.DefaultId);
+                    return Task.CompletedTask;
+                });
+                break;
+
             case "install":
                 await RunJob(id, async () =>
                 {
@@ -168,6 +196,33 @@ sealed class SettingsWindow : Form
         Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error });
         SendState();
         await SendCatalog(refetch: false);
+    }
+
+    JsonArray _themeCatalog = new();
+    bool _themeCatalogLoaded;
+    TaskCompletionSource _themesSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    async Task ThemeJob(string id, Func<Task> job)
+    {
+        string? error = null;
+        try { await job(); }
+        catch (Exception ex) { error = ex.Message; Log.Write($"Theme job {id} failed: {ex}"); }
+        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error });
+        SendState();
+        await SendThemes(refetch: false);
+    }
+
+    /// <summary>Sends installed + catalog themes (the catalog is fetched once per visit unless refetch).</summary>
+    async Task SendThemes(bool refetch = true)
+    {
+        string? error = null;
+        if (refetch || !_themeCatalogLoaded)
+        {
+            try { _themeCatalog = await Community.FetchThemeCatalogAsync(); _themeCatalogLoaded = true; }
+            catch (Exception ex) { error = ex.Message; Log.Write($"Theme catalog fetch failed: {ex.Message}"); }
+        }
+        Post(new JsonObject { ["type"] = "themes", ["error"] = error, ["themes"] = Theme.Listing(_themeCatalog) });
+        _themesSent.TrySetResult();
     }
 
     void SendState()
@@ -205,6 +260,7 @@ sealed class SettingsWindow : Form
             ["update"] = _app.Updater.ToJson(),
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
+            ["themeCss"] = _app.ThemeCss,
             ["widgets"] = widgets,
         });
     }
@@ -249,7 +305,9 @@ sealed class SettingsWindow : Form
     /// <summary>Re-sends the state after something changed outside this window (tray menu, umbractl).</summary>
     public void RefreshState()
     {
-        if (_loaded.Task.IsCompleted) SendState();
+        if (!_loaded.Task.IsCompleted) return;
+        SendState();
+        if (_themeCatalogLoaded) _ = SendThemes(refetch: false);
     }
 
     /// <summary>Switches the panel to one of <see cref="Pages"/> (the page's own show() function).</summary>
@@ -258,6 +316,7 @@ sealed class SettingsWindow : Form
         if (!Pages.Contains(page)) throw new ArgumentException($"Unknown Settings page '{page}'. Pages: {string.Join(", ", Pages)}");
         await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
         if (page == "browse") _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (page == "themes") _themesSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
         await _view.CoreWebView2.ExecuteScriptAsync($"show('{page}')");
     }
 
@@ -267,6 +326,8 @@ sealed class SettingsWindow : Form
         await ShowPageAsync(page);
         if (page == "browse")
             await Task.WhenAny(_catalogSent.Task, Task.Delay(TimeSpan.FromSeconds(25)));
+        if (page == "themes")
+            await Task.WhenAny(_themesSent.Task, Task.Delay(TimeSpan.FromSeconds(25)));
         await Task.Delay(page == "browse" ? 1200 : 500); // images decode, transitions settle
         using var ms = new MemoryStream();
         await _view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);

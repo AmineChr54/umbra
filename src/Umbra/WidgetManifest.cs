@@ -19,6 +19,8 @@ public sealed partial class WidgetManifest
     public string? Preview { get; set; }
     public int Width { get; set; } = 320;
     public int Height { get; set; } = 180;
+    /// <summary>False opts the widget out of themes (it keeps the default look).</summary>
+    public bool Themeable { get; set; } = true;
     public PointSpec? DefaultPosition { get; set; }
     public PermissionSpec Permissions { get; set; } = new();
     /// <summary>Option schema shown in Settings: key -> {label, type, default, choices?}.</summary>

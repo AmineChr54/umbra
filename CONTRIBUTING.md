@@ -99,6 +99,33 @@ node scripts/catalog.mjs          # validates and rebuilds widgets/index.json
 & "$env:LOCALAPPDATA\Programs\Umbra\Umbra.exe"
 ```
 
+## Building a theme
+
+A theme restyles every widget through the design tokens of `shared/umbra.css`. It is data only, so it is a single file:
+
+```
+themes/ember/
+  theme.json      required
+  preview.png     optional
+```
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "ember",
+  "name": "Ember",
+  "description": "Warm orange accent on deep brown-black surfaces.",
+  "author": "your-github-name",
+  "version": "1.0.0",
+  "tokens": { "--accent": "#ff8a3d", "--accent-soft": "rgba(255, 138, 61, 0.15)", "--radius-m": "8px" }
+}
+```
+
+- `id` equals the folder name (2-40 lowercase letters, digits and dashes; `default` is taken). Bump `version` on every change.
+- `tokens` may only use the names in the [token table](docs/widget-sdk.md#umbracss-tokens): colors (`--bg`, `--surface-1..3`, `--line`, `--line-strong`, `--text`, `--text-2`, `--text-3`, `--accent`, `--accent-strong`, `--accent-soft`, `--up`, `--down`, `--flat`) as `#rgb`/`#rrggbb`/`#rrggbbaa`, `rgb()`, `rgba()`, `hsl()` or `hsla()`, and radii (`--radius-s|m|l`) as `0-99px` or `rem`. Anything else (CSS, `url()`, scripts, other tokens, subfolders) fails validation. Leave out what you don't change. Keep `--bg` at the default `#000` unless the theme is about the background, and keep text readable (contrast of `--text` and `--text-2` on your surfaces).
+- Try it: `umbractl send install-theme '{"id":"ember"}'` installs from the catalog; to test a local file copy the folder to `%APPDATA%\Umbra\themes\<id>\` and run `umbractl themes`, then `umbractl theme <id>` and `umbractl capture settings:themes themes.png`.
+- Open a pull request with only your `themes/<id>/` folder. `node scripts/catalog.mjs` validates it (CI runs the same) and `themes/index.json` is regenerated on merge.
+
 ## Working on the app itself
 
 Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects/5) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows. [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.

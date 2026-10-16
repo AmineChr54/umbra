@@ -56,6 +56,11 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         new("browse_catalog", "catalog", "The community widget catalog (from the GitHub repo), with installed and updateAvailable flags.", Schema(new())),
         new("install_widget", "install", "Install or update a community widget from the catalog by id.", Schema(Obj(("id", IdProp.DeepClone())), "id")),
         new("remove_widget", "remove", "Uninstall a community widget (built-in widgets can only be disabled).", Schema(Obj(("id", IdProp.DeepClone())), "id")),
+        new("theme", "theme", "Read the active theme id, or switch to an installed theme by id (applies live to every widget and Settings). Ids come from list_themes; \"default\" is the built-in Umbra Black look.",
+            Schema(Obj(("id", P("string", "Theme id to switch to; omit to read the active one"))))),
+        new("list_themes", "themes", "Installed themes (id, name, tokens, updateAvailable) plus the community theme catalog (installed=false entries can be installed), and the active id. Themes are data only: colors and radii, no code.", Schema(new())),
+        new("install_theme", "install-theme", "Install or update a community theme from the catalog by id. Does not switch to it; call theme next.", Schema(Obj(("id", P("string", "Theme id from list_themes"))), "id")),
+        new("remove_theme", "remove-theme", "Uninstall a community theme. If it was active the default theme is used.", Schema(Obj(("id", P("string", "Theme id"))), "id")),
         new("create_widget", "create-widget",
             "Create or replace a local widget from source files and show it on the desktop. Call widget_authoring_guide first. " +
             "files maps relative paths to contents: widget.json and the entry page are required; text files as plain text, images and fonts as base64. " +
@@ -70,9 +75,9 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
                 ("op", Obj(("type", "string"), ("enum", new JsonArray("get", "set", "remove", "clear")), ("description", "Default get"))),
                 ("key", P("string", "Storage key; omit with get to read everything")),
                 ("value", Obj(("description", "Any JSON value, for set")))), "id")),
-        new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:general|widgets|browse|about). Returns a PNG of only that surface, never the rest of the screen.",
+        new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:general|widgets|browse|themes|about). Returns a PNG of only that surface, never the rest of the screen.",
             Schema(Obj(("target", P("string", "Widget id or settings:<page>"))), "target")),
-        new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (general, widgets, browse, about).", Schema(Obj(("page", P("string", "general | widgets | browse | about"))))),
+        new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (general, widgets, browse, themes, about).", Schema(Obj(("page", P("string", "general | widgets | browse | themes | about"))))),
         new("read_logs", "logs", "The last lines of Umbra's log: widget load errors, blocked network requests, crashes.", Schema(Obj(("lines", P("integer", "How many lines (default 50)"))))),
         new("widget_authoring_guide", "", "How to write an Umbra widget: the manifest format, the JavaScript SDK (umbra.fetchJson, umbra.every, options...), the sandbox and the design rules, plus the widget.json JSON Schema. Read this before create_widget.", Schema(new())),
     };

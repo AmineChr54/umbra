@@ -243,6 +243,19 @@ sealed class App : ApplicationContext
 
     public void SaveSettings() => Settings.Save();
 
+    /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
+    public string ThemeCss => Theme.CssFor(Settings.General.Theme);
+
+    /// <summary>Switches the theme live: widgets and Settings re-apply it at once. Unknown ids are an error.</summary>
+    public void SetTheme(string id)
+    {
+        if (Theme.DiscoverAll().All(t => t.Id != id)) throw new InvalidOperationException($"No installed theme '{id}'");
+        Settings.General.Theme = id;
+        SaveSettings();
+        foreach (var w in _windows.Values) w.PushSettings();
+        SettingsChangedElsewhere();
+    }
+
     public SettingsWindow ShowSettings()
     {
         if (_settingsWindow is { IsDisposed: false })

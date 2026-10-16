@@ -8,6 +8,8 @@ public sealed class GeneralSettings
 {
     public int RefreshSeconds { get; set; } = 60;
     public bool Animations { get; set; } = true;
+    /// <summary>Id of the active theme (see <see cref="Theme"/>); "default" is the built-in look.</summary>
+    public string Theme { get; set; } = Umbra.Theme.DefaultId;
     /// <summary>Look for a newer Umbra release on GitHub at start and daily.</summary>
     public bool CheckForUpdates { get; set; } = true;
 }

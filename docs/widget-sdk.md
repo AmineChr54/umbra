@@ -51,6 +51,7 @@ Built-in widgets live in the app folder. Community and locally created widgets l
 | `version` | Required, `1.2.3`. Bump it on every change (users get an Update button) |
 | `entry` | Default `index.html` |
 | `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
+| `themeable` | Default `true`. `false` keeps your own look: the user's [theme](#themes) is not applied to the widget |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
 | `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle` |
@@ -155,6 +156,45 @@ preference. `umbra.css` turns off CSS animations when it is `off`.
 `--text`, `--text-2` (secondary), `--text-3`, `--accent`, `--up` (green), `--down` (red), `--flat`, the
 Segoe UI Variable font stack, and `.num` for `font-variant-numeric: tabular-nums`. Read
 [`shared/umbra.css`](../shared/umbra.css) for the full list.
+
+**Always use the tokens instead of hard-coded colors**, so the user's theme restyles your widget. The tokens a
+theme can change:
+
+| Token | Default | Used for |
+|---|---|---|
+| `--bg` | `#000` | Window background |
+| `--surface-1`, `--surface-2`, `--surface-3` | `#0a0a0c`, `#111114`, `#17171c` | Cards and raised areas |
+| `--line`, `--line-strong` | white at 7 % / 12 % | Hairlines and borders |
+| `--text`, `--text-2`, `--text-3` | `#f4f5f7`, `#a3a7b1`, `#6b707b` | Primary, secondary and muted text |
+| `--accent`, `--accent-strong`, `--accent-soft` | `#8b93ff`, `#a9afff`, 14 % accent | Highlights, active states, glows |
+| `--up`, `--down`, `--flat` | `#2fd58b`, `#ff5a5f`, `#9aa0aa` | Rising, falling and unchanged values |
+| `--radius-s`, `--radius-m`, `--radius-l` | `8px`, `12px`, `18px` | Corner radii |
+
+## Themes
+
+A theme is a folder `themes/<id>/` with a `theme.json` (and optionally a preview image). It is data only: a map of
+the tokens above, validated by name (allow-list) and value (plain colors `#rrggbb`, `rgb()`, `hsl()`, or lengths
+such as `12px`), so a theme can't contain code, `url()` or any other way to load something.
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "ember",
+  "name": "Ember",
+  "description": "Warm orange accent on deep brown-black surfaces.",
+  "author": "your-github-name",
+  "version": "1.0.0",
+  "tokens": { "--accent": "#ff8a3d", "--surface-1": "#0e0a08", "--radius-m": "8px" }
+}
+```
+
+Tokens you leave out keep the default look ("Umbra Black", the built-in `default` theme). Keep `--bg` at `#000`
+unless the theme is about changing it. The host turns the active theme into one `:root{...}` rule and
+`shared/umbra.js` applies it after `umbra.css`, so widgets need no code to support themes: a widget that uses the
+tokens follows the theme live when the user switches. Widgets that set `"themeable": false` are left alone.
+`umbra.settings.themeCss` holds the generated rule if you ever need it. Schema:
+[`schemas/theme.schema.json`](../schemas/theme.schema.json). Users pick themes in **Settings > Themes** or with
+`umbractl theme <id>`.
 
 ## Design rules
 

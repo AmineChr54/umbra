@@ -14,7 +14,7 @@ static class CommandLine
 
         switch (a[0])
         {
-            case "status" or "list" or "reload" or "catalog" or "quit":
+            case "status" or "list" or "reload" or "catalog" or "themes" or "quit":
                 return (a[0], new JsonObject());
             case "enable" or "disable":
                 return ("configure", O(("id", Arg(a, 1, "widget id")), ("enabled", a[0] == "enable")));
@@ -32,6 +32,8 @@ static class CommandLine
                 if (Flag(a, "--y") is string y) o["y"] = int.Parse(y, CultureInfo.InvariantCulture);
                 return ("configure", o);
             }
+            case "theme":
+                return ("theme", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "check-update" or "update":
                 return ("check-update", new JsonObject());
             case "edit-mode":
@@ -52,7 +54,7 @@ static class CommandLine
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance":
+            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "refresh":
                 return ("refresh", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
