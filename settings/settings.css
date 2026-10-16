@@ -334,3 +334,17 @@ input { font: inherit; color: inherit; }
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast.error { color: #ff9a9d; }
+
+/* ---------- local commands (permissions.commands) ---------- */
+.cmds:empty { display: none; }
+.cmds { display: grid; gap: 8px; margin-bottom: 18px; }
+.cmds-title { font-size: 12px; font-weight: 650; color: var(--text-2); }
+.cmd { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
+.cmd-line { grid-column: 1; font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; user-select: text; }
+.cmd-desc { grid-column: 1; font-size: 11.5px; color: var(--text-3); }
+.cmd .btn { grid-column: 2; grid-row: 1 / span 2; }
+.cmd-status { font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; margin-right: 8px; }
+.cmd-status.approved { color: #6fe0b0; }
+.cmd-status.pending, .cmd-status.changed { color: #f0b86e; }
+.chip.warn { color: #f0b86e; background: rgba(240, 184, 110, 0.12); }
+.chip.warn .ico { color: #f0b86e; }

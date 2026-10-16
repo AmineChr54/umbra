@@ -53,6 +53,7 @@ Built-in widgets live in the app folder. Community and locally created widgets l
 | `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
+| `permissions.commands` | Local programs the widget may start with `umbra.run`. Empty by default. See [Running local commands](#running-local-commands) |
 | `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle` |
 
 The JSON Schema is in [`schemas/widget.schema.json`](../schemas/widget.schema.json).
@@ -97,6 +98,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
+| `umbra.run(commandId, params?)` | Runs a command declared in `permissions.commands` and resolves `{ exitCode, stdout, stderr, timedOut, truncated, durationMs }`. Rejects when the command isn't declared, isn't approved yet, or `params` are invalid. See below |
 | `umbra.store.get(key, fallback?)` | Promise of this widget's saved value for `key` (any JSON), or `fallback` when it was never set |
 | `umbra.store.set(key, value)` | Saves a JSON value. Rejects when the widget's data would pass 1 MB |
 | `umbra.store.remove(key)`, `umbra.store.keys()` | Delete one key; list the keys |
@@ -160,13 +162,55 @@ Segoe UI Variable font stack, and `.num` for `font-variant-numeric: tabular-nums
 - Fit the declared `width` x `height` exactly; the window does not scroll or reflow. When the user resizes it,
   Umbra zooms the whole page instead.
 
+## Running local commands
+
+Most widgets never need this. A widget that must start a program (a launcher, `claude -p "Hello"`, a script
+runner) declares each command in `widget.json`; the page can only name a declared **id**.
+
+```json
+"permissions": {
+  "commands": [
+    { "id": "wake", "run": ["claude", "-p", "Hello"], "description": "Starts the Claude usage window" },
+    { "id": "ask",  "run": ["claude", "-p", "${prompt}", "--model", "${model}"],
+      "params": { "prompt": { "maxLength": 300 }, "model": { "choices": ["haiku", "sonnet"] } },
+      "timeoutSeconds": 90 }
+  ]
+}
+```
+
+```js
+const r = await umbra.run("wake");                                  // { exitCode, stdout, stderr, timedOut, truncated, durationMs }
+await umbra.run("ask", { prompt: "Say hi", model: "haiku" });
+```
+
+Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; a violation stops the widget from loading):
+
+- `run` is `[executable, ...arguments]`, **never a shell line**. The executable is a plain program name found on `PATH`
+  (`claude`, `python`) or an absolute local path (`C:\Tools\app.exe`); no relative paths, no UNC. The page can't change it.
+- Each argument is a literal, or exactly `"${name}"` for a declared parameter. A parameter can't be part of a longer
+  string (`"--model=${m}"` is rejected), and the executable can't be a parameter.
+- A parameter is a string, always supplied, at most `maxLength` characters (default 200, max 1000), without control
+  characters, and **must not start with `-`** unless it is one of the fixed `choices`. It reaches the program as one
+  single argument, so spaces and quotes in it can't add arguments.
+- `.cmd`/`.bat` files are only started for commands without parameters. `timeoutSeconds` is 1-120 (default 60).
+- The program runs as the user with no window, in `%APPDATA%\Umbra\data\run\<widget id>`, with a scrubbed environment
+  (system variables and `PATH` only: no tokens, no `UMBRA_*`). It is killed after the timeout, and at most 1 MB of
+  stdout and of stderr is kept (`truncated` tells you).
+- **The user approves every command.** The first run shows an Umbra prompt with the exact command line; the
+  approval is saved for this widget and this command and is void as soon as the command changes. A prompt only
+  appears right after the user clicked the widget (so a button works; a background timer doesn't), at most every 20 s,
+  and not after three refusals. Without an approval a call rejects with a message you should show ("Approve it in
+  Settings > My widgets"). Users can approve and revoke each command there, and Browse flags widgets that declare commands.
+- Calls fail while the widget is disabled, and a running command is stopped when the widget closes.
+- Automation (`umbractl approvals`, MCP `list_command_approvals`) can only **read** the approval state.
+
 ## Sandbox (what a widget can and cannot do)
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
 - No navigation away, no new windows, no context menu or devtools. Browser zoom keys are off; only the host sets
   the zoom (the user's size setting).
-- No file system or native access; the bridge only offers the calls above. `umbra.store` reaches only the
+- No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.
 
 ## Develop with umbractl (or an AI agent)

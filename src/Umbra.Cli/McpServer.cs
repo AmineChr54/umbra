@@ -54,7 +54,7 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         new("create_widget", "create-widget",
             "Create or replace a local widget from source files and show it on the desktop. Call widget_authoring_guide first. " +
             "files maps relative paths to contents: widget.json and the entry page are required; text files as plain text, images and fonts as base64. " +
-            "The widget is sandboxed: network access only to permissions.hosts. After creating it, call capture to look at the result and iterate.",
+            "The widget is sandboxed: network access only to permissions.hosts. It may declare permissions.commands, but those only run after the user approves them on the desktop. After creating it, call capture to look at the result and iterate.",
             Schema(Obj(("id", IdProp.DeepClone()),
                 ("files", Obj(("type", "object"), ("description", "{\"widget.json\": \"...\", \"index.html\": \"...\", \"main.js\": \"...\"}"), ("additionalProperties", Obj(("type", "string"))))),
                 ("overwrite", P("boolean", "Replace an existing widget with this id"))), "id", "files")),
@@ -65,6 +65,10 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
                 ("op", Obj(("type", "string"), ("enum", new JsonArray("get", "set", "remove", "clear")), ("description", "Default get"))),
                 ("key", P("string", "Storage key; omit with get to read everything")),
                 ("value", Obj(("description", "Any JSON value, for set")))), "id")),
+        new("list_command_approvals", "approvals",
+            "Read-only: the local commands that widgets declare in permissions.commands (exact command line) and whether the user approved each one (approved, pending, or changed since approval). " +
+            "There is deliberately no tool to approve: the user approves in a prompt or in Settings > My widgets.",
+            Schema(Obj(("id", IdProp.DeepClone())))),
         new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:general|widgets|browse|about). Returns a PNG of only that surface, never the rest of the screen.",
             Schema(Obj(("target", P("string", "Widget id or settings:<page>"))), "target")),
         new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (general, widgets, browse, about).", Schema(Obj(("page", P("string", "general | widgets | browse | about"))))),

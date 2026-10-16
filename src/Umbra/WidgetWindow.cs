@@ -278,6 +278,10 @@ sealed class WidgetWindow : Form
                 HandleStore(msg!);
                 break;
 
+            case "run":
+                await HandleRun(msg!);
+                break;
+
             case "pointer":
                 if (PressedOnThisWindow()) MarkPressed();
                 break;
@@ -302,6 +306,18 @@ sealed class WidgetWindow : Form
     /// </summary>
     bool PressedOnThisWindow() =>
         (IsKeyDown(Native.VK_LBUTTON) || IsKeyDown(Native.VK_RBUTTON)) && CursorOverThisWindow();
+
+    /// <summary>Did the user physically press the mouse on this window in the last two seconds? Gates the first-approval prompt.</summary>
+    bool RecentUserPress() => System.Environment.TickCount64 - _pressedAt <= 2000;
+
+    /// <summary>Cancelled when the window closes (widget disabled or removed): running commands are killed.</summary>
+    readonly CancellationTokenSource _closing = new();
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _closing.Cancel();
+        base.OnFormClosed(e);
+    }
 
     /// <summary>Ctrl physically held with the cursor over this window: a wheel zoom the user is really doing.</summary>
     bool CtrlWheelOverThisWindow() => IsKeyDown(Native.VK_CONTROL) && CursorOverThisWindow();
@@ -371,6 +387,32 @@ sealed class WidgetWindow : Form
             reply["ok"] = false;
             reply["error"] = ex.Message;
             Log.Write($"[{Manifest.Id}] store {msg["op"]} failed: {ex.Message}");
+        }
+        Post(reply);
+    }
+
+    /// <summary>
+    /// umbra.run: asks the host to run one of this widget's declared commands (permissions.commands). The page sends
+    /// only a command id and string parameters; <see cref="CommandService"/> does the checking and the approval.
+    /// </summary>
+    async Task HandleRun(JsonNode msg)
+    {
+        var reply = new JsonObject { ["type"] = "runResult", ["id"] = msg["id"]?.DeepClone() };
+        try
+        {
+            if (msg["command"] is not JsonValue c || c.GetValueKind() != JsonValueKind.String)
+                throw new WidgetCommandException("A command id is required");
+            if (msg["params"] is not null && msg["params"] is not JsonObject)
+                throw new WidgetCommandException("params must be an object of strings");
+            reply["data"] = await _app.Commands.RunAsync(Manifest, Ws.Enabled && !IsDisposed, RecentUserPress(),
+                c.GetValue<string>(), msg["params"] as JsonObject, _closing.Token);
+            reply["ok"] = true;
+        }
+        catch (Exception ex)
+        {
+            reply["ok"] = false;
+            reply["error"] = ex is WidgetCommandException ? ex.Message : "The command failed";
+            if (ex is not WidgetCommandException) Log.Write($"[{Manifest.Id}] run failed: {ex}");
         }
         Post(reply);
     }

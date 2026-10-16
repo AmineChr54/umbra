@@ -97,6 +97,25 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "approveCommand":
+            case "revokeCommand":
+            {
+                // The only places a command gets approved are this button (shown with the exact command line) and the run-time prompt.
+                var widget = _app.Manifests.FirstOrDefault(w => w.Id == (msg["widget"]?.GetValue<string>() ?? ""));
+                var cmdId = msg["command"]?.GetValue<string>() ?? "";
+                try
+                {
+                    if (widget is null) throw new WidgetCommandException("Unknown widget");
+                    if (msg["type"]?.GetValue<string>() == "approveCommand")
+                        _app.Commands.ApproveFromSettings(widget, cmdId, msg["hash"]?.GetValue<string>() ?? "");
+                    else
+                        _app.Commands.Approvals.Revoke(widget.Id, cmdId);
+                }
+                catch (WidgetCommandException ex) { Post(new JsonObject { ["type"] = "commandError", ["error"] = ex.Message }); }
+                SendState();
+                break;
+            }
+
             case "openUrl":
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
                 break;
@@ -159,6 +178,14 @@ sealed class SettingsWindow : Form
                     : m.Source == WidgetSource.BuiltIn ? WebHost.Url($"widgets/{m.Folder}/{m.Preview}")
                     : WebHost.CommunityUrl($"{m.Folder}/{m.Preview}"),
                 ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
+                ["commands"] = new JsonArray(m.Permissions.Commands.Select(c => (JsonNode?)new JsonObject
+                {
+                    ["id"] = c.Id,
+                    ["line"] = c.DisplayLine(),
+                    ["description"] = c.Description,
+                    ["hash"] = c.Hash(),
+                    ["status"] = _app.Commands.Approvals.Status(m.Id, c),
+                }).ToArray()),
                 ["options"] = m.Options.DeepClone(),
                 ["optionOrder"] = new JsonArray(m.OptionOrder.Select(k => (JsonNode?)k).ToArray()),
             });

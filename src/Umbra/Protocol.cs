@@ -31,6 +31,7 @@ public static class Protocol
         ("remove", "Uninstall a community widget: {id}"),
         ("create-widget", "Write a local widget: {id, files{path:content}, overwrite?}; binary files as base64"),
         ("data", "A widget's saved data (umbra.store): {id, op?: get|set|remove|clear, key?, value?}; no op = get (all keys without key)"),
+        ("approvals", "Read-only: the local commands widgets declare and whether the user approved them: {id?}. Approving is a human action in Settings"),
         ("capture","PNG of a widget or a Settings page: {target: <id>|settings:<general|widgets|browse|about>, path?}"),
         ("open-settings", "Open the Settings window: {page?}"),
         ("logs", "Last lines of umbra.log: {lines?}"),

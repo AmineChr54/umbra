@@ -51,6 +51,9 @@ static class CommandLine
             }
             case "reset-position" or "install" or "remove":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
+            case "approvals":
+                // List only. Approving a widget's command is a human action (prompt or Settings > My widgets).
+                return ("approvals", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "refresh":
                 return ("refresh", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "capture":

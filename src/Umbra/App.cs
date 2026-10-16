@@ -10,6 +10,9 @@ sealed class App : ApplicationContext
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
 
+    /// <summary>Runs widget-declared local commands behind the approval gate.</summary>
+    public CommandService Commands { get; } = new(CommandApprovals.Shared, req => Task.FromResult(ApprovalDialog.Ask(req)));
+
     public Settings Settings { get; private set; }
     public List<WidgetManifest> Manifests { get; private set; }
 
