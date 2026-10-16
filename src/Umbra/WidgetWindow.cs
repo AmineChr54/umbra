@@ -165,7 +165,55 @@ sealed class WidgetWindow : Form
             case "fetchJson":
                 await HandleFetch(msg!);
                 break;
+
+            case "store":
+                HandleStore(msg!);
+                break;
         }
+    }
+
+    /// <summary>umbra.store: get/set/remove/keys on this widget's own data file, never another widget's.</summary>
+    void HandleStore(JsonNode msg)
+    {
+        var id = msg["id"]?.GetValue<int>() ?? 0;
+        var reply = new JsonObject { ["type"] = "storeResult", ["id"] = id };
+        try
+        {
+            var op = msg["op"]?.GetValue<string>();
+            var key = msg["key"]?.GetValue<string>() ?? "";
+            switch (op)
+            {
+                case "get":
+                    var (found, value) = WidgetStore.Get(Manifest.Id, key);
+                    reply["data"] = new JsonObject { ["found"] = found, ["value"] = value };
+                    break;
+                case "set":
+                    WidgetStore.Set(Manifest.Id, key, msg["value"]);
+                    break;
+                case "remove":
+                    WidgetStore.Remove(Manifest.Id, key);
+                    break;
+                case "keys":
+                    reply["data"] = new JsonArray(WidgetStore.Keys(Manifest.Id).Select(k => (JsonNode?)k).ToArray());
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown store operation '{op}'");
+            }
+            reply["ok"] = true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+        {
+            reply["ok"] = false;
+            reply["error"] = ex.Message;
+            Log.Write($"[{Manifest.Id}] store {msg["op"]} failed: {ex.Message}");
+        }
+        Post(reply);
+    }
+
+    /// <summary>Tells the page that its stored data was changed from outside (umbractl data, MCP).</summary>
+    public void StoreChanged(string? key)
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "storeChanged", ["key"] = key });
     }
 
     /// <summary>

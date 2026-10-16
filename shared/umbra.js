@@ -7,7 +7,7 @@
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, options: {} };
   let widget = { id: "", name: "" };
-  const handlers = { settings: [], refresh: [] };
+  const handlers = { settings: [], refresh: [], store: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -36,7 +36,8 @@
       case "refresh":
         handlers.refresh.forEach((fn) => fn());
         break;
-      case "fetchResult": {
+      case "fetchResult":
+      case "storeResult": {
         const p = pending.get(m.id);
         if (!p) return;
         pending.delete(m.id);
@@ -44,18 +45,37 @@
         m.ok ? p.resolve(m.data) : p.reject(new Error(m.error || "Request failed"));
         break;
       }
+      case "storeChanged":
+        handlers.store.forEach((fn) => fn(m.key ?? null));
+        break;
     }
   });
 
-  /** Fetch JSON through the host (bypasses CORS). The host must be listed in widget.json permissions.hosts. */
-  function fetchJson(url) {
+  /** Send a request to the host and resolve with its reply's data. */
+  function request(msg, timeoutMs) {
     return new Promise((resolve, reject) => {
       const id = nextId++;
-      const timer = setTimeout(() => { pending.delete(id); reject(new Error("Timed out")); }, 25000);
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error("Timed out")); }, timeoutMs);
       pending.set(id, { resolve, reject, timer });
-      post({ type: "fetchJson", id, url });
+      post({ ...msg, id });
     });
   }
+
+  /** Fetch JSON through the host (bypasses CORS). The host must be listed in widget.json permissions.hosts. */
+  const fetchJson = (url) => request({ type: "fetchJson", url }, 25000);
+
+  /** This widget's own saved data (any JSON per key), kept by the host across restarts. */
+  const store = {
+    async get(key, fallback) {
+      const r = await request({ type: "store", op: "get", key }, 5000);
+      return r.found ? r.value : fallback;
+    },
+    set: (key, value) => request({ type: "store", op: "set", key, value: value === undefined ? null : value }, 5000),
+    remove: (key) => request({ type: "store", op: "remove", key }, 5000),
+    keys: () => request({ type: "store", op: "keys" }, 5000),
+    /** fn(key) runs when the data was changed from outside the widget (umbractl data, MCP); key is null for "everything". */
+    onChange: (fn) => handlers.store.push(fn),
+  };
 
   /** Run fn now and then every refreshSeconds (re-scheduled when the user changes the interval). */
   function every(fn) {
@@ -121,6 +141,7 @@
     get widget() { return widget; },
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
+    store,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),
     /** Call after the first real frame is drawn; screenshots (umbractl capture) wait for it. */

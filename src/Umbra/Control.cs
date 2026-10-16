@@ -178,6 +178,9 @@ sealed class Control(App app)
                 return info;
             }
 
+            case "data":
+                return Data(Manifest(a), a);
+
             case "capture":
                 return await Capture(Str(a, "target"), a["path"]?.GetValue<string>());
 
@@ -198,6 +201,41 @@ sealed class Control(App app)
             default:
                 throw new CommandException($"Unknown command '{cmd}'. Commands: {string.Join(", ", Protocol.Commands.Select(c => c.Cmd))}");
         }
+    }
+
+    /// <summary>Reads or changes a widget's umbra.store data; an open widget is told about changes so it can re-render.</summary>
+    JsonNode? Data(WidgetManifest m, JsonObject a)
+    {
+        var op = a["op"] is null ? "get" : Str(a, "op");
+        var key = a["key"] is null ? null : Str(a, "key");
+        try
+        {
+            switch (op)
+            {
+                case "get" when key is null:
+                    return WidgetStore.All(m.Id);
+                case "get":
+                    var (found, value) = WidgetStore.Get(m.Id, key);
+                    return found ? value : throw new CommandException($"'{m.Id}' has no stored key '{key}'. Keys: {string.Join(", ", WidgetStore.Keys(m.Id))}");
+                case "set":
+                    if (key is null) throw new CommandException("\"key\" is required for set");
+                    if (!a.ContainsKey("value")) throw new CommandException("\"value\" is required for set");
+                    WidgetStore.Set(m.Id, key, a["value"]);
+                    break;
+                case "remove":
+                    if (key is null) throw new CommandException("\"key\" is required for remove");
+                    if (!WidgetStore.Remove(m.Id, key)) throw new CommandException($"'{m.Id}' has no stored key '{key}'");
+                    break;
+                case "clear":
+                    WidgetStore.Delete(m.Id);
+                    break;
+                default:
+                    throw new CommandException("\"op\" must be get, set, remove or clear");
+            }
+        }
+        catch (InvalidOperationException ex) { throw new CommandException(ex.Message); }
+        app.Window(m.Id)?.StoreChanged(op == "clear" ? null : key);
+        return WidgetStore.All(m.Id);
     }
 
     /// <summary>target = widget id, or settings:&lt;page&gt;. Writes to path when given, otherwise returns base64.</summary>

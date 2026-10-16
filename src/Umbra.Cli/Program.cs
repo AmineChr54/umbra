@@ -101,6 +101,15 @@ async Task<(string, JsonObject)> Translate(string[] a)
             var file = a.Length > 2 ? a[2] : $"{target.Replace(':', '-')}.png";
             return ("capture", O(("target", target), ("path", Path.GetFullPath(file))));
         }
+        case "data":
+        {
+            var id = Arg(1, "widget id");
+            if (a.Contains("--clear")) return ("data", O(("id", id), ("op", "clear")));
+            if (Flag("--remove") is string rm) return ("data", O(("id", id), ("op", "remove"), ("key", rm)));
+            if (a.Length == 2) return ("data", O(("id", id)));
+            if (a.Length == 3) return ("data", O(("id", id), ("key", a[2])));
+            return ("data", O(("id", id), ("op", "set"), ("key", a[2]), ("value", JsonOrText(a[3]))));
+        }
         case "settings":
             return ("open-settings", a.Length > 1 ? O(("page", a[1])) : new JsonObject());
         case "logs":
@@ -139,6 +148,13 @@ async Task<JsonNode?> OptionValue(string id, string key, string raw)
     };
 }
 
+// "data todo tasks [1,2]" stores JSON; anything that isn't valid JSON is stored as a plain string.
+static JsonNode? JsonOrText(string raw)
+{
+    try { return JsonNode.Parse(raw); }
+    catch (JsonException) { return JsonValue.Create(raw); }
+}
+
 static bool OnOff(string v) => v.ToLowerInvariant() switch
 {
     "on" or "true" or "1" or "yes" => true,
@@ -175,6 +191,8 @@ static void PrintHelp()
           create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
                                          PNG of a widget or Settings page (general|widgets|browse|about)
+          data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
+          data <id> --remove <key>|--clear
           settings [page]                open the Settings window
           logs [n]                       last n log lines
           quit                           exit Umbra

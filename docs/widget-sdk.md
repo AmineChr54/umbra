@@ -97,12 +97,28 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
+| `umbra.store.get(key, fallback?)` | Promise of this widget's saved value for `key` (any JSON), or `fallback` when it was never set |
+| `umbra.store.set(key, value)` | Saves a JSON value. Rejects when the widget's data would pass 1 MB |
+| `umbra.store.remove(key)`, `umbra.store.keys()` | Delete one key; list the keys |
+| `umbra.store.onChange(fn)` | `fn(key)` runs when the data was changed from outside the widget (`umbractl data`, MCP). `key` is `null` when everything was cleared |
 | `umbra.openUrl(url)` | Opens an http(s) link in the user's browser (links never navigate the widget) |
 | `umbra.rendered()` | Call once the first real frame is drawn; screenshots wait for it |
 | `umbra.tween(from, to, ms, onFrame)` | Ease-out-cubic number animation; jumps straight to `to` when motion is off or the window is hidden |
 | `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"` |
 
 Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.fetchJson` always works.
+
+**Saving data.** Options are for settings the user picks in **My widgets**. Anything the widget itself creates
+(a task list, events, "already seen" ids) goes in `umbra.store`. It is private to the widget, survives restarts
+and widget updates, and is deleted when a community widget is removed. It lives in
+`%APPDATA%\Umbra\data\<id>.json`. Don't use `localStorage`: every widget shares one origin, so other widgets could read it.
+
+```js
+const tasks = await umbra.store.get("tasks", []);
+tasks.push({ title: "Read chapter 3" });
+await umbra.store.set("tasks", tasks);
+umbra.store.onChange(async () => render(await umbra.store.get("tasks", [])));
+```
 
 **Dragging** is built in: holding the mouse button and moving more than 4 px moves the window (unless the
 user locked it). Put `data-no-drag` on buttons, inputs or links that need normal clicks.
@@ -129,7 +145,8 @@ Segoe UI Variable font stack, and `.num` for `font-variant-numeric: tabular-nums
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
 - No navigation away, no new windows, no context menu, devtools or zoom.
-- No file system or native access; the bridge only offers the calls above.
+- No file system or native access; the bridge only offers the calls above. `umbra.store` reaches only the
+  widget's own data file.
 
 ## Develop with umbractl (or an AI agent)
 
@@ -139,11 +156,12 @@ umbractl reload                      # after editing files there
 umbractl create .\widgets\weather    # load a folder you are editing elsewhere (e.g. in the repo)
 umbractl set weather city Paris      # change an option, typed by the schema
 umbractl capture weather shot.png    # PNG of just the widget
+umbractl data weather                # what the widget saved with umbra.store (set: data <id> <key> <json>)
 umbractl logs                        # load errors and blocked requests
 ```
 
 Through MCP (`claude mcp add umbra -- umbractl mcp`) an agent does the same with `create_widget`,
-`configure_widget`, `capture` and `read_logs`.
+`configure_widget`, `widget_data`, `capture` and `read_logs`.
 
 ## Publish
 

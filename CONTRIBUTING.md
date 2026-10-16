@@ -64,6 +64,7 @@ widgets/
 | `umbra.every(fn)` | Call `fn` now and on the user's refresh interval |
 | `umbra.onSettings(fn)` | Called when the user changes anything in Settings |
 | `umbra.fetchJson(url)` | Fetch JSON through Umbra, with no CORS problems (host must be in `permissions.hosts`) |
+| `umbra.store.get(key, fallback)` / `.set(key, value)` | Save the widget's own data (any JSON, 1 MB), kept across restarts |
 | `umbra.openUrl(url)` | Open a link in the user's browser |
 | `umbra.tween(from, to, ms, fn)` | Ease-out number animation (skipped when motion is off) |
 | `umbra.fmt(n, decimals)` | `7744.06` to `"7,744.06"` |
