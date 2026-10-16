@@ -1,0 +1,52 @@
+html, body { height: 100%; overflow: hidden; }
+
+.w { height: 100%; display: flex; flex-direction: column; padding: 16px 18px 14px; gap: 12px; }
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.title {
+  margin: 0; font-family: var(--font-display);
+  font-size: 20px; font-weight: 600; line-height: 1.2; letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600; color: var(--text-2);
+  white-space: nowrap;
+}
+.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--flat); }
+.badge.ok::before { background: var(--up); }
+.badge.err::before { background: var(--down); }
+.badge.run::before { background: var(--accent); }
+html[data-motion="on"] .badge.run::before { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+.wake {
+  flex: none;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 16px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--accent-strong); background: var(--accent-soft);
+  border: 1px solid transparent; border-radius: var(--radius-m);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.wake svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.wake:hover { border-color: var(--accent); }
+.wake:disabled { opacity: 0.6; cursor: default; border-color: transparent; }
+
+.rows { flex: none; margin: 0; display: flex; flex-direction: column; background: var(--surface-1); border-radius: var(--radius-m); padding: 2px 12px; }
+.row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; min-height: 34px; }
+.row + .row { border-top: 1px solid var(--line); }
+dt { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+dd { margin: 0; min-width: 0; text-align: right; font-size: 12.5px; font-weight: 600; color: var(--text); }
+dd small { display: block; font-size: 11px; font-weight: 500; color: var(--text-3); margin-top: 1px; }
+#result { display: contents; }
+.row:has(#result.err) { flex-wrap: wrap; }
+#result.err .msg { flex-basis: 100%; text-align: left; }
+#result.ok .res { color: var(--up); }
+#result.err .res { color: var(--down); }
+#result .msg { font-size: 11px; font-weight: 500; color: var(--text-2); line-height: 1.35; margin-top: 2px; }
+
+.note { margin: 0; font-size: 11px; line-height: 1.4; color: var(--text-2); min-height: 30px; }
+.note.warn { color: var(--accent-strong); }
+.note.err { color: var(--down); }

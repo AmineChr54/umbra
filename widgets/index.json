@@ -2,6 +2,29 @@
   "schema": 1,
   "widgets": [
     {
+      "id": "claude-waker",
+      "name": "Claude waker",
+      "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "commands": [
+        {
+          "id": "wake",
+          "run": "claude -p Hello --model ${model}",
+          "description": "Sends \"Hello\" to Claude to start the usage window"
+        }
+      ],
+      "files": [
+        "index.html",
+        "preview.png",
+        "waker.css",
+        "waker.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "clock",
       "name": "Clock",
       "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
