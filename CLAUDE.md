@@ -23,10 +23,11 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
 | `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
-| `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman, kept at `HWND_BOTTOM`, no activation, DWM corners |
+| `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
 | `src/Umbra/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
+| `src/Umbra/Updates.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`), and `UpdateService` (daily GitHub check, download + run installer) |
 | `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on remove) |
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
@@ -60,12 +61,12 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   unlocked widget, with a physical mouse press (resize) or Ctrl held (zoom) over that window.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
 - Built-in widgets cannot be removed or shadowed by community or agent ids.
+- Self-update (`Updates.cs`) runs in the host only; the installer must be HTTPS from `github.com/AmineChr54/umbra/releases/download/` and named `UmbraSetup-<release version>.exe`. Control commands may check for updates but never install one.
 
 ## Verifying UI changes
 
 Use `umbractl capture <widget-id|settings:<page>> out.png`, then look at the PNG. It captures only that WebView.
-**Never take desktop or full-screen screenshots**: they capture the user's other windows. Drag and Win+D
-behaviour need a human check, so note that in the PR.
+**Never take desktop or full-screen screenshots**: they capture the user's other windows. Drag behaviour needs a human check, so note that in the PR.
 
 ## Conventions
 

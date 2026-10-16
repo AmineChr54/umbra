@@ -112,6 +112,19 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "checkUpdate":
+                await _app.Updater.CheckAsync(manual: true); // re-sends the state
+                break;
+
+            case "installUpdate":
+                try { await _app.Updater.InstallAsync(); }
+                catch (Exception ex)
+                {
+                    Log.Write($"Update failed: {ex.Message}");
+                    Post(new JsonObject { ["type"] = "updateError", ["error"] = ex.Message });
+                }
+                break;
+
             case "openUrl":
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
                 break;
@@ -189,6 +202,7 @@ sealed class SettingsWindow : Form
             ["version"] = Application.ProductVersion.Split('+')[0],
             ["startup"] = Startup.IsEnabled(),
             ["editMode"] = _app.EditMode,
+            ["update"] = _app.Updater.ToJson(),
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
             ["widgets"] = widgets,

@@ -80,6 +80,13 @@
             </div>
             <label class="switch"><input type="checkbox" id="animations"><span></span></label>
           </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Check for updates</div>
+              <div class="row-sub">Once a day Umbra asks GitHub whether a newer version exists. Nothing is installed without your say-so.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="checkUpdates"><span></span></label>
+          </div>
         </div>
 
         <div class="hint">
@@ -135,6 +142,11 @@
           <h1>Umbra</h1>
           <p class="about-tag">Desktop widgets that live on your wallpaper.</p>
           <p class="about-ver" id="aboutVer"></p>
+          <div class="update" id="update">
+            <div class="update-text" id="updateText"></div>
+            <button class="btn primary small" id="updateInstall" hidden><span class="ico" data-icon="download"></span>Update now</button>
+            <button class="btn small" id="updateCheck">Check for updates</button>
+          </div>
           <div class="about-links">
             <button class="btn" data-url="repo"><span class="ico" data-icon="github"></span>Source code</button>
             <button class="btn" data-url="issues"><span class="ico" data-icon="bug"></span>Report an issue</button>

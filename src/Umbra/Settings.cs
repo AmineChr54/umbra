@@ -8,6 +8,8 @@ public sealed class GeneralSettings
 {
     public int RefreshSeconds { get; set; } = 60;
     public bool Animations { get; set; } = true;
+    /// <summary>Look for a newer Umbra release on GitHub at start and daily.</summary>
+    public bool CheckForUpdates { get; set; } = true;
 }
 
 public sealed class WidgetSettings
