@@ -292,7 +292,8 @@ sealed class WidgetWindow : Form
                 break;
 
             case "fetchJson":
-                await HandleFetch(msg!);
+            case "fetchText":
+                await HandleFetch(msg!, type == "fetchText");
                 break;
 
             case "store":
@@ -473,7 +474,7 @@ sealed class WidgetWindow : Form
         return ms.ToArray();
     }
 
-    async Task HandleFetch(JsonNode msg)
+    async Task HandleFetch(JsonNode msg, bool asText)
     {
         var id = msg["id"]?.GetValue<int>() ?? 0;
         var url = msg["url"]?.GetValue<string>() ?? "";
@@ -489,7 +490,7 @@ sealed class WidgetWindow : Form
         {
             try
             {
-                reply["data"] = await Fetcher.GetJsonAsync(url);
+                reply["data"] = asText ? JsonValue.Create(await Fetcher.GetTextAsync(url)) : await Fetcher.GetJsonAsync(url);
                 reply["ok"] = true;
             }
             catch (Exception ex)

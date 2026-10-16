@@ -86,6 +86,8 @@
    * Resolves { exitCode, stdout, stderr, timedOut, truncated, durationMs }; rejects when not declared, not approved, or invalid.
    */
   const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
+  /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
+  const fetchText = (url) => request({ type: "fetchText", url }, 25000);
 
   /** This widget's own saved data (any JSON per key), kept by the host across restarts. */
   const store = {
@@ -226,6 +228,7 @@
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
     run,
+    fetchText,
     store,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),
