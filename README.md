@@ -66,8 +66,9 @@ The chart is drawn with Rainmeter's vector `Shape` meter, not a bitmap, which is
 
 1. **Scale.** `lo` and `hi` are the min and max of all samples, **and the previous close is included in that range**, so the reference line is always inside the chart.
 2. **Normalize.** Each sample `v` is mapped to a pixel height: `y = top + h - (v - lo) / (hi - lo) * h`. The x position is spread evenly: `x = x0 + i / (n - 1) * w`. If all values are identical, the span falls back to 1 to avoid dividing by zero.
-3. **Build three paths** as strings and push them to the skin with `!SetOption`:
-   - `LinePath` is the polyline of all points, drawn with a 2 px stroke and round line joins.
+3. **Smooth.** A straight polyline of 5-minute samples looks jagged, so the points are joined with a Catmull-Rom spline converted to cubic Bezier segments: for each point the control handles are `P1 + (P2 - P0) / 6` and `P2 - (P3 - P1) / 6` (end points are clamped). The curve passes through every sample but has no sharp corners.
+4. **Build the paths** as strings and push them to the skin with `!SetOption`:
+   - `LinePath` is a smooth curve through all points (see below), drawn with a 2.5 px stroke and round caps and joins.
    - `AreaPath` is the same polyline closed down to the baseline, filled with a vertical `LinearGradient` that fades from the trend color at 35% opacity to fully transparent.
    - `RefPath` is a faint horizontal line at the previous-close height, so you can see at a glance whether you are above or below yesterday.
 
@@ -94,3 +95,10 @@ Replace `%5EGSPC` in the URL with another Yahoo ticker (`%5EIXIC` for NASDAQ, `%
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+## Getting the sharpest rendering
+
+- Rainmeter draws the skin at your display scaling (for example 200% on a high-DPI laptop), so shapes stay vector-sharp.
+- Turn on **Hardware acceleration** in Rainmeter (tray icon > Settings > Advanced, or `HardwareAcceleration=1` in `Rainmeter.ini`) so Direct2D renders on the GPU.
+- Text on a translucent desktop window is drawn with grayscale anti-aliasing, because Windows disables ClearType on per-pixel-alpha windows. That is a Windows limit, so the widget uses larger sizes and bold weights to stay readable.
+- The integrated GPU is the right choice. The card is tiny, so a discrete GPU adds power draw and gives no visible gain.
