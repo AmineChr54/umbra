@@ -79,6 +79,7 @@ function renderGeneral() {
   const g = state.settings.general;
   $("#startup").checked = state.startup;
   $("#animations").checked = g.animations;
+  $("#checkUpdates").checked = g.checkForUpdates !== false;
   $$("#interval button").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === g.refreshSeconds));
 }
 $("#startup").addEventListener("change", (e) => {
@@ -86,6 +87,7 @@ $("#startup").addEventListener("change", (e) => {
   toast(e.target.checked ? "Umbra will start with Windows" : "Umbra won't start with Windows");
 });
 $("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
+$("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);
@@ -93,6 +95,27 @@ $$("#interval button").forEach((b) =>
     save(true);
   })
 );
+
+// ---------- Updates (About) ----------
+function renderUpdate() {
+  const u = state.update || {};
+  const a = u.available;
+  $("#updateText").textContent = a ? `Umbra v${a.version} is available.`
+    : u.error ? "Couldn't check for updates right now."
+    : u.lastChecked ? "You're up to date."
+    : u.enabled === false ? "Update checks are turned off in General." : "Checking for updates...";
+  $("#update").classList.toggle("has-update", !!a);
+  $("#updateInstall").hidden = !a;
+  $("#updateInstall").disabled = false;
+  $("#updateCheck").disabled = false;
+  $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
+}
+$("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
+$("#updateInstall").addEventListener("click", () => {
+  $("#updateInstall").disabled = true;
+  $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
+  post({ type: "installUpdate" });
+});
 
 // ---------- My widgets ----------
 function field(wid, key, spec, value) {
@@ -299,9 +322,14 @@ bridge && bridge.addEventListener("message", (e) => {
       $("#ver").textContent = `Version ${m.version}`;
       $("#aboutVer").textContent = `Version ${m.version}`;
       renderGeneral();
+      renderUpdate();
       $("#editMode").checked = !!m.editMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
+      break;
+    case "updateError":
+      toast(`Update failed: ${m.error}`, true);
+      renderUpdate();
       break;
     case "catalog":
       catalogError = m.error;

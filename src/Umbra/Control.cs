@@ -52,6 +52,8 @@ sealed class Control(App app)
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
                     ["editMode"] = app.EditMode,
+                    ["update"] = app.Updater.ToJson(),
+                    ["updateAvailable"] = app.Updater.Available?.Version,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
                     ["widgets"] = app.Manifests.Count,
                     ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Manifest.Id).ToArray()),
@@ -90,6 +92,7 @@ sealed class Control(App app)
                     g.RefreshSeconds = secs;
                 }
                 if (a["animations"] is JsonNode an) g.Animations = Bool(an, "animations");
+                if (a["checkForUpdates"] is JsonNode cu) g.CheckForUpdates = Bool(cu, "checkForUpdates");
                 if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
@@ -100,6 +103,10 @@ sealed class Control(App app)
                     ["startup"] = Startup.IsEnabled(),
                 };
             }
+
+            case "check-update":
+                await app.Updater.CheckAsync(manual: false);
+                return app.Updater.ToJson();
 
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));

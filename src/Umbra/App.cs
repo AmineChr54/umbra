@@ -9,6 +9,7 @@ sealed class App : ApplicationContext
     readonly NotifyIcon _tray;
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
+    public UpdateService Updater { get; }
 
     public Settings Settings { get; private set; }
     public List<WidgetManifest> Manifests { get; private set; }
@@ -26,6 +27,7 @@ sealed class App : ApplicationContext
         Manifests = WidgetManifest.DiscoverAll();
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
 
+        Updater = new UpdateService(this);
         _tray = new NotifyIcon { Icon = AppIcon, Text = "Umbra", Visible = true };
         _tray.DoubleClick += (_, _) => ShowSettings();
         _tray.ContextMenuStrip = new ContextMenuStrip();
@@ -66,6 +68,19 @@ sealed class App : ApplicationContext
     {
         var menu = _tray.ContextMenuStrip!;
         menu.Items.Clear();
+        if (Updater.Available is { } up)
+        {
+            menu.Items.Add($"Update to v{up.Version} available", null, async (_, _) =>
+            {
+                try { await Updater.InstallAsync(); }
+                catch (Exception ex)
+                {
+                    Log.Write($"Update failed: {ex.Message}");
+                    _tray.ShowBalloonTip(4000, "Umbra", $"Update failed: {ex.Message}", ToolTipIcon.Error);
+                }
+            }).Font = new Font(menu.Font, FontStyle.Bold);
+            menu.Items.Add(new ToolStripSeparator());
+        }
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = new Font(menu.Font, FontStyle.Bold);
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
@@ -169,6 +184,7 @@ sealed class App : ApplicationContext
     {
         _tray.Visible = false;
         _tray.Dispose();
+        Updater.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();

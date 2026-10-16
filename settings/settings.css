@@ -334,3 +334,9 @@ input { font: inherit; color: inherit; }
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast.error { color: #ff9a9d; }
+
+/* Update notice (About) */
+.update { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+.update-text { font-size: 13px; color: var(--text-2); }
+.update.has-update .update-text { color: var(--text); font-weight: 600; }
+.nav button.dot::after { content: ""; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #8b93ff; }
