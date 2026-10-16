@@ -20,7 +20,7 @@ const HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
 const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".woff", ".woff2", ".ttf", ".otf", ".txt", ".md"]);
 const MAX_BYTES = 5 * 1024 * 1024;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
-const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "entry", "preview", "width", "height", "defaultPosition", "permissions", "options"]);
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "entry", "preview", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -150,20 +150,100 @@ for (const id of readdirSync(widgetsDir).sort()) {
   });
 }
 
+// ---------- themes: themes/<id>/theme.json (+ optional preview image) -> themes/index.json ----------
+// Themes are data only. These rules mirror Theme.cs in the app and schemas/theme.schema.json.
+const themesDir = join(root, "themes");
+const themesIndexPath = join(themesDir, "index.json");
+const THEME_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "preview", "tokens"]);
+const THEME_FILES = new Set([".json", ".png", ".jpg", ".jpeg", ".webp"]);
+const COLOR_TOKENS = ["--bg", "--surface-1", "--surface-2", "--surface-3", "--line", "--line-strong", "--text", "--text-2", "--text-3", "--accent", "--accent-strong", "--accent-soft", "--up", "--down", "--flat"];
+const LENGTH_TOKENS = ["--radius-s", "--radius-m", "--radius-l"];
+const COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^(?:rgb|rgba|hsl|hsla)\( *[0-9.]+(?:%|deg)? *[, ] *[0-9.]+%? *[, ] *[0-9.]+%? *(?:[,/] *[0-9.]+%? *)?\)$/;
+const LENGTH = /^(?:[0-9]|[1-9][0-9])(?:\.[0-9]{1,3})?(?:px|rem)$/;
+const MIN_CONTRAST = 3;
+// Channels 0-255 of #hex, rgb() or hsl() (alpha ignored); mirrors Theme.TryRgb in the app.
+function rgb(v) {
+  if (v.startsWith("#")) {
+    let h = v.slice(1);
+    if (h.length <= 4) h = [...h.slice(0, 3)].map((c) => c + c).join("");
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  }
+  const p = v.slice(v.indexOf("(") + 1, -1).split(/[, /]+/).filter(Boolean);
+  const n = (s, u) => parseFloat(s.endsWith(u) && u ? s.slice(0, -u.length) : s);
+  if (v.startsWith("rgb")) return p.slice(0, 3).map((s) => Math.min(255, Math.max(0, s.endsWith("%") ? n(s, "%") * 2.55 : n(s, ""))));
+  const hue = ((n(p[0], "deg") % 360) + 360) % 360, s = Math.min(100, Math.max(0, n(p[1], "%"))) / 100, l = Math.min(100, Math.max(0, n(p[2], "%"))) / 100;
+  const f = (k0) => { const k = (k0 + hue / 30) % 12; return 255 * (l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+  return [f(0), f(8), f(4)];
+}
+const lum = (c) => { const [r, g, b] = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const MAX_THEME_BYTES = 1024 * 1024;
+const failTheme = (id, msg) => errors.push(`themes/${id}: ${msg}`);
+
+const themeEntries = [];
+for (const id of existsSync(themesDir) ? readdirSync(themesDir).sort() : []) {
+  const dir = join(themesDir, id);
+  if (!statSync(dir).isDirectory()) continue;
+  const file = join(dir, "theme.json");
+  if (!existsSync(file)) { failTheme(id, "missing theme.json"); continue; }
+  let t;
+  try { t = JSON.parse(readFileSync(file, "utf8")); }
+  catch (e) { failTheme(id, `theme.json is not valid JSON (${e.message})`); continue; }
+
+  for (const k of Object.keys(t)) if (!THEME_KEYS.has(k)) failTheme(id, `unknown key "${k}" in theme.json`);
+  if (!ID.test(id) || id === "default") failTheme(id, 'folder name must be lowercase letters, digits and dashes (2-40 chars) and not "default"');
+  if (t.id !== id) failTheme(id, `"id" must equal the folder name ("${id}")`);
+  for (const k of ["name", "description", "author", "version"])
+    if (typeof t[k] !== "string" || !t[k].trim() || t[k].length > 300) failTheme(id, `"${k}" is required (max 300 chars)`);
+  if (t.version && !SEMVER.test(t.version)) failTheme(id, `"version" must look like 1.2.3`);
+  if (t.preview !== undefined && (typeof t.preview !== "string" || t.preview.includes("/") || t.preview.includes("\\") || t.preview.includes(":") || !THEME_FILES.has(extname(t.preview).toLowerCase()) || extname(t.preview).toLowerCase() === ".json" || !existsSync(join(dir, t.preview))))
+    failTheme(id, `"preview" must be an existing .png, .jpg or .webp file next to theme.json`);
+
+  const tokens = t.tokens;
+  if (!tokens || typeof tokens !== "object" || Array.isArray(tokens) || !Object.keys(tokens).length) failTheme(id, `"tokens" must be a non-empty object`);
+  else for (const [name, value] of Object.entries(tokens)) {
+    if (COLOR_TOKENS.includes(name)) { if (typeof value !== "string" || value.length > 64 || !COLOR.test(value)) failTheme(id, `${name}: "${value}" is not a plain color (#rrggbb, rgb(), hsl())`); }
+    else if (LENGTH_TOKENS.includes(name)) { if (typeof value !== "string" || !LENGTH.test(value)) failTheme(id, `${name}: "${value}" is not a length like 12px (0-99px or rem)`); }
+    else failTheme(id, `token "${name}" is not allowed. Allowed: ${[...COLOR_TOKENS, ...LENGTH_TOKENS].join(", ")}`);
+  }
+  // Guard rails (same as Theme.Parse): readable text and distinct up/down; unset tokens count as the defaults.
+  if (tokens && typeof tokens === "object" && !Array.isArray(tokens) && !errors.some((e) => e.startsWith(`themes/${id}:`))) {
+    const eff = (k, d) => rgb(tokens[k] ?? d);
+    if (contrast(eff("--text", "#f4f5f7"), eff("--bg", "#000000")) < MIN_CONTRAST) failTheme(id, `--text is too close to --bg (contrast under ${MIN_CONTRAST}:1)`);
+    if (eff("--up", "#2fd58b").join() === eff("--down", "#ff5a5f").join()) failTheme(id, "--up and --down must be different colors");
+  }
+
+  const files = walk(dir).map((p) => relative(dir, p).split(sep).join("/")).sort();
+  let total = 0;
+  for (const f of files) {
+    if (f.includes("/") || !THEME_FILES.has(extname(f).toLowerCase())) failTheme(id, `file not allowed: ${f} (only theme.json and a preview image, no subfolders)`);
+    total += statSync(join(dir, f)).size;
+  }
+  if (total > MAX_THEME_BYTES) failTheme(id, `theme is ${(total / 1024).toFixed(0)} KB; the limit is 1 MB`);
+
+  themeEntries.push({ id, name: t.name, description: t.description, author: t.author, version: t.version, preview: t.preview ?? null, tokens: tokens ?? {}, files });
+}
+
 if (errors.length) {
-  console.error(`Widget validation failed:\n  - ${errors.join("\n  - ")}`);
+  console.error(`Catalog validation failed:\n  - ${errors.join("\n  - ")}`);
   process.exit(1);
 }
 
 const json = JSON.stringify({ schema: 1, widgets: entries }, null, 2) + "\n";
+const themesJson = JSON.stringify({ schema: 1, themes: themeEntries }, null, 2) + "\n";
+const norm = (p) => (existsSync(p) ? readFileSync(p, "utf8").replace(/\r\n/g, "\n") : "");
 if (check) {
-  const current = existsSync(indexPath) ? readFileSync(indexPath, "utf8").replace(/\r\n/g, "\n") : "";
-  if (current !== json) {
+  if (norm(indexPath) !== json) {
     console.error("widgets/index.json is out of date. Run: node scripts/catalog.mjs");
     process.exit(1);
   }
-  console.log(`OK: ${entries.length} widget(s) valid, index up to date`);
+  if (themeEntries.length && norm(themesIndexPath) !== themesJson) {
+    console.error("themes/index.json is out of date. Run: node scripts/catalog.mjs");
+    process.exit(1);
+  }
+  console.log(`OK: ${entries.length} widget(s) and ${themeEntries.length} theme(s) valid, indexes up to date`);
 } else {
   writeFileSync(indexPath, json);
-  console.log(`Wrote widgets/index.json with ${entries.length} widget(s)`);
+  if (themeEntries.length || existsSync(themesIndexPath)) writeFileSync(themesIndexPath, themesJson);
+  console.log(`Wrote widgets/index.json with ${entries.length} widget(s) and themes/index.json with ${themeEntries.length} theme(s)`);
 }

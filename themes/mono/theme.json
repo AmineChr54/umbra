@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "mono",
+  "name": "Mono",
+  "description": "Pure grayscale with a white accent and sharper corners.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#0b0b0b",
+    "--surface-2": "#121212",
+    "--surface-3": "#1a1a1a",
+    "--line": "rgba(255, 255, 255, 0.08)",
+    "--line-strong": "rgba(255, 255, 255, 0.16)",
+    "--text": "#ffffff",
+    "--text-2": "#b0b0b0",
+    "--text-3": "#737373",
+    "--accent": "#e6e6e6",
+    "--accent-strong": "#ffffff",
+    "--accent-soft": "rgba(255, 255, 255, 0.12)",
+    "--flat": "#a0a0a0",
+    "--radius-s": "4px",
+    "--radius-m": "6px",
+    "--radius-l": "10px"
+  }
+}

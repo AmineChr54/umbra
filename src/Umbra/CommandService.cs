@@ -42,7 +42,7 @@ sealed class CommandService
 
     /// <param name="enabled">The widget is switched on in Settings.</param>
     /// <param name="userGesture">The user physically pressed the mouse on this widget moments ago.</param>
-    public async Task<JsonObject> RunAsync(WidgetManifest m, bool enabled, bool userGesture, string commandId, JsonObject? values, CancellationToken ct)
+    public async Task<JsonObject> RunAsync(WidgetManifest m, bool enabled, bool userGesture, string commandId, JsonObject? values, CancellationToken ct, string? instance = null)
     {
         if (!enabled) throw new WidgetCommandException("The widget is disabled");
         var spec = m.Permissions.Commands.FirstOrDefault(c => c.Id == commandId)
@@ -60,10 +60,11 @@ sealed class CommandService
                 throw new WidgetCommandException(status == "changed"
                     ? "This command changed since you approved it. Click the widget's button, or approve it in Settings > My widgets."
                     : "This command needs your approval first. Click the widget's button, or approve it in Settings > My widgets.");
-            if (!await AskAsync(m, spec, identity)) throw new WidgetCommandException("This command was not allowed (refused or the prompt timed out)");
+            if (!await AskAsync(m, instance ?? m.Id, spec, identity)) throw new WidgetCommandException("This command was not allowed (refused or the prompt timed out)");
         }
 
-        var key = $"{m.Id}/{spec.Id}";
+        instance ??= m.Id;
+        var key = $"{instance}/{spec.Id}";
         lock (_gate)
         {
             if (_running.Count >= MaxConcurrent) throw new WidgetCommandException("Too many commands are running; try again in a moment");
@@ -72,7 +73,7 @@ sealed class CommandService
         try
         {
             Log.Write($"[{m.Id}] run '{spec.Id}' ({identity.Path})");
-            var r = await CommandRunner.RunAsync(identity.Path, args, WorkingDir(m.Id), Timeout(spec), MaxOutputBytes, ct);
+            var r = await CommandRunner.RunAsync(identity.Path, args, WorkingDir(InstanceId.FileName(instance)), Timeout(spec), MaxOutputBytes, ct);
             Log.Write($"[{m.Id}] '{spec.Id}' exit {r.ExitCode}{(r.TimedOut ? " (timed out)" : "")} in {r.DurationMs} ms");
             return new JsonObject
             {
@@ -95,16 +96,16 @@ sealed class CommandService
         }
     }
 
-    async Task<bool> AskAsync(WidgetManifest m, CommandSpec spec, ExeIdentity exe)
+    async Task<bool> AskAsync(WidgetManifest m, string instance, CommandSpec spec, ExeIdentity exe)
     {
         lock (_gate)
         {
             if (_promptOpen) throw new WidgetCommandException("An approval prompt is already open");
-            var (last, denials) = _prompts.GetValueOrDefault(m.Id);
+            var (last, denials) = _prompts.GetValueOrDefault(instance);
             if (denials >= MaxDenials) throw new WidgetCommandException("You refused this widget's commands several times; approve it in Settings > My widgets if you want it to run");
             if (last != default && _now() - last < MinPromptInterval) throw new WidgetCommandException("Please wait a moment before asking again");
             _promptOpen = true;
-            _prompts[m.Id] = (_now(), denials);
+            _prompts[instance] = (_now(), denials);
         }
         bool allowed;
         try
@@ -117,8 +118,8 @@ sealed class CommandService
         }
         lock (_gate)
         {
-            var (last, denials) = _prompts[m.Id];
-            _prompts[m.Id] = (last, allowed ? 0 : denials + 1);
+            var (last, denials) = _prompts[instance];
+            _prompts[instance] = (last, allowed ? 0 : denials + 1);
         }
         if (allowed) _approvals.Approve(m.Id, spec, exe);
         else Log.Write($"[{m.Id}] command '{spec.Id}' refused by the user");
@@ -132,6 +133,6 @@ sealed class CommandService
         if (!string.Equals(spec.Hash(), expectedHash, StringComparison.Ordinal)) throw new WidgetCommandException("The command changed; review it again");
         var exe = ExeIdentity.Of(spec) ?? throw new WidgetCommandException($"'{spec.Exe}' was not found on this PC, so it can't be approved yet");
         _approvals.Approve(m.Id, spec, exe);
-        lock (_gate) _prompts.Remove(m.Id);
+        lock (_gate) foreach (var k in _prompts.Keys.Where(k => InstanceId.WidgetOf(k) == m.Id).ToList()) _prompts.Remove(k);
     }
 }

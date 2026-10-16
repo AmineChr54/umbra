@@ -24,6 +24,7 @@
     "preview": { "type": "string", "description": "Screenshot shown in Browse (PNG, 2x, black background)." },
     "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },
     "height": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 180, "description": "Logical (96-DPI) pixels." },
+    "themeable": { "type": "boolean", "default": true, "description": "Set false to keep the widget's own look: the user's theme is not applied to it." },
     "defaultPosition": {
       "type": "object",
       "description": "Offset from the top-left of the primary work area, in logical pixels. Omit to start at the top right.",
