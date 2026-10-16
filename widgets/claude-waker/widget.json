@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "claude-waker",
+  "name": "Claude waker",
+  "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 360,
+  "defaultPosition": { "x": 24, "y": 24 },
+  "permissions": {
+    "hosts": [],
+    "commands": [
+      { "id": "wake", "run": ["claude", "-p", "Hello", "--model", "${model}"],
+        "params": { "model": { "choices": ["haiku", "sonnet", "opus"] } },
+        "description": "Sends \"Hello\" to Claude to start the usage window",
+        "timeoutSeconds": 90 }
+    ]
+  },
+  "options": {
+    "onLogon": { "label": "Wake when Umbra starts", "type": "toggle", "default": true,
+                 "hint": "Once per Umbra start (log in), if the minimum gap has passed." },
+    "onResume": { "label": "Wake after sleep", "type": "toggle", "default": true,
+                  "hint": "Detects when the PC resumed from sleep. One wake per resume." },
+    "minGapHours": { "label": "Minimum gap (hours)", "type": "number", "default": 5, "min": 0.5, "max": 24, "step": 0.5,
+                     "hint": "Never wake more often than this. 5 matches the usage window." },
+    "quietEnabled": { "label": "Quiet hours", "type": "toggle", "default": false,
+                      "hint": "No automatic wakes between the two hours below. Wake now still works." },
+    "quietFrom": { "label": "Quiet from (hour)", "type": "number", "default": 1, "min": 0, "max": 23, "step": 1 },
+    "quietTo": { "label": "Quiet until (hour)", "type": "number", "default": 7, "min": 0, "max": 23, "step": 1 },
+    "model": { "label": "Model", "type": "select", "default": "haiku",
+               "choices": [{ "value": "haiku", "label": "Haiku (cheapest)" }, { "value": "sonnet", "label": "Sonnet" }, { "value": "opus", "label": "Opus" }] }
+  }
+}

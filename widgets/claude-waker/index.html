@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Claude waker</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="waker.css">
+</head>
+<body>
+  <main class="w" id="app">
+    <header class="head">
+      <h1 class="title">Claude waker</h1>
+      <span class="badge" id="badge"></span>
+    </header>
+
+    <button class="wake" id="wake" data-no-drag>
+      <svg viewBox="0 0 16 16"><path d="M8 1.5v3M8 11.5v3M1.5 8h3M11.5 8h3M3.4 3.4l2.1 2.1M10.5 10.5l2.1 2.1M12.6 3.4l-2.1 2.1M5.5 10.5l-2.1 2.1"/></svg>
+      <span id="wake-label">Wake now</span>
+    </button>
+
+    <dl class="rows">
+      <div class="row"><dt>Last wake</dt><dd id="last"><span class="num">-</span></dd></div>
+      <div class="row"><dt>Window resets at</dt><dd id="reset"><span class="num">-</span></dd></div>
+      <div class="row"><dt>Last result</dt><dd id="result">-</dd></div>
+    </dl>
+
+    <p class="note" id="note" role="status"></p>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="waker.js"></script>
+</body>
+</html>
