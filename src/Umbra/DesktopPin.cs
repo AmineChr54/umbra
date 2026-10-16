@@ -8,6 +8,9 @@ namespace Umbra;
 /// </summary>
 static class DesktopPin
 {
+    /// <summary>Broadcast by Explorer when it (re)starts; the desktop windows are new, so the owner has to be set again.</summary>
+    public static readonly int TaskbarCreated = Native.RegisterWindowMessage("TaskbarCreated");
+
     public static void Apply(IntPtr hwnd)
     {
         var ex = (long)Native.GetWindowLongPtr(hwnd, Native.GWL_EXSTYLE);
