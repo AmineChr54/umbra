@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Script Runner</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="runner.css">
+</head>
+<body>
+  <main class="sr">
+    <header class="head">
+      <h1 class="title" id="title">Scripts</h1>
+      <span class="count num" id="count"></span>
+    </header>
+
+    <section class="list" id="list" data-no-drag></section>
+
+    <section class="out" id="out" data-no-drag>
+      <div class="out-head">
+        <span class="out-name" id="out-name"></span>
+        <span class="out-meta num" id="out-meta"></span>
+      </div>
+      <div class="big num" id="big" hidden></div>
+      <pre class="log" id="log" tabindex="0"></pre>
+    </section>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="runner.js"></script>
+</body>
+</html>

@@ -94,6 +94,40 @@
       ]
     },
     {
+      "id": "script-runner",
+      "name": "Script Runner",
+      "description": "Run your own PowerShell, Python or Bash scripts from the desktop and see the exit code, time and output. Scripts are the commands declared in widget.json; you approve each one once.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "commands": [
+        {
+          "id": "system-info",
+          "run": "powershell -NoProfile -NonInteractive -Command \"$o = Get-CimInstance Win32_OperatingSystem; \\\"$($o.Caption) $($o.Version)\\\"; \\\"Uptime: $([int]((Get-Date) - $o.LastBootUpTime).TotalHours) h\\\"; \\\"Free memory: $([math]::Round($o.FreePhysicalMemory/1MB,1)) GB\\\"\"",
+          "description": "Example: prints the Windows version, uptime and free memory."
+        },
+        {
+          "id": "disk-free",
+          "run": "powershell -NoProfile -NonInteractive -Command \"Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | ForEach-Object { \\\"{0}: {1:N1} GB free of {2:N1} GB\\\" -f $_.Name, ($_.Free/1GB), (($_.Used+$_.Free)/1GB) }\"",
+          "description": "Example: free space on each drive."
+        },
+        {
+          "id": "python-version",
+          "run": "python -c \"import sys, platform; print('Python', platform.python_version()); print(sys.executable)\"",
+          "description": "Example: needs Python on PATH. Replace it with your own script."
+        }
+      ],
+      "files": [
+        "README.md",
+        "index.html",
+        "preview.png",
+        "runner.css",
+        "runner.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "sp500",
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
