@@ -19,8 +19,10 @@ public static class Protocol
     public static readonly (string Cmd, string Help)[] Commands =
     {
         ("status", "Version, paths, open widgets and general settings"),
-        ("list", "Every installed widget with its settings, option schema and window bounds"),
-        ("configure", "Change one widget: {id, enabled?, locked?, x?, y?, scale? (0.5-3), options?{key:value}}"),
+        ("list", "Every installed widget copy (id \"sp500\", extra copies \"sp500#2\") with its settings, option schema and window bounds"),
+        ("configure", "Change one widget copy: {id (or instance id), enabled?, locked?, x?, y?, scale? (0.5-3), options?{key:value}}"),
+        ("add-instance", "Run another copy of a widget with its own options, position and data: {id}; returns the new copy (id like \"sp500#2\")"),
+        ("remove-instance", "Remove an extra copy and its data: {id: \"sp500#2\"}; the first copy can only be disabled"),
         ("edit-mode", "Turn edit mode on or off, or read it: {on?}. In edit mode unlocked widgets can be moved, resized and zoomed by hand"),
         ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?, checkForUpdates?}"),
         ("check-update", "Look for a newer Umbra release on GitHub now and report whether one is available (installing is left to the user: tray menu or Settings > About)"),
@@ -31,8 +33,8 @@ public static class Protocol
         ("install", "Install or update a community widget from the catalog: {id}"),
         ("remove", "Uninstall a community widget: {id}"),
         ("create-widget", "Write a local widget: {id, files{path:content}, overwrite?}; binary files as base64"),
-        ("data", "A widget's saved data (umbra.store): {id, op?: get|set|remove|clear, key?, value?}; no op = get (all keys without key)"),
-        ("capture","PNG of a widget or a Settings page: {target: <id>|settings:<general|widgets|browse|about>, path?}"),
+        ("data", "A widget copy's saved data (umbra.store): {id, op?: get|set|remove|clear, key?, value?}; no op = get (all keys without key)"),
+        ("capture","PNG of a widget or a Settings page: {target: <id or instance id>|settings:<general|widgets|browse|about>, path?}"),
         ("open-settings", "Open the Settings window: {page?}"),
         ("logs", "Last lines of umbra.log: {lines?}"),
         ("quit", "Exit Umbra"),

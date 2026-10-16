@@ -87,48 +87,122 @@ sealed class App : ApplicationContext
         menu.Items.Add(edit);
         menu.Items.Add(new ToolStripSeparator());
         foreach (var m in Manifests)
-        {
-            var ws = Settings.For(m);
-            var item = new ToolStripMenuItem(m.Name) { Checked = ws.Enabled, CheckOnClick = true };
-            item.Click += (_, _) => { ws.Enabled = item.Checked; SaveSettings(); SyncWindows(); };
-            menu.Items.Add(item);
-        }
+            foreach (var inst in Settings.Instances(m.Id))
+            {
+                var ws = Settings.For(m, inst);
+                var item = new ToolStripMenuItem(InstanceLabel(m, inst)) { Checked = ws.Enabled, CheckOnClick = true };
+                item.Click += (_, _) => { ws.Enabled = item.Checked; SaveSettings(); SyncWindows(); };
+                menu.Items.Add(item);
+            }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh all", null, (_, _) => { foreach (var w in _windows.Values) w.RefreshData(); });
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
     }
 
-    /// <summary>Opens a window for each enabled widget and closes the ones that were disabled.</summary>
+    /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
+    public static string InstanceLabel(WidgetManifest m, string instance) =>
+        InstanceId.IsExtra(instance) ? $"{m.Name} ({InstanceId.NumberOf(instance)})" : m.Name;
+
+    /// <summary>The manifest and instance id for a widget id or an instance id ("sp500#2"), or null when unknown.</summary>
+    public (WidgetManifest Manifest, string Instance)? Resolve(string id)
+    {
+        if (!InstanceId.IsValid(id)) return null;
+        var m = Manifests.FirstOrDefault(x => x.Id == InstanceId.WidgetOf(id));
+        if (m is null) return null;
+        return Settings.Instances(m.Id).Contains(id) ? (m, id) : null;
+    }
+
+    /// <summary>Opens a window for each enabled widget copy and closes the ones that were disabled or removed.</summary>
     public void SyncWindows()
     {
         foreach (var m in Manifests)
+            foreach (var inst in Settings.Instances(m.Id))
+            {
+                var enabled = Settings.For(m, inst).Enabled;
+                var open = _windows.TryGetValue(inst, out var win);
+                if (enabled && !open)
+                {
+                    win = new WidgetWindow(this, m, inst);
+                    win.FormClosed += (_, _) => _windows.Remove(inst);
+                    _windows[inst] = win;
+                    win.Show();
+                }
+                else if (!enabled && open)
+                {
+                    win!.Close();
+                }
+            }
+        var live = Manifests.SelectMany(m => Settings.Instances(m.Id)).ToHashSet();
+        foreach (var inst in _windows.Keys.Where(k => !live.Contains(k)).ToList()) CloseWidget(inst);
+    }
+
+    /// <summary>Closes one copy (an instance id), or every copy of a widget (its plain id).</summary>
+    public void CloseWidget(string id)
+    {
+        foreach (var key in _windows.Keys.Where(k => k == id || (!id.Contains('#') && InstanceId.WidgetOf(k) == id)).ToList())
         {
-            var enabled = Settings.For(m).Enabled;
-            var open = _windows.TryGetValue(m.Id, out var win);
-            if (enabled && !open)
-            {
-                win = new WidgetWindow(this, m);
-                win.FormClosed += (_, _) => _windows.Remove(m.Id);
-                _windows[m.Id] = win;
-                win.Show();
-            }
-            else if (!enabled && open)
-            {
-                win!.Close();
-            }
+            _windows[key].Close();
+            _windows.Remove(key);
         }
     }
 
-    public void CloseWidget(string id)
+    /// <summary>Adds another copy of a widget (new position next to the first one) and returns its instance id.</summary>
+    public string AddInstance(WidgetManifest m)
     {
-        if (_windows.TryGetValue(id, out var w)) { w.Close(); _windows.Remove(id); }
+        var inst = Settings.AddInstance(m) ?? throw new InvalidOperationException($"A widget can have at most {InstanceId.MaxInstances} copies");
+        if (Window(m.Id) is { } first)
+        {
+            var offset = (int)(32 * first.DeviceDpi / 96.0);
+            var ws = Settings.For(m, inst);
+            ws.X = first.Left + offset * (InstanceId.NumberOf(inst) - 1);
+            ws.Y = first.Top + offset * (InstanceId.NumberOf(inst) - 1);
+        }
+        SaveSettings();
+        SyncWindows();
+        SettingsChangedElsewhere();
+        return inst;
+    }
+
+    /// <summary>Removes an extra copy with its settings and stored data. The first copy can only be disabled.</summary>
+    public void RemoveInstance(string instance)
+    {
+        if (!InstanceId.IsExtra(instance) || !Settings.Widgets.ContainsKey(instance))
+            throw new InvalidOperationException($"'{instance}' is not an extra copy of a widget");
+        CloseWidget(instance);
+        Settings.Widgets.Remove(instance);
+        WidgetStore.Delete(instance);
+        SaveSettings();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Forgets all extra copies of an uninstalled widget (settings; the data files go with the widget).</summary>
+    public void ForgetInstances(string widgetId)
+    {
+        Settings.RemoveExtraInstances(widgetId);
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Extra copies of a widget whose folder vanished (deleted outside Umbra) are forgotten with their data.
+    /// A missing first copy keeps its settings, as before.
+    /// </summary>
+    void ForgetOrphans()
+    {
+        foreach (var key in Settings.Widgets.Keys.Where(k => InstanceId.IsExtra(k) && Manifests.All(m => m.Id != InstanceId.WidgetOf(k))).ToList())
+        {
+            CloseWidget(key);
+            Settings.Widgets.Remove(key);
+        }
+        foreach (var inst in WidgetStore.CopyIds().Where(i => Manifests.All(m => m.Id != InstanceId.WidgetOf(i))))
+            WidgetStore.Delete(inst);
     }
 
     /// <summary>Re-scans widget folders after an install/remove and opens/closes windows to match.</summary>
     public void ReloadWidgets()
     {
         Manifests = WidgetManifest.DiscoverAll();
-        foreach (var id in _windows.Keys.Where(id => Manifests.All(m => m.Id != id)).ToList())
+        ForgetOrphans();
+        foreach (var id in _windows.Keys.Where(id => Manifests.All(m => m.Id != InstanceId.WidgetOf(id))).ToList())
             CloseWidget(id);
         SaveSettings();
         SyncWindows();
@@ -138,6 +212,11 @@ sealed class App : ApplicationContext
     public void ApplySettings(Settings incoming)
     {
         // Positions are owned by the widget windows (dragging), so keep the current ones.
+        // Copies are only added and removed through AddInstance/RemoveInstance, never by a (possibly stale) save.
+        foreach (var id in incoming.Widgets.Keys.Where(k => InstanceId.IsExtra(k) && !Settings.Widgets.ContainsKey(k)).ToList())
+            incoming.Widgets.Remove(id);
+        foreach (var (id, cur) in Settings.Widgets)
+            if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; }
         Settings = incoming;

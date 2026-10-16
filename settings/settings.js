@@ -166,7 +166,7 @@ function renderInstalled() {
     const ws = state.settings.widgets[w.id];
     const card = $("#tpl-installed").content.firstElementChild.cloneNode(true);
     thumb($(".thumb", card), w);
-    $(".wname", card).textContent = w.name;
+    $(".wname", card).textContent = w.name; // "Name (2)" for extra copies
     const badge = $(".badge", card);
     badge.textContent = w.source === "builtin" ? "Built-in" : "Community";
     badge.classList.add(w.source);
@@ -212,9 +212,18 @@ function renderInstalled() {
     locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
 
     $(".reset", card).addEventListener("click", () => { post({ type: "resetPosition", id: w.id }); toast("Position reset"); });
+    // Copies: the first copy can add more (each with its own options, position and data), extra copies can be removed.
+    const extra = w.instance > 1;
+    const copy = $(".copy", card);
+    const removeCopy = $(".removecopy", card);
+    if (extra) copy.remove();
+    else copy.addEventListener("click", () => { post({ type: "addInstance", id: w.widget }); toast(`Added another ${w.name}`); });
+    if (!extra) removeCopy.remove();
+    else removeCopy.addEventListener("click", () => { post({ type: "removeInstance", id: w.id }); toast(`${w.name} removed`); });
+    card.dataset.instance = w.id;
     const remove = $(".remove", card);
-    if (w.source === "builtin") remove.remove();
-    else remove.addEventListener("click", () => job(w.id, "remove", remove));
+    if (w.source === "builtin" || extra) remove.remove();
+    else remove.addEventListener("click", () => job(w.widget, "remove", remove));
 
     icons(card);
     list.append(card);

@@ -30,17 +30,21 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
 
     static JsonObject P(string type, string description) => Obj(("type", type), ("description", description));
 
-    static readonly JsonObject IdProp = P("string", "Widget id, e.g. \"sp500\" (see list_widgets)");
+    static readonly JsonObject IdProp = P("string", "Widget id, e.g. \"sp500\", or the id of an extra copy, e.g. \"sp500#2\" (see list_widgets)");
 
     static readonly Tool[] Tools =
     {
         new("umbra_status", "status", "Umbra version, data folders, startup state, general settings and which widgets are open on the desktop.", Schema(new())),
-        new("list_widgets", "list", "Every installed widget: id, name, source (builtin/community), enabled, locked, window bounds in physical pixels, current option values and the option schema (types and choices).", Schema(new())),
+        new("list_widgets", "list", "Every installed widget copy (extra copies have ids like sp500#2): id, widget, instance, name, source (builtin/community), enabled, locked, window bounds in physical pixels, current option values and the option schema (types and choices).", Schema(new())),
         new("configure_widget", "configure", "Change one widget. Any subset of: enabled (show/hide), locked (no moving, resizing or zooming by hand), x/y (screen position in physical pixels), scale (size and zoom, 0.5-3), options (values must match the widget's optionSchema). Applies live.",
             Schema(Obj(("id", IdProp.DeepClone()), ("enabled", P("boolean", "Show or hide the widget")), ("locked", P("boolean", "Lock position, size and zoom")),
                 ("x", P("integer", "Left edge, physical pixels")), ("y", P("integer", "Top edge, physical pixels")),
                 ("scale", Obj(("type", "number"), ("minimum", 0.5), ("maximum", 3), ("description", "Window size and page zoom; 1 = the widget's normal size, 1.5 = 150 %"))),
                 ("options", P("object", "Option values by key, e.g. {\"symbol\": \"^IXIC\"}"))), "id")),
+        new("add_widget_instance", "add-instance", "Run another copy of a widget (e.g. a second stock ticker) with its own enabled/locked state, position, scale, options and umbra.store data. Pass the widget id; the new copy's id (e.g. \"sp500#2\") is in the result and works wherever a widget id does.",
+            Schema(Obj(("id", IdProp.DeepClone())), "id")),
+        new("remove_widget_instance", "remove-instance", "Remove an extra copy such as \"sp500#2\" together with its settings and data. The first copy cannot be removed; disable it instead.",
+            Schema(Obj(("id", P("string", "Instance id of an extra copy, e.g. \"sp500#2\""))), "id")),
         new("edit_mode", "edit-mode", "Turn Umbra's edit mode on or off (omit on to read it). In edit mode the user can move unlocked widgets, resize them with a corner handle and zoom them with Ctrl+wheel. It is not saved across restarts.",
             Schema(Obj(("on", P("boolean", "true = edit mode on, false = off"))))),
         new("set_general", "set-general", "Change app-wide settings: refreshSeconds (30-600, how often widgets update), animations (on/off), startup (start with Windows), checkForUpdates (daily GitHub check for a new Umbra).",
