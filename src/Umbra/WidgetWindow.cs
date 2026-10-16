@@ -16,8 +16,22 @@ sealed class WidgetWindow : Form
     DateTime _renderedAt;
     long _pressedAt = long.MinValue / 2;
     IntPtr _foregroundAtPress;
+    bool _resizing;
 
     public WidgetManifest Manifest { get; }
+
+    WidgetSettings Ws => _app.Settings.For(Manifest);
+
+    /// <summary>Changing the widget by hand (corner handle, Ctrl+wheel) needs edit mode and an unlocked widget.</summary>
+    bool CanArrange => _app.EditMode && !Ws.Locked;
+
+    /// <summary>The window size for a scale: manifest size (logical pixels) x monitor DPI x scale.</summary>
+    Size ScaledSize(double scale) => new(
+        (int)Math.Round(Manifest.Width * DeviceDpi / 96.0 * scale),
+        (int)Math.Round(Manifest.Height * DeviceDpi / 96.0 * scale));
+
+    /// <summary>The scale a window width stands for at the current DPI.</summary>
+    double ScaleForWidth(int width) => width / (Manifest.Width * DeviceDpi / 96.0);
 
     public WidgetWindow(App app, WidgetManifest manifest)
     {
@@ -65,8 +79,51 @@ sealed class WidgetWindow : Form
                 MarkPressed(); // only real clicks on this window send it
                 m.Result = Native.MA_NOACTIVATE;
                 return;
+            case Native.WM_GETMINMAXINFO:
+                base.WndProc(ref m);
+                LimitTrackSize(m.LParam);
+                return;
+            case Native.WM_SIZING when _resizing:
+                KeepAspect(m.LParam);
+                m.Result = 1;
+                return;
         }
         base.WndProc(ref m);
+    }
+
+    /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
+    unsafe void LimitTrackSize(IntPtr lParam)
+    {
+        var mmi = (Native.MINMAXINFO*)lParam;
+        Size min = ScaledSize(WidgetSettings.MinScale), max = ScaledSize(WidgetSettings.MaxScale);
+        mmi->MinTrackSize = new Native.POINT { X = min.Width, Y = min.Height };
+        mmi->MaxTrackSize = new Native.POINT { X = max.Width + 1, Y = max.Height + 1 };
+    }
+
+    /// <summary>
+    /// WM_SIZING from the corner handle: the widget zooms rather than reflows, so keep the manifest's aspect ratio.
+    /// The top-left corner stays put; the larger of the two stretches wins.
+    /// </summary>
+    unsafe void KeepAspect(IntPtr lParam)
+    {
+        var r = (Native.RECT*)lParam;
+        var one = ScaledSize(1);
+        var s = Math.Max((r->Right - r->Left) / (double)one.Width, (r->Bottom - r->Top) / (double)one.Height);
+        var size = ScaledSize(Math.Clamp(s, WidgetSettings.MinScale, WidgetSettings.MaxScale));
+        r->Right = r->Left + size.Width;
+        r->Bottom = r->Top + size.Height;
+    }
+
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        // While the corner handle is dragged, zoom the page along with the window.
+        if (_resizing) ApplyZoom(ScaleForWidth(Width));
+    }
+
+    void ApplyZoom(double zoom)
+    {
+        if (Math.Abs(_view.ZoomFactor - zoom) > 0.0001) _view.ZoomFactor = zoom;
     }
 
     protected override async void OnLoad(EventArgs e)
@@ -87,25 +144,30 @@ sealed class WidgetWindow : Form
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
         base.OnDpiChanged(e);
-        ApplyBounds();
+        // Keep the spot Windows picked (the window may be mid-drag onto another monitor); only the size follows the new DPI.
+        ApplyBounds(e.SuggestedRectangle.Location);
     }
 
-    /// <summary>Manifest size is in logical (96-DPI) pixels; scale it to the monitor's DPI.</summary>
-    void ApplyBounds()
+    /// <summary>
+    /// Manifest size is in logical (96-DPI) pixels: scale it to the monitor's DPI and the user's scale, and zoom
+    /// the page by the same scale, so the content is laid out at the manifest size and rendered sharply.
+    /// </summary>
+    void ApplyBounds(Point? at = null)
     {
-        var ws = _app.Settings.For(Manifest);
-        float scale = DeviceDpi / 96f;
-        var size = new Size((int)Math.Round(Manifest.Width * scale), (int)Math.Round(Manifest.Height * scale));
+        var ws = Ws;
+        float dpi = DeviceDpi / 96f;
+        var size = ScaledSize(ws.Scale);
 
         Point loc;
-        if (ws.X is int x && ws.Y is int y) loc = new Point(x, y);
+        if (at is Point p) loc = p;
+        else if (ws.X is int x && ws.Y is int y) loc = new Point(x, y);
         else
         {
             var wa = Screen.PrimaryScreen!.WorkingArea;
             var d = Manifest.DefaultPosition;
             loc = d is null
-                ? new Point(wa.Right - size.Width - (int)(24 * scale), wa.Top + (int)(24 * scale))
-                : new Point(wa.Left + (int)(d.X * scale), wa.Top + (int)(d.Y * scale));
+                ? new Point(wa.Right - size.Width - (int)(24 * dpi), wa.Top + (int)(24 * dpi))
+                : new Point(wa.Left + (int)(d.X * dpi), wa.Top + (int)(d.Y * dpi));
         }
 
         // Keep at least part of the widget on a visible screen (monitors may have changed).
@@ -116,14 +178,26 @@ sealed class WidgetWindow : Form
             rect.Location = new Point(wa.Right - size.Width - 24, wa.Top + 24);
         }
         Bounds = rect;
+        ApplyZoom(ws.Scale);
     }
 
     public void ResetPosition()
     {
-        var ws = _app.Settings.For(Manifest);
+        var ws = Ws;
         ws.X = ws.Y = null;
         _app.SaveSettings();
         ApplyBounds();
+    }
+
+    /// <summary>Zooms the widget by hand (corner handle, Ctrl+wheel): the top-left corner stays where it is.</summary>
+    void SetScaleByHand(double scale)
+    {
+        var ws = Ws;
+        ws.Scale = scale;
+        ws.X = Left; ws.Y = Top;
+        _app.SaveSettings();
+        PushSettings();
+        _app.SettingsChangedElsewhere();
     }
 
     // ---------- JS bridge ----------
@@ -144,14 +218,36 @@ sealed class WidgetWindow : Form
 
 
             case "drag":
-                if (_app.Settings.For(Manifest).Locked) return;
+                if (Ws.Locked) return;
                 Native.ReleaseCapture();
                 Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTCAPTION, IntPtr.Zero);
                 // SendMessage returns when the move loop ends: persist the new spot.
-                var ws = _app.Settings.For(Manifest);
+                var ws = Ws;
                 ws.X = Left; ws.Y = Top;
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
+                break;
+
+            case "resize":
+                // The edit-mode corner handle. Only a real press on this window starts the native size loop.
+                if (!CanArrange || !PressedOnThisWindow()) return;
+                _resizing = true;
+                try
+                {
+                    Native.ReleaseCapture();
+                    Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTBOTTOMRIGHT, IntPtr.Zero);
+                }
+                finally { _resizing = false; }
+                SetScaleByHand(ScaleForWidth(Width));
+                DesktopPin.SendToBottom(Handle);
+                break;
+
+            case "zoom":
+                // Ctrl+wheel in edit mode: one step is 10 %. The page can't fake it: Ctrl must be down over this window.
+                if (!CanArrange || !CtrlWheelOverThisWindow()) return;
+                if (msg?["steps"] is not JsonNode stepsNode || stepsNode.GetValueKind() != JsonValueKind.Number) return;
+                var steps = Math.Clamp(stepsNode.GetValue<double>(), -3, 3);
+                if (steps != 0) SetScaleByHand(Ws.Scale + 0.1 * steps);
                 break;
 
             case "rendered":
@@ -195,9 +291,16 @@ sealed class WidgetWindow : Form
     /// Is a mouse button physically down with the cursor over this (visible, uncovered) window?
     /// The page can't fake this, which is what makes the focus gate trustworthy.
     /// </summary>
-    bool PressedOnThisWindow()
+    bool PressedOnThisWindow() =>
+        (IsKeyDown(Native.VK_LBUTTON) || IsKeyDown(Native.VK_RBUTTON)) && CursorOverThisWindow();
+
+    /// <summary>Ctrl physically held with the cursor over this window: a wheel zoom the user is really doing.</summary>
+    bool CtrlWheelOverThisWindow() => IsKeyDown(Native.VK_CONTROL) && CursorOverThisWindow();
+
+    static bool IsKeyDown(int vk) => (Native.GetAsyncKeyState(vk) & 0x8000) != 0;
+
+    bool CursorOverThisWindow()
     {
-        if ((Native.GetAsyncKeyState(Native.VK_LBUTTON) & 0x8000) == 0 && (Native.GetAsyncKeyState(Native.VK_RBUTTON) & 0x8000) == 0) return false;
         var p = Cursor.Position;
         var hit = Native.WindowFromPoint(new Native.POINT { X = p.X, Y = p.Y });
         return hit != IntPtr.Zero && Native.GetAncestor(hit, Native.GA_ROOT) == Handle;
@@ -345,12 +448,14 @@ sealed class WidgetWindow : Form
 
     JsonObject SettingsPayload()
     {
-        var ws = _app.Settings.For(Manifest);
+        var ws = Ws;
         return new JsonObject
         {
             ["refreshSeconds"] = _app.Settings.General.RefreshSeconds,
             ["animations"] = _app.Settings.General.Animations,
             ["locked"] = ws.Locked,
+            ["scale"] = ws.Scale,
+            ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),
         };
     }

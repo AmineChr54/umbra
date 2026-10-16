@@ -50,7 +50,7 @@ Built-in widgets live in the app folder. Community and locally created widgets l
 | `name`, `description`, `author` | Required, non-empty |
 | `version` | Required, `1.2.3`. Bump it on every change (users get an Update button) |
 | `entry` | Default `index.html` |
-| `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI) |
+| `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
 | `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle` |
@@ -92,7 +92,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, options }` |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
 | `umbra.widget` | `{ id, name }` |
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
@@ -125,6 +125,17 @@ umbra.store.onChange(async () => render(await umbra.store.get("tasks", [])));
 user locked it). Put `data-no-drag` on buttons or links that need normal clicks; inputs, textareas, selects and
 `contenteditable` elements never start a drag.
 
+**Zoom and edit mode.** Users can resize any widget from 50 % to 300 %. Umbra makes the window bigger and zooms the
+page by the same factor (like browser zoom), so your page always lays out at the `width` x `height` from
+`widget.json` and renders sharply. Don't scale it yourself:
+- Use CSS pixels and layout as usual. `window.innerWidth` stays at the manifest width.
+- `devicePixelRatio` includes the zoom. Canvas code that sizes its backing store by `devicePixelRatio` stays crisp;
+  redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
+- In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by
+  Umbra's overlay with an outline and a corner handle: presses move the widget, the handle resizes it and Ctrl+wheel
+  zooms it. Your page gets no clicks then, so don't rely on interaction. Locked widgets are left alone. A page can't
+  resize or zoom itself: the host only acts on a real mouse press or Ctrl+wheel by the user in edit mode.
+
 **Typing.** Widgets never steal focus from the app you're using. Pressing the mouse on a text field hands the
 widget the keyboard. Umbra checks that a mouse button is physically down over the widget, so a widget can't take
 focus on its own. If you create an input in code (say, rename on double-click), call `umbra.requestFocus()` first.
@@ -145,13 +156,15 @@ Segoe UI Variable font stack, and `.num` for `font-variant-numeric: tabular-nums
   and the window has DWM rounded corners and a hairline border.
 - Text 11 px or larger; tabular numbers for values that change.
 - Calm by default: no constant animation, no network calls faster than `umbra.every`.
-- Fit the declared `width` x `height` exactly; the window does not scroll or resize.
+- Fit the declared `width` x `height` exactly; the window does not scroll or reflow. When the user resizes it,
+  Umbra zooms the whole page instead.
 
 ## Sandbox (what a widget can and cannot do)
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
-- No navigation away, no new windows, no context menu, devtools or zoom.
+- No navigation away, no new windows, no context menu or devtools. Browser zoom keys are off; only the host sets
+  the zoom (the user's size setting).
 - No file system or native access; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.
 
@@ -163,6 +176,7 @@ umbractl reload                      # after editing files there
 umbractl create .\widgets\weather    # load a folder you are editing elsewhere (e.g. in the repo)
 umbractl set weather city Paris      # change an option, typed by the schema
 umbractl capture weather shot.png    # PNG of just the widget
+umbractl configure weather --scale 2 # check how it looks at 200 % (back with --scale 1)
 umbractl data weather                # what the widget saved with umbra.store (set: data <id> <key> <json>)
 umbractl logs                        # load errors and blocked requests
 ```

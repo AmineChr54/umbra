@@ -60,7 +60,7 @@ widgets/
 |---|---|
 | `umbra.ready` | Promise that resolves once settings have arrived |
 | `umbra.options` | This widget's option values |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, options }` |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }` (users can zoom a widget 50-300 %; lay out at your manifest size and Umbra zooms the page) |
 | `umbra.every(fn)` | Call `fn` now and on the user's refresh interval |
 | `umbra.onSettings(fn)` | Called when the user changes anything in Settings |
 | `umbra.fetchJson(url)` | Fetch JSON through Umbra, with no CORS problems (host must be in `permissions.hosts`) |

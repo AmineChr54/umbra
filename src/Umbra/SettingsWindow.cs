@@ -88,6 +88,10 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "setEditMode":
+                _app.SetEditMode(msg["value"]?.GetValue<bool>() == true); // re-sends the state
+                break;
+
             case "resetPosition":
                 _app.ResetPosition(id);
                 SendState();
@@ -165,6 +169,7 @@ sealed class SettingsWindow : Form
             ["type"] = "state",
             ["version"] = Application.ProductVersion.Split('+')[0],
             ["startup"] = Startup.IsEnabled(),
+            ["editMode"] = _app.EditMode,
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
             ["widgets"] = widgets,

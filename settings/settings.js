@@ -163,9 +163,29 @@ function renderInstalled() {
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});
     for (const key of order) if (w.options[key]) fields.append(field(w.id, key, w.options[key], ws.options[key]));
 
+    // Size: 50-300 %. Locked widgets keep their size here too. Look the settings up on each change:
+    // the host may have sent a newer state (a zoom on the desktop) while this list wasn't rebuilt.
+    const cur = () => state.settings.widgets[w.id];
+    const scale = $(".scale", card);
+    const scaleVal = $(".size-val", card);
+    const showScale = (pct) => {
+      scaleVal.textContent = `${Math.round(pct)}%`;
+      scale.style.setProperty("--p", `${((pct - 50) / 250) * 100}%`);
+    };
+    const setScale = (pct) => { cur().scale = pct / 100; scale.value = pct; showScale(pct); save(true); };
+    const lockScale = (on) => { scale.disabled = scaleVal.disabled = on; };
+    scale.value = Math.round((ws.scale || 1) * 100);
+    showScale((ws.scale || 1) * 100);
+    lockScale(ws.locked);
+    scale.addEventListener("input", () => showScale(Number(scale.value)));
+    scale.addEventListener("change", () => setScale(Number(scale.value)));
+    // Let go of focus after a mouse drag so later updates from the desktop can re-render this list.
+    scale.addEventListener("pointerup", () => setTimeout(() => scale.blur()));
+    scaleVal.addEventListener("click", () => { setScale(100); scaleVal.blur(); });
+
     const locked = $(".locked", card);
     locked.checked = ws.locked;
-    locked.addEventListener("change", () => { ws.locked = locked.checked; save(true); });
+    locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
 
     $(".reset", card).addEventListener("click", () => { post({ type: "resetPosition", id: w.id }); toast("Position reset"); });
     const remove = $(".remove", card);
@@ -176,6 +196,12 @@ function renderInstalled() {
     list.append(card);
   }
 }
+
+// Edit mode is app-wide and lives in the host (not in settings.json), so it has its own message.
+$("#editMode").addEventListener("change", (e) => {
+  post({ type: "setEditMode", value: e.target.checked });
+  toast(e.target.checked ? "Edit mode on: drag to move, drag the corner or Ctrl+scroll to resize" : "Edit mode off");
+});
 
 // ---------- Browse ----------
 function loadCatalog() {
@@ -272,6 +298,7 @@ bridge && bridge.addEventListener("message", (e) => {
       $("#ver").textContent = `Version ${m.version}`;
       $("#aboutVer").textContent = `Version ${m.version}`;
       renderGeneral();
+      $("#editMode").checked = !!m.editMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
       break;

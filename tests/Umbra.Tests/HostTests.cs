@@ -245,6 +245,51 @@ public class SettingsTests
         Assert.Equal((10, -5), (w.X, w.Y));
         Assert.True(w.Locked);
         Assert.Equal(3, w.Options["k"]!.GetValue<int>());
+        Assert.Equal(1.0, w.Scale);
+    }
+
+    [Theory]
+    [InlineData(1.0, 1.0)]
+    [InlineData(1.5, 1.5)]
+    [InlineData(0.5, 0.5)]
+    [InlineData(3.0, 3.0)]
+    [InlineData(0.1, 0.5)]
+    [InlineData(-2, 0.5)]
+    [InlineData(10, 3.0)]
+    [InlineData(1.23456, 1.23)]
+    [InlineData(double.NaN, 1.0)]
+    [InlineData(double.PositiveInfinity, 1.0)]
+    public void Scale_is_clamped_to_50_300_percent(double set, double expected)
+    {
+        Assert.Equal(expected, new WidgetSettings { Scale = set }.Scale);
+        Assert.Equal(expected, WidgetSettings.ClampScale(set));
+    }
+
+    [Fact]
+    public void Scale_round_trips_and_is_clamped_when_loaded()
+    {
+        var s = new Settings();
+        s.Widgets["w"] = new WidgetSettings { Scale = 1.75 };
+        var json = s.ToJson();
+        Assert.Equal(1.75, json["widgets"]!["w"]!["scale"]!.GetValue<double>());
+        Assert.Equal(1.75, Settings.FromJson(json).Widgets["w"].Scale);
+
+        // Older settings.json files have no scale; hand-edited ones may be out of range.
+        var old = Settings.FromJson(JsonNode.Parse("""{ "widgets": { "a": { "enabled": true }, "b": { "scale": 12 }, "c": { "scale": 0 } } }""")!);
+        Assert.Equal(1.0, old.Widgets["a"].Scale);
+        Assert.Equal(3.0, old.Widgets["b"].Scale);
+        Assert.Equal(0.5, old.Widgets["c"].Scale);
+    }
+
+    [Fact]
+    public void Scale_survives_save_and_load()
+    {
+        var s = new Settings();
+        s.Widgets["persist"] = new WidgetSettings { Scale = 2.25, Locked = true };
+        s.Save();
+        var back = Settings.Load();
+        Assert.Equal(2.25, back.Widgets["persist"].Scale);
+        Assert.True(back.Widgets["persist"].Locked);
     }
 }
 
@@ -274,6 +319,25 @@ public class ControlTests
     [InlineData("missing", "1")]
     public void CheckOption_rejects_wrong_values(string key, string json) =>
         Assert.ThrowsAny<Exception>(() => Control.CheckOption(M, key, JsonNode.Parse(json)));
+
+    [Theory]
+    [InlineData("0.5", 0.5)]
+    [InlineData("1", 1.0)]
+    [InlineData("1.5", 1.5)]
+    [InlineData("3", 3.0)]
+    [InlineData("1.333", 1.33)]
+    public void CheckScale_accepts_50_to_300_percent(string json, double expected) =>
+        Assert.Equal(expected, Control.CheckScale(JsonNode.Parse(json)));
+
+    [Theory]
+    [InlineData("0.49")]
+    [InlineData("3.01")]
+    [InlineData("150")]
+    [InlineData("\"1.5\"")]
+    [InlineData("true")]
+    [InlineData("null")]
+    public void CheckScale_rejects_other_values(string json) =>
+        Assert.ThrowsAny<Exception>(() => Control.CheckScale(JsonNode.Parse(json)));
 }
 
 public class ProtocolTests
@@ -290,4 +354,11 @@ public class ProtocolTests
     [Fact]
     public void Every_command_is_documented_once() =>
         Assert.Equal(Protocol.Commands.Length, Protocol.Commands.Select(c => c.Cmd).Distinct().Count());
+
+    [Fact]
+    public void Edit_mode_and_scale_are_part_of_the_protocol()
+    {
+        Assert.Contains(Protocol.Commands, c => c.Cmd == "edit-mode");
+        Assert.Contains("scale?", Protocol.Commands.Single(c => c.Cmd == "configure").Help);
+    }
 }

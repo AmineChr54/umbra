@@ -20,7 +20,8 @@ public static class Protocol
     {
         ("status", "Version, paths, open widgets and general settings"),
         ("list", "Every installed widget with its settings, option schema and window bounds"),
-        ("configure", "Change one widget: {id, enabled?, locked?, x?, y?, options?{key:value}}"),
+        ("configure", "Change one widget: {id, enabled?, locked?, x?, y?, scale? (0.5-3), options?{key:value}}"),
+        ("edit-mode", "Turn edit mode on or off, or read it: {on?}. In edit mode unlocked widgets can be moved, resized and zoomed by hand"),
         ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?}"),
         ("reset-position", "Move a widget back to its default spot: {id}"),
         ("refresh", "Make widgets fetch fresh data now: {id?}"),
