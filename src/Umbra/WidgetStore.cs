@@ -27,8 +27,8 @@ static class WidgetStore
 
     static string FileFor(string id)
     {
-        if (!WidgetManifest.IdPattern().IsMatch(id)) throw new InvalidOperationException($"Invalid widget id '{id}'");
-        return Path.Combine(DataDir, $"{id}.json");
+        if (!InstanceId.IsValid(id)) throw new InvalidOperationException($"Invalid widget id '{id}'");
+        return Path.Combine(DataDir, $"{InstanceId.FileName(id)}.json");
     }
 
     static void CheckKey(string key)
@@ -90,6 +90,21 @@ static class WidgetStore
         {
             var file = FileFor(id);
             if (File.Exists(file)) File.Delete(file);
+        }
+    }
+
+    /// <summary>Deletes the data of a widget and of all its extra copies (on uninstall).</summary>
+    public static void DeleteAll(string widgetId)
+    {
+        if (!WidgetManifest.IdPattern().IsMatch(widgetId)) return;
+        lock (Gate)
+        {
+            foreach (var file in Directory.GetFiles(DataDir, $"{widgetId}*.json"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                if (name == widgetId || (name.StartsWith(widgetId + "__") && int.TryParse(name[(widgetId.Length + 2)..], out _)))
+                    File.Delete(file);
+            }
         }
     }
 

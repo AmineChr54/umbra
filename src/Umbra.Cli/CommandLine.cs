@@ -49,7 +49,7 @@ static class CommandLine
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove":
+            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "refresh":
                 return ("refresh", a.Length > 1 ? O(("id", a[1])) : new JsonObject());

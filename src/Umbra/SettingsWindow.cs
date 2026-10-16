@@ -97,6 +97,21 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "addInstance":
+                if (_app.Manifests.FirstOrDefault(m => m.Id == id) is { } wm)
+                {
+                    try { _app.AddInstance(wm); }
+                    catch (InvalidOperationException ex) { Log.Write($"Add copy of {id} failed: {ex.Message}"); }
+                }
+                SendState();
+                break;
+
+            case "removeInstance":
+                try { _app.RemoveInstance(id); }
+                catch (InvalidOperationException ex) { Log.Write($"Remove copy {id} failed: {ex.Message}"); }
+                SendState();
+                break;
+
             case "openUrl":
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
                 break;
@@ -122,8 +137,9 @@ sealed class SettingsWindow : Form
             case "remove":
                 await RunJob(id, () =>
                 {
-                    _app.CloseWidget(id);
-                    Community.Remove(id);
+                    _app.CloseWidget(id); // every copy
+                    Community.Remove(id); // folder and the data of every copy
+                    _app.ForgetInstances(id);
                     return Task.CompletedTask;
                 });
                 break;
@@ -145,12 +161,15 @@ sealed class SettingsWindow : Form
     {
         var widgets = new JsonArray();
         foreach (var m in _app.Manifests)
+        foreach (var inst in _app.Settings.Instances(m.Id))
         {
-            _app.Settings.For(m); // ensure defaults exist
+            _app.Settings.For(m, inst); // ensure defaults exist
             widgets.Add(new JsonObject
             {
-                ["id"] = m.Id,
-                ["name"] = m.Name,
+                ["id"] = inst,
+                ["widget"] = m.Id,
+                ["instance"] = InstanceId.NumberOf(inst),
+                ["name"] = App.InstanceLabel(m, inst),
                 ["description"] = m.Description,
                 ["author"] = m.Author,
                 ["version"] = m.Version,

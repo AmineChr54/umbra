@@ -80,15 +80,44 @@ public sealed class Settings
         }
     }
 
-    /// <summary>Returns the widget's settings, creating them and filling any missing option with its manifest default.</summary>
-    public WidgetSettings For(WidgetManifest m)
+    /// <summary>
+    /// Returns the settings of one copy of the widget (<paramref name="instance"/> = its <see cref="InstanceId"/>,
+    /// null = the first copy), creating them and filling any missing option with its manifest default.
+    /// </summary>
+    public WidgetSettings For(WidgetManifest m, string? instance = null)
     {
-        if (!Widgets.TryGetValue(m.Id, out var ws))
-            Widgets[m.Id] = ws = new WidgetSettings();
+        instance ??= m.Id;
+        if (InstanceId.WidgetOf(instance) != m.Id) throw new ArgumentException($"'{instance}' is not a copy of '{m.Id}'");
+        if (!Widgets.TryGetValue(instance, out var ws))
+            Widgets[instance] = ws = new WidgetSettings();
         foreach (var (key, value) in m.DefaultOptions())
             if (!ws.Options.ContainsKey(key)) ws.Options[key] = value?.DeepClone();
         General.RefreshSeconds = Math.Clamp(General.RefreshSeconds, 30, 600);
         return ws;
+    }
+
+    /// <summary>Instance ids of a widget: the first copy always, then the extra ones in order. Old files only have the first.</summary>
+    public List<string> Instances(string widgetId) =>
+        Widgets.Keys.Where(k => k != widgetId && InstanceId.IsValid(k) && InstanceId.WidgetOf(k) == widgetId && InstanceId.IsExtra(k))
+            .OrderBy(InstanceId.NumberOf).Prepend(widgetId).ToList();
+
+    /// <summary>Creates the next free extra copy and returns its instance id, or null at <see cref="InstanceId.MaxInstances"/>.</summary>
+    public string? AddInstance(WidgetManifest m)
+    {
+        if (Instances(m.Id).Count >= InstanceId.MaxInstances) return null;
+        var n = 2;
+        while (Widgets.ContainsKey(InstanceId.Make(m.Id, n))) n++;
+        var id = InstanceId.Make(m.Id, n);
+        For(m, id);
+        return id;
+    }
+
+    /// <summary>Forgets every extra copy of a widget (when it is uninstalled); returns their ids.</summary>
+    public List<string> RemoveExtraInstances(string widgetId)
+    {
+        var extras = Instances(widgetId).Skip(1).ToList();
+        foreach (var e in extras) Widgets.Remove(e);
+        return extras;
     }
 
     public JsonNode ToJson() => JsonSerializer.SerializeToNode(this, Json)!;

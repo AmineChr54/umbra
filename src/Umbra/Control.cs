@@ -54,17 +54,17 @@ sealed class Control(App app)
                     ["editMode"] = app.EditMode,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
                     ["widgets"] = app.Manifests.Count,
-                    ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Manifest.Id).ToArray()),
+                    ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Instance).ToArray()),
                     ["commands"] = new JsonArray(Protocol.Commands.Select(c => (JsonNode?)c.Cmd).ToArray()),
                 };
 
             case "list":
-                return new JsonArray(app.Manifests.Select(m => (JsonNode?)Describe(m)).ToArray());
+                return DescribeAll();
 
             case "configure":
             {
-                var m = Manifest(a);
-                var ws = app.Settings.For(m);
+                var (m, inst) = Target(a);
+                var ws = app.Settings.For(m, inst);
                 if (a["enabled"] is JsonNode en) ws.Enabled = Bool(en, "enabled");
                 if (a["locked"] is JsonNode lk) ws.Locked = Bool(lk, "locked");
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
@@ -75,9 +75,9 @@ sealed class Control(App app)
                 else if (a["options"] is not null) throw new CommandException("\"options\" must be an object");
                 app.SaveSettings();
                 app.SyncWindows();
-                app.Window(m.Id)?.PushSettings();
+                app.Window(inst)?.PushSettings();
                 app.SettingsChangedElsewhere();
-                return Describe(m);
+                return Describe(m, inst);
             }
 
             case "set-general":
@@ -107,19 +107,40 @@ sealed class Control(App app)
 
             case "reset-position":
             {
-                var m = Manifest(a);
-                app.ResetPosition(m.Id);
-                return Describe(m);
+                var (m, inst) = Target(a);
+                app.ResetPosition(inst);
+                return Describe(m, inst);
             }
 
             case "refresh":
-                foreach (var w in app.OpenWindows.Where(w => a["id"] is null || w.Manifest.Id == Str(a, "id"))) w.RefreshData();
+            {
+                // A widget id refreshes all its copies; an instance id ("sp500#2") just that one.
+                var which = a["id"] is null ? null : Str(a, "id");
+                foreach (var w in app.OpenWindows.Where(w => which is null || w.Instance == which || (!which.Contains('#') && w.Manifest.Id == which)))
+                    w.RefreshData();
                 return null;
+            }
+
+            case "add-instance":
+            {
+                var (m, _) = Target(a);
+                try { return Describe(m, app.AddInstance(m)); }
+                catch (InvalidOperationException ex) { throw new CommandException(ex.Message); }
+            }
+
+            case "remove-instance":
+            {
+                var (m, inst) = Target(a);
+                if (!InstanceId.IsExtra(inst))
+                    throw new CommandException($"'{inst}' is the first copy of '{m.Id}'; disable it instead. Extra copies look like '{m.Id}#2'");
+                app.RemoveInstance(inst);
+                return null;
+            }
 
             case "reload":
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
-                return new JsonArray(app.Manifests.Select(m => (JsonNode?)Describe(m)).ToArray());
+                return DescribeAll();
 
             case "catalog":
             {
@@ -151,15 +172,16 @@ sealed class Control(App app)
                 await Community.InstallAsync(entry);
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
-                return Describe(app.Manifests.First(m => m.Id == id));
+                return Describe(app.Manifests.First(m => m.Id == id), id);
             }
 
             case "remove":
             {
-                var m = Manifest(a);
+                var (m, _) = Target(a);
                 if (m.Source == WidgetSource.BuiltIn) throw new CommandException($"'{m.Id}' is built in; disable it instead");
                 app.CloseWidget(m.Id);
-                Community.Remove(m.Id);
+                Community.Remove(m.Id); // folder and the data of every copy
+                app.ForgetInstances(m.Id);
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
                 return null;
@@ -180,13 +202,13 @@ sealed class Control(App app)
                 app.SettingsChangedElsewhere();
                 var created = app.Manifests.FirstOrDefault(m => m.Id == id)
                               ?? throw new CommandException("The widget was written but Umbra could not load its widget.json; check logs");
-                var info = Describe(created);
+                var info = Describe(created, created.Id);
                 info["path"] = dir;
                 return info;
             }
 
             case "data":
-                return Data(Manifest(a), a);
+                return Data(Target(a).Instance, a);
 
             case "capture":
                 return await Capture(Str(a, "target"), a["path"]?.GetValue<string>());
@@ -211,7 +233,7 @@ sealed class Control(App app)
     }
 
     /// <summary>Reads or changes a widget's umbra.store data; an open widget is told about changes so it can re-render.</summary>
-    JsonNode? Data(WidgetManifest m, JsonObject a)
+    JsonNode? Data(string inst, JsonObject a)
     {
         var op = a["op"] is null ? "get" : Str(a, "op");
         var key = a["key"] is null ? null : Str(a, "key");
@@ -220,29 +242,29 @@ sealed class Control(App app)
             switch (op)
             {
                 case "get" when key is null:
-                    return WidgetStore.All(m.Id);
+                    return WidgetStore.All(inst);
                 case "get":
-                    var (found, value) = WidgetStore.Get(m.Id, key);
-                    return found ? value : throw new CommandException($"'{m.Id}' has no stored key '{key}'. Keys: {string.Join(", ", WidgetStore.Keys(m.Id))}");
+                    var (found, value) = WidgetStore.Get(inst, key);
+                    return found ? value : throw new CommandException($"'{inst}' has no stored key '{key}'. Keys: {string.Join(", ", WidgetStore.Keys(inst))}");
                 case "set":
                     if (key is null) throw new CommandException("\"key\" is required for set");
                     if (!a.ContainsKey("value")) throw new CommandException("\"value\" is required for set");
-                    WidgetStore.Set(m.Id, key, a["value"]);
+                    WidgetStore.Set(inst, key, a["value"]);
                     break;
                 case "remove":
                     if (key is null) throw new CommandException("\"key\" is required for remove");
-                    if (!WidgetStore.Remove(m.Id, key)) throw new CommandException($"'{m.Id}' has no stored key '{key}'");
+                    if (!WidgetStore.Remove(inst, key)) throw new CommandException($"'{inst}' has no stored key '{key}'");
                     break;
                 case "clear":
-                    WidgetStore.Delete(m.Id);
+                    WidgetStore.Delete(inst);
                     break;
                 default:
                     throw new CommandException("\"op\" must be get, set, remove or clear");
             }
         }
         catch (InvalidOperationException ex) { throw new CommandException(ex.Message); }
-        app.Window(m.Id)?.StoreChanged(op == "clear" ? null : key);
-        return WidgetStore.All(m.Id);
+        app.Window(inst)?.StoreChanged(op == "clear" ? null : key);
+        return WidgetStore.All(inst);
     }
 
     /// <summary>target = widget id, or settings:&lt;page&gt;. Writes to path when given, otherwise returns base64.</summary>
@@ -259,9 +281,9 @@ sealed class Control(App app)
         }
         else
         {
-            var m = app.Manifests.FirstOrDefault(x => x.Id == target)
-                    ?? throw new CommandException($"No widget '{target}'. Targets: {string.Join(", ", app.Manifests.Select(x => x.Id))}, settings:<page>");
-            var win = app.Window(m.Id) ?? throw new CommandException($"'{m.Id}' is not open; enable it first (configure enabled=true)");
+            var (_, inst) = app.Resolve(target)
+                    ?? throw new CommandException($"No widget '{target}'. Targets: {string.Join(", ", app.Manifests.SelectMany(x => app.Settings.Instances(x.Id)))}, settings:<page>");
+            var win = app.Window(inst) ?? throw new CommandException($"'{inst}' is not open; enable it first (configure enabled=true)");
             png = await win.CaptureAsync();
         }
 
@@ -273,14 +295,20 @@ sealed class Control(App app)
         return new JsonObject { ["path"] = full, ["bytes"] = png.Length };
     }
 
-    JsonObject Describe(WidgetManifest m)
+    JsonArray DescribeAll() => new(app.Manifests
+        .SelectMany(m => app.Settings.Instances(m.Id).Select(inst => (JsonNode?)Describe(m, inst))).ToArray());
+
+    /// <summary>One copy of a widget. "id" is the instance id; "widget" the manifest id (same for the first copy).</summary>
+    JsonObject Describe(WidgetManifest m, string inst)
     {
-        var ws = app.Settings.For(m);
-        var win = app.Window(m.Id);
+        var ws = app.Settings.For(m, inst);
+        var win = app.Window(inst);
         return new JsonObject
         {
-            ["id"] = m.Id,
-            ["name"] = m.Name,
+            ["id"] = inst,
+            ["widget"] = m.Id,
+            ["instance"] = InstanceId.NumberOf(inst),
+            ["name"] = App.InstanceLabel(m, inst),
             ["description"] = m.Description,
             ["author"] = m.Author,
             ["version"] = m.Version,
@@ -327,11 +355,12 @@ sealed class Control(App app)
             : throw new CommandException(string.Create(CultureInfo.InvariantCulture,
                 $"\"scale\" must be a number from {WidgetSettings.MinScale} to {WidgetSettings.MaxScale} (1 = 100 %)"));
 
-    WidgetManifest Manifest(JsonObject a)
+    /// <summary>The widget copy an "id" argument names: a widget id (first copy) or an instance id like "sp500#2".</summary>
+    (WidgetManifest Manifest, string Instance) Target(JsonObject a)
     {
         var id = Str(a, "id");
-        return app.Manifests.FirstOrDefault(m => m.Id == id)
-               ?? throw new CommandException($"No widget '{id}'. Installed: {string.Join(", ", app.Manifests.Select(m => m.Id))}");
+        return app.Resolve(id)
+               ?? throw new CommandException($"No widget '{id}'. Installed: {string.Join(", ", app.Manifests.SelectMany(m => app.Settings.Instances(m.Id)))}");
     }
 
     static string Str(JsonObject a, string key) =>
