@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Countdowns</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="countdowns.css">
+</head>
+<body>
+  <main class="cd" id="app">
+    <header class="head">
+      <h1 class="title" id="title">Countdowns</h1>
+      <button class="add" id="add" data-no-drag aria-label="Add a countdown" title="Add a countdown">
+        <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></svg>
+      </button>
+    </header>
+
+    <section class="grid" id="grid"></section>
+
+    <form class="sheet" id="sheet" data-no-drag autocomplete="off" hidden>
+      <div class="sheet-head">
+        <h2 id="sheet-title">New countdown</h2>
+        <button type="button" class="icon-btn" id="close" aria-label="Close">
+          <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg>
+        </button>
+      </div>
+
+      <div class="sheet-body" id="sheet-body">
+        <div class="seg kinds" id="kind" role="radiogroup" aria-label="Kind">
+          <button type="button" data-kind="date" role="radio">Event</button>
+          <button type="button" data-kind="year" role="radio">Year</button>
+          <button type="button" data-kind="month" role="radio">Month</button>
+          <button type="button" data-kind="week" role="radio">Week</button>
+        </div>
+
+        <div class="name-row">
+          <button type="button" class="emoji" id="emoji" aria-haspopup="true" title="Icon"></button>
+          <input class="field" id="f-title" maxlength="60" placeholder="Title" spellcheck="false" aria-label="Title">
+        </div>
+
+        <p class="period-hint only-period" id="period-hint"></p>
+
+        <div class="row only-date">
+          <label for="f-date">Date</label>
+          <div class="pair">
+            <input class="field num" type="date" id="f-date" min="1900-01-01" max="2999-12-31" aria-label="Date">
+            <input class="field num time" type="time" id="f-time" aria-label="Time (optional)" title="Time (optional)">
+          </div>
+        </div>
+
+        <div class="row only-date">
+          <label for="f-yearly">Yearly</label>
+          <div class="pair">
+            <button type="button" class="switch" id="f-yearly" role="switch" aria-checked="false"><span></span></button>
+            <span class="hint" id="yearly-hint">Birthdays, anniversaries</span>
+          </div>
+        </div>
+
+        <div class="row only-once">
+          <label for="f-start">From</label>
+          <div class="pair">
+            <input class="field num" type="date" id="f-start" min="1900-01-01" max="2999-12-31" aria-label="Progress starts on">
+            <span class="hint">progress start</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Style</label>
+          <div class="seg styles" id="style" role="radiogroup" aria-label="Style">
+            <button type="button" data-style="dots" role="radio">
+              <svg viewBox="0 0 14 14"><circle cx="3" cy="3" r="1.4"/><circle cx="7" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="3" cy="7" r="1.4"/><circle cx="7" cy="7" r="1.4"/><circle cx="11" cy="7" r="1.4" class="dim"/><circle cx="3" cy="11" r="1.4" class="dim"/><circle cx="7" cy="11" r="1.4" class="dim"/><circle cx="11" cy="11" r="1.4" class="dim"/></svg>Dots</button>
+            <button type="button" data-style="bar" role="radio">
+              <svg viewBox="0 0 14 14"><rect x="1" y="5.5" width="12" height="3" rx="1.5" class="dim"/><rect x="1" y="5.5" width="7" height="3" rx="1.5"/></svg>Bar</button>
+            <button type="button" data-style="ring" role="radio">
+              <svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" class="track"/><path d="M7 2a5 5 0 1 1-5 5" class="arc"/></svg>Ring</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <label>Color</label>
+          <div class="swatches" id="colors" role="radiogroup" aria-label="Color"></div>
+        </div>
+      </div>
+
+      <div class="sheet-foot">
+        <button type="button" class="btn danger" id="delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="save">Save</button>
+      </div>
+
+      <div class="menu" id="emoji-menu" role="menu" hidden></div>
+    </form>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="countdown.js"></script>
+  <script src="countdowns.js"></script>
+</body>
+</html>
