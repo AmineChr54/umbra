@@ -1,0 +1,40 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "crypto",
+  "name": "Crypto price",
+  "description": "Price, 24h change and a sparkline for any coin on CoinGecko.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 340,
+  "height": 196,
+  "defaultPosition": { "x": 24, "y": 240 },
+  "permissions": {
+    "hosts": ["api.coingecko.com"]
+  },
+  "options": {
+    "coin": { "label": "Coin id", "type": "text", "default": "bitcoin", "hint": "The CoinGecko API id, e.g. bitcoin, ethereum, solana, dogecoin" },
+    "currency": {
+      "label": "Currency",
+      "type": "select",
+      "default": "usd",
+      "choices": [
+        { "value": "usd", "label": "US dollar" },
+        { "value": "eur", "label": "Euro" },
+        { "value": "gbp", "label": "British pound" },
+        { "value": "chf", "label": "Swiss franc" },
+        { "value": "jpy", "label": "Japanese yen" }
+      ]
+    },
+    "range": {
+      "label": "Chart range",
+      "type": "select",
+      "default": "24h",
+      "choices": [
+        { "value": "24h", "label": "24 hours" },
+        { "value": "7d", "label": "7 days" }
+      ]
+    }
+  }
+}

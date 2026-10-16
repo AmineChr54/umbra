@@ -1,0 +1,76 @@
+html, body { width: 100%; height: 100%; overflow: hidden; }
+
+.card {
+  --c: var(--flat);
+  position: relative;
+  height: 100%;
+  padding: 16px 18px 12px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--c) 7%, transparent), transparent 60%),
+    #000;
+  cursor: default;
+}
+.card[data-trend="up"] { --c: var(--up); }
+.card[data-trend="down"] { --c: var(--down); }
+
+.head { display: flex; align-items: center; justify-content: space-between; height: 18px; gap: 8px; }
+.title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.name {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 650; letter-spacing: 0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ticker { font-size: 11px; font-weight: 500; color: var(--text-3); letter-spacing: 0.02em; }
+.cap { font-size: 11px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+
+.quote { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 8px; gap: 8px; }
+.price {
+  font-family: var(--font-display);
+  font-size: 32px; line-height: 1; font-weight: 600; letter-spacing: -0.025em;
+  white-space: nowrap; min-width: 0;
+}
+.price.long { font-size: 24px; }
+.delta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; padding-bottom: 2px; flex: none; }
+.pill {
+  padding: 3px 9px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 650; color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent);
+}
+.chg { font-size: 12px; font-weight: 500; color: color-mix(in srgb, var(--c) 85%, white); white-space: nowrap; }
+
+.chart { position: relative; margin: 10px -18px 0; min-height: 0; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.fill-top { stop-color: var(--c); stop-opacity: 0.28; }
+.fill-bottom { stop-color: var(--c); stop-opacity: 0; }
+.area { fill: url(#fill); opacity: 0; transition: opacity 900ms var(--ease-out) 200ms; }
+.chart.ready .area { opacity: 1; }
+.line {
+  fill: none; stroke: var(--c); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 45%, transparent));
+}
+.line.draw { animation: draw 1300ms var(--ease-out) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.ref { stroke: rgba(255, 255, 255, 0.16); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+.dot { fill: var(--c); stroke: #000; stroke-width: 2; }
+.halo { fill: var(--c); opacity: 0.25; transform-box: fill-box; transform-origin: center; animation: pulse 2.4s var(--ease-out) infinite; }
+@keyframes pulse {
+  0% { transform: scale(0.6); opacity: 0.45; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; font-size: 11px; color: var(--text-3); font-weight: 500;
+}
+.foot .range {
+  padding: 1px 6px; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05); color: var(--text-2); letter-spacing: 0.04em;
+}
+.card.stale .foot #updated { color: #e0a54a; }
+.foot #updated { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart:not(.ready) svg, .card.empty .delta { visibility: hidden; }

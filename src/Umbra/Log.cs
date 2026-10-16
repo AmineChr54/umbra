@@ -1,9 +1,27 @@
 namespace Umbra;
 
-/// <summary>Tiny append-only log in %APPDATA%\Umbra\umbra.log (trimmed at 256 KB).</summary>
+/// <summary>Tiny append-only log in %APPDATA%\Umbra\umbra.log (trimmed to its newest half past 256 KB).</summary>
 static class Log
 {
     static readonly object Gate = new();
+    internal const int MaxBytes = 256 * 1024;
+
+    /// <summary>When the file exceeds <paramref name="maxBytes"/>, keeps only the newest ~half, starting at a line boundary.</summary>
+    internal static void TrimIfLarge(string path, int maxBytes)
+    {
+        var info = new FileInfo(path);
+        if (!info.Exists || info.Length <= maxBytes) return;
+        var keep = maxBytes / 2;
+        byte[] tail;
+        using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            fs.Seek(-keep, SeekOrigin.End);
+            tail = new byte[keep];
+            fs.ReadExactly(tail);
+        }
+        var start = Array.IndexOf(tail, (byte)'\n') + 1; // drop the partial first line
+        File.WriteAllBytes(path, tail[start..]);
+    }
 
     public static void Write(string message)
     {
@@ -12,7 +30,7 @@ static class Log
             lock (Gate)
             {
                 var path = Path.Combine(AppPaths.DataDir, "umbra.log");
-                if (File.Exists(path) && new FileInfo(path).Length > 256 * 1024) File.Delete(path);
+                TrimIfLarge(path, MaxBytes);
                 File.AppendAllText(path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}{Environment.NewLine}");
             }
         }

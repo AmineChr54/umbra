@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "weather",
+  "name": "Weather",
+  "description": "Temperature, condition and today's high and low for one city. Uses Open-Meteo, no API key.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 300,
+  "height": 160,
+  "defaultPosition": { "x": 24, "y": 420 },
+  "permissions": { "hosts": ["api.open-meteo.com", "geocoding-api.open-meteo.com"] },
+  "options": {
+    "city": { "label": "City", "type": "text", "default": "Berlin", "hint": "Name of a city, e.g. Paris or Portland" },
+    "units": {
+      "label": "Units", "type": "select", "default": "c",
+      "choices": [{ "value": "c", "label": "Celsius" }, { "value": "f", "label": "Fahrenheit" }]
+    },
+    "feelsLike": { "label": "Show feels-like", "type": "toggle", "default": true }
+  }
+}
