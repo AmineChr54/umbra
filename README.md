@@ -38,7 +38,8 @@ umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
 umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
 umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
-umbractl general --refresh 120        # app-wide settings
+umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check)
+umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove
 umbractl new my-widget                # scaffold a working widget and show it
 umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, ...)
@@ -52,7 +53,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `create_widget`, `widget_data`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 

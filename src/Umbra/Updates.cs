@@ -1,0 +1,204 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+
+namespace Umbra;
+
+/// <summary>A published Umbra release that can be installed.</summary>
+public sealed record ReleaseInfo(string Version, string PageUrl, string AssetName, string AssetUrl, string Notes);
+
+/// <summary>
+/// Pure update logic: version comparison, GitHub release parsing and download validation.
+/// No I/O here so it is unit tested; <see cref="UpdateService"/> does the network and process work.
+/// </summary>
+public static partial class Updates
+{
+    public const string ReleasesApi = "https://api.github.com/repos/AmineChr54/umbra/releases/latest";
+    const string DownloadPrefix = "/AmineChr54/umbra/releases/download/";
+
+    [GeneratedRegex(@"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")]
+    private static partial Regex SemVer();
+
+    [GeneratedRegex(@"^UmbraSetup-(\d+\.\d+\.\d+)\.exe$")]
+    private static partial Regex InstallerName();
+
+    /// <summary>Compares semantic versions (a leading "v" and +build are ignored, a pre-release sorts below its release). Null when either is not a version.</summary>
+    public static int? Compare(string a, string b)
+    {
+        var ma = SemVer().Match(a.Trim());
+        var mb = SemVer().Match(b.Trim());
+        if (!ma.Success || !mb.Success) return null;
+        for (int i = 1; i <= 3; i++)
+        {
+            var c = long.Parse(ma.Groups[i].Value).CompareTo(long.Parse(mb.Groups[i].Value));
+            if (c != 0) return Math.Sign(c);
+        }
+        var pa = ma.Groups[4].Value;
+        var pb = mb.Groups[4].Value;
+        if (pa == pb) return 0;
+        if (pa.Length == 0) return 1;
+        if (pb.Length == 0) return -1;
+        var xa = pa.Split('.');
+        var xb = pb.Split('.');
+        for (int i = 0; i < Math.Min(xa.Length, xb.Length); i++)
+        {
+            var na = long.TryParse(xa[i], out var la);
+            var nb = long.TryParse(xb[i], out var lb);
+            int c = na && nb ? la.CompareTo(lb) : na ? -1 : nb ? 1 : string.CompareOrdinal(xa[i], xb[i]);
+            if (c != 0) return Math.Sign(c);
+        }
+        return Math.Sign(xa.Length.CompareTo(xb.Length));
+    }
+
+    public static bool IsNewer(string current, string candidate) => Compare(candidate, current) is > 0;
+
+    static string? Str(JsonNode? n) => n is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+
+    /// <summary>
+    /// Reads GitHub's "latest release" JSON. Returns null for drafts, pre-releases, bad versions or a release without
+    /// a valid installer asset, so the app never offers something it would refuse to install.
+    /// </summary>
+    public static ReleaseInfo? ParseRelease(string json)
+    {
+        JsonNode? root;
+        try { root = JsonNode.Parse(json); } catch (JsonException) { return null; }
+        if (root is not JsonObject o) return null;
+        if (o["draft"] is JsonValue d && d.TryGetValue<bool>(out var isDraft) && isDraft) return null;
+        if (o["prerelease"] is JsonValue p && p.TryGetValue<bool>(out var isPre) && isPre) return null;
+        var tag = Str(o["tag_name"]);
+        var m = tag is null ? null : SemVer().Match(tag);
+        if (m is not { Success: true } || m.Groups[4].Success) return null;
+        var version = $"{m.Groups[1].Value}.{m.Groups[2].Value}.{m.Groups[3].Value}";
+
+        foreach (var asset in o["assets"] as JsonArray ?? new JsonArray())
+        {
+            var name = Str(asset?["name"]);
+            var url = Str(asset?["browser_download_url"]);
+            if (name is null || url is null || !IsValidInstaller(url, name, version)) continue;
+            var page = Str(o["html_url"]);
+            if (page is null || !page.StartsWith("https://github.com/", StringComparison.Ordinal))
+                page = $"https://github.com/AmineChr54/umbra/releases/tag/v{version}";
+            var body = Str(o["body"]) ?? "";
+            return new ReleaseInfo(version, page, name, url, body.Length > 2000 ? body[..2000] : body);
+        }
+        return null;
+    }
+
+    /// <summary>The download must be HTTPS from github.com's release downloads for this repo and named UmbraSetup-&lt;version&gt;.exe.</summary>
+    public static bool IsValidInstaller(string url, string name, string version)
+    {
+        var nm = InstallerName().Match(name);
+        if (!nm.Success || nm.Groups[1].Value != version) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        return uri.Scheme == Uri.UriSchemeHttps && uri.Host == "github.com" && uri.IsDefaultPort && uri.UserInfo.Length == 0
+            && uri.AbsolutePath.StartsWith(DownloadPrefix, StringComparison.Ordinal)
+            && !uri.AbsolutePath.Contains("..")
+            && Uri.UnescapeDataString(uri.AbsolutePath).EndsWith("/" + name, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>Checks GitHub for a newer release (at start and every 24 hours) and runs the installer on request.</summary>
+sealed class UpdateService : IDisposable
+{
+    static readonly HttpClient Http = CreateClient();
+    readonly App _app;
+    readonly System.Windows.Forms.Timer _timer = new() { Interval = (int)TimeSpan.FromHours(24).TotalMilliseconds };
+    readonly System.Windows.Forms.Timer _first = new() { Interval = 20_000 };
+    bool _installing;
+
+    public ReleaseInfo? Available { get; private set; }
+    public DateTime? LastChecked { get; private set; }
+    public string? Error { get; private set; }
+
+    public UpdateService(App app)
+    {
+        _app = app;
+        _timer.Tick += async (_, _) => await CheckAsync(manual: false);
+        _timer.Start();
+        // Let the desktop settle before the first request.
+        _first.Tick += async (_, _) => { _first.Stop(); await CheckAsync(manual: false); };
+        _first.Start();
+    }
+
+    static HttpClient CreateClient()
+    {
+        var c = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+        c.DefaultRequestHeaders.UserAgent.ParseAdd($"Umbra/{CurrentVersion}");
+        c.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        return c;
+    }
+
+    public static string CurrentVersion => Application.ProductVersion.Split('+')[0];
+
+    /// <summary>Queries GitHub. An automatic check does nothing when the user turned update checks off.</summary>
+    public async Task CheckAsync(bool manual)
+    {
+        if (!manual && !_app.Settings.General.CheckForUpdates) return;
+        try
+        {
+            var url = Environment.GetEnvironmentVariable("UMBRA_RELEASE_URL") ?? Updates.ReleasesApi;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var json = await Http.GetStringAsync(url, cts.Token);
+            var rel = Updates.ParseRelease(json);
+            Available = rel is not null && Updates.IsNewer(CurrentVersion, rel.Version) ? rel : null;
+            Error = null;
+            if (Available is not null) Log.Write($"Update available: {Available.Version}");
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+            Log.Write($"Update check failed: {ex.Message}");
+        }
+        LastChecked = DateTime.Now;
+        _app.SettingsChangedElsewhere();
+    }
+
+    /// <summary>Downloads the installer for <see cref="Available"/> to a temp folder, runs it silently and exits Umbra.</summary>
+    public async Task InstallAsync()
+    {
+        var rel = Available ?? throw new InvalidOperationException("No update available");
+        if (_installing) throw new InvalidOperationException("Update already in progress");
+        if (!Updates.IsValidInstaller(rel.AssetUrl, rel.AssetName, rel.Version))
+            throw new InvalidOperationException("Update download failed validation");
+        _installing = true;
+        try
+        {
+            var dir = Path.Combine(Path.GetTempPath(), $"umbra-update-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            var file = Path.Combine(dir, rel.AssetName);
+            using (var resp = await Http.GetAsync(rel.AssetUrl, HttpCompletionOption.ResponseHeadersRead))
+            {
+                resp.EnsureSuccessStatusCode();
+                // After GitHub's redirect to its CDN the file must still come over HTTPS.
+                if (resp.RequestMessage?.RequestUri?.Scheme != Uri.UriSchemeHttps)
+                    throw new InvalidOperationException("Download was not served over HTTPS");
+                await using var src = await resp.Content.ReadAsStreamAsync();
+                await using var dst = File.Create(file);
+                await src.CopyToAsync(dst);
+            }
+            if (new FileInfo(file).Length < 1_000_000) throw new InvalidOperationException("Downloaded installer looks incomplete");
+            Log.Write($"Running {file}");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, "/SILENT /NORESTART") { UseShellExecute = true });
+            _app.QuitSoon();
+        }
+        finally { _installing = false; }
+    }
+
+    public JsonObject ToJson() => new()
+    {
+        ["enabled"] = _app.Settings.General.CheckForUpdates,
+        ["current"] = CurrentVersion,
+        ["available"] = Available is null ? null : new JsonObject
+        {
+            ["version"] = Available.Version, ["url"] = Available.PageUrl, ["asset"] = Available.AssetName, ["notes"] = Available.Notes,
+        },
+        ["lastChecked"] = LastChecked?.ToString("o"),
+        ["error"] = Error,
+    };
+
+    public void Dispose()
+    {
+        _timer.Dispose();
+        _first.Dispose();
+    }
+}

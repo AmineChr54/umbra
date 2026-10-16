@@ -79,7 +79,8 @@ static void PrintHelp()
                                          change several widget settings at once (scale = size and zoom)
           edit-mode [on|off]             move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
-          general [--refresh 30-600] [--animations on|off] [--startup on|off]
+          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off]
+          check-update                   look for a newer Umbra on GitHub (install it from the tray or Settings > About)
           reset-position <id>            back to the default position
           refresh [id]                   fetch fresh data now
           reload                         re-scan widget folders
