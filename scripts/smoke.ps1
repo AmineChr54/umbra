@@ -82,8 +82,8 @@ try {
     if (Expect $r 'list') {
         $widgets = @($r.Out | ConvertFrom-Json)
         # Nothing is built in any more, so a fresh smoke data folder starts empty; 'new' below creates the widget.
-        Pass "$($widgets.Count) widget(s) listed"
-
+        if ($r.Out.TrimStart().StartsWith('[')) { Pass "list returned an array ($($widgets.Count) widget(s))" }
+        else { Fail "list did not return a JSON array: $($r.Out)" }
     }
 
     Step 'new + list'

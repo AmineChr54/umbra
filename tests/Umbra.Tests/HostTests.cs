@@ -92,42 +92,99 @@ public class RestoreTests
     }
 
     static WidgetManifest Manifest(string id) => WidgetManifest.Parse($$"""{ "id": "{{id}}", "name": "{{id}}" }""");
+    static readonly WidgetManifest[] None = Array.Empty<WidgetManifest>();
+    static JsonArray Catalog(params string[] ids) => new(ids.Select(i => (JsonNode)new JsonObject { ["id"] = i }).ToArray());
 
     [Fact]
-    public void Enabled_widget_without_a_manifest_is_restored()
+    public void Enabled_legacy_widget_without_a_manifest_is_restored()
     {
-        var ids = Restore.ToRestore(With(("sp500", true)), Array.Empty<WidgetManifest>());
-        Assert.Equal(new[] { "sp500" }, ids);
+        Assert.Equal(new[] { "sp500" }, Restore.ToRestore(With(("sp500", true)), None));
     }
 
     [Fact]
-    public void Disabled_installed_and_extra_copies_are_not_restored()
+    public void Only_the_legacy_list_is_restored_never_other_ids_extras_or_disabled()
     {
-        var s = With(("sp500", false), ("clock", true), ("sp500#2", true), ("gone#3", true), ("Bad Id", true));
-        Assert.Empty(Restore.ToRestore(s, new[] { Manifest("clock") }));
+        Assert.Empty(Restore.ToRestore(With(("clock", true), ("sp500#2", true), ("mine", true)), None));
+        Assert.Empty(Restore.ToRestore(With(("sp500", false)), None));
+        Assert.Empty(Restore.ToRestore(With(("sp500", true)), new[] { Manifest("sp500") }));
     }
 
     [Fact]
-    public void Ids_missing_from_the_catalog_are_skipped()
+    public void A_removed_widget_has_no_settings_entry_so_it_is_not_restored_after_restart()
     {
-        var s = With(("sp500", true), ("mine", true));
-        Assert.Equal(new[] { "sp500" }, Restore.ToRestore(s, Array.Empty<WidgetManifest>(), new[] { "sp500", "clock" }));
+        var s = With(("sp500", true), ("sp500#2", true));
+        s.RemoveExtraInstances("sp500"); // what App.ForgetInstances does on remove
+        Assert.Empty(s.Widgets);
+        Assert.Empty(Restore.ToRestore(s, None));
     }
 
     [Fact]
-    public void Restores_are_capped_per_start()
+    public void Nothing_is_restored_once_the_marker_is_set()
     {
-        var s = With(Enumerable.Range(1, 8).Select(i => ($"widget-{i}", true)).ToArray());
-        var ids = Restore.ToRestore(s, Array.Empty<WidgetManifest>());
-        Assert.Equal(Restore.MaxPerStart, ids.Count);
-        Assert.Equal(5, Restore.MaxPerStart);
-        Assert.Equal(new[] { "widget-1", "widget-2" }, Restore.ToRestore(s, Array.Empty<WidgetManifest>(), max: 2));
+        var s = With(("sp500", true));
+        s.General.LegacyRestoreDone = true;
+        Assert.Empty(Restore.ToRestore(s, None));
     }
 
     [Fact]
-    public void Nothing_to_restore_for_empty_settings()
+    public async Task Successful_attempt_installs_and_is_done()
     {
-        Assert.Empty(Restore.ToRestore(new Settings(), Array.Empty<WidgetManifest>()));
+        var s = With(("sp500", true));
+        var installed = new List<string>();
+        var r = await Restore.RunAsync(() => Task.FromResult(Restore.ToRestore(s, installed.Count > 0 ? new[] { Manifest("sp500") } : None)),
+            () => Task.FromResult(Catalog("sp500")), e => { installed.Add(e["id"]!.GetValue<string>()); return Task.CompletedTask; }, _ => { });
+        Assert.True(r.Done);
+        Assert.Equal(new[] { "sp500" }, r.Installed);
+    }
+
+    [Fact]
+    public async Task Offline_attempt_leaves_the_marker_unset()
+    {
+        var s = With(("sp500", true));
+        var r = await Restore.RunAsync(() => Task.FromResult(Restore.ToRestore(s, None)),
+            () => throw new HttpRequestException("offline"), _ => Task.CompletedTask, _ => { });
+        Assert.False(r.Done);
+        Assert.Empty(r.Installed);
+    }
+
+    [Fact]
+    public async Task Failed_install_or_missing_catalog_entry_is_not_done()
+    {
+        var s = With(("sp500", true));
+        var failed = await Restore.RunAsync(() => Task.FromResult(Restore.ToRestore(s, None)),
+            () => Task.FromResult(Catalog("sp500", "sp500")), _ => throw new InvalidOperationException("bad"), _ => { });
+        Assert.False(failed.Done);
+        var missing = await Restore.RunAsync(() => Task.FromResult(Restore.ToRestore(s, None)),
+            () => Task.FromResult(Catalog("clock")), _ => Task.CompletedTask, _ => { });
+        Assert.False(missing.Done);
+    }
+
+    [Fact]
+    public async Task Nothing_pending_is_done_without_touching_the_network()
+    {
+        var r = await Restore.RunAsync(() => Task.FromResult(new List<string>()),
+            () => throw new InvalidOperationException("must not fetch"), _ => Task.CompletedTask, _ => { });
+        Assert.True(r.Done);
+    }
+
+    [Fact]
+    public async Task Widget_removed_while_the_catalog_loads_is_not_installed()
+    {
+        var s = With(("sp500", true));
+        var calls = 0;
+        var r = await Restore.RunAsync(() => Task.FromResult(calls++ == 0 ? Restore.ToRestore(s, None) : new List<string>()),
+            () => Task.FromResult(Catalog("sp500")), _ => throw new InvalidOperationException("must not install"), _ => { });
+        Assert.True(r.Done);
+        Assert.Empty(r.Installed);
+    }
+
+    [Fact]
+    public void Orphan_cleanup_spares_widgets_pending_a_restore()
+    {
+        var ids = new[] { "sp500", "sp500#2", "gone", "clock#2" };
+        var orphans = Restore.Orphans(ids, new[] { "clock" }, new HashSet<string> { "sp500" });
+        Assert.Equal(new[] { "gone" }, orphans);
+        Assert.Equal(new[] { "sp500", "sp500#2", "gone" }, Restore.Orphans(ids, new[] { "clock" }, new HashSet<string>()));
     }
 }
 

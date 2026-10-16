@@ -39,11 +39,16 @@ sealed class App : ApplicationContext
 
         SyncWindows();
 
-        // Widgets that used to be built in are fetched again once per start; otherwise an empty install starts on Browse.
+        // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
-        if (restore.Count > 0) _ = RestoreMissingAsync(restore);
-        var showBrowse = Manifests.Count == 0 && restore.Count == 0 && !background;
-        if (openSettings || showBrowse)
+        if (restore.Count > 0)
+        {
+            _restoring.UnionWith(restore);
+            _ = RestoreMissingAsync();
+        }
+        else if (!Settings.General.LegacyRestoreDone) Settings.General.LegacyRestoreDone = true;
+        var showBrowse = openSettings && Manifests.Count == 0 && restore.Count == 0;
+        if (openSettings)
         {
             var win = ShowSettings();
             if (showBrowse) _ = ShowBrowseAsync(win);
@@ -56,31 +61,30 @@ sealed class App : ApplicationContext
         catch (Exception ex) { Log.Write($"Could not open Browse: {ex.Message}"); }
     }
 
-    /// <summary>
-    /// One attempt per start, never blocks startup: installs enabled widgets whose folder is missing from the
-    /// catalog through <see cref="Community.InstallAsync"/>. Their saved position and options are kept.
-    /// </summary>
-    async Task RestoreMissingAsync(List<string> candidates)
+    /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
+    readonly HashSet<string> _restoring = new();
+
+    /// <summary>One attempt per start, never blocks startup; the marker is only set when it finished, so offline retries next start.</summary>
+    async Task RestoreMissingAsync()
     {
         try
         {
-            var catalog = await Community.FetchCatalogAsync();
-            var entries = catalog.Where(w => w?["id"] is not null).ToDictionary(w => w!["id"]!.GetValue<string>(), w => w!);
-            var ids = Restore.ToRestore(Settings, Manifests, entries.Keys.ToList());
-            Log.Write($"Restoring community widgets that used to be built in: {string.Join(", ", ids)} (asked for {string.Join(", ", candidates)})");
-            var done = new List<string>();
-            foreach (var id in ids)
+            var r = await Restore.RunAsync(
+                () => OnUi(() => Task.FromResult(Restore.ToRestore(Settings, Manifests))),
+                Community.FetchCatalogAsync, Community.InstallAsync, Log.Write);
+            await OnUi(() =>
             {
-                try { await Community.InstallAsync(entries[id]); done.Add(id); }
-                catch (Exception ex) { Log.Write($"Restore of {id} failed: {ex.Message}"); }
-            }
-            if (done.Count == 0) return;
-            await OnUi(() => { ReloadWidgets(); SettingsChangedElsewhere(); return Task.FromResult(0); });
-            Log.Write($"Restored {string.Join(", ", done)}");
+                _restoring.Clear();
+                if (r.Installed.Count > 0) { ReloadWidgets(); SettingsChangedElsewhere(); }
+                if (r.Done) { Settings.General.LegacyRestoreDone = true; SaveSettings(); }
+                return Task.FromResult(0);
+            });
+            Log.Write($"Restore finished: installed [{string.Join(", ", r.Installed)}], done={r.Done}");
         }
         catch (Exception ex)
         {
-            Log.Write($"Restore skipped, catalog not reachable: {ex.Message}");
+            Log.Write($"Restore failed: {ex.Message}");
+            await OnUi(() => { _restoring.Clear(); return Task.FromResult(0); });
         }
     }
 
@@ -234,12 +238,13 @@ sealed class App : ApplicationContext
     /// </summary>
     void ForgetOrphans()
     {
-        foreach (var key in Settings.Widgets.Keys.Where(k => InstanceId.IsExtra(k) && Manifests.All(m => m.Id != InstanceId.WidgetOf(k))).ToList())
+        var known = Manifests.Select(m => m.Id).ToList();
+        foreach (var key in Restore.Orphans(Settings.Widgets.Keys.Where(InstanceId.IsExtra), known, _restoring))
         {
             CloseWidget(key);
             Settings.Widgets.Remove(key);
         }
-        foreach (var inst in WidgetStore.CopyIds().Where(i => Manifests.All(m => m.Id != InstanceId.WidgetOf(i))))
+        foreach (var inst in Restore.Orphans(WidgetStore.CopyIds(), known, _restoring))
             WidgetStore.Delete(inst);
     }
 
