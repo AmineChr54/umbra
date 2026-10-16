@@ -8,7 +8,7 @@
 
 Download `UmbraSetup-<version>.exe` from [Releases](https://github.com/AmineChr54/umbra/releases) and run it. It installs per-user with no admin prompt, and lets you choose whether Umbra starts with Windows. Umbra lives in the tray. Double-click the tray icon, or open Umbra from the Start menu, for **Settings**.
 
-Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and Inno Setup 6). For development: `dotnet run --project src/Umbra`.
+Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and Inno Setup 6). For development: `dotnet build Umbra.slnx`, `dotnet test Umbra.slnx` and `dotnet run --project src/Umbra`.
 
 ## Features
 
@@ -16,6 +16,41 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 - **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
 - **Sandboxed:** a widget can only reach the HTTPS hosts declared in its `widget.json`, and every other request is blocked by the host app.
 - **OLED-first:** opaque true-black windows with DWM-rounded corners, so text renders with full DirectWrite quality.
+- **Scriptable and agent-ready:** the `umbractl` command line and a built-in MCP server let scripts and AI agents configure widgets, take screenshots and build new widgets.
+
+## Settings
+
+| | |
+|---|---|
+| ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
+| **General:** start with Windows, refresh interval, animations. | **My widgets:** turn widgets on or off, edit their options, lock or reset their position. |
+| ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, source code and links to report issues or build a widget. |
+
+## Automate Umbra (CLI, scripts and AI agents)
+
+The installer puts `umbractl` on your PATH. Every command prints JSON and starts Umbra in the background if it isn't running.
+
+```powershell
+umbractl list                         # widgets, their settings, option schema and window bounds
+umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
+umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
+umbractl general --refresh 120        # app-wide settings
+umbractl install clock                # community catalog: catalog, install, remove
+umbractl new my-widget                # scaffold a working widget and show it
+umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, ...)
+umbractl help                         # everything else
+```
+
+**AI agents (MCP).** `umbractl mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server, so an agent can see and drive your widgets:
+
+```powershell
+claude mcp add umbra -- umbractl mcp
+```
+
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget`, `set_general`, `create_widget`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+
+Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 
 ## How it works
 
@@ -36,6 +71,14 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 5. **Smooth curve:** a Catmull-Rom spline converted to cubic Beziers, with control points `C1 = P1 + (P2 - P0)/6` and `C2 = P2 - (P3 - P1)/6`. It passes through every sample with no corners.
 6. **Motion:** the price counts with ease-out-cubic, `1 - (1 - t)^3`, and the line draws in via `stroke-dashoffset`. Both are skipped when the window is covered or animations are off.
 7. **Hover:** a binary search on x finds the nearest sample for the crosshair tooltip.
+
+## Contributing and roadmap
+
+Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr54/projects) tracks what's next, from Backlog to Done, and every new issue lands there automatically.
+
+- **Build a widget:** [CONTRIBUTING.md](CONTRIBUTING.md) and the [widget SDK](docs/widget-sdk.md).
+- **Work on the app:** pick a `good first issue`, and read [CLAUDE.md](CLAUDE.md) for the architecture and security rules (AI coding agents read it too).
+- **Found a bug?** [Open an issue](https://github.com/AmineChr54/umbra/issues/new/choose). For security problems, see [SECURITY.md](SECURITY.md).
 
 ## Rainmeter edition
 

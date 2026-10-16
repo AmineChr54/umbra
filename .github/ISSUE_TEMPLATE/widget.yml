@@ -1,0 +1,29 @@
+name: Widget idea
+description: Suggest a widget for the community catalog (or claim one you're building)
+labels: ["type: widget", "status: triage"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Widget name
+      placeholder: "Weather"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What does it show?
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Data source
+      description: The public API or website it would use (its hostname goes into permissions.hosts).
+      placeholder: "api.open-meteo.com (free, no key)"
+  - type: checkboxes
+    id: building
+    attributes:
+      label: Building it
+      options:
+        - label: I'm building this widget (see CONTRIBUTING.md and docs/widget-sdk.md)

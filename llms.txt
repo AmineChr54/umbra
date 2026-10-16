@@ -1,0 +1,21 @@
+# Umbra
+
+> Open-source Windows desktop widgets: small sandboxed web pages (HTML/CSS/JS in WebView2) pinned to the wallpaper by a C# .NET 10 host. Scriptable through `umbractl` and an MCP server, so AI agents can configure and build widgets.
+
+## Docs
+
+- [README](https://github.com/AmineChr54/umbra/blob/main/README.md): what Umbra is, install, settings, automation (CLI and MCP)
+- [Widget SDK](https://github.com/AmineChr54/umbra/blob/main/docs/widget-sdk.md): complete widget reference (manifest, JavaScript API, sandbox, design rules)
+- [widget.json schema](https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json): JSON Schema for widget manifests
+- [CONTRIBUTING](https://github.com/AmineChr54/umbra/blob/main/CONTRIBUTING.md): publish a widget by pull request
+- [CLAUDE.md](https://github.com/AmineChr54/umbra/blob/main/CLAUDE.md): architecture, commands, security invariants for coding agents
+
+## Examples
+
+- [S&P 500 widget](https://github.com/AmineChr54/umbra/tree/main/widgets/sp500): data fetching, options, SVG chart, animation
+- [Clock widget](https://github.com/AmineChr54/umbra/tree/main/widgets/clock): offline widget with toggle options
+
+## Automation
+
+- [Control protocol](https://github.com/AmineChr54/umbra/blob/main/src/Umbra/Protocol.cs): commands available over the per-user pipe
+- [MCP server](https://github.com/AmineChr54/umbra/blob/main/src/Umbra.Cli/McpServer.cs): tool definitions for `umbractl mcp`

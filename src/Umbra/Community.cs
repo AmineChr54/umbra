@@ -88,15 +88,69 @@ static class Community
             if (manifest?["id"]?.GetValue<string>() != id)
                 throw new InvalidOperationException("widget.json id does not match the catalog");
 
-            var target = Path.Combine(AppPaths.CommunityDir, id);
-            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
-            CopyDirectory(staging, target);
+            Commit(staging, id);
             Log.Write($"Installed community widget {id} {entry["version"]}");
         }
         finally
         {
             try { Directory.Delete(staging, recursive: true); } catch { }
         }
+    }
+
+    static readonly HashSet<string> BinaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".webp", ".gif", ".woff", ".woff2", ".ttf", ".otf",
+    };
+
+    /// <summary>
+    /// Writes a widget authored locally (umbractl create-widget, MCP create_widget) into the community folder.
+    /// Same rules as a catalog install: safe relative paths, allowed file types, 5 MB, widget.json id = folder.
+    /// Text files are passed as text, binary files (images, fonts) as base64.
+    /// </summary>
+    public static string WriteLocalWidget(string id, IReadOnlyDictionary<string, string> files, bool overwrite)
+    {
+        if (!WidgetManifest.IdPattern().IsMatch(id)) throw new InvalidOperationException($"Invalid widget id '{id}': use 2-40 lowercase letters, digits and dashes");
+        if (!files.ContainsKey("widget.json")) throw new InvalidOperationException("files must include widget.json");
+        var target = Path.Combine(AppPaths.CommunityDir, id);
+        if (Directory.Exists(target) && !overwrite) throw new InvalidOperationException($"Widget '{id}' already exists; pass overwrite=true to replace it");
+
+        var manifest = WidgetManifest.Parse(files["widget.json"]);
+        if (manifest.Id != id) throw new InvalidOperationException($"widget.json id is '{manifest.Id}', expected '{id}'");
+        if (!files.ContainsKey(manifest.Entry)) throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing from files");
+
+        var staging = Path.Combine(Path.GetTempPath(), $"umbra-{id}-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(staging);
+        try
+        {
+            long total = 0;
+            foreach (var (rel, content) in files)
+            {
+                if (!IsSafeRelativePath(rel)) throw new InvalidOperationException($"Unsafe or disallowed file path '{rel}'");
+                byte[] data;
+                try { data = BinaryExtensions.Contains(Path.GetExtension(rel)) ? Convert.FromBase64String(content) : System.Text.Encoding.UTF8.GetBytes(content); }
+                catch (FormatException) { throw new InvalidOperationException($"'{rel}' is a binary file and must be base64"); }
+                total += data.Length;
+                if (total > MaxWidgetBytes) throw new InvalidOperationException("Widget is larger than 5 MB");
+                var dest = Path.Combine(staging, rel.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                File.WriteAllBytes(dest, data);
+            }
+            Commit(staging, id);
+            Log.Write($"Wrote local widget {id} ({files.Count} files)");
+            return target;
+        }
+        finally
+        {
+            try { Directory.Delete(staging, recursive: true); } catch { }
+        }
+    }
+
+    /// <summary>Replaces the widget's community folder with a fully validated staging folder.</summary>
+    static void Commit(string staging, string id)
+    {
+        var target = Path.Combine(AppPaths.CommunityDir, id);
+        if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+        CopyDirectory(staging, target);
     }
 
     public static void Remove(string id)
@@ -108,7 +162,7 @@ static class Community
     }
 
     /// <summary>Relative, forward-slash, no "..", no drive letters, allowed file types only.</summary>
-    static bool IsSafeRelativePath(string rel)
+    internal static bool IsSafeRelativePath(string rel)
     {
         if (string.IsNullOrWhiteSpace(rel) || rel.Contains('\\') || rel.Contains(':') || rel.StartsWith('/')) return false;
         if (rel.Split('/').Any(p => p is "" or "." or "..")) return false;

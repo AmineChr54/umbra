@@ -123,6 +123,8 @@
     fetchJson,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),
+    /** Call after the first real frame is drawn; screenshots (umbractl capture) wait for it. */
+    rendered: () => post({ type: "rendered" }),
     tween,
     fmt,
   };

@@ -5,6 +5,7 @@ static class Program
     /// <summary>
     /// Umbra.exe              start (or, if already running, open Settings in the running instance)
     /// Umbra.exe --background start without opening Settings (used by the Start with Windows entry)
+    /// Automation: umbractl / umbractl mcp talk to the running instance over the control pipe (Protocol.cs).
     /// </summary>
     [STAThread]
     static void Main(string[] args)
@@ -36,7 +37,7 @@ static class Program
         var firstRun = !File.Exists(Path.Combine(AppPaths.DataDir, "settings.json"));
         var app = new App(openSettings: !background && firstRun);
         app.SaveSettings();
-        instance.Listen(app.OnSecondInstance);
+        instance.Listen(new Control(app).HandleLineAsync);
         Application.Run(app);
     }
 }

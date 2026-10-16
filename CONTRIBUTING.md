@@ -79,7 +79,16 @@ widgets/
 
 ## 5. Test locally
 
-Copy your folder to `%APPDATA%\Umbra\widgets\my-widget\` and restart Umbra from the tray. It appears in **My widgets**.
+The fastest loop uses `umbractl` (installed with Umbra):
+
+```powershell
+umbractl new my-widget                 # scaffold a working widget and show it on the desktop
+umbractl create .\widgets\my-widget    # (re)load the folder you are editing in the repo
+umbractl capture my-widget preview.png # pixel-exact 2x screenshot, ready to commit as preview.png
+umbractl logs                          # load errors and requests blocked by the sandbox
+```
+
+Or copy your folder to `%APPDATA%\Umbra\widgets\my-widget\` and run `umbractl reload`. It appears in **My widgets**. The complete API reference is [docs/widget-sdk.md](docs/widget-sdk.md), and editors validate `widget.json` against [schemas/widget.schema.json](schemas/widget.schema.json) when it starts with the `$schema` line.
 
 To test the Browse catalog end to end, point Umbra at your local repo:
 
@@ -88,6 +97,10 @@ $env:UMBRA_CATALOG_BASE = "file:///C:/path/to/umbra/widgets"
 node scripts/catalog.mjs          # validates and rebuilds widgets/index.json
 & "$env:LOCALAPPDATA\Programs\Umbra\Umbra.exe"
 ```
+
+## Working on the app itself
+
+Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows. [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.
 
 ## 6. Open a pull request
 

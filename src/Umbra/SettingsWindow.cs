@@ -15,6 +15,10 @@ sealed class SettingsWindow : Form
     readonly WebView2 _view = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Surface };
     JsonArray _catalog = new();
     readonly Dictionary<string, string?> _previewCache = new();
+    readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public static readonly string[] Pages = { "general", "widgets", "browse", "about" };
 
     public SettingsWindow(App app)
     {
@@ -72,6 +76,7 @@ sealed class SettingsWindow : Form
         {
             case "load":
                 SendState();
+                _loaded.TrySetResult();
                 break;
 
             case "save":
@@ -200,6 +205,34 @@ sealed class SettingsWindow : Form
             list.Add(copy);
         }
         Post(new JsonObject { ["type"] = "catalog", ["error"] = error, ["widgets"] = list });
+        _catalogSent.TrySetResult();
+    }
+
+    /// <summary>Re-sends the state after something changed outside this window (tray menu, umbractl).</summary>
+    public void RefreshState()
+    {
+        if (_loaded.Task.IsCompleted) SendState();
+    }
+
+    /// <summary>Switches the panel to one of <see cref="Pages"/> (the page's own show() function).</summary>
+    public async Task ShowPageAsync(string page)
+    {
+        if (!Pages.Contains(page)) throw new ArgumentException($"Unknown Settings page '{page}'. Pages: {string.Join(", ", Pages)}");
+        await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        if (page == "browse") _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        await _view.CoreWebView2.ExecuteScriptAsync($"show('{page}')");
+    }
+
+    /// <summary>A pixel-exact PNG of one Settings page (only this window's web content, never the screen).</summary>
+    public async Task<byte[]> CaptureAsync(string page)
+    {
+        await ShowPageAsync(page);
+        if (page == "browse")
+            await Task.WhenAny(_catalogSent.Task, Task.Delay(TimeSpan.FromSeconds(25)));
+        await Task.Delay(page == "browse" ? 1200 : 500); // images decode, transitions settle
+        using var ms = new MemoryStream();
+        await _view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);
+        return ms.ToArray();
     }
 
     void Post(JsonNode node)

@@ -1,6 +1,6 @@
 ; Umbra installer (Inno Setup 6). Build with ..\build.ps1, which passes AppVersion and PublishDir.
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef PublishDir
   #define PublishDir "..\dist\publish"
@@ -34,6 +34,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 CloseApplications=force
+ChangesEnvironment=yes
 RestartApplications=no
 
 [Languages]
@@ -42,6 +43,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "startup"; Description: "Start Umbra when I sign in to Windows (recommended)"; GroupDescription: "Startup:"
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
+Name: "addtopath"; Description: "Add umbractl (command line and AI agent control) to PATH"; GroupDescription: "Automation:"
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -53,6 +55,8 @@ Name: "{autodesktop}\Umbra"; Filename: "{app}\Umbra.exe"; Tasks: desktopicon
 [Registry]
 ; Same value the in-app "Start with Windows" toggle reads and writes.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Umbra"; ValueData: """{app}\Umbra.exe"" --background"; Tasks: startup; Flags: uninsdeletevalue
+; umbractl on the user PATH (removed again on uninstall, see RemoveFromPath).
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Run]
 Filename: "{app}\Umbra.exe"; Description: "Launch Umbra"; Flags: nowait postinstall skipifsilent
@@ -94,6 +98,8 @@ var
   ResultCode: Integer;
 begin
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM Umbra.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  // An AI agent's MCP session (umbractl mcp) would keep the runtime files locked.
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM umbractl.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -108,8 +114,34 @@ begin
   Result := True;
 end;
 
+function NeedsAddPath(Dir: String): Boolean;
+var
+  Paths: String;
+begin
+  if not RegQueryStringValue(HKCU, 'Environment', 'Path', Paths) then
+    Paths := '';
+  Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(Paths) + ';') = 0;
+end;
+
+procedure RemoveFromPath(Dir: String);
+var
+  Paths: String;
+  P: Integer;
+begin
+  if not RegQueryStringValue(HKCU, 'Environment', 'Path', Paths) then
+    exit;
+  P := Pos(';' + Uppercase(Dir), Uppercase(Paths));
+  if P > 0 then
+  begin
+    Delete(Paths, P, Length(Dir) + 1);
+    RegWriteExpandStringValue(HKCU, 'Environment', 'Path', Paths);
+  end;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
+  if CurUninstallStep = usUninstall then
+    RemoveFromPath(ExpandConstant('{app}'));
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
     if MsgBox('Also remove your Umbra settings and installed community widgets?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
     begin

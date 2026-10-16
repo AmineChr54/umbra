@@ -1,0 +1,209 @@
+using System.Text.Json.Nodes;
+
+namespace Umbra.Tests;
+
+/// <summary>Points AppPaths at a throwaway folder so tests never touch the real %APPDATA%\Umbra.</summary>
+static class TestEnv
+{
+    public static readonly string DataDir = Path.Combine(Path.GetTempPath(), $"umbra-tests-{Guid.NewGuid():N}");
+    static TestEnv() => Environment.SetEnvironmentVariable("UMBRA_DATA_DIR", DataDir);
+    public static void Init() { _ = DataDir; }
+}
+
+public class WidgetManifestTests
+{
+    public WidgetManifestTests() => TestEnv.Init();
+
+    const string Sample = """
+        { "id": "demo", "name": "Demo", "description": "d", "author": "a", "version": "1.2.3",
+          "permissions": { "hosts": ["api.example.com"] },
+          "options": { "zeta": { "label": "Z", "type": "text", "default": "z" },
+                       "alpha": { "label": "A", "type": "toggle", "default": true } } }
+        """;
+
+    [Fact]
+    public void Parse_keeps_option_order_and_defaults()
+    {
+        var m = WidgetManifest.Parse(Sample);
+        Assert.Equal("demo", m.Id);
+        Assert.Equal("index.html", m.Entry);
+        Assert.Equal(new[] { "zeta", "alpha" }, m.OptionOrder);
+        Assert.Equal("z", m.DefaultOptions()["zeta"]!.GetValue<string>());
+        Assert.True(m.DefaultOptions()["alpha"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData("https://api.example.com/v1?q=1", true)]
+    [InlineData("https://API.EXAMPLE.COM/x", true)]
+    [InlineData("http://api.example.com/v1", false)]
+    [InlineData("https://evil.com/?api.example.com", false)]
+    [InlineData("https://api.example.com.evil.com/", false)]
+    [InlineData("not a url", false)]
+    public void AllowsUrl_requires_https_and_a_declared_host(string url, bool allowed) =>
+        Assert.Equal(allowed, WidgetManifest.Parse(Sample).AllowsUrl(url));
+
+    [Fact]
+    public void Discover_skips_invalid_ids_and_broken_json()
+    {
+        var root = Path.Combine(TestEnv.DataDir, "discover-" + Guid.NewGuid().ToString("N"));
+        void Write(string folder, string json) { Directory.CreateDirectory(Path.Combine(root, folder)); File.WriteAllText(Path.Combine(root, folder, "widget.json"), json); }
+        Write("good", """{ "id": "good", "name": "Good" }""");
+        Write("bad-id", """{ "id": "Bad Id!", "name": "Bad" }""");
+        Write("broken", "{ not json");
+        Directory.CreateDirectory(Path.Combine(root, "no-manifest"));
+
+        var found = WidgetManifest.Discover(root, WidgetSource.Community);
+        Assert.Equal(new[] { "good" }, found.Select(m => m.Id));
+        Assert.Equal(WidgetSource.Community, found[0].Source);
+    }
+
+    [Fact]
+    public void Built_in_manifests_in_the_repo_parse()
+    {
+        var widgets = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "widgets"));
+        var found = WidgetManifest.Discover(widgets, WidgetSource.BuiltIn);
+        Assert.Contains(found, m => m.Id == "sp500");
+        Assert.All(found, m => Assert.Equal(m.Id, m.Folder));
+    }
+}
+
+public class CommunityTests
+{
+    public CommunityTests() => TestEnv.Init();
+
+    [Theory]
+    [InlineData("index.html", true)]
+    [InlineData("img/logo.svg", true)]
+    [InlineData("../evil.js", false)]
+    [InlineData("a/../../evil.js", false)]
+    [InlineData("/abs.js", false)]
+    [InlineData("C:/x.js", false)]
+    [InlineData("dir\\file.js", false)]
+    [InlineData("run.exe", false)]
+    [InlineData("script.ps1", false)]
+    [InlineData("", false)]
+    public void IsSafeRelativePath(string path, bool safe) => Assert.Equal(safe, Community.IsSafeRelativePath(path));
+
+    [Theory]
+    [InlineData("1.10.0", "1.2.0", 1)]
+    [InlineData("1.0.0", "1.0.0", 0)]
+    [InlineData("0.9", "1.0.0", -1)]
+    [InlineData("2.0.0-beta", "1.9.9", 1)]
+    public void CompareVersions_is_numeric(string a, string b, int sign) =>
+        Assert.Equal(sign, Math.Sign(Community.CompareVersions(a, b)));
+
+    static Dictionary<string, string> Files(string id) => new()
+    {
+        ["widget.json"] = $$"""{ "id": "{{id}}", "name": "T", "description": "d", "author": "a", "version": "1.0.0" }""",
+        ["index.html"] = "<p>hi</p>",
+        ["img/dot.png"] = Convert.ToBase64String(new byte[] { 0x89, 0x50, 0x4E, 0x47 }),
+    };
+
+    [Fact]
+    public void WriteLocalWidget_writes_text_and_base64_files()
+    {
+        var dir = Community.WriteLocalWidget("local-one", Files("local-one"), overwrite: false);
+        Assert.Equal("<p>hi</p>", File.ReadAllText(Path.Combine(dir, "index.html")));
+        Assert.Equal(new byte[] { 0x89, 0x50, 0x4E, 0x47 }, File.ReadAllBytes(Path.Combine(dir, "img", "dot.png")));
+        Assert.StartsWith(TestEnv.DataDir, dir);
+    }
+
+    [Fact]
+    public void WriteLocalWidget_refuses_overwrite_unless_asked()
+    {
+        Community.WriteLocalWidget("local-two", Files("local-two"), overwrite: false);
+        Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("local-two", Files("local-two"), overwrite: false));
+        Community.WriteLocalWidget("local-two", Files("local-two"), overwrite: true);
+    }
+
+    [Fact]
+    public void WriteLocalWidget_rejects_bad_input()
+    {
+        Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("Bad Id", Files("Bad Id"), false));
+        Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("mismatch", Files("other"), false));
+
+        var traversal = Files("trav");
+        traversal["../outside.js"] = "x";
+        Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("trav", traversal, false));
+        Assert.False(Directory.Exists(Path.Combine(AppPaths.CommunityDir, "trav")));
+
+        var noEntry = Files("no-entry");
+        noEntry.Remove("index.html");
+        Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("no-entry", noEntry, false));
+    }
+}
+
+public class SettingsTests
+{
+    public SettingsTests() => TestEnv.Init();
+
+    [Fact]
+    public void For_fills_defaults_without_overwriting_and_clamps_refresh()
+    {
+        var m = WidgetManifest.Parse("""{ "id": "w1", "options": { "a": { "type": "text", "default": "x" }, "b": { "type": "toggle", "default": false } } }""");
+        var s = new Settings { General = { RefreshSeconds = 5 } };
+        s.Widgets["w1"] = new WidgetSettings { Options = new JsonObject { ["a"] = "kept" } };
+
+        var ws = s.For(m);
+        Assert.Equal("kept", ws.Options["a"]!.GetValue<string>());
+        Assert.False(ws.Options["b"]!.GetValue<bool>());
+        Assert.Equal(30, s.General.RefreshSeconds);
+    }
+
+    [Fact]
+    public void Json_round_trip()
+    {
+        var s = new Settings();
+        s.Widgets["w"] = new WidgetSettings { Enabled = false, X = 10, Y = -5, Locked = true, Options = new JsonObject { ["k"] = 3 } };
+        var back = Settings.FromJson(s.ToJson());
+        var w = back.Widgets["w"];
+        Assert.False(w.Enabled);
+        Assert.Equal((10, -5), (w.X, w.Y));
+        Assert.True(w.Locked);
+        Assert.Equal(3, w.Options["k"]!.GetValue<int>());
+    }
+}
+
+public class ControlTests
+{
+    static readonly WidgetManifest M = WidgetManifest.Parse("""
+        { "id": "w", "options": {
+            "t": { "type": "text", "default": "" }, "n": { "type": "number", "default": 1 },
+            "b": { "type": "toggle", "default": false },
+            "s": { "type": "select", "default": "a", "choices": [ { "value": "a", "label": "A" }, { "value": "b", "label": "B" } ] } } }
+        """);
+
+    [Fact]
+    public void CheckOption_accepts_matching_types()
+    {
+        Assert.Equal("hi", Control.CheckOption(M, "t", JsonValue.Create("hi"))!.GetValue<string>());
+        Assert.Equal(2.5, Control.CheckOption(M, "n", JsonValue.Create(2.5))!.GetValue<double>());
+        Assert.True(Control.CheckOption(M, "b", JsonValue.Create(true))!.GetValue<bool>());
+        Assert.Equal("b", Control.CheckOption(M, "s", JsonValue.Create("b"))!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("t", "5")]
+    [InlineData("n", "\"5\"")]
+    [InlineData("b", "\"true\"")]
+    [InlineData("s", "\"c\"")]
+    [InlineData("missing", "1")]
+    public void CheckOption_rejects_wrong_values(string key, string json) =>
+        Assert.ThrowsAny<Exception>(() => Control.CheckOption(M, key, JsonNode.Parse(json)));
+}
+
+public class ProtocolTests
+{
+    [Fact]
+    public void Envelopes_have_the_documented_shape()
+    {
+        var req = Protocol.Request("configure", new JsonObject { ["id"] = "sp500" });
+        Assert.Equal("""{"cmd":"configure","args":{"id":"sp500"}}""", req.ToJsonString());
+        Assert.True(Protocol.Ok(1)["ok"]!.GetValue<bool>());
+        Assert.Equal("nope", Protocol.Error("nope")["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Every_command_is_documented_once() =>
+        Assert.Equal(Protocol.Commands.Length, Protocol.Commands.Select(c => c.Cmd).Distinct().Count());
+}

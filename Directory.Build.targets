@@ -1,0 +1,8 @@
+<Project>
+  <!-- WebView2 ships a WPF control we do not use; dropping it avoids a WindowsBase version conflict. -->
+  <Target Name="DropWebView2Wpf" AfterTargets="ResolvePackageAssets" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -1,0 +1,30 @@
+name: Feature request
+description: An idea for the Umbra app, the SDK or the automation tools
+labels: ["type: feature", "status: triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Umbra do? Mockups and examples welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: A short checklist that tells us the feature is finished.
+      placeholder: |
+        - [ ] ...
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd like to work on this myself

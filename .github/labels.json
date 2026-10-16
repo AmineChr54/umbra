@@ -1,0 +1,22 @@
+[
+  { "name": "status: triage", "color": "fbca04", "description": "New: needs labels and a board column" },
+  { "name": "status: needs-verification", "color": "d4c5f9", "description": "Needs a human check on real hardware" },
+  { "name": "type: bug", "color": "d73a4a", "description": "Something is broken" },
+  { "name": "type: feature", "color": "a2eeef", "description": "New capability" },
+  { "name": "type: docs", "color": "0075ca", "description": "Documentation" },
+  { "name": "type: widget", "color": "7057ff", "description": "A widget (new or existing)" },
+  { "name": "type: chore", "color": "cfd3d7", "description": "Maintenance, refactoring, tooling" },
+  { "name": "area: host", "color": "1d76db", "description": "C# host app, windows, desktop pinning" },
+  { "name": "area: widgets", "color": "1d76db", "description": "Built-in and catalog widgets" },
+  { "name": "area: settings", "color": "1d76db", "description": "Settings panel" },
+  { "name": "area: sdk", "color": "1d76db", "description": "Widget SDK (umbra.js, umbra.css, manifest)" },
+  { "name": "area: ai", "color": "1d76db", "description": "umbractl, MCP server, agent tooling" },
+  { "name": "area: installer", "color": "1d76db", "description": "Installer, releases, updates" },
+  { "name": "area: ci", "color": "1d76db", "description": "GitHub Actions and automation" },
+  { "name": "area: docs", "color": "1d76db", "description": "README, guides, screenshots" },
+  { "name": "priority: p0", "color": "b60205", "description": "Crash, data loss or security: fix now" },
+  { "name": "priority: p1", "color": "d93f0b", "description": "Important: next release" },
+  { "name": "priority: p2", "color": "c5def5", "description": "Nice to have" },
+  { "name": "good first issue", "color": "7057ff", "description": "Small and self-contained, great for newcomers" },
+  { "name": "help wanted", "color": "008672", "description": "Community contributions welcome" }
+]

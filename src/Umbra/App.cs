@@ -30,8 +30,31 @@ sealed class App : ApplicationContext
         if (openSettings) ShowSettings();
     }
 
-    /// <summary>Called from another thread when a second Umbra.exe is launched.</summary>
-    public void OnSecondInstance(string message) => _ui.Post(_ => ShowSettings(), null);
+    /// <summary>Runs work on the UI thread (pipe requests arrive on worker threads) and returns its result.</summary>
+    public Task<T> OnUi<T>(Func<Task<T>> work)
+    {
+        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ui.Post(async _ =>
+        {
+            try { tcs.SetResult(await work()); }
+            catch (Exception ex) { tcs.SetException(ex); }
+        }, null);
+        return tcs.Task;
+    }
+
+    public WidgetWindow? Window(string id) => _windows.GetValueOrDefault(id);
+
+    public IEnumerable<WidgetWindow> OpenWindows => _windows.Values;
+
+    /// <summary>Tells an open Settings window to re-render after a change made elsewhere (tray, umbractl).</summary>
+    public void SettingsChangedElsewhere()
+    {
+        if (_settingsWindow is { IsDisposed: false }) _settingsWindow.RefreshState();
+        BuildTrayMenu();
+    }
+
+    /// <summary>Exits shortly after the current pipe reply has been written.</summary>
+    public void QuitSoon() => _ = Task.Delay(300).ContinueWith(_ => _ui.Post(_ => ExitThread(), null));
 
     void BuildTrayMenu()
     {
@@ -52,7 +75,7 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>Opens a window for each enabled widget and closes the ones that were disabled.</summary>
-    void SyncWindows()
+    public void SyncWindows()
     {
         foreach (var m in Manifests)
         {
@@ -107,18 +130,21 @@ sealed class App : ApplicationContext
 
     public void SaveSettings() => Settings.Save();
 
-    void ShowSettings()
+    public SettingsWindow ShowSettings()
     {
         if (_settingsWindow is { IsDisposed: false })
         {
             if (_settingsWindow.WindowState == FormWindowState.Minimized) _settingsWindow.WindowState = FormWindowState.Normal;
             _settingsWindow.Activate();
-            return;
+            return _settingsWindow;
         }
         _settingsWindow = new SettingsWindow(this);
         _settingsWindow.Show();
         _settingsWindow.Activate();
+        return _settingsWindow;
     }
+
+    public bool SettingsOpen => _settingsWindow is { IsDisposed: false };
 
     protected override void ExitThreadCore()
     {

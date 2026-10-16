@@ -20,6 +20,7 @@ const HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
 const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".woff", ".woff2", ".ttf", ".otf", ".txt", ".md"]);
 const MAX_BYTES = 5 * 1024 * 1024;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "entry", "preview", "width", "height", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -43,6 +44,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
   try { m = JSON.parse(readFileSync(manifestPath, "utf8")); }
   catch (e) { fail(id, `widget.json is not valid JSON (${e.message})`); continue; }
 
+  // Same rules as schemas/widget.schema.json (kept dependency-free, so CI needs only Node).
+  for (const k of Object.keys(m)) if (!KNOWN_KEYS.has(k)) fail(id, `unknown key "${k}" in widget.json (typo?)`);
   if (!ID.test(id)) fail(id, "folder name must be lowercase letters, digits and dashes (2-40 chars)");
   if (m.id !== id) fail(id, `"id" must equal the folder name ("${id}")`);
   for (const k of ["name", "description", "author", "version"])

@@ -18,6 +18,15 @@ static class Log
         }
         catch { /* logging must never crash the app */ }
     }
+
+    public static string[] Tail(int lines)
+    {
+        lock (Gate)
+        {
+            var path = Path.Combine(AppPaths.DataDir, "umbra.log");
+            return File.Exists(path) ? File.ReadLines(path).TakeLast(Math.Clamp(lines, 1, 2000)).ToArray() : Array.Empty<string>();
+        }
+    }
 }
 
 static class AppPaths
@@ -37,11 +46,14 @@ static class AppPaths
         }
     }
 
+    /// <summary>%APPDATA%\Umbra, or UMBRA_DATA_DIR when set (tests and throwaway dev profiles).</summary>
     public static string DataDir
     {
         get
         {
-            var d = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Umbra");
+            var d = Environment.GetEnvironmentVariable("UMBRA_DATA_DIR") is { Length: > 0 } custom
+                ? custom
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Umbra");
             Directory.CreateDirectory(d);
             return d;
         }

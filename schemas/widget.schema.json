@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "title": "Umbra widget manifest (widget.json)",
+  "description": "Describes one Umbra desktop widget. The same rules are enforced by scripts/catalog.mjs in CI and by the app when it installs a widget.",
+  "type": "object",
+  "required": ["id", "name", "description", "author", "version"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "description": "Lowercase letters, digits and dashes (2-40 chars). Must equal the folder name."
+    },
+    "name": { "type": "string", "minLength": 1, "description": "Shown in Settings and the tray menu." },
+    "description": { "type": "string", "minLength": 1, "description": "One sentence for the Browse page." },
+    "author": { "type": "string", "minLength": 1, "description": "GitHub user name." },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version. Bump it on every change so users see an Update button."
+    },
+    "entry": { "type": "string", "default": "index.html", "description": "The page Umbra loads, relative to the widget folder." },
+    "preview": { "type": "string", "description": "Screenshot shown in Browse (PNG, 2x, black background)." },
+    "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },
+    "height": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 180, "description": "Logical (96-DPI) pixels." },
+    "defaultPosition": {
+      "type": "object",
+      "description": "Offset from the top-left of the primary work area, in logical pixels. Omit to start at the top right.",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "integer" }, "y": { "type": "integer" } },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "hosts": {
+          "type": "array",
+          "description": "Every HTTPS hostname the widget may contact (fetch, images, scripts, umbra.fetchJson). Everything else is blocked. Hostnames only: no scheme, port or path.",
+          "items": { "type": "string", "pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "description": "User settings shown in My widgets, in this order. Values reach the page as umbra.options.<key>.",
+      "additionalProperties": { "$ref": "#/$defs/option" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "option": {
+      "type": "object",
+      "required": ["label", "type"],
+      "properties": {
+        "label": { "type": "string" },
+        "type": { "enum": ["text", "number", "select", "toggle"] },
+        "default": {},
+        "hint": { "type": "string", "description": "Help text under the field." },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "properties": { "value": { "type": "string" }, "label": { "type": "string" } },
+            "additionalProperties": false
+          }
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" }
+      },
+      "if": { "properties": { "type": { "const": "select" } } },
+      "then": { "required": ["choices"] }
+    }
+  }
+}

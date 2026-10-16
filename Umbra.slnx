@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Umbra.Cli/Umbra.Cli.csproj" />
+    <Project Path="src/Umbra/Umbra.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Umbra.Tests/Umbra.Tests.csproj" />
+  </Folder>
+</Solution>

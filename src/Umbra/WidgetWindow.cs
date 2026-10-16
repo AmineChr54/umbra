@@ -11,6 +11,9 @@ sealed class WidgetWindow : Form
     readonly App _app;
     readonly WebView2 _view = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.Black };
     bool _ready;
+    readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    readonly TaskCompletionSource _renderedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    DateTime _renderedAt;
 
     public WidgetManifest Manifest { get; }
 
@@ -133,6 +136,7 @@ sealed class WidgetWindow : Form
             case "ready":
                 _ready = true;
                 SendInit();
+                _readyTcs.TrySetResult();
                 break;
 
 
@@ -148,6 +152,8 @@ sealed class WidgetWindow : Form
                 break;
 
             case "rendered":
+                if (!_renderedTcs.Task.IsCompleted) _renderedAt = DateTime.UtcNow;
+                _renderedTcs.TrySetResult();
                 await CaptureIfRequested();
                 break;
 
@@ -164,16 +170,30 @@ sealed class WidgetWindow : Form
 
     /// <summary>
     /// Dev hook: with UMBRA_CAPTURE_DIR set, each widget saves a pixel-exact PNG of itself
-    /// (used for README screenshots and catalog preview.png files).
+    /// (used for README screenshots and catalog preview.png files). umbractl capture does the same on demand.
     /// </summary>
     async Task CaptureIfRequested()
     {
         var dir = System.Environment.GetEnvironmentVariable("UMBRA_CAPTURE_DIR");
         if (string.IsNullOrEmpty(dir) || _view.CoreWebView2 is null) return;
-        await Task.Delay(2500); // let draw-in animations finish
+        var png = await CaptureAsync();
         Directory.CreateDirectory(dir);
-        await using var fs = File.Create(Path.Combine(dir, $"{Manifest.Id}.png"));
-        await _view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, fs);
+        await File.WriteAllBytesAsync(Path.Combine(dir, $"{Manifest.Id}.png"), png);
+    }
+
+    /// <summary>
+    /// PNG of this widget's web content. Waits for the page to be ready and for its first "rendered"
+    /// signal (widgets that never send one get a few seconds), then lets draw-in animations finish.
+    /// </summary>
+    public async Task<byte[]> CaptureAsync()
+    {
+        await _readyTcs.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        await Task.WhenAny(_renderedTcs.Task, Task.Delay(3000));
+        var settle = _renderedTcs.Task.IsCompleted ? TimeSpan.FromMilliseconds(2500) - (DateTime.UtcNow - _renderedAt) : TimeSpan.Zero;
+        if (settle > TimeSpan.Zero) await Task.Delay(settle);
+        using var ms = new MemoryStream();
+        await _view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);
+        return ms.ToArray();
     }
 
     async Task HandleFetch(JsonNode msg)

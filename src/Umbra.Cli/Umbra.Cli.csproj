@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- umbractl.exe: command line + MCP server for a running Umbra (talks over the control pipe). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>umbractl</AssemblyName>
+    <RootNamespace>Umbra.Cli</RootNamespace>
+    <ApplicationIcon>..\..\assets\umbra.ico</ApplicationIcon>
+    <Description>Command line and MCP server for Umbra.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbra.Tests" />
+    <Compile Include="..\Umbra\Protocol.cs" Link="Protocol.cs" />
+    <!-- Agents ask for these through the MCP widget_authoring_guide tool, so they ship next to the exe. -->
+    <Content Include="..\..\docs\widget-sdk.md" Link="docs\widget-sdk.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\schemas\widget.schema.json" Link="schemas\widget.schema.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

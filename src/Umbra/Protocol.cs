@@ -1,0 +1,57 @@
+using System.IO.Pipes;
+using System.Text.Json.Nodes;
+
+namespace Umbra;
+
+/// <summary>
+/// The control protocol between a running Umbra and its clients (umbractl, the MCP server, tests).
+/// One request per connection over a per-user named pipe, one JSON object per line:
+///   request  {"cmd":"list","args":{...}}
+///   response {"ok":true,"result":...}  or  {"ok":false,"error":"..."}
+/// The legacy plain-text line "settings" (sent by a second Umbra.exe launch) is still understood.
+/// Shared source: linked into Umbra.exe and umbractl.exe.
+/// </summary>
+public static class Protocol
+{
+    public static string PipeName => $"Umbra-{Environment.UserName}";
+
+    /// <summary>Every command the host understands, with a one-line description (also used by umbractl help).</summary>
+    public static readonly (string Cmd, string Help)[] Commands =
+    {
+        ("status", "Version, paths, open widgets and general settings"),
+        ("list", "Every installed widget with its settings, option schema and window bounds"),
+        ("configure", "Change one widget: {id, enabled?, locked?, x?, y?, options?{key:value}}"),
+        ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?}"),
+        ("reset-position", "Move a widget back to its default spot: {id}"),
+        ("refresh", "Make widgets fetch fresh data now: {id?}"),
+        ("reload", "Re-scan widget folders (after editing files on disk)"),
+        ("catalog", "The community catalog from GitHub, with installed/update flags"),
+        ("install", "Install or update a community widget from the catalog: {id}"),
+        ("remove", "Uninstall a community widget: {id}"),
+        ("create-widget", "Write a local widget: {id, files{path:content}, overwrite?}; binary files as base64"),
+        ("capture", "PNG of a widget or a Settings page: {target: <id>|settings:<general|widgets|browse|about>, path?}"),
+        ("open-settings", "Open the Settings window: {page?}"),
+        ("logs", "Last lines of umbra.log: {lines?}"),
+        ("quit", "Exit Umbra"),
+    };
+
+    public static JsonObject Request(string cmd, JsonObject? args = null) =>
+        new() { ["cmd"] = cmd, ["args"] = args ?? new JsonObject() };
+
+    public static JsonObject Ok(JsonNode? result) => new() { ["ok"] = true, ["result"] = result };
+
+    public static JsonObject Error(string message) => new() { ["ok"] = false, ["error"] = message };
+
+    /// <summary>Client side: send one request to the running Umbra and wait for its reply.</summary>
+    public static async Task<JsonObject> SendAsync(JsonObject request, int connectTimeoutMs = 1500, CancellationToken ct = default)
+    {
+        using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+        await pipe.ConnectAsync(connectTimeoutMs, ct);
+        using var reader = new StreamReader(pipe);
+        using var writer = new StreamWriter(pipe) { AutoFlush = true };
+        await writer.WriteLineAsync(request.ToJsonString().AsMemory(), ct);
+        var line = await reader.ReadLineAsync(ct) ?? throw new IOException("Umbra closed the connection without replying");
+        return JsonNode.Parse(line) as JsonObject ?? throw new IOException("Umbra sent an invalid reply");
+    }
+}

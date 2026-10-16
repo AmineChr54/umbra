@@ -1,0 +1,6 @@
+# Review is requested from these owners automatically.
+*                       @AmineChr54
+# Security-sensitive: the sandbox, installs, the control pipe.
+/src/Umbra/WebHost.cs   @AmineChr54
+/src/Umbra/Community.cs @AmineChr54
+/src/Umbra/Control.cs   @AmineChr54

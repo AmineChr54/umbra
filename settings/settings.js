@@ -118,6 +118,7 @@ function field(wid, key, spec, value) {
     input = Object.assign(document.createElement("input"), {
       className: "input", id, type: spec.type === "number" ? "number" : "text", value: value ?? "", spellcheck: false,
     });
+    for (const k of ["min", "max", "step"]) if (spec.type === "number" && spec[k] !== undefined) input[k] = spec[k];
     input.addEventListener("input", () => set(spec.type === "number" ? Number(input.value) : input.value));
   }
   wrap.append(input);

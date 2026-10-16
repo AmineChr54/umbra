@@ -3,12 +3,12 @@ using System.IO.Pipes;
 namespace Umbra;
 
 /// <summary>
-/// One Umbra per user session. A second launch (e.g. from the Start menu) sends "settings"
-/// over a named pipe to the running instance, which then opens its Settings window.
+/// One Umbra per user session. The first instance serves the control pipe (see <see cref="Protocol"/>):
+/// a second launch sends "settings" so the running copy opens its Settings window, and umbractl,
+/// the MCP server and tests send JSON commands. The pipe only accepts the current Windows user.
 /// </summary>
 sealed class SingleInstance : IDisposable
 {
-    static readonly string Id = $"Umbra-{Environment.UserName}";
     readonly Mutex _mutex;
     readonly CancellationTokenSource _cts = new();
 
@@ -16,7 +16,7 @@ sealed class SingleInstance : IDisposable
 
     public SingleInstance()
     {
-        _mutex = new Mutex(true, $@"Local\{Id}", out var created);
+        _mutex = new Mutex(true, $@"Local\{Protocol.PipeName}", out var created);
         IsFirst = created;
     }
 
@@ -24,7 +24,7 @@ sealed class SingleInstance : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", Id, PipeDirection.Out);
+            using var client = new NamedPipeClientStream(".", Protocol.PipeName, PipeDirection.Out);
             client.Connect(2000);
             using var w = new StreamWriter(client);
             w.WriteLine(message);
@@ -35,24 +35,49 @@ sealed class SingleInstance : IDisposable
         }
     }
 
-    public void Listen(Action<string> onMessage)
+    /// <param name="onLine">Handles one request line; a non-null result is written back as the reply.</param>
+    public void Listen(Func<string, Task<string?>> onLine)
     {
         _ = Task.Run(async () =>
         {
             while (!_cts.IsCancellationRequested)
             {
+                NamedPipeServerStream? server = null;
                 try
                 {
-                    using var server = new NamedPipeServerStream(Id, PipeDirection.In, 1);
+                    server = new NamedPipeServerStream(Protocol.PipeName, PipeDirection.InOut,
+                        NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte,
+                        PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                     await server.WaitForConnectionAsync(_cts.Token);
-                    using var r = new StreamReader(server);
-                    var line = await r.ReadLineAsync(_cts.Token);
-                    if (!string.IsNullOrEmpty(line)) onMessage(line);
+                    // Serve each client on its own task so a slow command (capture, install) never blocks the next one.
+                    _ = Serve(server, onLine);
                 }
-                catch (OperationCanceledException) { break; }
-                catch (Exception ex) { Log.Write($"Pipe error: {ex.Message}"); await Task.Delay(500); }
+                catch (OperationCanceledException) { server?.Dispose(); break; }
+                catch (Exception ex) { server?.Dispose(); Log.Write($"Pipe error: {ex.Message}"); await Task.Delay(500); }
             }
         });
+    }
+
+    async Task Serve(NamedPipeServerStream server, Func<string, Task<string?>> onLine)
+    {
+        await using (server)
+        {
+            try
+            {
+                using var reader = new StreamReader(server, leaveOpen: true);
+                var line = await reader.ReadLineAsync(_cts.Token);
+                if (string.IsNullOrEmpty(line)) return;
+                var reply = await onLine(line);
+                if (reply is null) return;
+                await using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
+                await writer.WriteLineAsync(reply.AsMemory(), _cts.Token);
+                server.WaitForPipeDrain();
+            }
+            catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
+            {
+                // Client went away; nothing to do.
+            }
+        }
     }
 
     public void Dispose()

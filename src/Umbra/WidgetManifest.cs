@@ -50,7 +50,18 @@ public sealed partial class WidgetManifest
         return builtIn.Concat(community).ToList();
     }
 
-    static List<WidgetManifest> Discover(string root, WidgetSource source)
+    /// <summary>Parses widget.json text. Throws on invalid JSON; does not check the id.</summary>
+    public static WidgetManifest Parse(string text)
+    {
+        var m = JsonSerializer.Deserialize<WidgetManifest>(text, Json) ?? throw new JsonException("widget.json is empty");
+        // Settings shows options in the order they are written in widget.json.
+        using (var doc = JsonDocument.Parse(text))
+            if (doc.RootElement.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Object)
+                m.OptionOrder = opts.EnumerateObject().Select(p => p.Name).ToList();
+        return m;
+    }
+
+    internal static List<WidgetManifest> Discover(string root, WidgetSource source)
     {
         var list = new List<WidgetManifest>();
         if (!Directory.Exists(root)) return list;
@@ -60,13 +71,8 @@ public sealed partial class WidgetManifest
             if (!File.Exists(file)) continue;
             try
             {
-                var text = File.ReadAllText(file);
-                var m = JsonSerializer.Deserialize<WidgetManifest>(text, Json);
-                if (m is null || !IdPattern().IsMatch(m.Id)) continue;
-                // Settings shows options in the order they are written in widget.json.
-                using (var doc = JsonDocument.Parse(text))
-                    if (doc.RootElement.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Object)
-                        m.OptionOrder = opts.EnumerateObject().Select(p => p.Name).ToList();
+                var m = Parse(File.ReadAllText(file));
+                if (!IdPattern().IsMatch(m.Id)) continue;
                 m.Folder = Path.GetFileName(dir);
                 m.Source = source;
                 list.Add(m);

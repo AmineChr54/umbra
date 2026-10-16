@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "sp500",
   "name": "S&P 500",
   "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
