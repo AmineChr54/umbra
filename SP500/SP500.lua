@@ -54,6 +54,15 @@ function Update()
     local v = tonumber(tok)
     if v then vals[#vals + 1] = v end
   end
+  -- denoise 5-minute ticks with a 3-point moving average (first and last stay exact)
+  do
+    local sm = {}
+    for i = 1, #vals do
+      if i == 1 or i == #vals then sm[i] = vals[i]
+      else sm[i] = (vals[i - 1] + vals[i] + vals[i + 1]) / 3 end
+    end
+    vals = sm
+  end
   local n = #vals
   if n >= 2 then
     local x0, w, yTop, h = 22, 276, 112, 44
