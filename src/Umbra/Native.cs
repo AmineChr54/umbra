@@ -45,6 +45,9 @@ static partial class Native
         public uint flags;
     }
 
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int RegisterWindowMessage(string name);
+
     [LibraryImport("user32.dll", EntryPoint = "FindWindowW", StringMarshalling = StringMarshalling.Utf16)]
     public static partial IntPtr FindWindow(string? className, string? windowName);
 

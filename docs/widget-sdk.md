@@ -94,7 +94,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
 | `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
-| `umbra.widget` | `{ id, name }` |
+| `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
@@ -109,6 +109,11 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"` |
 
 Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.fetchJson` always works.
+
+**Several copies.** The user can run a widget more than once (**My widgets > Add another copy**, or `umbractl add-instance`), for
+example two stock tickers. Each copy is a separate window with its own options, position, size and `umbra.store` data, so a widget
+needs no extra code: read `umbra.options` and `umbra.store` as usual. Don't use `localStorage` for per-widget state, since
+copies share it. Use `umbra.widget.instance` only if you need to tell copies apart.
 
 **Saving data.** Options are for settings the user picks in **My widgets**. Anything the widget itself creates
 (a task list, events, "already seen" ids) goes in `umbra.store`. It is private to the widget, survives restarts

@@ -83,6 +83,7 @@ function renderGeneral() {
   const g = state.settings.general;
   $("#startup").checked = state.startup;
   $("#animations").checked = g.animations;
+  $("#checkUpdates").checked = g.checkForUpdates !== false;
   $$("#interval button").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === g.refreshSeconds));
 }
 $("#startup").addEventListener("change", (e) => {
@@ -90,6 +91,7 @@ $("#startup").addEventListener("change", (e) => {
   toast(e.target.checked ? "Umbra will start with Windows" : "Umbra won't start with Windows");
 });
 $("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
+$("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);
@@ -97,6 +99,27 @@ $$("#interval button").forEach((b) =>
     save(true);
   })
 );
+
+// ---------- Updates (About) ----------
+function renderUpdate() {
+  const u = state.update || {};
+  const a = u.available;
+  $("#updateText").textContent = a ? `Umbra v${a.version} is available.`
+    : u.error ? "Couldn't check for updates right now."
+    : u.lastChecked ? "You're up to date."
+    : u.enabled === false ? "Update checks are turned off in General." : "Checking for updates...";
+  $("#update").classList.toggle("has-update", !!a);
+  $("#updateInstall").hidden = !a;
+  $("#updateInstall").disabled = false;
+  $("#updateCheck").disabled = false;
+  $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
+}
+$("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
+$("#updateInstall").addEventListener("click", () => {
+  $("#updateInstall").disabled = true;
+  $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
+  post({ type: "installUpdate" });
+});
 
 // ---------- My widgets ----------
 function field(wid, key, spec, value) {
@@ -147,7 +170,7 @@ function renderInstalled() {
     const ws = state.settings.widgets[w.id];
     const card = $("#tpl-installed").content.firstElementChild.cloneNode(true);
     thumb($(".thumb", card), w);
-    $(".wname", card).textContent = w.name;
+    $(".wname", card).textContent = w.name; // "Name (2)" for extra copies
     const badge = $(".badge", card);
     badge.textContent = w.source === "builtin" ? "Built-in" : "Community";
     badge.classList.add(w.source);
@@ -193,9 +216,18 @@ function renderInstalled() {
     locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
 
     $(".reset", card).addEventListener("click", () => { post({ type: "resetPosition", id: w.id }); toast("Position reset"); });
+    // Copies: the first copy can add more (each with its own options, position and data), extra copies can be removed.
+    const extra = w.instance > 1;
+    const copy = $(".copy", card);
+    const removeCopy = $(".removecopy", card);
+    if (extra) copy.remove();
+    else copy.addEventListener("click", () => { post({ type: "addInstance", id: w.widget }); toast(`Added another ${w.name}`); });
+    if (!extra) removeCopy.remove();
+    else removeCopy.addEventListener("click", () => { post({ type: "removeInstance", id: w.id }); toast(`${w.name} removed`); });
+    card.dataset.instance = w.id;
     const remove = $(".remove", card);
-    if (w.source === "builtin") remove.remove();
-    else remove.addEventListener("click", () => job(w.id, "remove", remove));
+    if (w.source === "builtin" || extra) remove.remove();
+    else remove.addEventListener("click", () => job(w.widget, "remove", remove));
 
     icons(card);
     list.append(card);
@@ -374,9 +406,14 @@ bridge && bridge.addEventListener("message", (e) => {
       applyTheme(m.themeCss);
       renderGeneral();
       if (themes) renderThemes();
+      renderUpdate();
       $("#editMode").checked = !!m.editMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
+      break;
+    case "updateError":
+      toast(`Update failed: ${m.error}`, true);
+      renderUpdate();
       break;
     case "catalog":
       catalogError = m.error;

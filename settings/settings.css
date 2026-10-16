@@ -358,3 +358,8 @@ input { font: inherit; color: inherit; }
 .sw-line { width: 78%; background: var(--t-text2, #6b707b); }
 .sw-line.short { width: 52%; }
 .sw-dot { position: absolute; right: 14px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--t-accent, #8b93ff); }
+/* Update notice (About) */
+.update { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+.update-text { font-size: 13px; color: var(--text-2); }
+.update.has-update .update-text { color: var(--text); font-weight: 600; }
+.nav button.dot::after { content: ""; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #8b93ff; }

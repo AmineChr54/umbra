@@ -72,15 +72,18 @@ static void PrintHelp()
 
           status                         version, paths, open widgets
           list                           widgets with settings, option schema and bounds
-          enable|disable <id>            show or hide a widget
+          enable|disable <id>            show or hide a widget (<id> is a widget id or a copy like sp500#2)
           lock|unlock <id>               lock or unlock moving, resizing and zooming
           move <id> <x> <y>              position in physical pixels
           configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--locked on|off] [--x N] [--y N]
                                          change several widget settings at once (scale = size and zoom)
           edit-mode [on|off]             move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
-          general [--refresh 30-600] [--animations on|off] [--startup on|off]
+          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off]
+          check-update                   look for a newer Umbra on GitHub (install it from the tray or Settings > About)
           reset-position <id>            back to the default position
+          add-instance <id>              run another copy of a widget (own options, position, data); ids look like sp500#2
+          remove-instance <id#N>         remove an extra copy and its data
           refresh [id]                   fetch fresh data now
           reload                         re-scan widget folders
           catalog                        community widgets on GitHub

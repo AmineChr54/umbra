@@ -34,6 +34,8 @@ static class CommandLine
             }
             case "theme":
                 return ("theme", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
+            case "check-update" or "update":
+                return ("check-update", new JsonObject());
             case "edit-mode":
                 return ("edit-mode", a.Length > 1 ? O(("on", OnOff(a[1]))) : new JsonObject());
             case "set":
@@ -49,9 +51,10 @@ static class CommandLine
                 if (Flag(a, "--refresh") is string r) o["refreshSeconds"] = int.Parse(r);
                 if (Flag(a, "--animations") is string an) o["animations"] = OnOff(an);
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
+                if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove" or "install-theme" or "remove-theme":
+            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "refresh":
                 return ("refresh", a.Length > 1 ? O(("id", a[1])) : new JsonObject());

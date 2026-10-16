@@ -135,3 +135,13 @@ Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/proje
 Only add your `widgets/<id>/` folder. You don't need to edit `widgets/index.json`, because CI validates your widget on the PR and regenerates the catalog when it's merged. Validation checks the id, the required fields, the semantic version, the hostnames, the option types, the file types and the 5 MB limit.
 
 Reviewers will check that the widget only uses the hosts it declares and looks at home next to the others.
+
+## Releasing: signing and winget (maintainers)
+
+`release.yml` builds `UmbraSetup-<version>.exe`, signs it with `signtool` **only if** the repo secrets `SIGN_CERT_BASE64` (a code-signing `.pfx`, base64) and `SIGN_CERT_PASSWORD` exist, and otherwise publishes it unsigned. It also fills the manifests in [`winget/`](winget) with the version and SHA256 (`scripts/winget.ps1`) and attaches them to the workflow run as `winget-manifests-<version>`.
+
+One-time setup (needs a person, not CI):
+
+1. **Certificate.** Get a code-signing certificate (an OV/EV certificate from a CA, or Azure Trusted Signing / SignPath if you qualify) and export it as a `.pfx`. Encode it with `[Convert]::ToBase64String([IO.File]::ReadAllBytes("cert.pfx"))` and add the repo secrets `SIGN_CERT_BASE64` and `SIGN_CERT_PASSWORD`. The next tagged release is signed; SmartScreen reputation still builds up over time.
+2. **First winget submission.** After a release, download the `winget-manifests-<version>` artifact (or run `powershell -File scripts/winget.ps1 -Installer dist/UmbraSetup-<version>.exe`), then either run `wingetcreate submit <folder>` or fork [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) and copy the three files to `manifests/a/AmineChr54/Umbra/<version>/`. Validate with `winget validate <folder>` and `winget install --manifest <folder>` in a clean VM, then open the pull request. Moderators must approve the first one.
+3. **Later releases.** Repeat step 2 for each version (or add a `wingetcreate update AmineChr54.Umbra` / [winget-releaser](https://github.com/vedantmgoyal9/winget-releaser) job once the package exists, using a PAT secret).

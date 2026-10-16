@@ -6,7 +6,7 @@
   const post = (msg) => bridge && bridge.postMessage(msg);
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
-  let widget = { id: "", name: "" };
+  let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
   const handlers = { settings: [], refresh: [], store: [] };
   const pending = new Map();
   let nextId = 1;

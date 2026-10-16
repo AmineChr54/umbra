@@ -21,7 +21,19 @@ sealed class WidgetWindow : Form
 
     public WidgetManifest Manifest { get; }
 
-    WidgetSettings Ws => _app.Settings.For(Manifest);
+    /// <summary>Which copy of the widget this is: the widget id, or "id#2" and up for extra copies.</summary>
+    public string Instance { get; }
+
+    readonly WidgetSettings _detached = new();
+
+    /// <summary>
+    /// This copy's settings. Never creates an entry: once the copy was removed, a closing window or a late
+    /// message gets throwaway defaults instead of resurrecting it in settings.json.
+    /// </summary>
+    WidgetSettings Ws => _app.Settings.Widgets.TryGetValue(Instance, out var ws) ? ws : _detached;
+
+    /// <summary>False once the window is disposed or its copy was removed: nothing may be written for it.</summary>
+    bool Alive => !IsDisposed && _app.Settings.Widgets.ContainsKey(Instance);
 
     /// <summary>Changing the widget by hand (corner handle, Ctrl+wheel) needs edit mode and an unlocked widget.</summary>
     bool CanArrange => _app.EditMode && !Ws.Locked;
@@ -34,12 +46,13 @@ sealed class WidgetWindow : Form
     /// <summary>The scale a window width stands for at the current DPI.</summary>
     double ScaleForWidth(int width) => width / (Manifest.Width * DeviceDpi / 96.0);
 
-    public WidgetWindow(App app, WidgetManifest manifest)
+    public WidgetWindow(App app, WidgetManifest manifest, string instance)
     {
         _app = app;
         Manifest = manifest;
+        Instance = instance;
 
-        Text = $"Umbra - {manifest.Name}";
+        Text = $"Umbra - {App.InstanceLabel(manifest, instance)}";
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
@@ -69,8 +82,16 @@ sealed class WidgetWindow : Form
         DesktopPin.Apply(Handle);
     }
 
+    /// <summary>WinForms re-parents a window that is shown with ShowInTaskbar off, which drops the Progman owner set in OnHandleCreated.</summary>
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (Visible) DesktopPin.Apply(Handle);
+    }
+
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == DesktopPin.TaskbarCreated) DesktopPin.Apply(Handle); // Explorer restarted: Progman is a new window
         switch (m.Msg)
         {
             case Native.WM_WINDOWPOSCHANGING:
@@ -138,7 +159,7 @@ sealed class WidgetWindow : Form
         }
         catch (Exception ex)
         {
-            Log.Write($"[{Manifest.Id}] WebView2 init failed: {ex}");
+            Log.Write($"[{Instance}] WebView2 init failed: {ex}");
         }
     }
 
@@ -342,6 +363,7 @@ sealed class WidgetWindow : Form
     {
         var id = msg["id"]?.GetValue<int>() ?? 0;
         var reply = new JsonObject { ["type"] = "storeResult", ["id"] = id };
+        if (!Alive) return; // removed copy: don't recreate its data file
         try
         {
             var op = msg["op"]?.GetValue<string>();
@@ -349,17 +371,17 @@ sealed class WidgetWindow : Form
             switch (op)
             {
                 case "get":
-                    var (found, value) = WidgetStore.Get(Manifest.Id, key);
+                    var (found, value) = WidgetStore.Get(Instance, key);
                     reply["data"] = new JsonObject { ["found"] = found, ["value"] = value };
                     break;
                 case "set":
-                    WidgetStore.Set(Manifest.Id, key, msg["value"]);
+                    WidgetStore.Set(Instance, key, msg["value"]);
                     break;
                 case "remove":
-                    WidgetStore.Remove(Manifest.Id, key);
+                    WidgetStore.Remove(Instance, key);
                     break;
                 case "keys":
-                    reply["data"] = new JsonArray(WidgetStore.Keys(Manifest.Id).Select(k => (JsonNode?)k).ToArray());
+                    reply["data"] = new JsonArray(WidgetStore.Keys(Instance).Select(k => (JsonNode?)k).ToArray());
                     break;
                 default:
                     throw new InvalidOperationException($"Unknown store operation '{op}'");
@@ -370,7 +392,7 @@ sealed class WidgetWindow : Form
         {
             reply["ok"] = false;
             reply["error"] = ex.Message;
-            Log.Write($"[{Manifest.Id}] store {msg["op"]} failed: {ex.Message}");
+            Log.Write($"[{Instance}] store {msg["op"]} failed: {ex.Message}");
         }
         Post(reply);
     }
@@ -391,7 +413,7 @@ sealed class WidgetWindow : Form
         if (string.IsNullOrEmpty(dir) || _view.CoreWebView2 is null) return;
         var png = await CaptureAsync();
         Directory.CreateDirectory(dir);
-        await File.WriteAllBytesAsync(Path.Combine(dir, $"{Manifest.Id}.png"), png);
+        await File.WriteAllBytesAsync(Path.Combine(dir, $"{InstanceId.FileName(Instance)}.png"), png);
     }
 
     /// <summary>
@@ -419,7 +441,7 @@ sealed class WidgetWindow : Form
         {
             reply["ok"] = false;
             reply["error"] = "Host not allowed by widget.json permissions";
-            Log.Write($"[{Manifest.Id}] blocked fetch: {url}");
+            Log.Write($"[{Instance}] blocked fetch: {url}");
         }
         else
         {
@@ -440,7 +462,7 @@ sealed class WidgetWindow : Form
     void SendInit() => Post(new JsonObject
     {
         ["type"] = "init",
-        ["widget"] = new JsonObject { ["id"] = Manifest.Id, ["name"] = Manifest.Name },
+        ["widget"] = new JsonObject { ["id"] = Manifest.Id, ["instance"] = Instance, ["name"] = Manifest.Name },
         ["settings"] = SettingsPayload(),
     });
 

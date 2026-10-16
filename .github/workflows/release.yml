@@ -49,6 +49,39 @@ jobs:
         shell: pwsh
         run: ./build.ps1
 
+      # Code signing needs a certificate we may not have yet: skip cleanly unless both secrets are set.
+      - name: Check signing secrets
+        shell: pwsh
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          $ok = $env:SIGN_CERT_BASE64 -and $env:SIGN_CERT_PASSWORD
+          "SIGN=$($ok.ToString().ToLower())" >> $env:GITHUB_ENV
+          if (-not $ok) { Write-Host "SIGN_CERT_BASE64 / SIGN_CERT_PASSWORD not set: publishing an unsigned installer" }
+
+      - name: Sign installer
+        if: env.SIGN == 'true'
+        shell: pwsh
+        env:
+          SIGN_CERT_BASE64: ${{ secrets.SIGN_CERT_BASE64 }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe not found" }
+          try {
+            & $signtool.FullName sign /fd SHA256 /f $pfx /p $env:SIGN_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 /d "Umbra" "dist/UmbraSetup-$env:VERSION.exe"
+            if ($LASTEXITCODE) { throw "signtool sign failed" }
+            & $signtool.FullName verify /pa "dist/UmbraSetup-$env:VERSION.exe"
+            if ($LASTEXITCODE) { throw "signature did not verify" }
+          } finally { Remove-Item $pfx -Force -ErrorAction SilentlyContinue }
+
+      - name: Fill winget manifests
+        shell: pwsh
+        run: ./scripts/winget.ps1 -Installer "dist/UmbraSetup-$env:VERSION.exe" -Version $env:VERSION -Out dist/winget
+
       - name: Publish release
         shell: pwsh
         run: |
@@ -56,3 +89,9 @@ jobs:
           gh release view $env:TAG *> $null
           if ($LASTEXITCODE -eq 0) { gh release upload $env:TAG $setup --clobber }
           else { gh release create $env:TAG $setup --title "Umbra $env:VERSION" --generate-notes }
+
+      # Attach the filled manifests to the run; submit them to microsoft/winget-pkgs (see CONTRIBUTING.md).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests-${{ env.VERSION }}
+          path: dist/winget/${{ env.VERSION }}

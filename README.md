@@ -12,7 +12,7 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 
 ## Features
 
-- **Settings panel:** start with Windows, refresh interval and animations. Each widget can be turned on or off, configured, resized (50-300 %), locked or reset to its default position. Changes apply live.
+- **Settings panel:** start with Windows, refresh interval and animations. Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked or reset to its default position. Changes apply live.
 - **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
 - **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
 - **Themes:** the **Themes** page installs community themes (colors and corner radius for every widget) and switches between them live. Themes are plain data with no code, and "Umbra Black" is the built-in default. Writing one takes a single `theme.json`, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -38,8 +38,10 @@ umbractl list                         # widgets, their settings, option schema a
 umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
 umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
 umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y
+umbractl add-instance sp500           # a second copy (sp500#2) with its own options, position and data; remove-instance sp500#2
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
-umbractl general --refresh 120        # app-wide settings
+umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check)
+umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
@@ -55,7 +57,9 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `create_widget`, `widget_data`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+
+The server also exposes every installed widget's files as read-only **resources** (`umbra://widgets/<id>/<file>`, same path and extension rules as agent-written files, 5 MB cap) so an agent can read a widget before editing it, and three **prompts**, `new_widget`, `fix_widget` and `restyle_widget`, that walk it through `widget_authoring_guide`, `create_widget` and `capture`.
 
 Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 
