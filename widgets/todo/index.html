@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>To Do</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="todo.css">
+</head>
+<body>
+  <main class="todo">
+    <header class="head">
+      <div class="head-row">
+        <h1 class="title" id="title">My Day</h1>
+        <span class="count num" id="count"></span>
+      </div>
+      <div class="date" id="date"></div>
+      <div class="progress" aria-hidden="true"><span id="bar"></span></div>
+    </header>
+
+    <section class="list" id="list" data-no-drag></section>
+
+    <form class="add" id="add" autocomplete="off">
+      <span class="plus" aria-hidden="true">
+        <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></svg>
+      </span>
+      <input id="new" maxlength="200" placeholder="Add a task" spellcheck="false" aria-label="New task">
+      <button type="button" class="chip" id="new-repeat" data-no-drag aria-haspopup="true" title="Repeat"></button>
+    </form>
+
+    <div class="menu" id="menu" role="menu" data-no-drag hidden></div>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="repeat.js"></script>
+  <script src="todo.js"></script>
+</body>
+</html>

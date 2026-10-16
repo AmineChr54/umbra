@@ -14,6 +14,8 @@ sealed class WidgetWindow : Form
     readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     readonly TaskCompletionSource _renderedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     DateTime _renderedAt;
+    long _pressedAt = long.MinValue / 2;
+    IntPtr _foregroundAtPress;
 
     public WidgetManifest Manifest { get; }
 
@@ -60,6 +62,7 @@ sealed class WidgetWindow : Form
                 DesktopPin.KeepAtBottom(m.LParam);
                 break;
             case Native.WM_MOUSEACTIVATE:
+                MarkPressed(); // only real clicks on this window send it
                 m.Result = Native.MA_NOACTIVATE;
                 return;
         }
@@ -169,7 +172,57 @@ sealed class WidgetWindow : Form
             case "store":
                 HandleStore(msg!);
                 break;
+
+            case "pointer":
+                if (PressedOnThisWindow()) MarkPressed();
+                break;
+
+            case "focus":
+                if (PressedOnThisWindow()) MarkPressed();
+                TakeKeyboardFocus();
+                break;
         }
+    }
+
+    /// <summary>Remembers a real press on this window, and which window was in front at that moment.</summary>
+    void MarkPressed()
+    {
+        _pressedAt = System.Environment.TickCount64;
+        _foregroundAtPress = Native.GetForegroundWindow();
+    }
+
+    /// <summary>
+    /// Is a mouse button physically down with the cursor over this (visible, uncovered) window?
+    /// The page can't fake this, which is what makes the focus gate trustworthy.
+    /// </summary>
+    bool PressedOnThisWindow()
+    {
+        if ((Native.GetAsyncKeyState(Native.VK_LBUTTON) & 0x8000) == 0 && (Native.GetAsyncKeyState(Native.VK_RBUTTON) & 0x8000) == 0) return false;
+        var p = Cursor.Position;
+        var hit = Native.WindowFromPoint(new Native.POINT { X = p.X, Y = p.Y });
+        return hit != IntPtr.Zero && Native.GetAncestor(hit, Native.GA_ROOT) == Handle;
+    }
+
+    /// <summary>
+    /// Widgets never take focus on their own (WS_EX_NOACTIVATE), so text fields can't receive typing.
+    /// When the user has just pressed the mouse on this widget, the page may ask for the keyboard;
+    /// any other request is ignored, so a widget can't pull focus away while the user types elsewhere.
+    /// </summary>
+    void TakeKeyboardFocus()
+    {
+        var fg = Native.GetForegroundWindow();
+        // Too long since the press, or the user has moved on to another window since: ignore.
+        if (System.Environment.TickCount64 - _pressedAt > 1000 || (fg != _foregroundAtPress && fg != Handle)) return;
+        if (fg != Handle)
+        {
+            // The foreground lock only lets the foreground thread hand over focus, so join its input queue briefly.
+            uint me = Native.GetCurrentThreadId();
+            uint other = fg == IntPtr.Zero ? 0 : Native.GetWindowThreadProcessId(fg, out _);
+            bool attached = other != 0 && other != me && Native.AttachThreadInput(me, other, true);
+            try { Native.SetForegroundWindow(Handle); }
+            finally { if (attached) Native.AttachThreadInput(me, other, false); }
+        }
+        _view.Focus();
     }
 
     /// <summary>umbra.store: get/set/remove/keys on this widget's own data file, never another widget's.</summary>

@@ -95,11 +95,16 @@
 
   // Drag anywhere to move the widget: once the pointer travels a few pixels with the
   // button held, the host starts a native window move. A plain click stays a click.
+  // Text fields need the keyboard, which widgets only get right after the user presses the mouse
+  // on them (the host checks the physical button state). Editable elements never start a drag.
+  const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
   let down = null;
   window.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest("[data-no-drag]")) return;
+    const editable = e.target.closest(EDITABLE);
+    post({ type: editable ? "focus" : "pointer" });
+    if (e.button !== 0 || editable || e.target.closest("[data-no-drag]")) return;
     down = { x: e.screenX, y: e.screenY };
-  });
+  }, true);
   window.addEventListener("pointermove", (e) => {
     if (!down || !(e.buttons & 1) || settings.locked) return;
     if (Math.hypot(e.screenX - down.x, e.screenY - down.y) > 4) {
@@ -144,6 +149,8 @@
     store,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),
+    /** Ask for keyboard focus, e.g. before focusing an input from a double-click. Only works right after a click on the widget. */
+    requestFocus: () => post({ type: "focus" }),
     /** Call after the first real frame is drawn; screenshots (umbractl capture) wait for it. */
     rendered: () => post({ type: "rendered" }),
     tween,
