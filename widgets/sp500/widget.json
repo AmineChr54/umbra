@@ -4,7 +4,7 @@
   "name": "S&P 500",
   "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
   "author": "AmineChr54",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 340,
@@ -15,7 +15,7 @@
   },
   "options": {
     "symbol": { "label": "Symbol", "type": "text", "default": "^GSPC", "hint": "Any Yahoo Finance symbol, e.g. ^IXIC, ^DJI, AAPL" },
-    "label": { "label": "Display name", "type": "text", "default": "S&P 500" },
+    "label": { "label": "Display name", "type": "text", "default": "", "hint": "Leave empty to use the symbol's own name" },
     "range": {
       "label": "Chart range",
       "type": "select",
