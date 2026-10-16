@@ -334,3 +334,32 @@ input { font: inherit; color: inherit; }
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast.error { color: #ff9a9d; }
+
+/* ---------- themes ---------- */
+.hint .hint-grow { flex: 1; }
+.tcard .tfoot { display: flex; gap: 8px; }
+.tcard .tfoot .btn { width: auto; white-space: nowrap; }
+.tcard .tfoot .action { flex: 1; }
+.tcard .tfoot .remove { flex: none; padding: 0 12px; }
+.tcard.active { position: relative; }
+.tcard.active::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1.5px var(--accent); pointer-events: none; }
+/* Mini widget drawn from the theme's own tokens; the fallbacks are the default look. */
+.cthumb.swatch { background: var(--t-bg, #000); padding: 16px 22px; }
+.sw-card {
+  position: relative; width: 100%; height: 100%;
+  display: flex; flex-direction: column; justify-content: center; gap: 7px;
+  padding: 0 16px;
+  border-radius: var(--t-radius, 12px);
+  background: var(--t-surface, #111114);
+  box-shadow: inset 0 0 0 1px var(--t-line, rgba(255, 255, 255, 0.12));
+}
+.sw-card i { display: block; height: 6px; border-radius: 3px; }
+.sw-title { width: 46%; background: var(--t-text, #f4f5f7); }
+.sw-line { width: 78%; background: var(--t-text2, #6b707b); }
+.sw-line.short { width: 52%; }
+.sw-dot { position: absolute; right: 14px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--t-accent, #8b93ff); }
+/* Update notice (About) */
+.update { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
+.update-text { font-size: 13px; color: var(--text-2); }
+.update.has-update .update-text { color: var(--text); font-weight: 600; }
+.nav button.dot::after { content: ""; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #8b93ff; }

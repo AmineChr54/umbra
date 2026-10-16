@@ -6,7 +6,7 @@
   const post = (msg) => bridge && bridge.postMessage(msg);
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
-  let widget = { id: "", name: "" };
+  let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
   const handlers = { settings: [], refresh: [], store: [] };
   const pending = new Map();
   let nextId = 1;
@@ -19,6 +19,17 @@
   }
   reducedMotion.addEventListener("change", applyMotion);
 
+  // The active theme arrives as one generated ":root{--token:value;...}" rule from the host. It is applied after
+  // umbra.css, so every widget picks it up without changes. Anything that isn't plain tokens is ignored.
+  const THEME_CSS = /^:root\{(?:--[a-z0-9-]+:[#a-z0-9.,%() \/-]+;)+\}$/i;
+  function applyTheme() {
+    const css = settings.themeCss && THEME_CSS.test(settings.themeCss) ? settings.themeCss : "";
+    let el = document.getElementById("umbra-theme");
+    if (!css) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("style"); el.id = "umbra-theme"; document.head.append(el); }
+    if (el.textContent !== css) el.textContent = css;
+  }
+
   bridge && bridge.addEventListener("message", (e) => {
     const m = e.data;
     switch (m.type) {
@@ -27,12 +38,14 @@
         settings = m.settings;
         applyMotion();
         applyEdit();
+        applyTheme();
         resolveReady();
         break;
       case "settings":
         settings = m.settings;
         applyMotion();
         applyEdit();
+        applyTheme();
         handlers.settings.forEach((fn) => fn(settings));
         break;
       case "refresh":

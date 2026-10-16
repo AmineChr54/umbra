@@ -1,13 +1,13 @@
 name: Widgets
 
-# Pull requests: validate every widget folder.
-# Merges to main: regenerate widgets/index.json so new widgets appear in Umbra's Browse page.
+# Pull requests: validate every widget and theme folder.
+# Merges to main: regenerate widgets/index.json and themes/index.json so new widgets and themes appear in Umbra's Browse page.
 on:
   pull_request:
-    paths: ["widgets/**", "scripts/catalog.mjs"]
+    paths: ["widgets/**", "themes/**", "scripts/catalog.mjs"]
   push:
     branches: [main]
-    paths: ["widgets/**", "scripts/catalog.mjs"]
+    paths: ["widgets/**", "themes/**", "scripts/catalog.mjs"]
 
 permissions:
   contents: write
@@ -34,12 +34,12 @@ jobs:
         run: node scripts/catalog.mjs
       - name: Commit index.json if it changed
         run: |
-          if git diff --quiet -- widgets/index.json; then
+          if git diff --quiet -- widgets/index.json themes/index.json; then
             echo "Catalog already up to date"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add widgets/index.json
+            git add widgets/index.json themes/index.json
             git commit -m "Update widget catalog"
             git push
           fi

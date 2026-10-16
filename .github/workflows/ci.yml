@@ -33,3 +33,25 @@ jobs:
       - name: Validate widgets
         # Validation only: widgets/index.json is regenerated on merge by widgets.yml, so PRs need not touch it.
         run: node scripts/catalog.mjs
+
+  smoke:
+    # End to end: start the real app with a throwaway data folder and drive it with umbractl (scripts/smoke.ps1).
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        run: dotnet build Umbra.slnx -c Release -warnaserror
+      - name: Smoke test
+        shell: pwsh
+        run: ./scripts/smoke.ps1 -Configuration Release -OutDir smoke-out
+      - name: Upload captures and log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke
+          path: smoke-out
+          if-no-files-found: ignore

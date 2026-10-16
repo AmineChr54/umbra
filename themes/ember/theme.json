@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "ember",
+  "name": "Ember",
+  "description": "Warm orange accent on deep brown-black surfaces.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#0e0a08",
+    "--surface-2": "#16100c",
+    "--surface-3": "#1e1610",
+    "--line": "rgba(255, 220, 190, 0.08)",
+    "--line-strong": "rgba(255, 220, 190, 0.14)",
+    "--text": "#f7f1ec",
+    "--text-2": "#b5a79d",
+    "--text-3": "#7a6c62",
+    "--accent": "#ff8a3d",
+    "--accent-strong": "#ffab73",
+    "--accent-soft": "rgba(255, 138, 61, 0.15)"
+  }
+}
