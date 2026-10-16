@@ -82,4 +82,31 @@ public class UpdatesTests
         Assert.Contains(Protocol.Commands, c => c.Cmd == "check-update");
         Assert.True(new GeneralSettings().CheckForUpdates);
     }
+
+    [Theory]
+    [InlineData("github.com", true)]
+    [InlineData("objects.githubusercontent.com", true)]
+    [InlineData("release-assets.githubusercontent.com", true)]
+    [InlineData("evilgithubusercontent.com", false)]
+    [InlineData("githubusercontent.com.evil.example", false)]
+    [InlineData("example.com", false)]
+    public void Download_hosts_are_allow_listed(string host, bool ok) => Assert.Equal(ok, Updates.IsAllowedDownloadHost(host));
+
+    [Fact]
+    public void Digest_must_match_sha256()
+    {
+        var hex = new string('a', 64);
+        Assert.True(Updates.DigestMatches("sha256:" + hex.ToUpper(), hex));
+        Assert.False(Updates.DigestMatches("sha256:" + new string('b', 64), hex));
+        Assert.False(Updates.DigestMatches(null, hex));
+        Assert.False(Updates.DigestMatches("sha1:" + hex, hex));
+    }
+
+    [Fact]
+    public void ParseRelease_keeps_the_asset_digest()
+    {
+        var json = Release().Replace("\"name\": \"UmbraSetup-1.3.0.exe\"", "\"name\": \"UmbraSetup-1.3.0.exe\", \"digest\": \"sha256:" + new string('c', 64) + "\"");
+        Assert.Equal("sha256:" + new string('c', 64), Updates.ParseRelease(json)!.Digest);
+        Assert.Null(Updates.ParseRelease(Release())!.Digest);
+    }
 }

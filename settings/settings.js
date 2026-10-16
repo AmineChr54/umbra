@@ -88,7 +88,7 @@ $("#startup").addEventListener("change", (e) => {
 });
 $("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
 $("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
-$("#interval button").forEach((b) =>
+$$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);
     renderGeneral();
@@ -108,7 +108,7 @@ function renderUpdate() {
   $("#updateInstall").hidden = !a;
   $("#updateInstall").disabled = false;
   $("#updateCheck").disabled = false;
-  $(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
+  $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
 }
 $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
 $("#updateInstall").addEventListener("click", () => {

@@ -105,7 +105,7 @@ sealed class Control(App app)
             }
 
             case "check-update":
-                await app.Updater.CheckAsync(manual: true);
+                await app.Updater.CheckAsync(manual: false);
                 return app.Updater.ToJson();
 
             case "edit-mode":

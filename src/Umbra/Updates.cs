@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -5,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace Umbra;
 
 /// <summary>A published Umbra release that can be installed.</summary>
-public sealed record ReleaseInfo(string Version, string PageUrl, string AssetName, string AssetUrl, string Notes);
+public sealed record ReleaseInfo(string Version, string PageUrl, string AssetName, string AssetUrl, string Notes, string? Digest = null);
 
 /// <summary>
 /// Pure update logic: version comparison, GitHub release parsing and download validation.
@@ -79,10 +80,21 @@ public static partial class Updates
             if (page is null || !page.StartsWith("https://github.com/", StringComparison.Ordinal))
                 page = $"https://github.com/AmineChr54/umbra/releases/tag/v{version}";
             var body = Str(o["body"]) ?? "";
-            return new ReleaseInfo(version, page, name, url, body.Length > 2000 ? body[..2000] : body);
+            return new ReleaseInfo(version, page, name, url, body.Length > 2000 ? body[..2000] : body, Str(asset?["digest"]));
         }
         return null;
     }
+
+    public const long MaxDownloadBytes = 200L * 1024 * 1024;
+
+    /// <summary>Hosts the download may end up on after GitHub's redirects.</summary>
+    public static bool IsAllowedDownloadHost(string host) =>
+        host == "github.com" || host == "githubusercontent.com" || host.EndsWith(".githubusercontent.com", StringComparison.Ordinal);
+
+    /// <summary>True when the API's "sha256:&lt;hex&gt;" digest equals the file's hash. A missing or other-algorithm digest never matches.</summary>
+    public static bool DigestMatches(string? digest, string sha256Hex) =>
+        digest is not null && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) && digest.Length == 71
+        && string.Equals(digest[7..], sha256Hex, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The download must be HTTPS from github.com's release downloads for this repo and named UmbraSetup-&lt;version&gt;.exe.</summary>
     public static bool IsValidInstaller(string url, string name, string version)
@@ -136,7 +148,11 @@ sealed class UpdateService : IDisposable
         if (!manual && !_app.Settings.General.CheckForUpdates) return;
         try
         {
-            var url = Environment.GetEnvironmentVariable("UMBRA_RELEASE_URL") ?? Updates.ReleasesApi;
+#if DEBUG
+            var url = Environment.GetEnvironmentVariable("UMBRA_RELEASE_URL") ?? Updates.ReleasesApi; // test hook, never in release builds
+#else
+            var url = Updates.ReleasesApi;
+#endif
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
             var json = await Http.GetStringAsync(url, cts.Token);
             var rel = Updates.ParseRelease(json);
@@ -160,29 +176,84 @@ sealed class UpdateService : IDisposable
         if (_installing) throw new InvalidOperationException("Update already in progress");
         if (!Updates.IsValidInstaller(rel.AssetUrl, rel.AssetName, rel.Version))
             throw new InvalidOperationException("Update download failed validation");
+        if (rel.Digest is null) throw new InvalidOperationException("Release has no SHA-256 digest; refusing to install");
         _installing = true;
+        var dir = Path.Combine(Path.GetTempPath(), $"umbra-update-{Guid.NewGuid():N}");
+        var started = false;
         try
         {
-            var dir = Path.Combine(Path.GetTempPath(), $"umbra-update-{Guid.NewGuid():N}");
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, rel.AssetName);
             using (var resp = await Http.GetAsync(rel.AssetUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 resp.EnsureSuccessStatusCode();
-                // After GitHub's redirect to its CDN the file must still come over HTTPS.
-                if (resp.RequestMessage?.RequestUri?.Scheme != Uri.UriSchemeHttps)
-                    throw new InvalidOperationException("Download was not served over HTTPS");
+                var final = resp.RequestMessage?.RequestUri;
+                if (final is null || final.Scheme != Uri.UriSchemeHttps || !Updates.IsAllowedDownloadHost(final.Host))
+                    throw new InvalidOperationException("Download was redirected to an unexpected host");
+                if (resp.Content.Headers.ContentLength > Updates.MaxDownloadBytes) throw new InvalidOperationException("Installer is too large");
                 await using var src = await resp.Content.ReadAsStreamAsync();
                 await using var dst = File.Create(file);
-                await src.CopyToAsync(dst);
+                var buf = new byte[81920];
+                long total = 0;
+                int n;
+                while ((n = await src.ReadAsync(buf)) > 0)
+                {
+                    total += n;
+                    if (total > Updates.MaxDownloadBytes) throw new InvalidOperationException("Installer is too large");
+                    await dst.WriteAsync(buf.AsMemory(0, n));
+                }
             }
             if (new FileInfo(file).Length < 1_000_000) throw new InvalidOperationException("Downloaded installer looks incomplete");
+            string hash;
+            await using (var fs = File.OpenRead(file))
+                hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(fs));
+            if (!Updates.DigestMatches(rel.Digest, hash)) throw new InvalidOperationException("Installer checksum does not match GitHub's digest");
+            if (SignatureStatus(file) is not (0 or unchecked((int)0x800B0100))) // valid, or unsigned (the digest above still protects it) throw new InvalidOperationException("Installer signature is not valid");
             Log.Write($"Running {file}");
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, "/SILENT /NORESTART") { UseShellExecute = true });
+            started = true;
             _app.QuitSoon();
         }
-        finally { _installing = false; }
+        finally
+        {
+            _installing = false;
+            if (!started) try { Directory.Delete(dir, true); } catch { /* best effort */ }
+        }
     }
+
+    /// <summary>Authenticode check through WinVerifyTrust (hash, chain and revocation).</summary>
+    static int SignatureStatus(string file)
+    {
+        var fileInfo = new WinTrustFileInfo { cbStruct = Marshal.SizeOf<WinTrustFileInfo>(), pcwszFilePath = file };
+        var pFile = Marshal.AllocHGlobal(Marshal.SizeOf<WinTrustFileInfo>());
+        try
+        {
+            Marshal.StructureToPtr(fileInfo, pFile, false);
+            var data = new WinTrustData
+            {
+                cbStruct = Marshal.SizeOf<WinTrustData>(), dwUIChoice = 2, fdwRevocationChecks = 0,
+                dwUnionChoice = 1, pFile = pFile, dwStateAction = 0, dwProvFlags = 0x10, // cache-only URL retrieval off
+            };
+            var action = new Guid("00AAC56B-CD44-11d0-8CC2-00C04FC295EE");
+            return WinVerifyTrust(new IntPtr(-1), ref action, ref data);
+        }
+        finally { Marshal.FreeHGlobal(pFile); }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct WinTrustFileInfo { public int cbStruct; public string pcwszFilePath; public IntPtr hFile; public IntPtr pgKnownSubject; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct WinTrustData
+    {
+        public int cbStruct; public IntPtr pPolicyCallbackData; public IntPtr pSIPClientData;
+        public int dwUIChoice, fdwRevocationChecks, dwUnionChoice; public IntPtr pFile;
+        public int dwStateAction; public IntPtr hWVTStateData; public IntPtr pwszURLReference;
+        public int dwProvFlags, dwUIContext; public IntPtr pSignatureSettings;
+    }
+
+    [DllImport("wintrust.dll", ExactSpelling = true)]
+    static extern int WinVerifyTrust(IntPtr hwnd, ref Guid action, ref WinTrustData data);
 
     public JsonObject ToJson() => new()
     {
