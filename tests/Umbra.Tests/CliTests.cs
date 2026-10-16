@@ -187,6 +187,56 @@ public class McpResourcesAndPromptsTests : IDisposable
         Assert.Equal(code, reply["error"]!["code"]!.GetValue<int>());
     }
 
+    [Theory]
+    [InlineData("umbra://widgets/demo/nul.json")]
+    [InlineData("umbra://widgets/demo/CON.txt")]
+    [InlineData("umbra://widgets/demo/sub/com1.js")]
+    [InlineData("umbra://widgets/demo/lpt9.tar.json")]
+    public async Task Resources_read_rejects_reserved_device_names(string uri)
+    {
+        var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = uri })))!;
+        Assert.Equal(-32602, reply["error"]!["code"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Resources_skip_junctions()
+    {
+        var outside = Path.Combine(_dir, "outside-dir");
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "leak.json"), "{}");
+        var link = Path.Combine(_dir, "demo", "link");
+        var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
+            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+        p.WaitForExit();
+        Assert.True(Directory.Exists(link));
+
+        var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = "umbra://widgets/demo/link/leak.json" })))!;
+        Assert.Equal(-32602, reply["error"]!["code"]!.GetValue<int>());
+        var uris = (await Server().HandleAsync(Call("resources/list")))!["result"]!["resources"]!.AsArray().Select(r => r!["uri"]!.GetValue<string>());
+        Assert.DoesNotContain(uris, u => u.Contains("leak.json"));
+        Directory.Delete(link); // remove the junction itself, not its target
+    }
+
+    [Fact]
+    public async Task Non_string_params_give_json_rpc_errors()
+    {
+        var read = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = 42 })))!;
+        Assert.Equal(-32602, read["error"]!["code"]!.GetValue<int>());
+        var prompt = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = new JsonObject() })))!;
+        Assert.Equal(-32602, prompt["error"]!["code"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Prompts_carry_the_safety_note()
+    {
+        foreach (var (name, args) in new[] { ("new_widget", "description"), ("fix_widget", "id"), ("restyle_widget", "id") })
+        {
+            var a = new JsonObject { [args] = "x", ["style"] = "y" };
+            var text = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = name, ["arguments"] = a })))!["result"]!["messages"]![0]!["content"]!["text"]!.GetValue<string>();
+            Assert.Contains("permissions.commands", text);
+        }
+    }
+
     [Fact]
     public async Task Prompts_list_and_get()
     {
