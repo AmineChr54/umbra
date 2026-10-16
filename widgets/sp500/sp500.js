@@ -15,11 +15,17 @@ let lastKey = "";          // symbol+range of the drawn chart; a change replays 
 
 const RANGES = { "1d": { interval: "5m", label: "1D", delta: "today" }, "5d": { interval: "15m", label: "5D", delta: "5 days" } };
 
+function autoName(label, symbol) {
+  if (symbol === "^GSPC") return label || "S&P 500";
+  return label === "S&P 500" ? "" : label;
+}
+
 function opts() {
   const o = umbra.options;
   return {
     symbol: (o.symbol || "^GSPC").trim().toUpperCase(),
-    label: (o.label || "").trim(),
+    // An empty label (or the old "S&P 500" default saved with another symbol) means "name it after the symbol".
+    label: autoName((o.label || "").trim(), (o.symbol || "^GSPC").trim().toUpperCase()),
     range: RANGES[o.range] ? o.range : "1d",
   };
 }
@@ -40,6 +46,7 @@ async function load() {
     if (!r) throw new Error((json && json.chart && json.chart.error && json.chart.error.description) || "No data");
 
     const meta = r.meta;
+    if (!o.label) el.label.textContent = meta.shortName || meta.longName || o.symbol;
     const quote = (r.indicators && r.indicators.quote && r.indicators.quote[0]) || {};
     const samples = Chart.samples(r.timestamp || [], quote.close || []);
     const period = meta.currentTradingPeriod && meta.currentTradingPeriod.regular;
