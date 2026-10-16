@@ -124,6 +124,146 @@ public class McpServerTests
     }
 }
 
+public class McpResourcesAndPromptsTests : IDisposable
+{
+    readonly string _dir = Path.Combine(Path.GetTempPath(), "umbra-mcp-" + Guid.NewGuid().ToString("N"));
+
+    public McpResourcesAndPromptsTests()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "demo", "sub"));
+        File.WriteAllText(Path.Combine(_dir, "demo", "widget.json"), "{\"id\":\"demo\"}");
+        File.WriteAllText(Path.Combine(_dir, "demo", "sub", "a.js"), "// a");
+        File.WriteAllBytes(Path.Combine(_dir, "demo", "p.png"), new byte[] { 1, 2, 3 });
+        File.WriteAllText(Path.Combine(_dir, "demo", "secret.exe"), "x");
+        File.WriteAllText(Path.Combine(_dir, "outside.json"), "{}");
+    }
+
+    public void Dispose() => Directory.Delete(_dir, true);
+
+    McpServer Server() => new((cmd, args) => Task.FromResult(Protocol.Ok(new JsonArray(
+        new JsonObject { ["id"] = "demo", ["folder"] = Path.Combine(_dir, "demo") }))));
+
+    static JsonObject Call(string method, JsonObject? @params = null) =>
+        new() { ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = method, ["params"] = @params ?? new JsonObject() };
+
+    [Fact]
+    public async Task Initialize_advertises_resources_and_prompts()
+    {
+        var caps = (await Server().HandleAsync(Call("initialize")))!["result"]!["capabilities"]!;
+        Assert.NotNull(caps["resources"]);
+        Assert.NotNull(caps["prompts"]);
+    }
+
+    [Fact]
+    public async Task Resources_list_has_allowed_files_only()
+    {
+        var uris = (await Server().HandleAsync(Call("resources/list")))!["result"]!["resources"]!.AsArray()
+            .Select(r => r!["uri"]!.GetValue<string>()).ToList();
+        Assert.Equal(new[] { "umbra://widgets/demo/p.png", "umbra://widgets/demo/sub/a.js", "umbra://widgets/demo/widget.json" }, uris);
+    }
+
+    [Fact]
+    public async Task Resources_read_returns_text_and_base64_blobs()
+    {
+        var text = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = "umbra://widgets/demo/widget.json" })))!["result"]!["contents"]![0]!;
+        Assert.Equal("{\"id\":\"demo\"}", text["text"]!.GetValue<string>());
+        Assert.Equal("application/json", text["mimeType"]!.GetValue<string>());
+        var blob = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = "umbra://widgets/demo/p.png" })))!["result"]!["contents"]![0]!;
+        Assert.Equal(Convert.ToBase64String(new byte[] { 1, 2, 3 }), blob["blob"]!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("umbra://widgets/demo/../outside.json", -32602)]
+    [InlineData("umbra://widgets/demo/..%2Foutside.json", -32002)]
+    [InlineData("umbra://widgets/demo/secret.exe", -32602)]
+    [InlineData("umbra://widgets/demo/sub\\a.js", -32602)]
+    [InlineData("umbra://widgets/demo//widget.json", -32602)]
+    [InlineData("umbra://widgets/other/widget.json", -32002)]
+    [InlineData("umbra://widgets/demo/missing.json", -32002)]
+    [InlineData("file:///c:/windows/win.ini", -32602)]
+    public async Task Resources_read_rejects_bad_uris(string uri, int code)
+    {
+        var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = uri })))!;
+        Assert.Equal(code, reply["error"]!["code"]!.GetValue<int>());
+    }
+
+    [Theory]
+    [InlineData("umbra://widgets/demo/nul.json")]
+    [InlineData("umbra://widgets/demo/CON.txt")]
+    [InlineData("umbra://widgets/demo/sub/com1.js")]
+    [InlineData("umbra://widgets/demo/lpt9.tar.json")]
+    public async Task Resources_read_rejects_reserved_device_names(string uri)
+    {
+        var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = uri })))!;
+        Assert.Equal(-32602, reply["error"]!["code"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Resources_skip_junctions()
+    {
+        var outside = Path.Combine(_dir, "outside-dir");
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "leak.json"), "{}");
+        var link = Path.Combine(_dir, "demo", "link");
+        var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
+            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+        p.WaitForExit();
+        Assert.True(Directory.Exists(link));
+
+        var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = "umbra://widgets/demo/link/leak.json" })))!;
+        Assert.Equal(-32602, reply["error"]!["code"]!.GetValue<int>());
+        var uris = (await Server().HandleAsync(Call("resources/list")))!["result"]!["resources"]!.AsArray().Select(r => r!["uri"]!.GetValue<string>());
+        Assert.DoesNotContain(uris, u => u.Contains("leak.json"));
+        Directory.Delete(link); // remove the junction itself, not its target
+    }
+
+    [Fact]
+    public async Task Non_string_params_give_json_rpc_errors()
+    {
+        var read = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = 42 })))!;
+        Assert.Equal(-32602, read["error"]!["code"]!.GetValue<int>());
+        var prompt = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = new JsonObject() })))!;
+        Assert.Equal(-32602, prompt["error"]!["code"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task Prompts_carry_the_safety_note()
+    {
+        foreach (var (name, args) in new[] { ("new_widget", "description"), ("fix_widget", "id"), ("restyle_widget", "id") })
+        {
+            var a = new JsonObject { [args] = "x", ["style"] = "y" };
+            var text = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = name, ["arguments"] = a })))!["result"]!["messages"]![0]!["content"]!["text"]!.GetValue<string>();
+            Assert.Contains("permissions.commands", text);
+        }
+    }
+
+    [Fact]
+    public async Task Prompts_list_and_get()
+    {
+        var prompts = (await Server().HandleAsync(Call("prompts/list")))!["result"]!["prompts"]!.AsArray();
+        Assert.Equal(McpServer.PromptNames.Order(), prompts.Select(p => p!["name"]!.GetValue<string>()).Order());
+
+        var got = (await Server().HandleAsync(Call("prompts/get", new JsonObject
+        {
+            ["name"] = "new_widget", ["arguments"] = new JsonObject { ["description"] = "a clock" },
+        })))!["result"]!;
+        var text = got["messages"]![0]!["content"]!["text"]!.GetValue<string>();
+        Assert.Contains("a clock", text);
+        Assert.Contains("widget_authoring_guide", text);
+        Assert.Contains("create_widget", text);
+        Assert.Contains("capture", text);
+    }
+
+    [Fact]
+    public async Task Prompts_get_validates_name_and_required_arguments()
+    {
+        var unknown = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = "nope" })))!;
+        Assert.Equal(-32602, unknown["error"]!["code"]!.GetValue<int>());
+        var missing = (await Server().HandleAsync(Call("prompts/get", new JsonObject { ["name"] = "fix_widget" })))!;
+        Assert.Equal(-32602, missing["error"]!["code"]!.GetValue<int>());
+    }
+}
+
 public class CommandLineTests
 {
     static readonly JsonObject List = Protocol.Ok(new JsonArray(new JsonObject
