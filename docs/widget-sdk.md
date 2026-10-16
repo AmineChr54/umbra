@@ -97,6 +97,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
+| `umbra.fetchText(url)` | Like `fetchJson`, but resolves with the response body as a string (up to 2 MB), for Markdown, CSV or HTML |
 | `umbra.store.get(key, fallback?)` | Promise of this widget's saved value for `key` (any JSON), or `fallback` when it was never set |
 | `umbra.store.set(key, value)` | Saves a JSON value. Rejects when the widget's data would pass 1 MB |
 | `umbra.store.remove(key)`, `umbra.store.keys()` | Delete one key; list the keys |

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "internships",
+  "name": "Internships",
+  "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 380,
+  "height": 590,
+  "defaultPosition": { "x": 24, "y": 340 },
+  "permissions": { "hosts": ["raw.githubusercontent.com"] },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "Internships" },
+    "region": { "label": "Region", "type": "select", "default": "emea",
+                "choices": [
+                  { "value": "emea", "label": "EMEA (Europe, Middle East, Africa)" },
+                  { "value": "europe", "label": "Europe only" },
+                  { "value": "mea", "label": "Middle East and Africa" },
+                  { "value": "all", "label": "All international" }
+                ] },
+    "include": { "label": "Also include", "type": "text", "default": "",
+                 "hint": "Countries or cities outside the region, comma separated. Example: Singapore, Toronto" },
+    "exclude": { "label": "Exclude", "type": "text", "default": "",
+                 "hint": "Countries or cities to hide, comma separated. Example: Poland, Zürich" },
+    "keywords": { "label": "Keywords", "type": "text", "default": "",
+                  "hint": "Show only postings whose company or role contains any of these, comma separated. Example: software, ml" },
+    "remote": { "label": "Include plain remote roles", "type": "toggle", "default": false,
+                "hint": "Remote roles with no country can't be matched to a region." },
+    "maxRows": { "label": "Rows to show", "type": "number", "default": 7, "min": 3, "max": 12, "step": 1 },
+    "checkHours": { "label": "Check for new postings every (hours)", "type": "number", "default": 3, "min": 1, "max": 24, "step": 1 }
+  }
+}
