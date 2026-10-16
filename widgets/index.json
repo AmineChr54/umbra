@@ -16,6 +16,23 @@
       ]
     },
     {
+      "id": "countdowns",
+      "name": "Countdowns",
+      "description": "Count down to birthdays, trips and deadlines as dot grids, bars or rings, plus how far this year, month or week has gone. Add and edit right in the widget.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "countdown.js",
+        "countdowns.css",
+        "countdowns.js",
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "crypto",
       "name": "Crypto price",
       "description": "Price, 24h change and a sparkline for any coin on CoinGecko.",
