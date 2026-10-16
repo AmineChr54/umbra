@@ -23,7 +23,10 @@ jobs:
     steps:
       - name: Label new issues for triage
         if: github.event_name == 'issues'
-        run: gh issue edit ${{ github.event.issue.number }} -R "$GITHUB_REPOSITORY" --add-label "status: triage"
+        env:
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue edit "$NUMBER" -R "$GITHUB_REPOSITORY" --add-label "status: triage"
 
       - name: Add to the Umbra Roadmap board
         if: env.PROJECT_TOKEN != ''
