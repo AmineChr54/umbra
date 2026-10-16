@@ -167,10 +167,26 @@ sealed class App : ApplicationContext
         SaveSettings();
     }
 
+    /// <summary>
+    /// Extra copies of a widget whose folder vanished (deleted outside Umbra) are forgotten with their data.
+    /// A missing first copy keeps its settings, as before.
+    /// </summary>
+    void ForgetOrphans()
+    {
+        foreach (var key in Settings.Widgets.Keys.Where(k => InstanceId.IsExtra(k) && Manifests.All(m => m.Id != InstanceId.WidgetOf(k))).ToList())
+        {
+            CloseWidget(key);
+            Settings.Widgets.Remove(key);
+        }
+        foreach (var inst in WidgetStore.CopyIds().Where(i => Manifests.All(m => m.Id != InstanceId.WidgetOf(i))))
+            WidgetStore.Delete(inst);
+    }
+
     /// <summary>Re-scans widget folders after an install/remove and opens/closes windows to match.</summary>
     public void ReloadWidgets()
     {
         Manifests = WidgetManifest.DiscoverAll();
+        ForgetOrphans();
         foreach (var id in _windows.Keys.Where(id => Manifests.All(m => m.Id != InstanceId.WidgetOf(id))).ToList())
             CloseWidget(id);
         SaveSettings();

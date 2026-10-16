@@ -140,6 +140,30 @@ public class InstanceStoreTests
         Assert.True(WidgetStore.Get("inst-b-other", "k").Found);
     }
 
+    [Theory]
+    [InlineData("inst-d__+3", false)]
+    [InlineData("inst-d__-5", false)]
+    [InlineData("inst-d__ 3", false)]
+    [InlineData("inst-d__3", true)]
+    public void DeleteAll_parses_the_copy_number_strictly(string name, bool deleted)
+    {
+        var dir = Path.Combine(TestEnv.DataDir, "data");
+        Directory.CreateDirectory(dir);
+        var file = Path.Combine(dir, name + ".json");
+        File.WriteAllText(file, "{}");
+        WidgetStore.DeleteAll("inst-d");
+        Assert.Equal(!deleted, File.Exists(file));
+    }
+
+    [Fact]
+    public void CopyIds_lists_extra_copy_files_so_orphans_can_be_found()
+    {
+        WidgetStore.Set("inst-e#2", "k", 1);
+        WidgetStore.Set("inst-e", "k", 1);
+        Assert.Contains("inst-e#2", WidgetStore.CopyIds());
+        Assert.DoesNotContain("inst-e", WidgetStore.CopyIds());
+    }
+
     [Fact]
     public void Delete_of_one_copy_leaves_the_others()
     {

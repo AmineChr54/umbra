@@ -93,6 +93,17 @@ static class WidgetStore
         }
     }
 
+    internal static bool IsCopyOf(string fileName, string widgetId) =>
+        fileName.StartsWith(widgetId + "__") && System.Text.RegularExpressions.Regex.IsMatch(fileName[(widgetId.Length + 2)..], @"^[0-9]+$");
+
+    /// <summary>Instance ids ("sp500#2") of every extra-copy data file on disk.</summary>
+    public static List<string> CopyIds()
+    {
+        lock (Gate)
+            return Directory.GetFiles(DataDir, "*__*.json").Select(f => Path.GetFileNameWithoutExtension(f).Replace("__", "#"))
+                .Where(i => InstanceId.IsValid(i) && InstanceId.IsExtra(i)).ToList();
+    }
+
     /// <summary>Deletes the data of a widget and of all its extra copies (on uninstall).</summary>
     public static void DeleteAll(string widgetId)
     {
@@ -102,7 +113,7 @@ static class WidgetStore
             foreach (var file in Directory.GetFiles(DataDir, $"{widgetId}*.json"))
             {
                 var name = Path.GetFileNameWithoutExtension(file);
-                if (name == widgetId || (name.StartsWith(widgetId + "__") && int.TryParse(name[(widgetId.Length + 2)..], out _)))
+                if (name == widgetId || IsCopyOf(name, widgetId))
                     File.Delete(file);
             }
         }

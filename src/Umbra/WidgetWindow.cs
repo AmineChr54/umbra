@@ -24,7 +24,16 @@ sealed class WidgetWindow : Form
     /// <summary>Which copy of the widget this is: the widget id, or "id#2" and up for extra copies.</summary>
     public string Instance { get; }
 
-    WidgetSettings Ws => _app.Settings.For(Manifest, Instance);
+    readonly WidgetSettings _detached = new();
+
+    /// <summary>
+    /// This copy's settings. Never creates an entry: once the copy was removed, a closing window or a late
+    /// message gets throwaway defaults instead of resurrecting it in settings.json.
+    /// </summary>
+    WidgetSettings Ws => _app.Settings.Widgets.TryGetValue(Instance, out var ws) ? ws : _detached;
+
+    /// <summary>False once the window is disposed or its copy was removed: nothing may be written for it.</summary>
+    bool Alive => !IsDisposed && _app.Settings.Widgets.ContainsKey(Instance);
 
     /// <summary>Changing the widget by hand (corner handle, Ctrl+wheel) needs edit mode and an unlocked widget.</summary>
     bool CanArrange => _app.EditMode && !Ws.Locked;
@@ -346,6 +355,7 @@ sealed class WidgetWindow : Form
     {
         var id = msg["id"]?.GetValue<int>() ?? 0;
         var reply = new JsonObject { ["type"] = "storeResult", ["id"] = id };
+        if (!Alive) return; // removed copy: don't recreate its data file
         try
         {
             var op = msg["op"]?.GetValue<string>();
