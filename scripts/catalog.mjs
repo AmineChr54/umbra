@@ -94,8 +94,25 @@ const THEME_KEYS = new Set(["$schema", "id", "name", "description", "author", "v
 const THEME_FILES = new Set([".json", ".png", ".jpg", ".jpeg", ".webp"]);
 const COLOR_TOKENS = ["--bg", "--surface-1", "--surface-2", "--surface-3", "--line", "--line-strong", "--text", "--text-2", "--text-3", "--accent", "--accent-strong", "--accent-soft", "--up", "--down", "--flat"];
 const LENGTH_TOKENS = ["--radius-s", "--radius-m", "--radius-l"];
-const COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.]+(?:%|deg)?\s*[, ]\s*[0-9.]+%?\s*[, ]\s*[0-9.]+%?\s*(?:[,/]\s*[0-9.]+%?\s*)?\)$/;
+const COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^(?:rgb|rgba|hsl|hsla)\( *[0-9.]+(?:%|deg)? *[, ] *[0-9.]+%? *[, ] *[0-9.]+%? *(?:[,/] *[0-9.]+%? *)?\)$/;
 const LENGTH = /^(?:[0-9]|[1-9][0-9])(?:\.[0-9]{1,3})?(?:px|rem)$/;
+const MIN_CONTRAST = 3;
+// Channels 0-255 of #hex, rgb() or hsl() (alpha ignored); mirrors Theme.TryRgb in the app.
+function rgb(v) {
+  if (v.startsWith("#")) {
+    let h = v.slice(1);
+    if (h.length <= 4) h = [...h.slice(0, 3)].map((c) => c + c).join("");
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  }
+  const p = v.slice(v.indexOf("(") + 1, -1).split(/[, /]+/).filter(Boolean);
+  const n = (s, u) => parseFloat(s.endsWith(u) && u ? s.slice(0, -u.length) : s);
+  if (v.startsWith("rgb")) return p.slice(0, 3).map((s) => Math.min(255, Math.max(0, s.endsWith("%") ? n(s, "%") * 2.55 : n(s, ""))));
+  const hue = ((n(p[0], "deg") % 360) + 360) % 360, s = Math.min(100, Math.max(0, n(p[1], "%"))) / 100, l = Math.min(100, Math.max(0, n(p[2], "%"))) / 100;
+  const f = (k0) => { const k = (k0 + hue / 30) % 12; return 255 * (l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))); };
+  return [f(0), f(8), f(4)];
+}
+const lum = (c) => { const [r, g, b] = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const MAX_THEME_BYTES = 1024 * 1024;
 const failTheme = (id, msg) => errors.push(`themes/${id}: ${msg}`);
 
@@ -115,7 +132,7 @@ for (const id of existsSync(themesDir) ? readdirSync(themesDir).sort() : []) {
   for (const k of ["name", "description", "author", "version"])
     if (typeof t[k] !== "string" || !t[k].trim() || t[k].length > 300) failTheme(id, `"${k}" is required (max 300 chars)`);
   if (t.version && !SEMVER.test(t.version)) failTheme(id, `"version" must look like 1.2.3`);
-  if (t.preview !== undefined && (typeof t.preview !== "string" || t.preview.includes("/") || !THEME_FILES.has(extname(t.preview).toLowerCase()) || extname(t.preview).toLowerCase() === ".json" || !existsSync(join(dir, t.preview))))
+  if (t.preview !== undefined && (typeof t.preview !== "string" || t.preview.includes("/") || t.preview.includes("\\") || t.preview.includes(":") || !THEME_FILES.has(extname(t.preview).toLowerCase()) || extname(t.preview).toLowerCase() === ".json" || !existsSync(join(dir, t.preview))))
     failTheme(id, `"preview" must be an existing .png, .jpg or .webp file next to theme.json`);
 
   const tokens = t.tokens;
@@ -124,6 +141,12 @@ for (const id of existsSync(themesDir) ? readdirSync(themesDir).sort() : []) {
     if (COLOR_TOKENS.includes(name)) { if (typeof value !== "string" || value.length > 64 || !COLOR.test(value)) failTheme(id, `${name}: "${value}" is not a plain color (#rrggbb, rgb(), hsl())`); }
     else if (LENGTH_TOKENS.includes(name)) { if (typeof value !== "string" || !LENGTH.test(value)) failTheme(id, `${name}: "${value}" is not a length like 12px (0-99px or rem)`); }
     else failTheme(id, `token "${name}" is not allowed. Allowed: ${[...COLOR_TOKENS, ...LENGTH_TOKENS].join(", ")}`);
+  }
+  // Guard rails (same as Theme.Parse): readable text and distinct up/down; unset tokens count as the defaults.
+  if (tokens && typeof tokens === "object" && !Array.isArray(tokens) && !errors.some((e) => e.startsWith(`themes/${id}:`))) {
+    const eff = (k, d) => rgb(tokens[k] ?? d);
+    if (contrast(eff("--text", "#f4f5f7"), eff("--bg", "#000000")) < MIN_CONTRAST) failTheme(id, `--text is too close to --bg (contrast under ${MIN_CONTRAST}:1)`);
+    if (eff("--up", "#2fd58b").join() === eff("--down", "#ff5a5f").join()) failTheme(id, "--up and --down must be different colors");
   }
 
   const files = walk(dir).map((p) => relative(dir, p).split(sep).join("/")).sort();

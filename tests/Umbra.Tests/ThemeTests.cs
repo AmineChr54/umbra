@@ -47,6 +47,79 @@ public class ThemeTests
         Assert.Equal(":root{--accent:#ff8a3d;--radius-m:4px;}", t.ToCss());
     }
 
+    [Theory]
+    [InlineData("rgb(1,\t2,3)")]
+    [InlineData("rgb(1,\n2,3)")]
+    [InlineData("#fff\n")]
+    [InlineData("hsl(1  2% 3%)")]
+    public void Only_the_literal_space_is_accepted_as_whitespace(string value) => Assert.False(Theme.IsValidToken("--accent", value));
+
+    [Fact]
+    public void Spaces_are_normalised_in_the_generated_css_and_match_the_sdk_pattern()
+    {
+        var t = Theme.Parse(Json("fine-id", "\"--line\": \"rgba(255,   255,255,   0.5)\""));
+        var css = t.ToCss();
+        Assert.Equal(":root{--line:rgba(255, 255,255, 0.5);}", css);
+        // shared/umbra.js THEME_CSS: only [#a-z0-9.,%() /-] in values
+        Assert.Matches(@"^:root\{(?:--[a-z0-9-]+:[#a-z0-9.,%() /-]+;)+\}$", css);
+    }
+
+    [Theory]
+    [InlineData("\"--text\": \"#050505\"")]
+    [InlineData("\"--bg\": \"#ffffff\"")]
+    [InlineData("\"--bg\": \"#f4f5f7\"")]
+    [InlineData("\"--text\": \"hsl(0, 0%, 2%)\"")]
+    public void Unreadable_text_on_background_is_refused(string tokens) =>
+        Assert.Throws<InvalidOperationException>(() => Theme.Parse(Json("fine-id", tokens)));
+
+    [Fact]
+    public void Readable_light_theme_and_distinct_up_down_are_fine_but_equal_up_down_is_not()
+    {
+        Theme.Parse(Json("fine-id", "\"--bg\": \"#ffffff\", \"--text\": \"#111111\""));
+        Assert.Throws<InvalidOperationException>(() => Theme.Parse(Json("fine-id", "\"--up\": \"#ff0000\", \"--down\": \"rgb(255, 0, 0)\"")));
+        Assert.Throws<InvalidOperationException>(() => Theme.Parse(Json("fine-id", "\"--up\": \"#ff5a5f\"")));
+    }
+
+    [Fact]
+    public void Duplicate_keys_are_a_clean_error()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            Theme.Parse("""{ "id": "a-b", "id": "c-d", "name": "n", "description": "d", "author": "a", "version": "1.0.0", "tokens": { "--accent": "#fff" } }"""));
+        Assert.Contains("not valid JSON", ex.Message);
+    }
+
+    [Fact]
+    public void Default_is_always_listed_even_with_broken_or_leftover_folders()
+    {
+        Directory.CreateDirectory(Path.Combine(Theme.Dir, "broken-one"));
+        File.WriteAllText(Path.Combine(Theme.Dir, "broken-one", "theme.json"), "{ nope");
+        var leftover = Path.Combine(Theme.Dir, "x.abcd1234.tmp");
+        Directory.CreateDirectory(leftover);
+
+        var all = Theme.DiscoverAll();
+        Assert.Equal("default", all[0].Id);
+        Assert.DoesNotContain(all, t => t.Id == "broken-one");
+        Assert.False(Directory.Exists(leftover));
+        Assert.Equal("default", ((JsonObject)Theme.Listing(null)[0]!)["id"]!.GetValue<string>());
+        Assert.Equal("", Theme.CssFor("broken-one"));
+        Directory.Delete(Path.Combine(Theme.Dir, "broken-one"), true);
+    }
+
+    [Fact]
+    public void CommitTheme_replaces_an_existing_version_and_leaves_no_temp_folders()
+    {
+        var id = NewId();
+        Community.CommitTheme(id, new Dictionary<string, byte[]> { ["theme.json"] = Encoding.UTF8.GetBytes(Json(id)) });
+        Community.CommitTheme(id, new Dictionary<string, byte[]> { ["theme.json"] = Encoding.UTF8.GetBytes(Json(id, "\"--accent\": \"#123456\"")) });
+        Assert.Equal(":root{--accent:#123456;}", Theme.CssFor(id));
+        Assert.DoesNotContain(Directory.GetDirectories(Theme.Dir), d => Path.GetFileName(d).StartsWith(id + "."));
+        // an invalid update keeps the installed version
+        Assert.Throws<InvalidOperationException>(() =>
+            Community.CommitTheme(id, new Dictionary<string, byte[]> { ["theme.json"] = Encoding.UTF8.GetBytes(Json(id, "\"--accent\": \"url(x)\"")) }));
+        Assert.Equal(":root{--accent:#123456;}", Theme.CssFor(id));
+        Community.RemoveTheme(id);
+    }
+
     [Fact]
     public void Default_theme_has_no_overrides_and_unknown_ids_fall_back_to_it()
     {

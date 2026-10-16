@@ -96,15 +96,25 @@ static class Community
         if (theme.Preview is not null && !files.ContainsKey(theme.Preview)) throw new InvalidOperationException($"Preview '{theme.Preview}' is missing");
 
         var target = Path.Combine(Theme.Dir, id);
-        var tmp = target + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp";
+        var tag = Guid.NewGuid().ToString("N")[..8];
+        var tmp = $"{target}.{tag}.tmp";
+        var old = $"{target}.{tag}.old";
         Directory.CreateDirectory(tmp);
+        var movedAside = false;
         try
         {
             foreach (var (rel, data) in files) File.WriteAllBytes(Path.Combine(tmp, rel), data);
-            if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+            if (Directory.Exists(target)) { Directory.Move(target, old); movedAside = true; }
             Directory.Move(tmp, target);
+            if (movedAside) try { Directory.Delete(old, recursive: true); } catch { } // a leftover .old is cleaned at startup
         }
-        catch { try { Directory.Delete(tmp, recursive: true); } catch { } throw; }
+        catch
+        {
+            try { Directory.Delete(tmp, recursive: true); } catch { }
+            // Put the previous version back if the new one never made it in.
+            if (movedAside && !Directory.Exists(target)) try { Directory.Move(old, target); } catch { }
+            throw;
+        }
     }
 
     public static void RemoveTheme(string id)
