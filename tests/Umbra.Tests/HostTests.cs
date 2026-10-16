@@ -338,6 +338,19 @@ public class ControlTests
     [InlineData("null")]
     public void CheckScale_rejects_other_values(string json) =>
         Assert.ThrowsAny<Exception>(() => Control.CheckScale(JsonNode.Parse(json)));
+
+    [Fact]
+    public void CheckScale_error_uses_a_decimal_point_on_any_culture()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new("de-DE");
+        try
+        {
+            var err = Assert.ThrowsAny<Exception>(() => Control.CheckScale(JsonNode.Parse("4")));
+            Assert.Contains("0.5", err.Message);
+        }
+        finally { System.Globalization.CultureInfo.CurrentCulture = saved; }
+    }
 }
 
 public class ProtocolTests
