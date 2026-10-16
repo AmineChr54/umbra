@@ -16,6 +16,25 @@
       ]
     },
     {
+      "id": "crypto",
+      "name": "Crypto price",
+      "description": "Price, 24h change and a sparkline for any coin on CoinGecko.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "api.coingecko.com"
+      ],
+      "files": [
+        "chart.js",
+        "crypto.css",
+        "crypto.js",
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "sp500",
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",

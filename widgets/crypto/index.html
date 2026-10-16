@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crypto price</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="crypto.css">
+</head>
+<body>
+  <main class="card" id="card" data-trend="flat">
+    <header class="head">
+      <div class="title">
+        <span class="name" id="name">Bitcoin</span>
+        <span class="ticker" id="ticker">BTC</span>
+      </div>
+      <span class="cap num" id="cap"></span>
+    </header>
+
+    <section class="quote">
+      <div class="price num" id="price">&nbsp;</div>
+      <div class="delta">
+        <span class="pill num" id="pct">&nbsp;</span>
+        <span class="chg num" id="chg">&nbsp;</span>
+      </div>
+    </section>
+
+    <section class="chart" id="chart">
+      <svg id="svg" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="fill-top" />
+            <stop offset="1" class="fill-bottom" />
+          </linearGradient>
+        </defs>
+        <line id="ref" class="ref" />
+        <path id="area" class="area" />
+        <path id="line" class="line" />
+        <circle id="halo" class="halo" r="7" />
+        <circle id="dot" class="dot" r="3.2" />
+      </svg>
+    </section>
+
+    <footer class="foot">
+      <span id="updated">Fetching data</span>
+      <span class="range" id="range">24H</span>
+    </footer>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="chart.js"></script>
+  <script src="crypto.js"></script>
+</body>
+</html>
