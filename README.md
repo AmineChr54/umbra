@@ -74,7 +74,7 @@ Under the hood, both talk to the running app over a per-user named pipe with one
 
 ## Contributing and roadmap
 
-Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr54/projects) tracks what's next, from Backlog to Done, and every new issue lands there automatically.
+Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr54/projects/5) tracks what's next, from Backlog to Done, and every new issue lands there automatically.
 
 - **Build a widget:** [CONTRIBUTING.md](CONTRIBUTING.md) and the [widget SDK](docs/widget-sdk.md).
 - **Work on the app:** pick a `good first issue`, and read [CLAUDE.md](CLAUDE.md) for the architecture and security rules (AI coding agents read it too).

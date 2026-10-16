@@ -72,7 +72,7 @@ behaviour need a human check, so note that in the PR.
 
 ## Workflow
 
-- Work is tracked on the GitHub Projects board "Umbra Roadmap" (Backlog, Ready, In progress, In review, Done).
+- Work is tracked on the GitHub Projects board [Umbra Roadmap](https://github.com/users/AmineChr54/projects/5) (Backlog, Ready, In progress, In review, Done).
   New issues are added automatically and labelled `status: triage`.
 - Labels: `type: bug|feature|docs|widget|chore`, `area: host|widgets|settings|sdk|ai|installer|ci|docs`,
   `priority: p0|p1|p2`, plus `good first issue` and `help wanted`.

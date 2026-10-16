@@ -20,7 +20,7 @@ description: File a well-formed GitHub issue on AmineChr54/umbra with type/area/
      --label "type: bug" --label "area: host" --label "priority: p2" [--milestone "v1.2"]
    ```
    Labels: `type: bug|feature|docs|widget|chore`, `area: host|widgets|settings|sdk|ai|installer|ci|docs`, `priority: p0|p1|p2`, and optionally `good first issue` or `help wanted`.
-4. Put it on the board: `gh project item-add <number> --owner AmineChr54 --url <issue-url>`. Find the project number with `gh project list --owner AmineChr54`. New issues are also auto-added once the board's auto-add workflow is on.
+4. Put it on the board: `gh project item-add 5 --owner AmineChr54 --url <issue-url>` (Umbra Roadmap is project 5). New issues are also auto-added once the board's auto-add workflow is on.
 5. Report the issue URL.
 
 Security vulnerabilities are never public issues. Use a private security advisory (see SECURITY.md).

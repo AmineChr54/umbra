@@ -100,7 +100,7 @@ node scripts/catalog.mjs          # validates and rebuilds widgets/index.json
 
 ## Working on the app itself
 
-Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows. [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.
+Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects/5) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows. [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.
 
 ## 6. Open a pull request
 
