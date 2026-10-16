@@ -20,6 +20,7 @@ Record `umbractl list` first, and restore the values at the end. Positions too: 
 | Running | `umbractl status` | version = Directory.Build.props |
 | Option, live | `umbractl set sp500 symbol ^IXIC`, then `capture sp500 x.png` | the PNG shows the Nasdaq value |
 | Validation | `umbractl set sp500 range 7d` | exit 1, "must be one of" |
+| Install | `umbractl install sp500` (not built in; installs from the catalog) | `list` shows sp500 |
 | Catalog | `umbractl catalog` | clock + sp500 from GitHub |
 | Install/remove | `umbractl install clock`, `capture clock c.png`, `remove clock` | clock drawn, then gone |
 | Scaffold | `umbractl new t-widget`, `capture t-widget t.png`, `remove t-widget` | template renders |

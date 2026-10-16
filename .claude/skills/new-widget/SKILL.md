@@ -19,4 +19,4 @@ description: Create a new Umbra widget in widgets/<id> that passes catalog valid
 7. Validate with `node scripts/catalog.mjs` (this regenerates `widgets/index.json`; commit both).
 8. Clean up with `umbractl remove <id>` if it was only loaded for testing.
 
-To ship it built-in (rare), add it to the `<Content>` items in `src/Umbra/Umbra.csproj`, like `sp500`. Otherwise it's a community widget, installed from Browse.
+Widgets are never built in; they are community widgets installed from Browse (`umbractl install <id>` once merged to main). A built-in would need a `<Content>` item in `src/Umbra/Umbra.csproj`, which needs review.

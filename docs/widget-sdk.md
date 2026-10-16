@@ -15,7 +15,7 @@ my-widget/            folder name = widget id (lowercase letters, digits, dashes
   ...                 .js .mjs .css .svg .png .jpg .webp .gif .woff .woff2 .ttf .otf .json .txt .md (5 MB total)
 ```
 
-Built-in widgets live in the app folder. Community and locally created widgets live in
+Nothing ships inside the app; every widget, including S&P 500, is installed from Browse. Community and locally created widgets live in
 `%APPDATA%\Umbra\widgets\<id>` and are served from `https://community.umbra.local/<id>/`.
 
 ## widget.json

@@ -81,8 +81,9 @@ try {
     $r = Ctl list
     if (Expect $r 'list') {
         $widgets = @($r.Out | ConvertFrom-Json)
-        if ($widgets.Count -ge 1 -and ($widgets | Where-Object { $_.id -eq 'sp500' })) { Pass "$($widgets.Count) widget(s), sp500 present" }
-        else { Fail 'list has no built-in sp500 widget' }
+        # Nothing is built in any more, so a fresh smoke data folder starts empty; 'new' below creates the widget.
+        Pass "$($widgets.Count) widget(s) listed"
+
     }
 
     Step 'new + list'

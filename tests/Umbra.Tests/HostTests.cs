@@ -58,12 +58,76 @@ public class WidgetManifestTests
     }
 
     [Fact]
-    public void Built_in_manifests_in_the_repo_parse()
+    public void Catalog_manifests_in_the_repo_parse()
     {
         var widgets = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "widgets"));
-        var found = WidgetManifest.Discover(widgets, WidgetSource.BuiltIn);
+        var found = WidgetManifest.Discover(widgets, WidgetSource.Community);
         Assert.Contains(found, m => m.Id == "sp500");
         Assert.All(found, m => Assert.Equal(m.Id, m.Folder));
+    }
+
+    [Fact]
+    public void Discovery_with_an_empty_or_missing_widget_folder_finds_nothing()
+    {
+        var empty = Path.Combine(Path.GetTempPath(), $"umbra-empty-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(empty);
+        try
+        {
+            Assert.Empty(WidgetManifest.Discover(empty, WidgetSource.BuiltIn));
+            Assert.Empty(WidgetManifest.Discover(Path.Combine(empty, "missing"), WidgetSource.BuiltIn));
+        }
+        finally { Directory.Delete(empty, recursive: true); }
+    }
+}
+
+public class RestoreTests
+{
+    public RestoreTests() => TestEnv.Init();
+
+    static Settings With(params (string Id, bool Enabled)[] entries)
+    {
+        var s = new Settings();
+        foreach (var (id, enabled) in entries) s.Widgets[id] = new WidgetSettings { Enabled = enabled };
+        return s;
+    }
+
+    static WidgetManifest Manifest(string id) => WidgetManifest.Parse($$"""{ "id": "{{id}}", "name": "{{id}}" }""");
+
+    [Fact]
+    public void Enabled_widget_without_a_manifest_is_restored()
+    {
+        var ids = Restore.ToRestore(With(("sp500", true)), Array.Empty<WidgetManifest>());
+        Assert.Equal(new[] { "sp500" }, ids);
+    }
+
+    [Fact]
+    public void Disabled_installed_and_extra_copies_are_not_restored()
+    {
+        var s = With(("sp500", false), ("clock", true), ("sp500#2", true), ("gone#3", true), ("Bad Id", true));
+        Assert.Empty(Restore.ToRestore(s, new[] { Manifest("clock") }));
+    }
+
+    [Fact]
+    public void Ids_missing_from_the_catalog_are_skipped()
+    {
+        var s = With(("sp500", true), ("mine", true));
+        Assert.Equal(new[] { "sp500" }, Restore.ToRestore(s, Array.Empty<WidgetManifest>(), new[] { "sp500", "clock" }));
+    }
+
+    [Fact]
+    public void Restores_are_capped_per_start()
+    {
+        var s = With(Enumerable.Range(1, 8).Select(i => ($"widget-{i}", true)).ToArray());
+        var ids = Restore.ToRestore(s, Array.Empty<WidgetManifest>());
+        Assert.Equal(Restore.MaxPerStart, ids.Count);
+        Assert.Equal(5, Restore.MaxPerStart);
+        Assert.Equal(new[] { "widget-1", "widget-2" }, Restore.ToRestore(s, Array.Empty<WidgetManifest>(), max: 2));
+    }
+
+    [Fact]
+    public void Nothing_to_restore_for_empty_settings()
+    {
+        Assert.Empty(Restore.ToRestore(new Settings(), Array.Empty<WidgetManifest>()));
     }
 }
 

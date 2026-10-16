@@ -22,8 +22,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\..\assets\umbra.ico" LogicalName="umbra.ico" />
-    <!-- Built-in widgets ship with the app; everything else in widgets/ is installed from the community catalog. -->
-    <Content Include="..\..\widgets\sp500\**\*" LinkBase="widgets\sp500" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\shared\**\*" LinkBase="shared" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\settings\**\*" LinkBase="settings" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

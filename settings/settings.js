@@ -164,7 +164,8 @@ function renderInstalled() {
   list.textContent = "";
   $("#count").textContent = state.widgets.length || "";
   if (!state.widgets.length) {
-    list.innerHTML = '<div class="empty">No widgets yet. Find some in <b>Browse</b>.</div>';
+    list.innerHTML = '<div class="empty">No widgets yet.<br><br><button class="btn primary" id="goBrowse">Browse widgets</button></div>';
+    $("#goBrowse").addEventListener("click", () => show("browse"));
     return;
   }
   for (const w of state.widgets) {

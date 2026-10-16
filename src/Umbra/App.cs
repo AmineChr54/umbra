@@ -23,7 +23,7 @@ sealed class App : ApplicationContext
     /// </summary>
     public bool EditMode { get; private set; }
 
-    public App(bool openSettings)
+    public App(bool openSettings, bool background = false)
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
@@ -38,7 +38,50 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
 
         SyncWindows();
-        if (openSettings) ShowSettings();
+
+        // Widgets that used to be built in are fetched again once per start; otherwise an empty install starts on Browse.
+        var restore = Restore.ToRestore(Settings, Manifests);
+        if (restore.Count > 0) _ = RestoreMissingAsync(restore);
+        var showBrowse = Manifests.Count == 0 && restore.Count == 0 && !background;
+        if (openSettings || showBrowse)
+        {
+            var win = ShowSettings();
+            if (showBrowse) _ = ShowBrowseAsync(win);
+        }
+    }
+
+    static async Task ShowBrowseAsync(SettingsWindow win)
+    {
+        try { await win.ShowPageAsync("browse"); }
+        catch (Exception ex) { Log.Write($"Could not open Browse: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// One attempt per start, never blocks startup: installs enabled widgets whose folder is missing from the
+    /// catalog through <see cref="Community.InstallAsync"/>. Their saved position and options are kept.
+    /// </summary>
+    async Task RestoreMissingAsync(List<string> candidates)
+    {
+        try
+        {
+            var catalog = await Community.FetchCatalogAsync();
+            var entries = catalog.Where(w => w?["id"] is not null).ToDictionary(w => w!["id"]!.GetValue<string>(), w => w!);
+            var ids = Restore.ToRestore(Settings, Manifests, entries.Keys.ToList());
+            Log.Write($"Restoring community widgets that used to be built in: {string.Join(", ", ids)} (asked for {string.Join(", ", candidates)})");
+            var done = new List<string>();
+            foreach (var id in ids)
+            {
+                try { await Community.InstallAsync(entries[id]); done.Add(id); }
+                catch (Exception ex) { Log.Write($"Restore of {id} failed: {ex.Message}"); }
+            }
+            if (done.Count == 0) return;
+            await OnUi(() => { ReloadWidgets(); SettingsChangedElsewhere(); return Task.FromResult(0); });
+            Log.Write($"Restored {string.Join(", ", done)}");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Restore skipped, catalog not reachable: {ex.Message}");
+        }
     }
 
     /// <summary>Runs work on the UI thread (pipe requests arrive on worker threads) and returns its result.</summary>
