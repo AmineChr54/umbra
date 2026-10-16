@@ -1,0 +1,98 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+
+namespace Umbra;
+
+public enum WidgetSource { BuiltIn, Community }
+
+/// <summary>Describes one widget folder (widgets/&lt;id&gt;/widget.json).</summary>
+public sealed partial class WidgetManifest
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Author { get; set; } = "";
+    public string Version { get; set; } = "1.0.0";
+    public string Entry { get; set; } = "index.html";
+    public string? Preview { get; set; }
+    public int Width { get; set; } = 320;
+    public int Height { get; set; } = 180;
+    public PointSpec? DefaultPosition { get; set; }
+    public PermissionSpec Permissions { get; set; } = new();
+    /// <summary>Option schema shown in Settings: key -> {label, type, default, choices?}.</summary>
+    public JsonObject Options { get; set; } = new();
+
+    [JsonIgnore] public List<string> OptionOrder { get; set; } = new();
+    [JsonIgnore] public string Folder { get; set; } = "";
+    [JsonIgnore] public WidgetSource Source { get; set; }
+
+    public sealed class PointSpec { public int X { get; set; } public int Y { get; set; } }
+    public sealed class PermissionSpec { public List<string> Hosts { get; set; } = new(); }
+
+    static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>Lowercase letters, digits and dashes; also used as the folder name.</summary>
+    [GeneratedRegex("^[a-z0-9][a-z0-9-]{1,39}$")]
+    public static partial Regex IdPattern();
+
+    /// <summary>Page URL inside WebView2. Built-ins and community widgets live on separate virtual hosts.</summary>
+    public string PageUrl => Source == WidgetSource.BuiltIn
+        ? WebHost.Url($"widgets/{Folder}/{Entry}")
+        : WebHost.CommunityUrl($"{Folder}/{Entry}");
+
+    public static List<WidgetManifest> DiscoverAll()
+    {
+        var builtIn = Discover(AppPaths.WidgetsDir, WidgetSource.BuiltIn);
+        var community = Discover(AppPaths.CommunityDir, WidgetSource.Community)
+            .Where(c => builtIn.All(b => b.Id != c.Id));
+        return builtIn.Concat(community).ToList();
+    }
+
+    static List<WidgetManifest> Discover(string root, WidgetSource source)
+    {
+        var list = new List<WidgetManifest>();
+        if (!Directory.Exists(root)) return list;
+        foreach (var dir in Directory.GetDirectories(root).OrderBy(d => d))
+        {
+            var file = Path.Combine(dir, "widget.json");
+            if (!File.Exists(file)) continue;
+            try
+            {
+                var text = File.ReadAllText(file);
+                var m = JsonSerializer.Deserialize<WidgetManifest>(text, Json);
+                if (m is null || !IdPattern().IsMatch(m.Id)) continue;
+                // Settings shows options in the order they are written in widget.json.
+                using (var doc = JsonDocument.Parse(text))
+                    if (doc.RootElement.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Object)
+                        m.OptionOrder = opts.EnumerateObject().Select(p => p.Name).ToList();
+                m.Folder = Path.GetFileName(dir);
+                m.Source = source;
+                list.Add(m);
+            }
+            catch (Exception ex)
+            {
+                Log.Write($"Skipping widget {dir}: {ex.Message}");
+            }
+        }
+        return list;
+    }
+
+    /// <summary>Default value for every option declared in the manifest.</summary>
+    public JsonObject DefaultOptions()
+    {
+        var o = new JsonObject();
+        foreach (var (key, spec) in Options)
+            o[key] = spec?["default"]?.DeepClone();
+        return o;
+    }
+
+    public bool AllowsHost(string host) =>
+        Permissions.Hosts.Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase));
+
+    public bool AllowsUrl(string url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var u)
+        && u.Scheme == Uri.UriSchemeHttps
+        && AllowsHost(u.Host);
+}

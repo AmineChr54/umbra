@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Umbra</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <linearGradient id="rim" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" />
+              <stop offset="1" stop-color="#4650f0" />
+            </linearGradient>
+            <radialGradient id="glow">
+              <stop offset="0.6" stop-color="#8b93ff" stop-opacity="0.35" />
+              <stop offset="1" stop-color="#8b93ff" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="32" cy="32" r="31" fill="url(#glow)" />
+          <circle cx="32" cy="32" r="24" fill="url(#rim)" />
+          <circle cx="30.4" cy="33.6" r="22.4" fill="#040406" />
+        </svg>
+        <div>
+          <div class="wordmark">Umbra</div>
+          <div class="ver" id="ver">&nbsp;</div>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button data-page="general" class="active"><span class="ico" data-icon="sliders"></span>General</button>
+        <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
+        <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
+        <button data-page="about"><span class="ico" data-icon="info"></span>About</button>
+      </nav>
+
+      <div class="side-foot">
+        <button class="link" data-url="repo"><span class="ico" data-icon="github"></span>GitHub</button>
+      </div>
+    </aside>
+
+    <main class="content" id="content">
+      <!-- General -->
+      <section class="page active" data-page="general">
+        <header class="page-head">
+          <h1>General</h1>
+          <p>How Umbra starts and behaves on your desktop.</p>
+        </header>
+
+        <div class="group">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Start with Windows</div>
+              <div class="row-sub">Your widgets appear on the desktop when you sign in.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="startup"><span></span></label>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Refresh interval</div>
+              <div class="row-sub">How often widgets fetch fresh data.</div>
+            </div>
+            <div class="segmented" id="interval">
+              <button data-v="30">30s</button>
+              <button data-v="60">1m</button>
+              <button data-v="120">2m</button>
+              <button data-v="300">5m</button>
+              <button data-v="600">10m</button>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Animations</div>
+              <div class="row-sub">Chart draw-in, counters and pulses. Also follows Windows' animation setting.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="animations"><span></span></label>
+          </div>
+        </div>
+
+        <div class="hint">
+          <span class="ico" data-icon="mouse"></span>
+          Drag a widget anywhere on the desktop to move it. Double-click it to open the source. Umbra lives in the tray.
+        </div>
+      </section>
+
+      <!-- My widgets -->
+      <section class="page" data-page="widgets">
+        <header class="page-head">
+          <h1>My widgets</h1>
+          <p>Turn widgets on or off and change their settings. Changes apply instantly.</p>
+        </header>
+        <div class="stack" id="installed"></div>
+      </section>
+
+      <!-- Browse -->
+      <section class="page" data-page="browse">
+        <div class="hero">
+          <div class="hero-text">
+            <div class="eyebrow">Community</div>
+            <h2>Widgets made by people like you</h2>
+            <p>Every widget runs in a sandbox and can only reach the sites it declares. Built one? Open a pull request and it shows up here for everyone.</p>
+            <div class="hero-actions">
+              <button class="btn primary" data-url="contribute"><span class="ico" data-icon="plus"></span>Submit a widget</button>
+              <button class="btn ghost" id="reloadCatalog"><span class="ico" data-icon="refresh"></span>Refresh</button>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="search">
+          <span class="ico" data-icon="search"></span>
+          <input id="search" placeholder="Search widgets" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="grid" id="catalog"></div>
+      </section>
+
+      <!-- About -->
+      <section class="page" data-page="about">
+        <div class="about">
+          <svg class="about-logo" viewBox="0 0 64 64" aria-hidden="true"><use href="#none" /></svg>
+          <h1>Umbra</h1>
+          <p class="about-tag">Desktop widgets that live on your wallpaper.</p>
+          <p class="about-ver" id="aboutVer"></p>
+          <div class="about-links">
+            <button class="btn" data-url="repo"><span class="ico" data-icon="github"></span>Source code</button>
+            <button class="btn" data-url="issues"><span class="ico" data-icon="bug"></span>Report an issue</button>
+            <button class="btn" data-url="contribute"><span class="ico" data-icon="plus"></span>Build a widget</button>
+          </div>
+          <p class="about-small">Open source under the MIT license. Market data from Yahoo Finance; delayed and not for trading.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <template id="tpl-installed">
+    <article class="wcard">
+      <div class="wcard-main">
+        <div class="thumb"></div>
+        <div class="wcard-text">
+          <div class="wcard-title"><span class="wname"></span><span class="badge"></span></div>
+          <div class="wmeta"></div>
+          <div class="wdesc"></div>
+        </div>
+        <label class="switch"><input type="checkbox" class="enabled"><span></span></label>
+      </div>
+      <div class="wcard-body">
+        <div class="fields"></div>
+        <div class="wcard-actions">
+          <label class="check"><input type="checkbox" class="locked"><span></span>Lock position</label>
+          <div class="spacer"></div>
+          <button class="btn small reset"><span class="ico" data-icon="target"></span>Reset position</button>
+          <button class="btn small danger remove"><span class="ico" data-icon="trash"></span>Remove</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="tpl-catalog">
+    <article class="ccard">
+      <div class="cthumb"><span class="initial"></span></div>
+      <div class="cbody">
+        <div class="ctitle"><span class="cname"></span><span class="cver"></span></div>
+        <div class="cauthor"></div>
+        <p class="cdesc"></p>
+        <div class="chips"></div>
+      </div>
+      <div class="cfoot"><button class="btn small action"></button></div>
+    </article>
+  </template>
+
+  <script src="settings.js"></script>
+</body>
+</html>

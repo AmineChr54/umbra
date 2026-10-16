@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S&amp;P 500</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="sp500.css">
+</head>
+<body>
+  <main class="card" id="card" data-trend="flat">
+    <header class="head">
+      <div class="title">
+        <span class="name" id="label">S&amp;P 500</span>
+        <span class="ticker" id="ticker">^GSPC</span>
+      </div>
+      <div class="market" id="market"><i></i><span>Loading</span></div>
+    </header>
+
+    <section class="quote">
+      <div class="price num" id="price">&nbsp;</div>
+      <div class="delta">
+        <span class="pill num" id="pct">&nbsp;</span>
+        <span class="chg num" id="chg">&nbsp;</span>
+      </div>
+    </section>
+
+    <section class="chart" id="chart">
+      <svg id="svg" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="fill-top" />
+            <stop offset="1" class="fill-bottom" />
+          </linearGradient>
+        </defs>
+        <line id="ref" class="ref" />
+        <path id="area" class="area" />
+        <path id="line" class="line" />
+        <line id="cross" class="cross" />
+        <circle id="halo" class="halo" r="7" />
+        <circle id="dot" class="dot" r="3.2" />
+        <circle id="hoverDot" class="hover-dot" r="3.5" />
+      </svg>
+      <div class="tip num" id="tip"></div>
+    </section>
+
+    <footer class="foot">
+      <span id="updated">Fetching data</span>
+      <span class="range" id="range">1D</span>
+    </footer>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="chart.js"></script>
+  <script src="sp500.js"></script>
+</body>
+</html>

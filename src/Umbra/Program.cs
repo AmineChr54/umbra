@@ -1,0 +1,42 @@
+namespace Umbra;
+
+static class Program
+{
+    /// <summary>
+    /// Umbra.exe              start (or, if already running, open Settings in the running instance)
+    /// Umbra.exe --background start without opening Settings (used by the Start with Windows entry)
+    /// </summary>
+    [STAThread]
+    static void Main(string[] args)
+    {
+        var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+
+        using var instance = new SingleInstance();
+        if (!instance.IsFirst)
+        {
+            if (!background) SingleInstance.SignalFirst("settings");
+            return;
+        }
+
+        ApplicationConfiguration.Initialize();
+        Application.SetColorMode(SystemColorMode.Dark);
+
+        if (!WebHost.RuntimeInstalled())
+        {
+            MessageBox.Show(
+                "Umbra needs the Microsoft Edge WebView2 Runtime.\n\nIt ships with Windows 11; on older systems download it from:\nhttps://developer.microsoft.com/microsoft-edge/webview2/",
+                "Umbra", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        Application.ThreadException += (_, e) => Log.Write($"UI exception: {e.Exception}");
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Log.Write($"Fatal: {e.ExceptionObject}");
+
+        // First run (no settings yet) opens Settings so the user sees what Umbra can do.
+        var firstRun = !File.Exists(Path.Combine(AppPaths.DataDir, "settings.json"));
+        var app = new App(openSettings: !background && firstRun);
+        app.SaveSettings();
+        instance.Listen(app.OnSecondInstance);
+        Application.Run(app);
+    }
+}

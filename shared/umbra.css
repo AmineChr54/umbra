@@ -1,0 +1,56 @@
+/* Umbra design tokens - shared by every widget and the Settings panel.
+   Surfaces are true black: on OLED those pixels are off, so widgets melt into a dark wallpaper. */
+:root {
+  color-scheme: dark;
+
+  --bg: #000;
+  --surface-1: #0a0a0c;
+  --surface-2: #111114;
+  --surface-3: #17171c;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.12);
+
+  --text: #f4f5f7;
+  --text-2: #a3a7b1;
+  --text-3: #6b707b;
+
+  --accent: #8b93ff;
+  --accent-strong: #a9afff;
+  --accent-soft: rgba(139, 147, 255, 0.14);
+
+  --up: #2fd58b;
+  --down: #ff5a5f;
+  --flat: #9aa0aa;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 18px;
+
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern", "liga", "calt";
+  user-select: none;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* Motion is opt-out: the SDK sets data-motion="off" when the user disables animations
+   or Windows has "Animation effects" turned off. */
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}

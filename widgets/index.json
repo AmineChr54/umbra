@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "widgets": [
+    {
+      "id": "clock",
+      "name": "Clock",
+      "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "sp500",
+      "name": "S&P 500",
+      "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "query1.finance.yahoo.com"
+      ],
+      "files": [
+        "chart.js",
+        "index.html",
+        "preview.png",
+        "sp500.css",
+        "sp500.js",
+        "widget.json"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Clock</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+    .clock {
+      height: 100%;
+      display: flex; align-items: center; gap: 18px;
+      padding: 0 22px;
+    }
+    .ring { width: 54px; height: 54px; flex: none; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 3; }
+    .ring .track { stroke: rgba(255, 255, 255, 0.07); }
+    .ring .fill {
+      stroke: var(--accent); stroke-linecap: round;
+      filter: drop-shadow(0 0 4px rgba(139, 147, 255, 0.6));
+      transition: stroke-dashoffset 900ms linear;
+    }
+    .time {
+      font-family: var(--font-display);
+      font-size: 40px; font-weight: 600; line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .time small { font-size: 16px; color: var(--text-3); margin-left: 4px; letter-spacing: 0; }
+    .date { margin-top: 6px; font-size: 12px; font-weight: 500; color: var(--text-2); letter-spacing: 0.02em; }
+  </style>
+</head>
+<body>
+  <main class="clock">
+    <svg class="ring" viewBox="0 0 54 54" aria-hidden="true">
+      <circle class="track" cx="27" cy="27" r="24" />
+      <circle class="fill" id="fill" cx="27" cy="27" r="24" />
+    </svg>
+    <div>
+      <div class="time num" id="time"></div>
+      <div class="date" id="date"></div>
+    </div>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script>
+    const C = 2 * Math.PI * 24;
+    const fill = document.getElementById("fill");
+    fill.style.strokeDasharray = C;
+
+    function tick() {
+      const now = new Date();
+      const o = umbra.options;
+      const parts = new Intl.DateTimeFormat([], {
+        hour: "2-digit", minute: "2-digit", second: o.seconds ? "2-digit" : undefined, hour12: !!o.hour12,
+      }).formatToParts(now);
+      const main = parts.filter((p) => p.type !== "dayPeriod").map((p) => p.value).join("").trim();
+      const period = parts.find((p) => p.type === "dayPeriod");
+      document.getElementById("time").innerHTML = main + (period ? `<small>${period.value}</small>` : "");
+      document.getElementById("date").textContent =
+        now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+      fill.style.strokeDashoffset = C * (1 - (now.getSeconds() + now.getMilliseconds() / 1000) / 60);
+    }
+
+    umbra.ready.then(() => {
+      tick();
+      setInterval(tick, 1000);
+      window.chrome?.webview?.postMessage({ type: "rendered" });
+    });
+    umbra.onSettings(tick);
+  </script>
+</body>
+</html>
