@@ -150,12 +150,15 @@ function renderInstalled() {
     $(".wmeta", card).textContent = [w.author && `by ${w.author}`, `v${w.version}`].filter(Boolean).join("  ·  ");
     $(".wdesc", card).textContent = w.description;
 
+    // Look the settings up on each change: the host may have sent a newer state (a zoom on the desktop)
+    // while this list wasn't rebuilt, and writing to the old `ws` would be lost.
+    const cur = () => state.settings.widgets[w.id];
     const enabled = $(".enabled", card);
     enabled.checked = ws.enabled;
     card.classList.toggle("off", !ws.enabled);
     enabled.addEventListener("change", () => {
-      ws.enabled = enabled.checked;
-      card.classList.toggle("off", !ws.enabled);
+      cur().enabled = enabled.checked;
+      card.classList.toggle("off", !enabled.checked);
       save(true);
     });
 
@@ -163,9 +166,7 @@ function renderInstalled() {
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});
     for (const key of order) if (w.options[key]) fields.append(field(w.id, key, w.options[key], ws.options[key]));
 
-    // Size: 50-300 %. Locked widgets keep their size here too. Look the settings up on each change:
-    // the host may have sent a newer state (a zoom on the desktop) while this list wasn't rebuilt.
-    const cur = () => state.settings.widgets[w.id];
+    // Size: 50-300 %. Locked widgets keep their size here too.
     const scale = $(".scale", card);
     const scaleVal = $(".size-val", card);
     const showScale = (pct) => {

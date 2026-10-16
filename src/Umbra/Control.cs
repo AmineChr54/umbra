@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -322,7 +323,9 @@ sealed class Control(App app)
     internal static double CheckScale(JsonNode? n) =>
         n?.GetValueKind() == JsonValueKind.Number && n.GetValue<double>() is var s && s >= WidgetSettings.MinScale && s <= WidgetSettings.MaxScale
             ? WidgetSettings.ClampScale(s)
-            : throw new CommandException($"\"scale\" must be a number from {WidgetSettings.MinScale} to {WidgetSettings.MaxScale} (1 = 100 %)");
+            // Invariant: umbractl only parses "0.5", so the message must not say "0,5" on a German PC.
+            : throw new CommandException(string.Create(CultureInfo.InvariantCulture,
+                $"\"scale\" must be a number from {WidgetSettings.MinScale} to {WidgetSettings.MaxScale} (1 = 100 %)"));
 
     WidgetManifest Manifest(JsonObject a)
     {
