@@ -46,6 +46,26 @@ public sealed partial class CommandSpec
 
     public IEnumerable<string> Args => Run.Skip(1);
 
+    static readonly HashSet<string> Interpreters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "cmd", "powershell", "pwsh", "wscript", "cscript", "mshta", "node", "python", "pythonw", "py", "bash", "sh", "wsl",
+        "rundll32", "regsvr32", "msiexec",
+    };
+    static readonly string[] ScriptSuffixes = { ".ps1", ".bat", ".cmd", ".vbs", ".js" };
+
+    /// <summary>True when the executable runs arbitrary code by design (a shell, script host, runtime or script file).</summary>
+    public bool IsInterpreter
+    {
+        get
+        {
+            var file = Run[0].Replace('\\', '/');
+            file = file[(file.LastIndexOf('/') + 1)..];
+            if (ScriptSuffixes.Any(s => file.EndsWith(s, StringComparison.OrdinalIgnoreCase))) return true;
+            var name = file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".com", StringComparison.OrdinalIgnoreCase) ? file[..^4] : file;
+            return Interpreters.Contains(name);
+        }
+    }
+
     /// <summary>The parameter a literal-or-placeholder argument stands for, or null for a literal.</summary>
     internal static string? PlaceholderOf(string arg) =>
         PlaceholderPattern().Match(arg) is { Success: true } m ? m.Groups[1].Value : null;
@@ -81,6 +101,9 @@ public sealed partial class CommandSpec
             if (!Regex.IsMatch(name, "^[a-z][A-Za-z0-9]{0,31}$")) throw new InvalidOperationException($"{Where()}: invalid parameter name '{name}'");
             if (!used.Contains(name)) throw new InvalidOperationException($"{Where()}: parameter '{name}' is declared but never used in \"run\"");
             if (spec is null || spec.MaxLength is < 1 or > ParamSpec.HardMaxLength) throw new InvalidOperationException($"{Where()}: parameter '{name}' maxLength must be 1-{ParamSpec.HardMaxLength}");
+            // Free text into an interpreter is code execution: only fixed choices are allowed there.
+            if (IsInterpreter && spec.Choices is null)
+                throw new InvalidOperationException($"{Where()}: '{Exe}' runs arbitrary code, so parameter '{name}' needs fixed \"choices\"");
             if (spec.Choices is { } ch && (ch.Count is < 1 or > 64 || ch.Any(c => c is null || c.Length > spec.MaxLength || c.Length == 0 || HasBadChars(c))))
                 throw new InvalidOperationException($"{Where()}: parameter '{name}' choices must be 1-64 non-empty strings within maxLength");
         }
@@ -143,7 +166,7 @@ public sealed partial class CommandSpec
             throw new WidgetCommandException($"Parameter '{name}' must be 1-{spec.MaxLength} characters");
         if (HasBadChars(value)) throw new WidgetCommandException($"Parameter '{name}' contains control characters");
         // A free value must not be able to turn into an option of the program ("-rf", "--config").
-        if (value[0] == '-') throw new WidgetCommandException($"Parameter '{name}' must not start with '-'");
+        if (value[0] is '-' or '/') throw new WidgetCommandException($"Parameter '{name}' must not start with '-' or '/'");
         return value;
     }
 

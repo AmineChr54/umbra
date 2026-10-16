@@ -4,7 +4,33 @@ using System.Text.Json.Nodes;
 namespace Umbra;
 
 /// <summary>One saved user decision: this widget may run this exact command (identified by its hash).</summary>
-public sealed record CommandApproval(string WidgetId, string CommandId, string Hash, DateTime ApprovedAt);
+public sealed record CommandApproval(string WidgetId, string CommandId, string Hash, DateTime ApprovedAt, string? ExePath = null, string? ExeHash = null);
+
+/// <summary>The program file a command resolved to at some moment: its full path and SHA-256.</summary>
+public sealed record ExeIdentity(string Path, string Sha256)
+{
+    static readonly Dictionary<(string, long, long), string> Cache = new();
+
+    /// <summary>Resolves the spec's executable the way a run would and fingerprints the file; null when it isn't found.</summary>
+    public static ExeIdentity? Of(CommandSpec spec)
+    {
+        var path = CommandRunner.ResolveExe(spec.Exe, allowScripts: spec.Params.Count == 0);
+        if (path is null) return null;
+        try
+        {
+            var info = new FileInfo(path);
+            var key = (path.ToLowerInvariant(), info.Length, info.LastWriteTimeUtc.Ticks);
+            lock (Cache)
+                if (Cache.TryGetValue(key, out var cached)) return new(path, cached);
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(fs)).ToLowerInvariant();
+            lock (Cache) Cache[key] = hash;
+            return new(path, hash);
+        }
+        catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
+    }
+}
 
 /// <summary>
 /// Which widget commands the user has approved: %APPDATA%\Umbra\approvals.json, kept apart from settings.json so the
@@ -59,21 +85,26 @@ sealed class CommandApprovals(string path)
     /// <summary>"approved" (same command as approved), "changed" (approved before, but the command differs now) or "pending".</summary>
     public string Status(string widgetId, CommandSpec spec)
     {
-        lock (_gate)
-        {
-            var a = Items.FirstOrDefault(x => x.WidgetId == widgetId && x.CommandId == spec.Id);
-            return a is null ? "pending" : string.Equals(a.Hash, spec.Hash(), StringComparison.Ordinal) ? "approved" : "changed";
-        }
+        CommandApproval? a;
+        lock (_gate) a = Items.FirstOrDefault(x => x.WidgetId == widgetId && x.CommandId == spec.Id);
+        if (a is null) return "pending";
+        if (!string.Equals(a.Hash, spec.Hash(), StringComparison.Ordinal)) return "changed";
+        // The approval is also bound to the program file it resolved to: a different path or different bytes need a new approval.
+        // (An approval without a recorded file, e.g. one written by an older build, is treated as changed.)
+        var exe = ExeIdentity.Of(spec);
+        return exe is not null && a.ExeHash == exe.Sha256 && string.Equals(a.ExePath, exe.Path, StringComparison.OrdinalIgnoreCase) ? "approved" : "changed";
     }
 
     public bool IsApproved(string widgetId, CommandSpec spec) => Status(widgetId, spec) == "approved";
 
-    public void Approve(string widgetId, CommandSpec spec)
+    /// <param name="exe">The program being approved; defaults to what the spec resolves to now.</param>
+    public void Approve(string widgetId, CommandSpec spec, ExeIdentity? exe = null)
     {
+        exe ??= ExeIdentity.Of(spec);
         lock (_gate)
         {
             Items.RemoveAll(x => x.WidgetId == widgetId && x.CommandId == spec.Id);
-            Items.Add(new CommandApproval(widgetId, spec.Id, spec.Hash(), DateTime.UtcNow));
+            Items.Add(new CommandApproval(widgetId, spec.Id, spec.Hash(), DateTime.UtcNow, exe?.Path, exe?.Sha256));
             Save();
         }
         Log.Write($"[{widgetId}] command '{spec.Id}' approved");

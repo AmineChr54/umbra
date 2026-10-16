@@ -72,7 +72,7 @@
    * the host owns the program and arguments, asks the user to approve the first run, and caps time and output.
    * Resolves { exitCode, stdout, stderr, timedOut, truncated, durationMs }; rejects when not declared, not approved, or invalid.
    */
-  const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 135000);
+  const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
 
   /** This widget's own saved data (any JSON per key), kept by the host across restarts. */
   const store = {

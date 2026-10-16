@@ -20,11 +20,11 @@ sealed class ApprovalDialog : Form
         TopMost = true;
         ShowInTaskbar = true;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(560, 330);
+        ClientSize = new Size(560, 345);
 
         var heading = new Label
         {
-            Text = $"The widget \"{r.WidgetName}\" wants to run this on your PC:",
+            Text = $"The widget \"{Clean(r.WidgetName, 40)}\" wants to run this on your PC:",
             Left = 16, Top = 14, Width = 528, Height = 22, UseMnemonic = false, Font = new Font(Font, FontStyle.Bold),
         };
         var line = new TextBox
@@ -42,17 +42,44 @@ sealed class ApprovalDialog : Form
         var said = new GroupBox { Text = "What the widget says it is for (not verified)", Left = 16, Top = 210, Width = 528, Height = 60 };
         said.Controls.Add(new Label { Text = string.IsNullOrWhiteSpace(r.Description) ? "(no description)" : r.Description, Left = 10, Top = 20, Width = 508, Height = 34, AutoEllipsis = true, UseMnemonic = false });
 
-        _allow.Left = 544 - 110 - 10 - 110; _allow.Top = 284;
-        _deny.Left = 544 - 110; _deny.Top = 284;
-        Controls.AddRange(new System.Windows.Forms.Control[] { heading, line, where, note, said, _allow, _deny });
+        var warn = new Label
+        {
+            Text = "This program can run anything: whoever controls this widget controls what it does.",
+            Left = 16, Top = 272, Width = 528, Height = 20, ForeColor = Color.Firebrick, Font = new Font(Font, FontStyle.Bold),
+            Visible = r.IsInterpreter, UseMnemonic = false,
+        };
+        _allow.Left = 544 - 110 - 10 - 110; _allow.Top = 296;
+        _deny.Left = 544 - 110; _deny.Top = 296;
+        Controls.AddRange(new System.Windows.Forms.Control[] { heading, line, where, note, said, warn, _allow, _deny });
         AcceptButton = _deny;
         CancelButton = _deny;
         ActiveControl = _deny;
 
-        var enableAllow = new System.Windows.Forms.Timer { Interval = 900 };
-        enableAllow.Tick += (_, _) => { _allow.Enabled = true; enableAllow.Stop(); };
-        Shown += (_, _) => enableAllow.Start();
-        FormClosed += (_, _) => enableAllow.Dispose();
+        // Allow works only when 900 ms have passed since the dialog appeared AND the cursor, having been outside the
+        // button at some point after that, is on it now. A click already in flight (or a click-jack aimed at where the
+        // button will appear) therefore can't approve.
+        var poll = new System.Windows.Forms.Timer { Interval = 40 };
+        var shownAt = 0L;
+        var sawOutside = false;
+        poll.Tick += (_, _) =>
+        {
+            var inside = _allow.RectangleToScreen(_allow.ClientRectangle).Contains(Cursor.Position);
+            if (!inside) sawOutside = true;
+            _allow.Enabled = sawOutside && inside && System.Environment.TickCount64 - shownAt >= 900;
+            if (System.Environment.TickCount64 - shownAt >= TimeoutMs) DialogResult = DialogResult.No; // a late click can't approve
+        };
+        Shown += (_, _) => { shownAt = System.Environment.TickCount64; poll.Start(); };
+        FormClosed += (_, _) => poll.Dispose();
+    }
+
+    /// <summary>How long the prompt waits for an answer before it counts as a refusal and closes.</summary>
+    public const int TimeoutMs = 120_000;
+
+    /// <summary>Widget-controlled text for the heading: control characters removed, at most <paramref name="max"/> characters.</summary>
+    internal static string Clean(string s, int max)
+    {
+        var t = new string(s.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        return t.Length > max ? t[..max] + "..." : t;
     }
 
     /// <summary>Shows the prompt and returns true only when the user clicked Allow.</summary>

@@ -38,6 +38,7 @@ const PLACEHOLDER = /^\$\{([a-z][A-Za-z0-9]{0,31})\}$/;
 const BARE_EXE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
 const ABS_EXE = /^[A-Za-z]:[\\/][^\0*?"<>|]{1,250}$/;
 const PARAM_NAME = /^[a-z][A-Za-z0-9]{0,31}$/;
+const INTERPRETERS = new Set(["cmd", "powershell", "pwsh", "wscript", "cscript", "mshta", "node", "python", "pythonw", "py", "bash", "sh", "wsl", "rundll32", "regsvr32", "msiexec"]);
 const CMD_KEYS = new Set(["id", "run", "description", "params", "timeoutSeconds"]);
 const hasControl = (s) => /[\u0000-\u0008\u000a-\u001f\u007f]/.test(s);
 
@@ -71,7 +72,11 @@ function validateCommands(wid, commands) {
       if (a.includes("${") && !p) fail(wid, `${name}: "${a}": a parameter must be a whole argument written exactly as \${name}`);
       if (p) { used.add(p[1]); if (!(p[1] in params)) fail(wid, `${name}: \${${p[1]}} is not declared in "params"`); }
     }
+    const file = run[0].replace(/\\/g, "/").split("/").pop();
+    const interpreter = /\.(ps1|bat|cmd|vbs|js)$/i.test(file) || INTERPRETERS.has(file.replace(/\.(exe|com)$/i, "").toLowerCase());
     for (const [pn, spec] of Object.entries(params)) {
+      if (interpreter && !(typeof spec === "object" && spec !== null && Array.isArray(spec.choices)))
+        fail(wid, `${name}: "${run[0]}" runs arbitrary code, so parameter "${pn}" needs fixed "choices"`);
       if (!PARAM_NAME.test(pn)) fail(wid, `${name}: invalid parameter name "${pn}"`);
       if (!used.has(pn)) fail(wid, `${name}: parameter "${pn}" is declared but never used`);
       if (typeof spec !== "object" || spec === null) { fail(wid, `${name}: parameter "${pn}" must be an object`); continue; }

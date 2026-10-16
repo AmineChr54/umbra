@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 namespace Umbra;
 
 /// <summary>What the approval prompt shows. Everything here comes from the manifest and the host, never from a run request.</summary>
-public sealed record ApprovalRequest(string WidgetId, string WidgetName, string CommandId, string Description, string ExePath, string CommandLine, bool HasParams);
+public sealed record ApprovalRequest(string WidgetId, string WidgetName, string CommandId, string Description, string ExePath, string CommandLine, bool HasParams, bool IsInterpreter = false);
 
 /// <summary>
 /// The gate in front of <see cref="CommandRunner"/>: a widget may only run a command it declared, with validated
@@ -50,7 +50,7 @@ sealed class CommandService
 
         // Everything that can be checked without the user is checked first, so a bad request never raises a prompt.
         var args = spec.BuildArgs(values);
-        var exe = CommandRunner.ResolveExe(spec.Exe, allowScripts: spec.Params.Count == 0)
+        var identity = ExeIdentity.Of(spec)
                   ?? throw new WidgetCommandException($"'{spec.Exe}' was not found on this PC (PATH). Install it, or ask the widget author for the full path.");
 
         if (!_approvals.IsApproved(m.Id, spec))
@@ -60,7 +60,7 @@ sealed class CommandService
                 throw new WidgetCommandException(status == "changed"
                     ? "This command changed since you approved it. Click the widget's button, or approve it in Settings > My widgets."
                     : "This command needs your approval first. Click the widget's button, or approve it in Settings > My widgets.");
-            if (!await AskAsync(m, spec, exe)) throw new WidgetCommandException("You did not allow this command");
+            if (!await AskAsync(m, spec, identity)) throw new WidgetCommandException("This command was not allowed (refused or the prompt timed out)");
         }
 
         var key = $"{m.Id}/{spec.Id}";
@@ -71,8 +71,8 @@ sealed class CommandService
         }
         try
         {
-            Log.Write($"[{m.Id}] run '{spec.Id}' ({exe})");
-            var r = await CommandRunner.RunAsync(exe, args, WorkingDir(m.Id), Timeout(spec), MaxOutputBytes, ct);
+            Log.Write($"[{m.Id}] run '{spec.Id}' ({identity.Path})");
+            var r = await CommandRunner.RunAsync(identity.Path, args, WorkingDir(m.Id), Timeout(spec), MaxOutputBytes, ct);
             Log.Write($"[{m.Id}] '{spec.Id}' exit {r.ExitCode}{(r.TimedOut ? " (timed out)" : "")} in {r.DurationMs} ms");
             return new JsonObject
             {
@@ -95,7 +95,7 @@ sealed class CommandService
         }
     }
 
-    async Task<bool> AskAsync(WidgetManifest m, CommandSpec spec, string exePath)
+    async Task<bool> AskAsync(WidgetManifest m, CommandSpec spec, ExeIdentity exe)
     {
         lock (_gate)
         {
@@ -109,7 +109,7 @@ sealed class CommandService
         bool allowed;
         try
         {
-            allowed = await _prompt(new ApprovalRequest(m.Id, m.Name, spec.Id, spec.Description, exePath, spec.DisplayLine(), spec.Params.Count > 0));
+            allowed = await _prompt(new ApprovalRequest(m.Id, m.Name, spec.Id, spec.Description, exe.Path, spec.DisplayLine(), spec.Params.Count > 0, spec.IsInterpreter));
         }
         finally
         {
@@ -120,7 +120,7 @@ sealed class CommandService
             var (last, denials) = _prompts[m.Id];
             _prompts[m.Id] = (last, allowed ? 0 : denials + 1);
         }
-        if (allowed) _approvals.Approve(m.Id, spec);
+        if (allowed) _approvals.Approve(m.Id, spec, exe);
         else Log.Write($"[{m.Id}] command '{spec.Id}' refused by the user");
         return allowed;
     }
@@ -130,7 +130,8 @@ sealed class CommandService
     {
         var spec = m.Permissions.Commands.FirstOrDefault(c => c.Id == commandId) ?? throw new WidgetCommandException("Unknown command");
         if (!string.Equals(spec.Hash(), expectedHash, StringComparison.Ordinal)) throw new WidgetCommandException("The command changed; review it again");
-        _approvals.Approve(m.Id, spec);
+        var exe = ExeIdentity.Of(spec) ?? throw new WidgetCommandException($"'{spec.Exe}' was not found on this PC, so it can't be approved yet");
+        _approvals.Approve(m.Id, spec, exe);
         lock (_gate) _prompts.Remove(m.Id);
     }
 }

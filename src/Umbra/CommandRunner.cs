@@ -118,7 +118,28 @@ static class CommandRunner
         foreach (var (k, v) in ScrubbedEnvironment()) psi.Environment[k] = v;
 
         var sw = Stopwatch.StartNew();
+        // The job makes every descendant die with the job: on timeout, when the run ends, or if Umbra itself exits.
+        var job = Native.CreateKillOnCloseJob();
+        if (job == IntPtr.Zero) throw new WidgetCommandException("Could not create a job object to contain the program");
+        try
+        {
+            return await RunInJobAsync(psi, job, sw, maxBytes, timeout, ct);
+        }
+        finally
+        {
+            Native.TerminateJobObject(job, 1);
+            Native.CloseHandle(job);
+        }
+    }
+
+    static async Task<RunResult> RunInJobAsync(ProcessStartInfo psi, IntPtr job, Stopwatch sw, int maxBytes, TimeSpan timeout, CancellationToken ct)
+    {
         using var proc = Process.Start(psi) ?? throw new WidgetCommandException("The program could not be started");
+        if (!Native.AddToJob(job, proc.Handle))
+        {
+            try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+            throw new WidgetCommandException("Could not contain the program in a job object");
+        }
         try { proc.StandardInput.Close(); } catch (IOException) { }
         var stdout = new Capture(maxBytes);
         var stderr = new Capture(maxBytes);
@@ -131,6 +152,7 @@ static class CommandRunner
         catch (OperationCanceledException)
         {
             timedOut = !ct.IsCancellationRequested;
+            Native.TerminateJobObject(job, 1);
             try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
             try { await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); } catch (TimeoutException) { }
         }

@@ -190,14 +190,18 @@ Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; 
 - Each argument is a literal, or exactly `"${name}"` for a declared parameter. A parameter can't be part of a longer
   string (`"--model=${m}"` is rejected), and the executable can't be a parameter.
 - A parameter is a string, always supplied, at most `maxLength` characters (default 200, max 1000), without control
-  characters, and **must not start with `-`** unless it is one of the fixed `choices`. It reaches the program as one
+  characters, and **must not start with `-` or `/`** unless it is one of the fixed `choices`. If the executable is an
+  interpreter (`cmd`, `powershell`, `pwsh`, `wscript`, `cscript`, `mshta`, `node`, `python`, `py`, `bash`, `sh`, `wsl`,
+  `rundll32`, `regsvr32`, `msiexec`, or a `.ps1`/`.bat`/`.cmd`/`.vbs`/`.js` file), every parameter needs fixed `choices`;
+  free text is refused when the widget loads. It reaches the program as one
   single argument, so spaces and quotes in it can't add arguments.
 - `.cmd`/`.bat` files are only started for commands without parameters. `timeoutSeconds` is 1-120 (default 60).
 - The program runs as the user with no window, in `%APPDATA%\Umbra\data\run\<widget id>`, with a scrubbed environment
   (system variables and `PATH` only: no tokens, no `UMBRA_*`). It is killed after the timeout, and at most 1 MB of
   stdout and of stderr is kept (`truncated` tells you).
 - **The user approves every command.** The first run shows an Umbra prompt with the exact command line; the
-  approval is saved for this widget and this command and is void as soon as the command changes. A prompt only
+  approval is saved for this widget and this command and is void as soon as the command changes or the resolved program file (path or SHA-256) differs. The process and
+  its descendants run in a job object and die on timeout or when Umbra exits. The prompt closes (as a refusal) after 2 minutes. A prompt only
   appears right after the user clicked the widget (so a button works; a background timer doesn't), at most every 20 s,
   and not after three refusals. Without an approval a call rejects with a message you should show ("Approve it in
   Settings > My widgets"). Users can approve and revoke each command there, and Browse flags widgets that declare commands.

@@ -267,7 +267,7 @@ public class CommandGateTests
     const string Json = """
         { "id": "gate", "name": "Gate", "permissions": { "commands": [
           { "id": "hi", "run": ["cmd", "/c", "echo", "hello"], "description": "says hello" },
-          { "id": "echo", "run": ["cmd", "/c", "echo", "${t}"], "params": { "t": { "maxLength": 20 } } },
+          { "id": "echo", "run": ["cmd", "/c", "echo", "${t}"], "params": { "t": { "choices": ["hello world", "a&b"] } } },
           { "id": "slow", "run": ["powershell", "-NoProfile", "-Command", "Start-Sleep -Seconds 30"], "timeoutSeconds": 1 },
           { "id": "ghost", "run": ["definitely-not-installed-xyz"] }
         ] } }
@@ -403,7 +403,7 @@ public class CommandGateTests
         { WorkingDir = id => Path.Combine(TestEnv.DataDir, "gate-run", id) };
         var m = M();
         var first = h.Run(m, "hi");
-        await Assert.ThrowsAsync<WidgetCommandException>(() => h.Run(m, "echo", new JsonObject { ["t"] = "x" }));
+        await Assert.ThrowsAsync<WidgetCommandException>(() => h.Run(m, "echo", new JsonObject { ["t"] = "a&b" }));
         open.SetResult(true);
         await first;
         Assert.Single(h.Prompts);
