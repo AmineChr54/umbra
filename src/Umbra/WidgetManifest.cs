@@ -31,7 +31,12 @@ public sealed partial class WidgetManifest
     [JsonIgnore] public WidgetSource Source { get; set; }
 
     public sealed class PointSpec { public int X { get; set; } public int Y { get; set; } }
-    public sealed class PermissionSpec { public List<string> Hosts { get; set; } = new(); }
+    public sealed class PermissionSpec
+    {
+        public List<string> Hosts { get; set; } = new();
+        /// <summary>Local programs the widget may ask to run; each needs the user's approval (see <see cref="CommandSpec"/>).</summary>
+        public List<CommandSpec> Commands { get; set; } = new();
+    }
 
     static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
 
@@ -58,8 +63,15 @@ public sealed partial class WidgetManifest
         var m = JsonSerializer.Deserialize<WidgetManifest>(text, Json) ?? throw new JsonException("widget.json is empty");
         // Settings shows options in the order they are written in widget.json.
         using (var doc = JsonDocument.Parse(text))
+        {
             if (doc.RootElement.TryGetProperty("options", out var opts) && opts.ValueKind == JsonValueKind.Object)
                 m.OptionOrder = opts.EnumerateObject().Select(p => p.Name).ToList();
+            // Commands are strict: any problem fails the whole widget rather than loading a half-understood command.
+            if (doc.RootElement.TryGetProperty("permissions", out var perms) && perms.ValueKind == JsonValueKind.Object
+                && perms.TryGetProperty("commands", out var cmds))
+                CommandSpec.CheckKeys(cmds);
+        }
+        CommandSpec.ValidateAll(m.Permissions.Commands);
         return m;
     }
 

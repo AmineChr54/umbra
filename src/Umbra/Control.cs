@@ -245,6 +245,10 @@ sealed class Control(App app)
             case "data":
                 return Data(Target(a).Instance, a);
 
+            case "approvals":
+                // Read-only on purpose: there is no control command that approves or revokes a command.
+                return app.Commands.Approvals.Describe(app.Manifests, a["id"] is null ? null : Target(a).Manifest.Id);
+
             case "capture":
                 return await Capture(Str(a, "target"), a["path"]?.GetValue<string>());
 
@@ -365,6 +369,7 @@ sealed class Control(App app)
             ["open"] = win is not null,
             ["bounds"] = win is null ? null : new JsonObject { ["x"] = win.Left, ["y"] = win.Top, ["width"] = win.Width, ["height"] = win.Height },
             ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
+            ["commands"] = app.Commands.Approvals.Describe(new[] { m }),
             ["options"] = ws.Options.DeepClone(),
             ["optionSchema"] = m.Options.DeepClone(),
         };

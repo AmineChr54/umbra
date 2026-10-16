@@ -60,6 +60,14 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   (`WidgetWindow.TakeKeyboardFocus`), so a widget can't pull focus while the user types elsewhere.
 - A widget can't resize or zoom itself: the page's `resize` and `zoom` messages are honoured only in edit mode, for an
   unlocked widget, with a physical mouse press (resize) or Ctrl held (zoom) over that window.
+- The one exception to "a widget cannot run code" is `permissions.commands` (`WidgetCommands.cs`, `CommandService.cs`,
+  `CommandRunner.cs`). A widget runs only a command it declared: exact executable plus argv array, no shell, parameters
+  are `${name}` whole-argument placeholders validated and passed as single arguments, never a free command line. Every
+  command needs the user's approval, stored per widget id + command hash in `approvals.json` (a changed command is
+  asked again). Only a host-drawn prompt (after a physical click on the widget, rate-limited) or the Settings button
+  approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
+  user, in the widget's data dir, with a scrubbed environment, a timeout (max 120 s) and a 1 MB output cap, never
+  while the widget is disabled. Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
   `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.

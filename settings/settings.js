@@ -20,6 +20,7 @@ const ICONS = {
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  alert: '<path d="M12 4 3 19.5h18zM12 10v4.5M12 17.2h.01"/>',
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
 };
@@ -189,6 +190,8 @@ function renderInstalled() {
       save(true);
     });
 
+    renderCommands($(".cmds", card), w);
+
     const fields = $(".fields", card);
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});
     for (const key of order) if (w.options[key]) fields.append(field(w.id, key, w.options[key], ws.options[key]));
@@ -231,6 +234,32 @@ function renderInstalled() {
 
     icons(card);
     list.append(card);
+  }
+}
+
+// Local programs a widget may run. The host re-checks everything: this only shows the exact command line and
+// sends back ids (and the hash it showed, so a command that changed meanwhile is not approved blind).
+function renderCommands(root, w) {
+  const cmds = w.commands || [];
+  if (!cmds.length) return;
+  root.append(Object.assign(document.createElement("div"), { className: "cmds-title", textContent: "Runs programs on this PC" }));
+  for (const c of cmds) {
+    const row = document.createElement("div");
+    row.className = "cmd";
+    const line = Object.assign(document.createElement("div"), { className: "cmd-line", textContent: c.line });
+    const desc = Object.assign(document.createElement("div"), { className: "cmd-desc" });
+    const status = Object.assign(document.createElement("span"), {
+      className: `cmd-status ${c.status}`,
+      textContent: c.status === "approved" ? "Approved" : c.status === "changed" ? "Changed, needs approval" : "Not approved",
+    });
+    desc.append(status, c.description || "");
+    const btn = document.createElement("button");
+    btn.className = "btn small" + (c.status === "approved" ? " danger" : " primary");
+    btn.textContent = c.status === "approved" ? "Revoke" : "Approve";
+    btn.addEventListener("click", () =>
+      post({ type: c.status === "approved" ? "revokeCommand" : "approveCommand", widget: w.id, command: c.id, hash: c.hash }));
+    row.append(line, desc, btn);
+    root.append(row);
   }
 }
 
@@ -288,6 +317,15 @@ function renderCatalog() {
       c.className = "chip";
       c.innerHTML = '<span class="ico" data-icon="lock"></span>';
       c.append(h);
+      chips.append(c);
+    }
+    // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).
+    for (const cmd of w.commands || []) {
+      const c = document.createElement("span");
+      c.className = "chip warn";
+      c.title = `${cmd.description || ""}\nAsks permission before it runs.`.trim();
+      c.innerHTML = '<span class="ico" data-icon="alert"></span>';
+      c.append(`Runs: ${cmd.run}`);
       chips.append(c);
     }
 
@@ -410,6 +448,9 @@ bridge && bridge.addEventListener("message", (e) => {
       $("#editMode").checked = !!m.editMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
+      break;
+    case "commandError":
+      toast(m.error, true);
       break;
     case "updateError":
       toast(`Update failed: ${m.error}`, true);

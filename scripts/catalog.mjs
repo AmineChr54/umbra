@@ -32,6 +32,66 @@ function walk(dir) {
   });
 }
 
+// permissions.commands: the same rules as CommandSpec.Validate in the host (src/Umbra/WidgetCommands.cs).
+const CMD_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const PLACEHOLDER = /^\$\{([a-z][A-Za-z0-9]{0,31})\}$/;
+const BARE_EXE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;
+const ABS_EXE = /^[A-Za-z]:[\\/][^\0*?"<>|]{1,250}$/;
+const PARAM_NAME = /^[a-z][A-Za-z0-9]{0,31}$/;
+const INTERPRETERS = new Set(["cmd", "powershell", "pwsh", "wscript", "cscript", "mshta", "node", "python", "pythonw", "py", "bash", "sh", "wsl", "rundll32", "regsvr32", "msiexec"]);
+const CMD_KEYS = new Set(["id", "run", "description", "params", "timeoutSeconds"]);
+const hasControl = (s) => /[\u0000-\u0008\u000a-\u001f\u007f]/.test(s);
+
+/** Returns [{id, run (display string), description}] for the index; reports problems through fail(). */
+function validateCommands(wid, commands) {
+  if (commands === undefined) return [];
+  if (!Array.isArray(commands)) { fail(wid, `"permissions.commands" must be an array`); return []; }
+  if (commands.length > 16) fail(wid, "at most 16 commands per widget");
+  const out = [];
+  const seen = new Set();
+  for (const c of commands) {
+    const name = `command "${c?.id}"`;
+    if (typeof c !== "object" || c === null || Array.isArray(c)) { fail(wid, "each command must be an object"); continue; }
+    for (const k of Object.keys(c)) if (!CMD_KEYS.has(k)) fail(wid, `${name}: unknown key "${k}"`);
+    if (typeof c.id !== "string" || !CMD_ID.test(c.id)) fail(wid, `${name}: id must be 1-40 lowercase letters, digits and dashes`);
+    else if (seen.has(c.id)) fail(wid, `duplicate command id "${c.id}"`);
+    else seen.add(c.id);
+    if (c.description !== undefined && (typeof c.description !== "string" || c.description.length > 200)) fail(wid, `${name}: description must be a string of at most 200 characters`);
+    if (c.timeoutSeconds !== undefined && (!Number.isInteger(c.timeoutSeconds) || c.timeoutSeconds < 1 || c.timeoutSeconds > 120)) fail(wid, `${name}: timeoutSeconds must be an integer from 1 to 120`);
+    const run = c.run;
+    if (!Array.isArray(run) || run.length < 1 || run.length > 32 || run.some((a) => typeof a !== "string" || a.length > 1024 || hasControl(a))) {
+      fail(wid, `${name}: "run" must be an array of 1-32 strings (executable first, then arguments)`);
+      continue;
+    }
+    if (!BARE_EXE.test(run[0]) && !ABS_EXE.test(run[0])) fail(wid, `${name}: executable "${run[0]}" must be a plain program name or an absolute path like C:\\Tools\\app.exe`);
+    if (/[\\/]$/.test(run[0]) || run[0].includes("..")) fail(wid, `${name}: executable path is invalid`);
+    const params = c.params ?? {};
+    const used = new Set();
+    for (const a of run.slice(1)) {
+      const p = PLACEHOLDER.exec(a);
+      if (a.includes("${") && !p) fail(wid, `${name}: "${a}": a parameter must be a whole argument written exactly as \${name}`);
+      if (p) { used.add(p[1]); if (!(p[1] in params)) fail(wid, `${name}: \${${p[1]}} is not declared in "params"`); }
+    }
+    const file = run[0].replace(/\\/g, "/").split("/").pop();
+    const interpreter = /\.(ps1|bat|cmd|vbs|js)$/i.test(file) || INTERPRETERS.has(file.replace(/\.(exe|com)$/i, "").toLowerCase());
+    for (const [pn, spec] of Object.entries(params)) {
+      if (interpreter && !(typeof spec === "object" && spec !== null && Array.isArray(spec.choices)))
+        fail(wid, `${name}: "${run[0]}" runs arbitrary code, so parameter "${pn}" needs fixed "choices"`);
+      if (!PARAM_NAME.test(pn)) fail(wid, `${name}: invalid parameter name "${pn}"`);
+      if (!used.has(pn)) fail(wid, `${name}: parameter "${pn}" is declared but never used`);
+      if (typeof spec !== "object" || spec === null) { fail(wid, `${name}: parameter "${pn}" must be an object`); continue; }
+      for (const k of Object.keys(spec)) if (k !== "maxLength" && k !== "choices") fail(wid, `${name}: parameter "${pn}" may only have maxLength and choices`);
+      const max = spec.maxLength ?? 200;
+      if (!Number.isInteger(max) || max < 1 || max > 1000) fail(wid, `${name}: parameter "${pn}" maxLength must be 1-1000`);
+      if (spec.choices !== undefined && (!Array.isArray(spec.choices) || spec.choices.length < 1 || spec.choices.length > 64
+        || spec.choices.some((x) => typeof x !== "string" || !x.length || x.length > max)))
+        fail(wid, `${name}: parameter "${pn}" choices must be 1-64 non-empty strings within maxLength`);
+    }
+    out.push({ id: c.id, run: run.map((a) => (/[\s"]/.test(a) || a === "" ? JSON.stringify(a) : a)).join(" "), description: c.description ?? "" });
+  }
+  return out;
+}
+
 const entries = [];
 for (const id of readdirSync(widgetsDir).sort()) {
   const dir = join(widgetsDir, id);
@@ -61,6 +121,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
   if (!Array.isArray(hosts)) fail(id, `"permissions.hosts" must be an array`);
   else for (const h of hosts) if (typeof h !== "string" || !HOST.test(h)) fail(id, `invalid host "${h}" (hostnames only, no scheme or path)`);
 
+  const commands = validateCommands(id, m.permissions?.commands);
+
   for (const [key, spec] of Object.entries(m.options ?? {})) {
     if (!OPTION_TYPES.has(spec?.type)) fail(id, `option "${key}" has unknown type "${spec?.type}"`);
     if (spec?.type === "select" && !Array.isArray(spec.choices)) fail(id, `select option "${key}" needs "choices"`);
@@ -82,6 +144,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
     version: m.version,
     preview: m.preview ?? null,
     hosts,
+    // Only present for widgets that can start programs; Browse flags them so users see it before installing.
+    ...(commands.length ? { commands } : {}),
     files,
   });
 }

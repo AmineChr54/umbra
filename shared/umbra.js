@@ -52,6 +52,7 @@
         handlers.refresh.forEach((fn) => fn());
         break;
       case "fetchResult":
+      case "runResult":
       case "storeResult": {
         const p = pending.get(m.id);
         if (!p) return;
@@ -79,6 +80,12 @@
   /** Fetch JSON through the host (bypasses CORS). The host must be listed in widget.json permissions.hosts. */
   const fetchJson = (url) => request({ type: "fetchJson", url }, 25000);
 
+  /**
+   * Run one of the commands declared in widget.json permissions.commands. Only the id and string params are sent;
+   * the host owns the program and arguments, asks the user to approve the first run, and caps time and output.
+   * Resolves { exitCode, stdout, stderr, timedOut, truncated, durationMs }; rejects when not declared, not approved, or invalid.
+   */
+  const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
   /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
   const fetchText = (url) => request({ type: "fetchText", url }, 25000);
 
@@ -220,6 +227,7 @@
     get widget() { return widget; },
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
+    run,
     fetchText,
     store,
     every,

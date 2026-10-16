@@ -165,8 +165,9 @@ static class Community
                 await File.WriteAllBytesAsync(dest, data);
             }
 
-            var manifest = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(staging, "widget.json")));
-            if (manifest?["id"]?.GetValue<string>() != id)
+            // Full parse, so a malformed permissions.commands block is refused before anything is committed.
+            var manifest = WidgetManifest.Parse(await File.ReadAllTextAsync(Path.Combine(staging, "widget.json")));
+            if (manifest.Id != id)
                 throw new InvalidOperationException("widget.json id does not match the catalog");
 
             Commit(staging, id);
@@ -240,6 +241,12 @@ static class Community
         var target = Path.Combine(AppPaths.CommunityDir, id);
         if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
         WidgetStore.DeleteAll(id);
+        CommandApprovals.Shared.Revoke(id);
+        // Working folders of every copy ("sp500" and "sp500__2", ...).
+        var runRoot = Path.Combine(AppPaths.DataDir, "data", "run");
+        if (Directory.Exists(runRoot))
+            foreach (var d in Directory.GetDirectories(runRoot).Where(d => { var n = Path.GetFileName(d); return n == id || n.StartsWith(id + "__", StringComparison.Ordinal); }))
+                try { Directory.Delete(d, recursive: true); } catch (IOException) { }
         Log.Write($"Removed community widget {id}");
     }
 

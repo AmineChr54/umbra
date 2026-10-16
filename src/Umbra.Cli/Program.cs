@@ -98,7 +98,8 @@ static void PrintHelp()
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
-          logs [n]                       last n log lines
+          approvals [id]                 local commands widgets declare and whether you approved them (read-only)
+          logs [n]                      last n log lines
           quit                           exit Umbra
           send <command> [json]          raw control-protocol command
           mcp                            run as an MCP server on stdio:  claude mcp add umbra -- umbractl mcp
