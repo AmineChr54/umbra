@@ -466,7 +466,7 @@ public class CommandApprovalStoreTests
     public CommandApprovalStoreTests() => TestEnv.Init();
 
     static CommandSpec Spec(string arg = "Hello") =>
-        WidgetManifest.Parse($$"""{ "id": "demo", "name": "D", "permissions": { "commands": [{ "id": "wake", "run": ["claude", "-p", "{{arg}}"] }] } }""").Permissions.Commands[0];
+        WidgetManifest.Parse($$"""{ "id": "demo", "name": "D", "permissions": { "commands": [{ "id": "wake", "run": ["whoami", "-p", "{{arg}}"] }] } }""").Permissions.Commands[0];
 
     [Fact]
     public void Approvals_persist_and_can_be_revoked()
@@ -500,11 +500,11 @@ public class CommandApprovalStoreTests
     [Fact]
     public void Describe_lists_declared_commands_with_status()
     {
-        var m = WidgetManifest.Parse("""{ "id": "demo", "name": "D", "permissions": { "commands": [{ "id": "wake", "run": ["claude", "-p", "Hello"], "description": "d" }] } }""");
+        var m = WidgetManifest.Parse("""{ "id": "demo", "name": "D", "permissions": { "commands": [{ "id": "wake", "run": ["whoami", "-p", "Hello"], "description": "d" }] } }""");
         var a = new CommandApprovals(Path.Combine(TestEnv.DataDir, $"approvals-{Guid.NewGuid():N}.json"));
         var list = a.Describe(new[] { m });
         Assert.Equal("pending", list[0]!["status"]!.GetValue<string>());
-        Assert.Equal("claude -p Hello", list[0]!["run"]!.GetValue<string>());
+        Assert.Equal("whoami -p Hello", list[0]!["run"]!.GetValue<string>());
         a.Approve("demo", m.Permissions.Commands[0]);
         Assert.Equal("approved", a.Describe(new[] { m }, "demo")[0]!["status"]!.GetValue<string>());
         Assert.Empty(a.Describe(new[] { m }, "nobody"));
