@@ -69,8 +69,16 @@ sealed class WidgetWindow : Form
         DesktopPin.Apply(Handle);
     }
 
+    /// <summary>WinForms re-parents a window that is shown with ShowInTaskbar off, which drops the Progman owner set in OnHandleCreated.</summary>
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (Visible) DesktopPin.Apply(Handle);
+    }
+
     protected override void WndProc(ref Message m)
     {
+        if (m.Msg == DesktopPin.TaskbarCreated) DesktopPin.Apply(Handle); // Explorer restarted: Progman is a new window
         switch (m.Msg)
         {
             case Native.WM_WINDOWPOSCHANGING:
