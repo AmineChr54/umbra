@@ -17,6 +17,7 @@ sealed class WidgetWindow : Form
     long _pressedAt = long.MinValue / 2;
     IntPtr _foregroundAtPress;
     bool _resizing;
+    long _lastZoomAt = long.MinValue / 2;
 
     public WidgetManifest Manifest { get; }
 
@@ -218,7 +219,7 @@ sealed class WidgetWindow : Form
 
 
             case "drag":
-                if (Ws.Locked) return;
+                if (Ws.Locked || _resizing) return;
                 Native.ReleaseCapture();
                 Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTCAPTION, IntPtr.Zero);
                 // SendMessage returns when the move loop ends: persist the new spot.
@@ -230,7 +231,9 @@ sealed class WidgetWindow : Form
 
             case "resize":
                 // The edit-mode corner handle. Only a real press on this window starts the native size loop.
-                if (!CanArrange || !PressedOnThisWindow()) return;
+                // Messages still arrive during the modal size loop, so a second "resize" must not nest.
+                if (_resizing || !CanArrange || !PressedOnThisWindow()) return;
+                var before = Size;
                 _resizing = true;
                 try
                 {
@@ -238,16 +241,22 @@ sealed class WidgetWindow : Form
                     Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTBOTTOMRIGHT, IntPtr.Zero);
                 }
                 finally { _resizing = false; }
-                SetScaleByHand(ScaleForWidth(Width));
+                // Edit mode may have been turned off (or the widget locked) during the drag: put the saved size back.
+                if (!CanArrange) ApplyBounds();
+                else if (Size != before) SetScaleByHand(ScaleForWidth(Width));
                 DesktopPin.SendToBottom(Handle);
                 break;
 
             case "zoom":
-                // Ctrl+wheel in edit mode: one step is 10 %. The page can't fake it: Ctrl must be down over this window.
-                if (!CanArrange || !CtrlWheelOverThisWindow()) return;
+                // Ctrl+wheel in edit mode: one 10 % step per message, at most one every 50 ms.
+                // The page can't fake Ctrl being physically down over this window.
+                if (_resizing || !CanArrange || !CtrlWheelOverThisWindow()) return;
                 if (msg?["steps"] is not JsonNode stepsNode || stepsNode.GetValueKind() != JsonValueKind.Number) return;
-                var steps = Math.Clamp(stepsNode.GetValue<double>(), -3, 3);
-                if (steps != 0) SetScaleByHand(Ws.Scale + 0.1 * steps);
+                var steps = Math.Sign(stepsNode.GetValue<double>());
+                var now = System.Environment.TickCount64;
+                if (steps == 0 || now - _lastZoomAt < 50) return;
+                _lastZoomAt = now;
+                SetScaleByHand(Ws.Scale + 0.1 * steps);
                 break;
 
             case "rendered":
