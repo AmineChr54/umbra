@@ -39,6 +39,7 @@ umbractl general --refresh 120        # app-wide settings
 umbractl install clock                # community catalog: catalog, install, remove
 umbractl new my-widget                # scaffold a working widget and show it
 umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, ...)
+umbractl data todo                    # a widget's saved data (umbra.store); data <id> <key> <json> to set
 umbractl help                         # everything else
 ```
 
@@ -48,7 +49,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget`, `set_general`, `create_widget`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget`, `set_general`, `create_widget`, `widget_data`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `read_logs` and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 

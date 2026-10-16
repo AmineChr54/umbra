@@ -27,6 +27,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
 | `src/Umbra/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
+| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on remove) |
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
 | `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |

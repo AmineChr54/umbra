@@ -58,6 +58,19 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task Widget_data_passes_any_json_value_through()
+    {
+        await Server().HandleAsync(Call("tools/call", new JsonObject
+        {
+            ["name"] = "widget_data",
+            ["arguments"] = new JsonObject { ["id"] = "todo", ["op"] = "set", ["key"] = "tasks", ["value"] = new JsonArray(1, 2) },
+        }));
+        var (cmd, args) = _sent.Single();
+        Assert.Equal("data", cmd);
+        Assert.Equal("[1,2]", args["value"]!.ToJsonString());
+    }
+
+    [Fact]
     public async Task Capture_returns_an_image_block()
     {
         _reply = Protocol.Ok(new JsonObject { ["base64"] = "iVBORw0=", ["mimeType"] = "image/png" });

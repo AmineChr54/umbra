@@ -158,6 +158,7 @@ static class Community
         if (!WidgetManifest.IdPattern().IsMatch(id)) return;
         var target = Path.Combine(AppPaths.CommunityDir, id);
         if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+        WidgetStore.Delete(id);
         Log.Write($"Removed community widget {id}");
     }
 

@@ -133,6 +133,90 @@ public class CommunityTests
     }
 }
 
+public class WidgetStoreTests
+{
+    public WidgetStoreTests() => TestEnv.Init();
+
+    static string NewId() => "store-" + Guid.NewGuid().ToString("N")[..8];
+
+    [Fact]
+    public void Set_get_remove_and_keys_round_trip_any_json()
+    {
+        var id = NewId();
+        Assert.False(WidgetStore.Get(id, "tasks").Found);
+
+        WidgetStore.Set(id, "tasks", new JsonArray(new JsonObject { ["title"] = "Read", ["done"] = false }));
+        WidgetStore.Set(id, "count", 3);
+        WidgetStore.Set(id, "nothing", null);
+
+        var (found, value) = WidgetStore.Get(id, "tasks");
+        Assert.True(found);
+        Assert.Equal("Read", value![0]!["title"]!.GetValue<string>());
+        Assert.True(WidgetStore.Get(id, "nothing").Found);
+        Assert.Null(WidgetStore.Get(id, "nothing").Value);
+        Assert.Equal(new[] { "tasks", "count", "nothing" }, WidgetStore.Keys(id));
+
+        Assert.True(WidgetStore.Remove(id, "count"));
+        Assert.False(WidgetStore.Remove(id, "count"));
+        Assert.Equal(new[] { "tasks", "nothing" }, WidgetStore.Keys(id));
+    }
+
+    [Fact]
+    public void Each_widget_has_its_own_file_under_the_data_dir()
+    {
+        string a = NewId(), b = NewId();
+        WidgetStore.Set(a, "k", "from a");
+        Assert.False(WidgetStore.Get(b, "k").Found);
+        Assert.True(File.Exists(Path.Combine(TestEnv.DataDir, "data", $"{a}.json")));
+
+        WidgetStore.Delete(a);
+        Assert.False(WidgetStore.Get(a, "k").Found);
+        Assert.False(File.Exists(Path.Combine(TestEnv.DataDir, "data", $"{a}.json")));
+    }
+
+    [Fact]
+    public void Rejects_bad_ids_keys_and_oversized_data()
+    {
+        Assert.Throws<InvalidOperationException>(() => WidgetStore.Set("../evil", "k", 1));
+        Assert.Throws<InvalidOperationException>(() => WidgetStore.Set("Bad Id", "k", 1));
+        var id = NewId();
+        Assert.Throws<InvalidOperationException>(() => WidgetStore.Set(id, "", 1));
+        Assert.Throws<InvalidOperationException>(() => WidgetStore.Set(id, new string('k', WidgetStore.MaxKeyLength + 1), 1));
+
+        WidgetStore.Set(id, "small", "kept");
+        Assert.Throws<InvalidOperationException>(() => WidgetStore.Set(id, "big", new string('x', WidgetStore.MaxBytes)));
+        Assert.Equal("kept", WidgetStore.Get(id, "small").Value!.GetValue<string>());
+        Assert.False(WidgetStore.Get(id, "big").Found);
+    }
+
+    [Fact]
+    public void Corrupt_file_is_set_aside_not_overwritten()
+    {
+        var id = NewId();
+        var file = Path.Combine(TestEnv.DataDir, "data", $"{id}.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, "{ not json");
+
+        Assert.Empty(WidgetStore.All(id));
+        Assert.True(File.Exists(file + ".corrupt"));
+    }
+
+    [Fact]
+    public void Removing_a_community_widget_deletes_its_data()
+    {
+        var id = NewId();
+        Community.WriteLocalWidget(id, new Dictionary<string, string>
+        {
+            ["widget.json"] = $$"""{ "id": "{{id}}", "name": "T", "description": "d", "author": "a", "version": "1.0.0" }""",
+            ["index.html"] = "<p>hi</p>",
+        }, overwrite: false);
+        WidgetStore.Set(id, "k", 1);
+
+        Community.Remove(id);
+        Assert.False(WidgetStore.Get(id, "k").Found);
+    }
+}
+
 public class SettingsTests
 {
     public SettingsTests() => TestEnv.Init();
