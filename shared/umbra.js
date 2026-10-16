@@ -79,6 +79,9 @@
   /** Fetch JSON through the host (bypasses CORS). The host must be listed in widget.json permissions.hosts. */
   const fetchJson = (url) => request({ type: "fetchJson", url }, 25000);
 
+  /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
+  const fetchText = (url) => request({ type: "fetchText", url }, 25000);
+
   /** This widget's own saved data (any JSON per key), kept by the host across restarts. */
   const store = {
     async get(key, fallback) {
@@ -217,6 +220,7 @@
     get widget() { return widget; },
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
+    fetchText,
     store,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),

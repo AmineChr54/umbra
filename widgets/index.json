@@ -52,6 +52,25 @@
       ]
     },
     {
+      "id": "internships",
+      "name": "Internships",
+      "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "raw.githubusercontent.com"
+      ],
+      "files": [
+        "index.html",
+        "internships.css",
+        "internships.js",
+        "parser.js",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "sp500",
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",

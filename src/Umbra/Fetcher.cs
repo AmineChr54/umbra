@@ -19,15 +19,24 @@ static class Fetcher
         return c;
     }
 
-    public static async Task<JsonNode?> GetJsonAsync(string url)
+    public static async Task<JsonNode?> GetJsonAsync(string url) => JsonNode.Parse(await GetTextAsync(url));
+
+    /// <summary>Largest text body a widget may fetch.</summary>
+    public const int MaxTextBytes = 2 * 1024 * 1024;
+
+    public static async Task<string> GetTextAsync(string url)
     {
         // Debug hook to test the widget's offline state: UMBRA_SIMULATE_OFFLINE=1
         if (Environment.GetEnvironmentVariable("UMBRA_SIMULATE_OFFLINE") == "1")
             throw new HttpRequestException("Simulated offline");
 
-        using var resp = await Http.GetAsync(url);
+        using var resp = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
         resp.EnsureSuccessStatusCode();
+        if (resp.Content.Headers.ContentLength > MaxTextBytes)
+            throw new HttpRequestException("Response too large");
         var text = await resp.Content.ReadAsStringAsync();
-        return JsonNode.Parse(text);
+        if (text.Length > MaxTextBytes)
+            throw new HttpRequestException("Response too large");
+        return text;
     }
 }
