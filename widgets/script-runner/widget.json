@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "script-runner",
+  "name": "Script Runner",
+  "description": "Run your own PowerShell, Python or Bash scripts from the desktop and see the exit code, time and output. Scripts are the commands declared in widget.json; you approve each one once.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 380,
+  "height": 460,
+  "defaultPosition": { "x": 760, "y": 400 },
+  "permissions": {
+    "hosts": [],
+    "commands": [
+      {
+        "id": "system-info",
+        "run": ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                "$o = Get-CimInstance Win32_OperatingSystem; \"$($o.Caption) $($o.Version)\"; \"Uptime: $([int]((Get-Date) - $o.LastBootUpTime).TotalHours) h\"; \"Free memory: $([math]::Round($o.FreePhysicalMemory/1MB,1)) GB\""],
+        "description": "Example: prints the Windows version, uptime and free memory.",
+        "timeoutSeconds": 30
+      },
+      {
+        "id": "disk-free",
+        "run": ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                "Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Used -ne $null } | ForEach-Object { \"{0}: {1:N1} GB free of {2:N1} GB\" -f $_.Name, ($_.Free/1GB), (($_.Used+$_.Free)/1GB) }"],
+        "description": "Example: free space on each drive.",
+        "timeoutSeconds": 30
+      },
+      {
+        "id": "python-version",
+        "run": ["python", "-c", "import sys, platform; print('Python', platform.python_version()); print(sys.executable)"],
+        "description": "Example: needs Python on PATH. Replace it with your own script.",
+        "timeoutSeconds": 20
+      }
+    ]
+  },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "Scripts" },
+    "autoScript": { "label": "Script to run automatically (id)", "type": "text", "default": "",
+                    "hint": "The id of a command in widget.json, e.g. disk-free. Leave empty for button only. It only repeats on its own after you have run and approved it with the button." },
+    "everyMinutes": { "label": "Run it every (minutes)", "type": "number", "default": 15, "min": 1, "max": 1440, "step": 1 },
+    "runOnStart": { "label": "Also run it when the widget starts", "type": "toggle", "default": false },
+    "bigLine": { "label": "Show the last output line big", "type": "toggle", "default": false,
+                 "hint": "For one-number dashboards: the last non-empty line of stdout becomes the headline." },
+    "outputLines": { "label": "Lines of output to show", "type": "number", "default": 40, "min": 5, "max": 200, "step": 5 }
+  }
+}
