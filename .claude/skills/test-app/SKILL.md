@@ -23,12 +23,14 @@ Record `umbractl list` first, and restore the values at the end. Positions too: 
 | Catalog | `umbractl catalog` | clock + sp500 from GitHub |
 | Install/remove | `umbractl install clock`, `capture clock c.png`, `remove clock` | clock drawn, then gone |
 | Scaffold | `umbractl new t-widget`, `capture t-widget t.png`, `remove t-widget` | template renders |
+| Scale | `umbractl configure sp500 --scale 1.5`, `capture sp500 s.png`, `list`, then `--scale 1` | bounds 1.5x, sharp text; `--scale 4` exits 1 |
+| Edit mode | `umbractl edit-mode on`, `capture sp500 e.png`, `edit-mode off` | outline + corner handle in the PNG, then gone |
 | General | `umbractl general --refresh 10` | exit 1 (range 30-600) |
 | Startup | `general --startup off`, then `reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Umbra`, then `--startup on` | value removed, then restored |
 | Second launch | run `Umbra.exe` again | still one process; Settings opens |
 | Settings pages | `capture settings:browse b.png` | catalog cards visible |
 | MCP | `initialize`, `tools/list`, `create_widget`, `capture` over stdio (scratch node script) | image block returned |
 
-Read every PNG you use as evidence. Manual only, so ask the user: Win+D keeps widgets visible, dragging moves and persists, multi-monitor and DPI changes.
+Read every PNG you use as evidence. Manual only, so ask the user: Win+D keeps widgets visible, dragging moves and persists, edit-mode resize handle and Ctrl+wheel zoom, multi-monitor and DPI changes.
 
 Testing a dev build: exit the installed one first (`umbractl quit`), then `dotnet run --project src/Umbra`, and use `src/Umbra.Cli/bin/Debug/net10.0-windows/umbractl.exe`.

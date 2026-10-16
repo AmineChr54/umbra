@@ -31,7 +31,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
 | `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |
-| `src/Umbra.Cli/` | `umbractl.exe`: CLI (`Program.cs`), MCP stdio server (`McpServer.cs`), scaffold (`Scaffold.cs`) |
+| `src/Umbra.Cli/` | `umbractl.exe`: CLI (`Program.cs`, argument mapping in `CommandLine.cs`), MCP stdio server (`McpServer.cs`), scaffold (`Scaffold.cs`) |
 | `shared/umbra.js`, `umbra.css` | Widget SDK and design tokens, served to every widget |
 | `widgets/<id>/` | Built-in (`sp500`) and catalog widgets; `widgets/index.json` is generated, never hand-edited |
 | `schemas/widget.schema.json`, `docs/widget-sdk.md` | Manifest schema and SDK reference (both ship next to umbractl for agents) |
@@ -42,7 +42,8 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 
 New automation goes through the control protocol so the CLI, MCP and tests stay in sync:
 1. Add the command to `Protocol.Commands` and implement it in `Control.Execute`, reusing `App` methods.
-2. Map it in `umbractl` (`Translate` in `src/Umbra.Cli/Program.cs`) and add an MCP tool in `McpServer.Tools`.
+2. Map it in `umbractl` (`CommandLine.TranslateAsync` in `src/Umbra.Cli/CommandLine.cs`, plus the help text in
+   `Program.cs`) and add an MCP tool in `McpServer.Tools`.
 3. Add tests (`tests/Umbra.Tests`), then update the README "Automate Umbra" section and `docs/widget-sdk.md` if widget-facing.
 
 ## Security invariants (never weaken without an issue and review)
@@ -55,6 +56,8 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   id equals folder, all staged in temp and validated before `Commit` (`Community.cs`).
 - Widget windows never activate themselves. They get keyboard focus only right after a physical mouse press on them
   (`WidgetWindow.TakeKeyboardFocus`), so a widget can't pull focus while the user types elsewhere.
+- A widget can't resize or zoom itself: the page's `resize` and `zoom` messages are honoured only in edit mode, for an
+  unlocked widget, with a physical mouse press (resize) or Ctrl held (zoom) over that window.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
 - Built-in widgets cannot be removed or shadowed by community or agent ids.
 

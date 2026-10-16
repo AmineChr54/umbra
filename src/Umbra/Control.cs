@@ -50,6 +50,7 @@ sealed class Control(App app)
                     ["dataDir"] = AppPaths.DataDir,
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
+                    ["editMode"] = app.EditMode,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
                     ["widgets"] = app.Manifests.Count,
                     ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Manifest.Id).ToArray()),
@@ -67,6 +68,7 @@ sealed class Control(App app)
                 if (a["locked"] is JsonNode lk) ws.Locked = Bool(lk, "locked");
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
+                if (a["scale"] is JsonNode sc) ws.Scale = CheckScale(sc);
                 if (a["options"] is JsonObject opts)
                     foreach (var (key, value) in opts) ws.Options[key] = CheckOption(m, key, value);
                 else if (a["options"] is not null) throw new CommandException("\"options\" must be an object");
@@ -97,6 +99,10 @@ sealed class Control(App app)
                     ["startup"] = Startup.IsEnabled(),
                 };
             }
+
+            case "edit-mode":
+                if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
+                return new JsonObject { ["editMode"] = app.EditMode };
 
             case "reset-position":
             {
@@ -281,6 +287,7 @@ sealed class Control(App app)
             ["folder"] = Path.Combine(m.Source == WidgetSource.BuiltIn ? AppPaths.WidgetsDir : AppPaths.CommunityDir, m.Folder),
             ["enabled"] = ws.Enabled,
             ["locked"] = ws.Locked,
+            ["scale"] = ws.Scale,
             ["open"] = win is not null,
             ["bounds"] = win is null ? null : new JsonObject { ["x"] = win.Left, ["y"] = win.Top, ["width"] = win.Width, ["height"] = win.Height },
             ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
@@ -310,6 +317,12 @@ sealed class Control(App app)
                 throw new CommandException($"'{key}' expects a {spec["type"]} value, got {kind?.ToString() ?? "null"}");
         }
     }
+
+    /// <summary>A widget scale from the protocol: a number from 0.5 to 3 (out-of-range values are an error, not clamped).</summary>
+    internal static double CheckScale(JsonNode? n) =>
+        n?.GetValueKind() == JsonValueKind.Number && n.GetValue<double>() is var s && s >= WidgetSettings.MinScale && s <= WidgetSettings.MaxScale
+            ? WidgetSettings.ClampScale(s)
+            : throw new CommandException($"\"scale\" must be a number from {WidgetSettings.MinScale} to {WidgetSettings.MaxScale} (1 = 100 %)");
 
     WidgetManifest Manifest(JsonObject a)
     {

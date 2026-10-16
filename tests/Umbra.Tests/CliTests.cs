@@ -1,6 +1,7 @@
 extern alias cli;
 
 using System.Text.Json.Nodes;
+using CommandLine = cli::Umbra.Cli.CommandLine;
 using McpServer = cli::Umbra.Cli.McpServer;
 using Scaffold = cli::Umbra.Cli.Scaffold;
 
@@ -58,6 +59,20 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task Configure_widget_accepts_a_scale_and_edit_mode_is_a_tool()
+    {
+        var tools = (await Server().HandleAsync(Call("tools/list")))!["result"]!["tools"]!.AsArray();
+        var configure = tools.Single(t => t!["name"]!.GetValue<string>() == "configure_widget")!;
+        Assert.Equal("number", configure["inputSchema"]!["properties"]!["scale"]!["type"]!.GetValue<string>());
+        Assert.Contains(tools, t => t!["name"]!.GetValue<string>() == "edit_mode");
+
+        await Server().HandleAsync(Call("tools/call", new JsonObject { ["name"] = "configure_widget", ["arguments"] = new JsonObject { ["id"] = "sp500", ["scale"] = 1.5 } }));
+        await Server().HandleAsync(Call("tools/call", new JsonObject { ["name"] = "edit_mode", ["arguments"] = new JsonObject { ["on"] = true } }));
+        Assert.Equal(("configure", 1.5), (_sent[0].Cmd, _sent[0].Args["scale"]!.GetValue<double>()));
+        Assert.Equal(("edit-mode", true), (_sent[1].Cmd, _sent[1].Args["on"]!.GetValue<bool>()));
+    }
+
+    [Fact]
     public async Task Widget_data_passes_any_json_value_through()
     {
         await Server().HandleAsync(Call("tools/call", new JsonObject
@@ -107,6 +122,59 @@ public class McpServerTests
         Assert.Equal(7, JsonNode.Parse(lines[0])!["id"]!.GetValue<int>());
         Assert.Equal(-32700, JsonNode.Parse(lines[1])!["error"]!["code"]!.GetValue<int>());
     }
+}
+
+public class CommandLineTests
+{
+    static readonly JsonObject List = Protocol.Ok(new JsonArray(new JsonObject
+    {
+        ["id"] = "clock",
+        ["optionSchema"] = new JsonObject { ["seconds"] = new JsonObject { ["type"] = "toggle" }, ["size"] = new JsonObject { ["type"] = "number" } },
+    }));
+
+    static async Task<(string Cmd, string Args)> T(params string[] args)
+    {
+        var (cmd, a) = await CommandLine.TranslateAsync(args, (_, _) => Task.FromResult(List));
+        return (cmd, a.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData("1.5", """{"id":"sp500","scale":1.5}""")]
+    [InlineData("150%", """{"id":"sp500","scale":1.5}""")]
+    [InlineData("0.5", """{"id":"sp500","scale":0.5}""")]
+    public async Task Configure_scale(string scale, string expected) =>
+        Assert.Equal(("configure", expected), await T("configure", "sp500", "--scale", scale));
+
+    [Fact]
+    public async Task Configure_takes_several_flags() =>
+        Assert.Equal(("configure", """{"id":"sp500","scale":2,"enabled":true,"locked":false,"x":-100,"y":40}"""),
+            await T("configure", "sp500", "--scale", "2", "--enabled", "on", "--locked", "off", "--x", "-100", "--y", "40"));
+
+    [Fact]
+    public async Task Configure_rejects_a_bad_scale() =>
+        await Assert.ThrowsAsync<ArgumentException>(() => T("configure", "sp500", "--scale", "big"));
+
+    [Fact]
+    public async Task Edit_mode_on_off_or_query()
+    {
+        Assert.Equal(("edit-mode", """{"on":true}"""), await T("edit-mode", "on"));
+        Assert.Equal(("edit-mode", """{"on":false}"""), await T("edit-mode", "off"));
+        Assert.Equal(("edit-mode", "{}"), await T("edit-mode"));
+        await Assert.ThrowsAsync<ArgumentException>(() => T("edit-mode", "maybe"));
+    }
+
+    [Fact]
+    public async Task Existing_shortcuts_still_map_to_configure()
+    {
+        Assert.Equal(("configure", """{"id":"sp500","locked":true}"""), await T("lock", "sp500"));
+        Assert.Equal(("configure", """{"id":"sp500","x":10,"y":20}"""), await T("move", "sp500", "10", "20"));
+        Assert.Equal(("configure", """{"id":"clock","options":{"seconds":true}}"""), await T("set", "clock", "seconds", "on"));
+        Assert.Equal(("configure", """{"id":"clock","options":{"size":2.5}}"""), await T("set", "clock", "size", "2.5"));
+    }
+
+    [Fact]
+    public async Task Unknown_command_is_an_error() =>
+        await Assert.ThrowsAsync<ArgumentException>(() => T("frobnicate"));
 }
 
 public class ScaffoldTests

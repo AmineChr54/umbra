@@ -16,6 +16,15 @@ static partial class Native
     public const int WM_MOUSEACTIVATE = 0x0021;
     public const int MA_NOACTIVATE = 3;
     public const int HTCAPTION = 2;
+    public const int HTBOTTOMRIGHT = 17;
+    public const int WM_GETMINMAXINFO = 0x0024;
+    public const int WM_SIZING = 0x0214;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MINMAXINFO { public POINT Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize; }
 
     public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
     public static readonly IntPtr HWND_BOTTOM = new(1);
@@ -56,7 +65,7 @@ static partial class Native
     [LibraryImport("user32.dll", EntryPoint = "SendMessageW")]
     public static partial IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
-    public const int VK_LBUTTON = 0x01, VK_RBUTTON = 0x02;
+    public const int VK_LBUTTON = 0x01, VK_RBUTTON = 0x02, VK_CONTROL = 0x11;
     public const uint GA_ROOT = 2;
 
     [StructLayout(LayoutKind.Sequential)]

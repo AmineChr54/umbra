@@ -12,11 +12,28 @@ public sealed class GeneralSettings
 
 public sealed class WidgetSettings
 {
+    public const double MinScale = 0.5, MaxScale = 3.0;
+
+    double _scale = 1.0;
+
     public bool Enabled { get; set; } = true;
     public int? X { get; set; }
     public int? Y { get; set; }
+    /// <summary>No dragging, resizing or zooming, even in edit mode.</summary>
     public bool Locked { get; set; }
+
+    /// <summary>Size multiplier for the window and the page zoom, kept within 50-300 % and rounded to whole percent.</summary>
+    public double Scale
+    {
+        get => _scale;
+        set => _scale = ClampScale(value);
+    }
+
     public JsonObject Options { get; set; } = new();
+
+    /// <summary>Clamps to <see cref="MinScale"/>-<see cref="MaxScale"/> and rounds to 0.01; anything not a number becomes 1.</summary>
+    public static double ClampScale(double value) =>
+        double.IsFinite(value) ? Math.Round(Math.Clamp(value, MinScale, MaxScale), 2) : 1.0;
 }
 
 /// <summary>User settings persisted to %APPDATA%\Umbra\settings.json.</summary>

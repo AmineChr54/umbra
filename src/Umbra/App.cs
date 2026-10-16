@@ -13,6 +13,12 @@ sealed class App : ApplicationContext
     public Settings Settings { get; private set; }
     public List<WidgetManifest> Manifests { get; private set; }
 
+    /// <summary>
+    /// App-wide "arranging" state: unlocked widgets show an outline and a corner handle and can be zoomed.
+    /// Deliberately not saved, so widgets always start in their normal, untouchable state.
+    /// </summary>
+    public bool EditMode { get; private set; }
+
     public App(bool openSettings)
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
@@ -61,6 +67,9 @@ sealed class App : ApplicationContext
         var menu = _tray.ContextMenuStrip!;
         menu.Items.Clear();
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = new Font(menu.Font, FontStyle.Bold);
+        var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
+        edit.Click += (_, _) => SetEditMode(!EditMode);
+        menu.Items.Add(edit);
         menu.Items.Add(new ToolStripSeparator());
         foreach (var m in Manifests)
         {
@@ -120,6 +129,16 @@ sealed class App : ApplicationContext
         SaveSettings();
         SyncWindows();
         foreach (var w in _windows.Values) w.PushSettings();
+    }
+
+    /// <summary>Turns edit mode on or off for every widget and updates the tray and Settings window.</summary>
+    public void SetEditMode(bool on)
+    {
+        if (EditMode == on) return;
+        EditMode = on;
+        Log.Write($"Edit mode {(on ? "on" : "off")}");
+        foreach (var w in _windows.Values) w.PushSettings();
+        SettingsChangedElsewhere();
     }
 
     public void ResetPosition(string id)

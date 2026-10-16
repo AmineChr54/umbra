@@ -84,7 +84,7 @@
 
         <div class="hint">
           <span class="ico" data-icon="mouse"></span>
-          Drag a widget anywhere on the desktop to move it. Double-click it to open the source. Umbra lives in the tray.
+          Drag a widget anywhere on the desktop to move it. To resize it, turn on Edit mode in My widgets or the tray menu. Double-click it to open the source. Umbra lives in the tray.
         </div>
       </section>
 
@@ -94,6 +94,15 @@
           <h1>My widgets</h1>
           <p>Turn widgets on or off and change their settings. Changes apply instantly.</p>
         </header>
+        <div class="group edit-group">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Edit mode</div>
+              <div class="row-sub">Arrange widgets on the desktop: drag to move, drag the corner handle or Ctrl+scroll to resize. Locked widgets stay as they are. Edit mode turns off when Umbra restarts.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="editMode"><span></span></label>
+          </div>
+        </div>
         <div class="stack" id="installed"></div>
       </section>
 
@@ -153,7 +162,12 @@
       <div class="wcard-body">
         <div class="fields"></div>
         <div class="wcard-actions">
-          <label class="check"><input type="checkbox" class="locked"><span></span>Lock position</label>
+          <label class="check"><input type="checkbox" class="locked"><span></span>Lock position and size</label>
+          <div class="size">
+            <span class="size-label">Size</span>
+            <input type="range" class="range scale" min="50" max="300" step="5" aria-label="Size">
+            <button class="size-val" title="Reset to 100%"></button>
+          </div>
           <div class="spacer"></div>
           <button class="btn small reset"><span class="ico" data-icon="target"></span>Reset position</button>
           <button class="btn small danger remove"><span class="ico" data-icon="trash"></span>Remove</button>

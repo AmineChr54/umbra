@@ -5,7 +5,7 @@
   const bridge = window.chrome && window.chrome.webview;
   const post = (msg) => bridge && bridge.postMessage(msg);
 
-  let settings = { refreshSeconds: 60, animations: true, locked: false, options: {} };
+  let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
   let widget = { id: "", name: "" };
   const handlers = { settings: [], refresh: [], store: [] };
   const pending = new Map();
@@ -26,11 +26,13 @@
         widget = m.widget;
         settings = m.settings;
         applyMotion();
+        applyEdit();
         resolveReady();
         break;
       case "settings":
         settings = m.settings;
         applyMotion();
+        applyEdit();
         handlers.settings.forEach((fn) => fn(settings));
         break;
       case "refresh":
@@ -100,6 +102,13 @@
   const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
   let down = null;
   window.addEventListener("pointerdown", (e) => {
+    if (grip && e.composedPath().includes(grip)) {
+      // Edit-mode corner handle: the host runs a native resize (aspect ratio kept) and zooms the page to match.
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.button === 0) post({ type: "resize" });
+      return;
+    }
     const editable = e.target.closest(EDITABLE);
     post({ type: editable ? "focus" : "pointer" });
     if (e.button !== 0 || editable || e.target.closest("[data-no-drag]")) return;
@@ -112,7 +121,56 @@
       post({ type: "drag" });
     }
   });
-  window.addEventListener("pointerup", () => (down = null));
+  window.addEventListener("pointerup", () => (down = null), true);
+
+  // Edit mode (app-wide, switched from the tray or Settings): an unlocked widget gets an outline and a corner
+  // handle. The overlay covers the page, so a press anywhere moves the widget and its own controls don't react.
+  // Ctrl+wheel zooms in 10 % steps. The host checks edit mode, the lock and the physical mouse/keyboard state.
+  let overlay = null;
+  let grip = null;
+  const editing = () => !!(settings.editMode && !settings.locked);
+  function applyEdit() {
+    if (!editing()) {
+      if (overlay) overlay.remove();
+      return;
+    }
+    if (!overlay) {
+      overlay = document.createElement("umbra-edit");
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:block;cursor:move;";
+      const root = overlay.attachShadow({ mode: "open" });
+      // Sizes are multiplied by --k = 1 / scale, so the outline and handle look the same at any zoom.
+      root.innerHTML = `<style>
+        .frame { position: absolute; inset: 0; pointer-events: none; border-radius: calc(8px * var(--k));
+                 background: rgba(139, 147, 255, 0.05); box-shadow: inset 0 0 0 calc(1.5px * var(--k)) rgba(139, 147, 255, 0.75); }
+        .grip { position: absolute; right: 0; bottom: 0; width: calc(24px * var(--k)); height: calc(24px * var(--k)); cursor: nwse-resize; }
+        .grip svg { position: absolute; right: calc(5px * var(--k)); bottom: calc(5px * var(--k)); width: calc(11px * var(--k)); height: calc(11px * var(--k)); }
+      </style><div class="frame"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
+        stroke="#aab0ff" stroke-width="1.6" stroke-linecap="round"><path d="M10 2 2 10M10 6.5 6.5 10"/></svg></div>`;
+      grip = root.querySelector(".grip");
+      // Clicks on the overlay are Umbra's, not the widget's.
+      for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "contextmenu"])
+        overlay.addEventListener(type, (e) => e.stopPropagation());
+    }
+    overlay.style.setProperty("--k", String(1 / (settings.scale || 1)));
+    if (!overlay.isConnected) document.documentElement.append(overlay);
+  }
+
+  let wheelSum = 0;
+  let wheelTimer;
+  window.addEventListener("wheel", (e) => {
+    if (!editing() || !e.ctrlKey) return;
+    e.preventDefault();
+    wheelSum += e.deltaMode === 1 ? e.deltaY * 40 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => (wheelSum = 0), 250);
+    // At most one step per event, and about half a mouse-wheel notch per step so touchpads don't race through
+    // the sizes. Chromium may report deltas divided by the display scale and zoom, hence devicePixelRatio.
+    if (Math.abs(wheelSum) >= 50 / (window.devicePixelRatio || 1)) {
+      post({ type: "zoom", steps: wheelSum < 0 ? 1 : -1 });
+      wheelSum = 0;
+    }
+  }, { passive: false, capture: true });
 
   /** Animate a number from a to b with ease-out-cubic: f(t) = 1 - (1 - t)^3. */
   function tween(from, to, ms, onFrame) {
