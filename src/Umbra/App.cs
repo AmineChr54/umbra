@@ -25,6 +25,9 @@ sealed class App : ApplicationContext
     /// </summary>
     public bool EditMode { get; private set; }
 
+    /// <summary>The widget copy last pressed in edit mode: the one the arrow keys nudge. Null outside edit mode.</summary>
+    public string? EditSelection { get; private set; }
+
     /// <summary>All widgets temporarily hidden by the "toggle-widgets" hotkey. Not saved.</summary>
     public bool WidgetsHidden { get; private set; }
 
@@ -514,9 +517,18 @@ sealed class App : ApplicationContext
     {
         if (EditMode == on) return;
         EditMode = on;
+        EditSelection = null;
         Log.Write($"Edit mode {(on ? "on" : "off")}");
         foreach (var w in _windows.Values) w.PushSettings();
         SettingsChangedElsewhere();
+    }
+
+    /// <summary>Marks one widget copy as the edit-mode selection (stronger outline, arrow keys); everyone else is deselected.</summary>
+    public void SelectForEdit(string instance)
+    {
+        if (!EditMode || EditSelection == instance) return;
+        EditSelection = instance;
+        foreach (var w in _windows.Values) w.ShowEditSelected(w.Instance == instance);
     }
 
     public void ResetPosition(string id)

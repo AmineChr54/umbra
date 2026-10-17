@@ -535,4 +535,38 @@ public class ProtocolTests
     [InlineData(false, true, false)]
     public void Arranging_needs_edit_mode_and_an_unlocked_widget(bool edit, bool locked, bool expected) =>
         Assert.Equal(expected, WidgetGeometry.CanArrange(edit, locked));
+
+    [Theory]
+    [InlineData(100, 1, false, 0, 101)]
+    [InlineData(100, -1, false, 0, 99)]
+    [InlineData(100, 1, true, 0, 110)]
+    [InlineData(100, -1, true, 0, 90)]
+    [InlineData(100, 1, true, 40, 120)]    // next grid line, not +40
+    [InlineData(100, -1, true, 40, 80)]
+    [InlineData(80, 1, true, 40, 120)]     // already on a line: a whole step
+    [InlineData(80, -1, true, 40, 40)]
+    [InlineData(-10, -1, true, 40, -40)]   // monitors left of the primary have negative coordinates
+    [InlineData(-10, 1, true, 40, 0)]
+    [InlineData(100, 1, false, 40, 101)]   // the grid only matters with Shift
+    public void Nudge_moves_one_pixel_ten_pixels_or_a_grid_step(int pos, int dir, bool big, int grid, int expected) =>
+        Assert.Equal(expected, WidgetGeometry.NudgeTo(pos, dir, big, grid));
+
+    [Fact]
+    public void Nudge_keeps_part_of_the_widget_in_a_work_area()
+    {
+        var area = new System.Drawing.Rectangle(0, 0, 1920, 1040);
+        var areas = new[] { area };
+        var size = new System.Drawing.Size(300, 200);
+        Assert.True(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(-268, 10), size), areas, 32));
+        Assert.False(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(-269, 10), size), areas, 32));
+        Assert.False(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(10, 1040 - 31), size), areas, 32));
+        Assert.True(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(10, 1040 - 32), size), areas, 32));
+        Assert.False(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(5000, 10), size), areas, 32));
+        // A widget smaller than the margin only needs to be fully visible.
+        Assert.True(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(10, 10, 20, 20), areas, 32));
+        Assert.False(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(-5, 10, 20, 20), areas, 32));
+        // The second monitor counts too.
+        var two = new[] { area, new System.Drawing.Rectangle(1920, 0, 1920, 1040) };
+        Assert.True(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(2500, 10), size), two, 32));
+    }
 }
