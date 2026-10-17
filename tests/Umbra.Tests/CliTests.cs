@@ -330,6 +330,7 @@ public class CommandLineTests
         Assert.Equal(("peek", "{}"), await T("peek"));
         Assert.Equal(("peek", """{"seconds":8}"""), await T("peek", "8"));
         Assert.Equal(("set-general", """{"hideOnFullscreen":true,"peekSeconds":3}"""), await T("general", "--hide-fullscreen", "on", "--peek-seconds", "3"));
+        Assert.Equal(("set-general", """{"snap":false}"""), await T("general", "--snap", "off"));
         Assert.Equal(("set-general", """{"slowOnEnergySaver":false}"""), await T("general", "--energy-saver", "off"));
     }
 

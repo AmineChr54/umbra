@@ -5,6 +5,21 @@ public static class Snap
 {
     public const int MaxGrid = 200;
 
+    /// <summary>Whether moving a widget snaps at all: the master switch is on and a grid or edge snapping is configured.</summary>
+    public static bool IsActive(GeneralSettings g) => g.SnapEnabled && (g.SnapGrid > 0 || g.SnapEdges);
+
+    /// <summary>
+    /// Flips snapping on or off (the edit-mode pill). Turning it on when the grid and edges are both off would change
+    /// nothing, so edge snapping is switched on too. Returns the new state.
+    /// </summary>
+    public static bool Toggle(GeneralSettings g)
+    {
+        if (IsActive(g)) { g.SnapEnabled = false; return false; }
+        g.SnapEnabled = true;
+        if (g.SnapGrid <= 0 && !g.SnapEdges) g.SnapEdges = true;
+        return true;
+    }
+
     /// <summary>Returns the rectangle moved by the smallest offset within <paramref name="threshold"/> that lines it up per axis; size is untouched.</summary>
     public static Rectangle Move(Rectangle r, int grid, bool edges, IReadOnlyList<Rectangle> areas, IReadOnlyList<Rectangle> others, int threshold)
     {

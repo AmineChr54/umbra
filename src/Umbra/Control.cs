@@ -116,6 +116,7 @@ sealed class Control(App app)
                 }
                 Prefs.ApplyGeneral(a, g);
                 if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
+                if (a["snap"] is JsonNode sn) g.SnapEnabled = Bool(sn, "snap");
                 if (a["snapGrid"] is JsonNode sg)
                 {
                     var grid = Int(sg, "snapGrid");
@@ -126,6 +127,7 @@ sealed class Control(App app)
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
                 app.SettingsChangedElsewhere();
+                app.RefreshEditPills(); // the pill's snap label follows --snap / --snap-grid
                 return new JsonObject
                 {
                     ["general"] = JsonSerializer.SerializeToNode(g, Web),

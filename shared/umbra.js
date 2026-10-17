@@ -172,7 +172,8 @@
       return;
     }
     const editable = e.target.closest(EDITABLE);
-    post({ type: editable ? "focus" : "pointer" });
+    // In edit mode a press also asks for the keyboard, so Esc (handled by the host) can end edit mode.
+    post({ type: editable || settings.editMode ? "focus" : "pointer" });
     if (e.button !== 0 || editable || e.target.closest("[data-no-drag]")) return;
     down = { x: e.screenX, y: e.screenY };
   }, true);
@@ -224,6 +225,11 @@
     overlay.style.setProperty("--k", String(1 / (settings.scale || 1)));
     if (!overlay.isConnected) document.documentElement.append(overlay);
   }
+
+  // Esc ends edit mode. The host also hears the key itself; this covers the cases where the page swallows it.
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && e.isTrusted && settings.editMode) post({ type: "exitEdit" });
+  });
 
   let wheelSum = 0;
   let wheelTimer;
