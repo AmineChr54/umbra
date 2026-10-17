@@ -36,6 +36,10 @@ public sealed partial class WidgetManifest
         public List<string> Hosts { get; set; } = new();
         /// <summary>Read-only machine totals the widget may read with <c>umbra.system()</c>: any of cpu, memory, network.</summary>
         public List<string> System { get; set; } = new();
+        /// <summary>Allows <c>umbra.notify</c>; the user must also switch notifications on for the widget.</summary>
+        public bool Notifications { get; set; }
+        /// <summary>Windows media session access for <c>umbra.media</c>: "read" (now playing) and/or "control" (play, pause, next, previous).</summary>
+        public List<string> Media { get; set; } = new();
         /// <summary>Local programs the widget may ask to run; each needs the user's approval (see <see cref="CommandSpec"/>).</summary>
         public List<CommandSpec> Commands { get; set; } = new();
     }
@@ -75,6 +79,7 @@ public sealed partial class WidgetManifest
         }
         CommandSpec.ValidateAll(m.Permissions.Commands);
         SystemMetrics.Validate(m.Permissions.System);
+        MediaService.Validate(m.Permissions.Media);
         return m;
     }
 

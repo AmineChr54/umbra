@@ -277,6 +277,11 @@ function renderInstalled() {
     locked.checked = ws.locked;
     locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
 
+    const notif = $(".notif", card);
+    notif.parentElement.hidden = !w.notifications;
+    notif.checked = !!ws.notifications;
+    notif.addEventListener("change", () => { cur().notifications = notif.checked; save(true); });
+
     const mon = $(".monitor", card);
     const mons = state.monitors || [];
     mon.parentElement.hidden = mons.length < 2;
@@ -384,6 +389,20 @@ function renderCatalog() {
       c.className = "chip";
       c.innerHTML = '<span class="ico" data-icon="lock"></span>';
       c.append(h);
+      chips.append(c);
+    }
+    for (const k of w.media || []) {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
+      c.append(k === "control" ? "Controls media playback" : "Reads now playing");
+      chips.append(c);
+    }
+    if (w.notifications) {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
+      c.append("Can show notifications");
       chips.append(c);
     }
     for (const s of w.system || []) {

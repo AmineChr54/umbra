@@ -47,6 +47,16 @@
           "items": { "enum": ["cpu", "memory", "network"] },
           "uniqueItems": true
         },
+        "notifications": {
+          "type": "boolean",
+          "description": "Lets the widget call umbra.notify (Windows notification, 5 per 10 minutes). The user must also switch it on for the widget in Settings."
+        },
+        "media": {
+          "type": "array",
+          "description": "Windows media session: \"read\" for umbra.media.nowPlaying (title, artist, album art), \"control\" for umbra.media.control (play, pause, next, previous; needs a click on the widget).",
+          "items": { "enum": ["read", "control"] },
+          "uniqueItems": true
+        },
         "commands": {
           "type": "array",
           "maxItems": 16,

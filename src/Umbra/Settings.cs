@@ -36,6 +36,8 @@ public sealed class WidgetSettings
     public int? RelY { get; set; }
     /// <summary>No dragging, resizing or zooming, even in edit mode.</summary>
     public bool Locked { get; set; }
+    /// <summary>The user allows this widget to show notifications (umbra.notify). Off until switched on.</summary>
+    public bool Notifications { get; set; }
 
     /// <summary>Size multiplier for the window and the page zoom, kept within 50-300 % and rounded to whole percent.</summary>
     public double Scale

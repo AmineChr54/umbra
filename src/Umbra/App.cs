@@ -7,6 +7,8 @@ sealed class App : ApplicationContext
 
     readonly Dictionary<string, WidgetWindow> _windows = new();
     readonly NotifyIcon _tray;
+    readonly Notifier _notifier = new();
+    string? _balloonUrl;
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
     public UpdateService Updater { get; }
@@ -144,6 +146,7 @@ sealed class App : ApplicationContext
         _tray.ContextMenuStrip = new ContextMenuStrip();
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
+        _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
 
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
@@ -263,6 +266,16 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
+    /// <summary>Shows a widget's notification (balloon/toast from the tray icon) unless its rate limit is used up; clicking opens <paramref name="url"/>.</summary>
+    public bool Notify(string instance, string widgetName, string title, string body, string? url)
+    {
+        if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
+        _balloonUrl = url;
+        Log.Write($"[{instance}] notify: {title}");
+        _tray.ShowBalloonTip(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None);
+        return true;
+    }
+
     public static string InstanceLabel(WidgetManifest m, string instance) =>
         InstanceId.IsExtra(instance) ? $"{m.Name} ({InstanceId.NumberOf(instance)})" : m.Name;
 
