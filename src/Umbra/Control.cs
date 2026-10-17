@@ -52,6 +52,7 @@ sealed class Control(App app)
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
                     ["editMode"] = app.EditMode,
+                    ["safeMode"] = app.SafeMode,
                     ["update"] = app.Updater.ToJson(),
                     ["updateAvailable"] = app.Updater.Available?.Version,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
@@ -109,6 +110,13 @@ sealed class Control(App app)
                     var secs = Int(ps, "peekSeconds");
                     if (secs is < 1 or > 60) throw new CommandException("peekSeconds must be between 1 and 60");
                     g.PeekSeconds = secs;
+                }
+                if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
+                if (a["snapGrid"] is JsonNode sg)
+                {
+                    var grid = Int(sg, "snapGrid");
+                    if (grid is < 0 or > Snap.MaxGrid) throw new CommandException($"snapGrid must be between 0 (off) and {Snap.MaxGrid}");
+                    g.SnapGrid = grid;
                 }
                 if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
                 app.SaveSettings();
@@ -172,6 +180,30 @@ sealed class Control(App app)
                 }
                 app.Peek();
                 return new JsonObject { ["peeking"] = app.Peeking, ["seconds"] = app.Settings.General.PeekSeconds, ["hidden"] = app.WidgetsHidden || app.HiddenByFullscreen };
+
+            case "safe-mode":
+                if (a["on"] is JsonNode sm) app.SetSafeMode(Bool(sm, "on"));
+                return new JsonObject { ["safeMode"] = app.SafeMode };
+
+            case "layouts":
+            {
+                var op = a["op"] is null ? "list" : Str(a, "op");
+                try
+                {
+                    switch (op)
+                    {
+                        case "list": break;
+                        case "save": app.SaveLayout(Str(a, "name")); break;
+                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.Layouts.ToJson() };
+                        case "delete":
+                            if (!app.DeleteLayout(Str(a, "name"))) throw new CommandException($"No layout '{Str(a, "name")}'");
+                            break;
+                        default: throw new CommandException("op must be list, save, apply or delete");
+                    }
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }
+                return new JsonObject { ["layouts"] = app.Layouts.ToJson() };
+            }
 
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));

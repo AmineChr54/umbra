@@ -5,6 +5,7 @@ static class Program
     /// <summary>
     /// Umbra.exe              start (or, if already running, open Settings in the running instance)
     /// Umbra.exe --background start without opening Settings (used by the Start with Windows entry)
+    /// Umbra.exe --safe       start with community widgets off (not saved; the next normal start restores them)
     /// Automation: umbractl / umbractl mcp talk to the running instance over the control pipe (Protocol.cs).
     /// </summary>
     [STAThread]
@@ -12,9 +13,18 @@ static class Program
     {
         var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
 
+        var safe = args.Contains("--safe", StringComparer.OrdinalIgnoreCase);
+
         using var instance = new SingleInstance();
         if (!instance.IsFirst)
         {
+            if (safe)
+            {
+                // Already running: switch it to safe mode through the control pipe.
+                try { Protocol.SendAsync(Protocol.Request("safe-mode", new System.Text.Json.Nodes.JsonObject { ["on"] = true })).GetAwaiter().GetResult(); }
+                catch (Exception ex) { Log.Write($"--safe could not reach the running Umbra: {ex.Message}"); }
+                return;
+            }
             if (!background) SingleInstance.SignalFirst("settings");
             return;
         }
@@ -35,7 +45,7 @@ static class Program
 
         // First run (no settings yet) opens Settings so the user sees what Umbra can do.
         var firstRun = !File.Exists(Path.Combine(AppPaths.DataDir, "settings.json"));
-        var app = new App(openSettings: !background && firstRun, background);
+        var app = new App(openSettings: !background && firstRun, background, safe);
         app.SaveSettings();
         instance.Listen(new Control(app).HandleLineAsync);
         Application.Run(app);

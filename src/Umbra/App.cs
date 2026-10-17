@@ -131,8 +131,48 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    public App(bool openSettings, bool background = false)
+    /// <summary>Safe mode: community widgets stay closed (nothing is deleted or disabled in settings). Not saved, so the next normal start restores everything.</summary>
+    public bool SafeMode { get; private set; }
+
+    public Layouts Layouts { get; } = Layouts.Load();
+
+    public void SetSafeMode(bool on)
     {
+        if (SafeMode == on) return;
+        SafeMode = on;
+        Log.Write($"Safe mode {(on ? "on" : "off")}");
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Saves the current positions, sizes and enabled widgets under a name.</summary>
+    public void SaveLayout(string name)
+    {
+        Layouts.Capture(name, Settings);
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Switches to a saved layout live; returns how many widget copies it changed.</summary>
+    public int ApplyLayout(string name)
+    {
+        var n = Layouts.Apply(name, Settings);
+        SaveSettings();
+        SyncWindows();
+        foreach (var w in _windows.Values) w.PushSettings();
+        SettingsChangedElsewhere();
+        return n;
+    }
+
+    public bool DeleteLayout(string name)
+    {
+        var ok = Layouts.Delete(name);
+        SettingsChangedElsewhere();
+        return ok;
+    }
+
+    public App(bool openSettings, bool background = false, bool safe = false)
+    {
+        SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
         Manifests = WidgetManifest.DiscoverAll();
@@ -248,6 +288,20 @@ sealed class App : ApplicationContext
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
         menu.Items.Add(edit);
+        var safe = new ToolStripMenuItem("Safe mode (community widgets off)") { Checked = SafeMode };
+        safe.Click += (_, _) => SetSafeMode(!SafeMode);
+        menu.Items.Add(safe);
+        var layouts = new ToolStripMenuItem("Layouts");
+        foreach (var name in Layouts.Items.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            layouts.DropDownItems.Add(name, null, (_, _) => ApplyLayout(name));
+        if (layouts.DropDownItems.Count > 0) layouts.DropDownItems.Add(new ToolStripSeparator());
+        layouts.DropDownItems.Add("Save current layout", null, (_, _) =>
+        {
+            var n = Layouts.Items.Count + 1;
+            while (Layouts.Items.ContainsKey($"Layout {n}")) n++;
+            try { SaveLayout($"Layout {n}"); } catch (Exception ex) { Log.Write($"Save layout failed: {ex.Message}"); }
+        });
+        menu.Items.Add(layouts);
         menu.Items.Add(new ToolStripSeparator());
         foreach (var m in Manifests)
             foreach (var inst in Settings.Instances(m.Id))
@@ -281,7 +335,7 @@ sealed class App : ApplicationContext
         foreach (var m in Manifests)
             foreach (var inst in Settings.Instances(m.Id))
             {
-                var enabled = Settings.For(m, inst).Enabled;
+                var enabled = Settings.For(m, inst).Enabled && !(SafeMode && m.Source != WidgetSource.BuiltIn);
                 var open = _windows.TryGetValue(inst, out var win);
                 if (enabled && !open)
                 {
