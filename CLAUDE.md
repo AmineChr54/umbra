@@ -22,7 +22,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 |---|---|
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
-| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
+| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); host-drawn right-click menu (`ContextMenuRequested`; `RemovedCopy.cs` backs its Undo); `CaptureAsync` |
 | `src/Umbra/CrashRecovery.cs`, `shared/crashed.html` | `CoreWebView2.ProcessFailed` policy: renderer exit reloads (a hung renderer is only logged) (max 3 per 10 min), then the host-owned "This widget stopped working" page (Reload button); browser-process exit recreates the environment and view; Data & privacy shows the count |
 | `src/Umbra/Tray.cs` | Tray tooltip text and the "update ready" badge icon; `--restart` flag (the new process waits for the old one's single-instance mutex) |
 | `src/Umbra/EditPill.cs` | The host-drawn "Editing widgets · Snap · Done" pill per monitor in edit mode: its own non-activating, Progman-owned window just above the widgets (not a WebView, so never in a capture) |

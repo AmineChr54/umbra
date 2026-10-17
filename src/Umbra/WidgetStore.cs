@@ -83,6 +83,12 @@ static class WidgetStore
         lock (Gate) return Load(id).Select(kv => kv.Key).ToArray();
     }
 
+    /// <summary>Replaces everything the widget has stored (undoing a removed copy).</summary>
+    public static void Replace(string id, JsonObject data)
+    {
+        lock (Gate) Save(id, data);
+    }
+
     /// <summary>Deletes all of a widget's data (on uninstall, or umbractl data --clear).</summary>
     public static void Delete(string id)
     {
