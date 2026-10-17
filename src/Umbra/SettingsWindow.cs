@@ -20,9 +20,15 @@ sealed class SettingsWindow : Form
 
     public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "about" };
 
-    public SettingsWindow(App app)
+    readonly bool _background;
+
+    /// <summary>Background windows (used for captures) are shown off-screen, outside the taskbar, without taking focus.</summary>
+    protected override bool ShowWithoutActivation => _background;
+
+    public SettingsWindow(App app, bool background = false)
     {
         _app = app;
+        _background = background;
         Text = "Umbra";
         Icon = App.AppIcon;
         BackColor = Surface;
@@ -30,6 +36,12 @@ sealed class SettingsWindow : Form
         AutoScaleMode = AutoScaleMode.None;
         Controls.Add(_view);
         ApplyDpiSize();
+        if (background)
+        {
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            Location = new Point(-32000, -32000);
+        }
     }
 
     /// <summary>Sizes are in logical (96-DPI) pixels; scale them to the monitor the window is on.</summary>
@@ -334,6 +346,7 @@ sealed class SettingsWindow : Form
         if (!_loaded.Task.IsCompleted) return;
         SendState();
         if (_themeCatalogLoaded) _ = SendThemes(refetch: false);
+        if (_catalog.Count > 0) _ = SendCatalog(refetch: false);
     }
 
     /// <summary>Switches the panel to one of <see cref="Pages"/> (the page's own show() function).</summary>

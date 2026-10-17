@@ -307,17 +307,19 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    public SettingsWindow ShowSettings()
+    /// <summary>Opens (or focuses) Settings. With <paramref name="background"/> an unopened window is created off-screen and never activated, and an open one is left alone.</summary>
+    public SettingsWindow ShowSettings(bool background = false)
     {
         if (_settingsWindow is { IsDisposed: false })
         {
+            if (background) return _settingsWindow;
             if (_settingsWindow.WindowState == FormWindowState.Minimized) _settingsWindow.WindowState = FormWindowState.Normal;
             _settingsWindow.Activate();
             return _settingsWindow;
         }
-        _settingsWindow = new SettingsWindow(this);
+        _settingsWindow = new SettingsWindow(this, background);
         _settingsWindow.Show();
-        _settingsWindow.Activate();
+        if (!background) _settingsWindow.Activate();
         return _settingsWindow;
     }
 
