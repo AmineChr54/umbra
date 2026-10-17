@@ -35,6 +35,7 @@
       <nav class="nav" id="nav">
         <button data-page="general" class="active"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
+        <button data-page="layouts"><span class="ico" data-icon="layers"></span>Layouts</button>
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
         <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
         <button data-page="hotkeys"><span class="ico" data-icon="keyboard"></span>Hotkeys</button>
@@ -131,6 +132,32 @@
           </div>
         </div>
         <div class="stack" id="installed"></div>
+      </section>
+
+      <!-- Layouts -->
+      <section class="page" data-page="layouts">
+        <header class="page-head">
+          <h1>Layouts</h1>
+          <p>Save where your widgets are and which ones are on, then switch between setups. A layout is pinned to the monitors it was saved on.</p>
+        </header>
+        <div class="group">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Switch layouts automatically when monitors change</div>
+              <div class="row-sub">When you dock or undock, Umbra waits a moment and applies the layout pinned to the new monitor setup. Layouts that aren't pinned to it are left alone.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="autoLayouts"><span></span></label>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Save current layout</div>
+              <div class="row-sub">Saving under an existing name replaces it. The layout is pinned to the monitors you have connected now.</div>
+            </div>
+            <input class="input" id="layoutName" maxlength="40" placeholder="Layout name" autocomplete="off" spellcheck="false" aria-label="Layout name">
+            <button class="btn" id="layoutSave">Save</button>
+          </div>
+        </div>
+        <div class="group" id="layoutList"></div>
       </section>
 
       <!-- Browse -->

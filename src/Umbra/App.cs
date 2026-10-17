@@ -98,7 +98,35 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
     }
 
-    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
+    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ =>
+    {
+        foreach (var w in _windows.Values) w.ReapplyPlacement();
+        // Windows sends several of these while monitors come and go; wait until it has settled.
+        _layoutTimer.Stop();
+        _layoutTimer.Start();
+    }, null);
+
+    /// <summary>Monitor setup the last time it settled; a layout is only switched when this changes.</summary>
+    string _knownSetup = CurrentFingerprint();
+    readonly System.Windows.Forms.Timer _layoutTimer = new() { Interval = 2000 };
+
+    /// <summary>After a monitor change settles: with the option on, applies the layout pinned to the new setup and says so in a balloon.</summary>
+    void SwitchLayoutForSetup()
+    {
+        _layoutTimer.Stop();
+        var setup = CurrentFingerprint();
+        if (setup == _knownSetup) return;
+        _knownSetup = setup;
+        if (!Settings.General.AutoSwitchLayouts || Layouts.FindPinned(setup) is not { } name) return;
+        try
+        {
+            ApplyLayout(name);
+            Log.Write($"Monitors changed, applied layout '{name}'");
+            _balloonUrl = null;
+            _tray.ShowBalloonTip(4000, "Umbra", $"Applied layout {name}", ToolTipIcon.None);
+        }
+        catch (Exception ex) { Log.Write($"Auto-switch to layout '{name}' failed: {ex.Message}"); }
+    }
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
@@ -166,11 +194,39 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    /// <summary>Saves the current positions, sizes and enabled widgets under a name.</summary>
+    /// <summary>The monitor setup in use right now (see <see cref="Placement.Fingerprint"/>).</summary>
+    static string CurrentFingerprint() => Placement.Fingerprint(Placement.Monitors());
+
+    /// <summary>Saves the current positions, sizes and enabled widgets under a name, pinned to the monitor setup in use.</summary>
     public void SaveLayout(string name)
     {
-        Layouts.Capture(name, Settings);
+        Layouts.Capture(name, Settings, CurrentFingerprint());
         SettingsChangedElsewhere();
+    }
+
+    /// <summary>The saved layouts as Settings and umbractl list them, with the one pinned to the current monitors marked.</summary>
+    public System.Text.Json.Nodes.JsonArray LayoutsJson() => Layouts.ToJson(CurrentFingerprint());
+
+    public void RenameLayout(string name, string newName)
+    {
+        Layouts.Rename(name, newName);
+        BuildTrayMenu();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Pins a layout to the monitor setup in use, or unpins it.</summary>
+    public void PinLayout(string name, bool pinned)
+    {
+        Layouts.SetPin(name, pinned ? CurrentFingerprint() : null);
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Restores the layout deleted last; returns its name or null.</summary>
+    public string? UndoDeleteLayout()
+    {
+        var name = Layouts.UndoDelete();
+        if (name is not null) SettingsChangedElsewhere();
+        return name;
     }
 
     /// <summary>Switches to a saved layout live; returns how many widget copies it changed.</summary>
@@ -217,6 +273,7 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Start();
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
+        _layoutTimer.Tick += (_, _) => SwitchLayoutForSetup();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
@@ -565,6 +622,7 @@ sealed class App : ApplicationContext
         Updater.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
         _fullscreenTimer.Dispose();
+        _layoutTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();

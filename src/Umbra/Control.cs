@@ -197,15 +197,16 @@ sealed class Control(App app)
                     {
                         case "list": break;
                         case "save": app.SaveLayout(Str(a, "name")); break;
-                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.Layouts.ToJson() };
+                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.LayoutsJson() };
+                        case "rename": app.RenameLayout(Str(a, "name"), Str(a, "to")); break;
                         case "delete":
                             if (!app.DeleteLayout(Str(a, "name"))) throw new CommandException($"No layout '{Str(a, "name")}'");
                             break;
-                        default: throw new CommandException("op must be list, save, apply or delete");
+                        default: throw new CommandException("op must be list, save, apply, rename or delete");
                     }
                 }
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }
-                return new JsonObject { ["layouts"] = app.Layouts.ToJson() };
+                return new JsonObject { ["layouts"] = app.LayoutsJson() };
             }
 
             case "edit-mode":

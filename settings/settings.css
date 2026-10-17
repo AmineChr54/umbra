@@ -336,6 +336,17 @@ input { font: inherit; color: inherit; }
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast.error { color: #ff9a9d; }
+.toast.show.action { pointer-events: auto; }
+.toast-action { margin-left: 14px; border: 0; background: none; color: var(--accent-strong); font: inherit; font-weight: 650; cursor: pointer; }
+.toast-action:hover { text-decoration: underline; }
+
+/* ---------- layouts ---------- */
+#layoutName { width: 200px; }
+#layoutList:empty { display: none; }
+#layoutList .row { gap: 12px; }
+#layoutList .name { width: 100%; max-width: 280px; font-weight: 600; }
+#layoutList .row-text { flex: 1 1 auto; }
+.pin-on { color: var(--accent-strong); }
 
 /* ---------- local commands (permissions.commands) ---------- */
 .cmds:empty { display: none; }

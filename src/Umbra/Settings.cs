@@ -57,6 +57,8 @@ public sealed class GeneralSettings
     public int SnapGrid { get; set; }
     /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
     public bool SnapEdges { get; set; } = true;
+    /// <summary>When the monitor setup changes (dock/undock), apply the layout pinned to the new setup after a short pause. Off by default.</summary>
+    public bool AutoSwitchLayouts { get; set; }
 }
 
 /// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>

@@ -27,6 +27,19 @@ public static class Placement
         return best ?? screens.Where(s => s.Primary).Select(s => (MonitorInfo?)s).FirstOrDefault();
     }
 
+    /// <summary>
+    /// A stable text for a monitor setup: each monitor's device name, resolution and top-left position (so the arrangement
+    /// counts), primary marked with "*", sorted by name so the order Windows lists them in doesn't matter. Work areas are
+    /// left out on purpose (moving the taskbar is not a new setup). Empty when there are no monitors.
+    /// </summary>
+    public static string Fingerprint(IReadOnlyList<MonitorInfo> screens) =>
+        string.Join(';', screens.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(s => $"{s.Name.ToUpperInvariant()}={s.Bounds.Width}x{s.Bounds.Height}@{s.Bounds.X},{s.Bounds.Y}{(s.Primary ? "*" : "")}"));
+
+    /// <summary>How many monitors a <see cref="Fingerprint"/> describes.</summary>
+    public static int FingerprintMonitors(string fingerprint) =>
+        string.IsNullOrEmpty(fingerprint) ? 0 : fingerprint.Split(';').Length;
+
     /// <summary>True when the device name belongs to a connected monitor.</summary>
     public static bool Has(IReadOnlyList<MonitorInfo> screens, string name) =>
         screens.Any(s => string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase));
