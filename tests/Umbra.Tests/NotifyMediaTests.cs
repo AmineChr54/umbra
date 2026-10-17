@@ -21,6 +21,62 @@ public class NotifyMediaTests
     }
 
     [Fact]
+    public void ParseActions_accepts_up_to_two_and_rejects_the_rest()
+    {
+        Assert.Empty(Notifier.ParseActions(null, out _)!);
+        var ok = Notifier.ParseActions(System.Text.Json.Nodes.JsonNode.Parse("""[{"id":"snooze","label":"Snooze"},{"id":"done","label":"Done"}]"""), out var e1)!;
+        Assert.Null(e1);
+        Assert.Equal([new NotifyAction("snooze", "Snooze"), new NotifyAction("done", "Done")], ok);
+        Assert.Null(Notifier.ParseActions(System.Text.Json.Nodes.JsonNode.Parse("""[{"id":"a","label":"A"},{"id":"b","label":"B"},{"id":"c","label":"C"}]"""), out var e2));
+        Assert.NotNull(e2);
+        Assert.Null(Notifier.ParseActions(System.Text.Json.Nodes.JsonNode.Parse("""[{"id":"a"}]"""), out _));
+        Assert.Null(Notifier.ParseActions(System.Text.Json.Nodes.JsonNode.Parse("""[{"id":"a","label":"A"},{"id":"a","label":"B"}]"""), out _));
+        Assert.Null(Notifier.ParseActions(System.Text.Json.Nodes.JsonNode.Parse("""{"id":"a","label":"A"}"""), out _));
+    }
+
+    [Fact]
+    public void ToastXml_escapes_text_and_names_the_widget()
+    {
+        var xml = Notifier.ToastXml("My <Widget>", "A & B", "say \"hi\"", [new NotifyAction("x\"y", "Go <now>")]);
+        var doc = System.Xml.Linq.XDocument.Parse(xml); // well-formed despite the markup characters in the text
+        var texts = doc.Descendants("text").Select(t => t.Value).ToList();
+        Assert.Equal(["A & B", "say \"hi\"", "My <Widget>"], texts);
+        Assert.Equal("attribution", (string?)doc.Descendants("text").Last().Attribute("placement"));
+        var action = Assert.Single(doc.Descendants("action"));
+        Assert.Equal("Go <now>", (string?)action.Attribute("content"));
+        Assert.Equal("action:x\"y", (string?)action.Attribute("arguments"));
+        Assert.Empty(System.Xml.Linq.XDocument.Parse(Notifier.ToastXml("W", "T", "", [])).Descendants("action"));
+        Assert.Equal(2, System.Xml.Linq.XDocument.Parse(Notifier.ToastXml("W", "T", "", [])).Descendants("text").Count()); // title + attribution, no empty body
+    }
+
+    [Fact]
+    public void ToastKey_is_short_stable_and_distinct()
+    {
+        Assert.Equal(Notifier.ToastKey("sp500#2"), Notifier.ToastKey("sp500#2"));
+        Assert.NotEqual(Notifier.ToastKey("a"), Notifier.ToastKey("b"));
+        Assert.Equal(16, Notifier.ToastKey(new string('x', 500)).Length);
+    }
+
+    [Fact]
+    public void Toasts_use_the_installed_aumid_or_a_per_folder_one()
+    {
+        Assert.Equal(("AmineChr54.Umbra", false), ToastService.ChooseAumid(true, @"C:\a"));
+        var (a, reg) = ToastService.ChooseAumid(false, @"C:\a");
+        Assert.True(reg);
+        Assert.StartsWith("AmineChr54.Umbra.Local.", a);
+        Assert.NotEqual(a, ToastService.ChooseAumid(false, @"C:\b").Aumid);
+    }
+
+    [Fact]
+    public void Notify_url_must_be_https_on_a_declared_host()
+    {
+        var m = WidgetManifest.Parse("""{ "id": "np", "name": "N", "permissions": { "hosts": ["example.com"], "notifications": true } }""");
+        Assert.True(m.AllowsUrl("https://example.com/x"));
+        Assert.False(m.AllowsUrl("http://example.com/x"));
+        Assert.False(m.AllowsUrl("https://evil.test/x"));
+    }
+
+    [Fact]
     public void Manifest_validates_media_and_notifications()
     {
         var m = WidgetManifest.Parse("""{ "id": "np", "name": "N", "permissions": { "media": ["read", "control"], "notifications": true } }""");

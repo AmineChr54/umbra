@@ -52,7 +52,8 @@ Type: filesandordirs; Name: "{app}\widgets\sp500"
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Umbra"; Filename: "{app}\Umbra.exe"; Comment: "Desktop widgets that live on your wallpaper"
+; AppUserModelID must match ToastService.InstalledAumid: Windows needs it on a Start-menu shortcut to show umbra.notify toasts.
+Name: "{autoprograms}\Umbra"; Filename: "{app}\Umbra.exe"; Comment: "Desktop widgets that live on your wallpaper"; AppUserModelID: "AmineChr54.Umbra"
 Name: "{autodesktop}\Umbra"; Filename: "{app}\Umbra.exe"; Tasks: desktopicon
 
 [Registry]

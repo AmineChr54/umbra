@@ -8,7 +8,9 @@ sealed class App : ApplicationContext
     readonly Dictionary<string, WidgetWindow> _windows = new();
     readonly NotifyIcon _tray;
     readonly Notifier _notifier = new();
-    string? _balloonUrl;
+    string? _balloonUrl; // only for the balloon fallback; toasts carry their own URL
+    ToastService? _toasts;
+    bool _toastsTried;
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
     public UpdateService Updater { get; }
@@ -346,12 +348,27 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
-    /// <summary>Shows a widget's notification (balloon/toast from the tray icon) unless its rate limit is used up; clicking opens <paramref name="url"/>.</summary>
-    public bool Notify(string instance, string widgetName, string title, string body, string? url)
+    /// <summary>
+    /// Shows a widget's notification as a Windows toast (clicking opens <paramref name="url"/>; buttons go back to the widget) unless its
+    /// rate limit is used up. Falls back to a tray balloon when toasts can't be created or shown.
+    /// </summary>
+    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag = null, IReadOnlyList<NotifyAction>? actions = null)
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
-        _balloonUrl = url;
         Log.Write($"[{instance}] notify: {title}");
+        if (!_toastsTried) { _toastsTried = true; _toasts = ToastService.TryCreate(); }
+        if (_toasts is { } toasts)
+        {
+            try
+            {
+                toasts.Show(instance, widgetName, title, body, url, tag, actions ?? [],
+                    u => _ui.Post(_ => WebHost.OpenExternal(u), null),
+                    id => _ui.Post(_ => Window(instance)?.NotificationAction(tag, id), null));
+                return true;
+            }
+            catch (Exception ex) { Log.Write($"Toast failed, using a balloon: {ex.Message}"); }
+        }
+        _balloonUrl = url;
         _tray.ShowBalloonTip(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None);
         return true;
     }
