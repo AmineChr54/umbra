@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "now-playing",
+  "name": "Now Playing",
+  "description": "Shows what is playing in any Windows media app (Spotify, browsers, VLC...) with album art and play, pause, next and previous controls.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 128,
+  "defaultPosition": { "x": 24, "y": 380 },
+  "permissions": { "hosts": [], "media": ["read", "control"] },
+  "options": {
+    "art": { "label": "Show album art", "type": "toggle", "default": true },
+    "controls": { "label": "Show controls", "type": "toggle", "default": true },
+    "showApp": { "label": "Show source app", "type": "toggle", "default": true }
+  }
+}
