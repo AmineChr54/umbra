@@ -69,11 +69,10 @@ function message(text) {
   $("app").hidden = true;
 }
 
-function render(m, stale) {
+function render(m) {
   const t = (v) => `${Math.round(v)}°`;
   const [label, kind] = describe(m.code);
   $("city").textContent = m.place;
-  $("stale").hidden = !stale;
   $("temp").textContent = t(m.temp);
   $("cond").textContent = label;
   $("icon").innerHTML = icon(kind, m.day);
@@ -104,9 +103,10 @@ async function load() {
       code: w.current.weather_code, day: !!w.current.is_day,
       hi: w.daily.temperature_2m_max[0], lo: w.daily.temperature_2m_min[0],
     };
-    render(last, false);
+    render(last);
   } catch (e) {
-    if (last && last.key === key) render(last, true);
+    umbra.status?.failed(e); // already counted when it was the fetch that failed
+    if (last && last.key === key) render(last);
     else message("Can't reach the weather service");
   }
   umbra.rendered();
@@ -115,5 +115,5 @@ async function load() {
 umbra.every(load);
 umbra.onSettings(() => {
   if (loadedKey !== null && keyOf() !== loadedKey) load();
-  else if (last) render(last, false);
+  else if (last) render(last);
 });

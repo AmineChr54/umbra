@@ -32,6 +32,9 @@ public sealed class Notifier
     }
 
     /// <summary>Single-line, trimmed, capped text; control characters become spaces.</summary>
+    /// <summary>A toast tag: cleaned and capped, and an empty one means "no tag" (null).</summary>
+    public static string? CleanTag(string? s) => Clean(s, MaxTag) is { Length: > 0 } t ? t : null;
+
     public static string Clean(string? s, int max)
     {
         s = new string((s ?? "").Select(c => char.IsControl(c) ? ' ' : c).ToArray()).Trim();

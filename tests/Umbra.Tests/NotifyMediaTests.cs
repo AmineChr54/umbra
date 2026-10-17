@@ -18,6 +18,8 @@ public class NotifyMediaTests
     {
         Assert.Equal("a b", Notifier.Clean("a\nb  ", 10));
         Assert.Equal(5, Notifier.Clean(new string('x', 50), 5).Length);
+        Assert.Null(Notifier.CleanTag("  "));
+        Assert.Equal("x", Notifier.CleanTag(" x "));
     }
 
     [Fact]

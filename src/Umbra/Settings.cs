@@ -18,6 +18,8 @@ public sealed class GeneralSettings
     public bool HideOnFullscreen { get; set; }
     /// <summary>How long Peek (hotkey or "peek" command) keeps the widgets above other windows, 1-60 s.</summary>
     public int PeekSeconds { get; set; } = 5;
+    /// <summary>Stretch widget intervals 4x while Windows Energy Saver is on (#104). Widgets always pause while the PC is locked or the display is off.</summary>
+    public bool SlowOnEnergySaver { get; set; } = true;
 
     // Appearance (#61): see Prefs.AppearanceCss
     /// <summary>"default", "sharp" or "round": overrides the --radius-* tokens after the theme.</summary>
@@ -57,6 +59,8 @@ public sealed class GeneralSettings
     public int SnapGrid { get; set; }
     /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
     public bool SnapEdges { get; set; } = true;
+    /// <summary>Master switch for snapping (the edit-mode pill toggles it); the grid and edge settings above are kept while it is off.</summary>
+    public bool SnapEnabled { get; set; } = true;
 }
 
 /// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>
