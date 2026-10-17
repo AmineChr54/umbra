@@ -75,6 +75,41 @@
       ]
     },
     {
+      "id": "daily-quote",
+      "name": "Quote or word of the day",
+      "description": "A calm daily quote or word, in English or German. Built-in list, works offline.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "data.js",
+        "index.html",
+        "main.js",
+        "preview.png",
+        "style.css",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "fx-rates",
+      "name": "Exchange rates",
+      "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "api.frankfurter.dev"
+      ],
+      "files": [
+        "index.html",
+        "main.js",
+        "preview.png",
+        "style.css",
+        "widget.json"
+      ]
+    },
+    {
       "id": "internships",
       "name": "Internships",
       "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",

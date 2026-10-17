@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "fx-rates",
+  "name": "Exchange rates",
+  "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 268,
+  "defaultPosition": { "x": 24, "y": 460 },
+  "permissions": { "hosts": ["api.frankfurter.dev"] },
+  "options": {
+    "currencies": { "label": "Currencies", "type": "text", "default": "USD,GBP,CHF,JPY,PLN", "hint": "Up to 6 ISO codes, comma separated (ECB list, e.g. USD, GBP, CHF, JPY, TRY)" },
+    "decimals": { "label": "Decimals", "type": "number", "default": 4, "min": 2, "max": 6, "step": 1 }
+  }
+}

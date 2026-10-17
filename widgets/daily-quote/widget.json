@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "daily-quote",
+  "name": "Quote or word of the day",
+  "description": "A calm daily quote or word, in English or German. Built-in list, works offline.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 340,
+  "height": 190,
+  "defaultPosition": { "x": 400, "y": 460 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "mode": {
+      "label": "Show", "type": "select", "default": "quote",
+      "choices": [{ "value": "quote", "label": "Quote of the day" }, { "value": "word", "label": "Word of the day" }]
+    },
+    "language": {
+      "label": "Language", "type": "select", "default": "en",
+      "choices": [{ "value": "en", "label": "English" }, { "value": "de", "label": "Deutsch" }]
+    },
+    "dayStart": { "label": "Day starts at (hour)", "type": "number", "default": 0, "min": 0, "max": 23, "step": 1, "hint": "The entry changes at this local hour, e.g. 4 keeps yesterday's until 04:00" }
+  }
+}
