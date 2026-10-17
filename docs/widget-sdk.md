@@ -99,7 +99,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
 | `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
-| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
+| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all", after the PC resumes from sleep, when the network comes back and after a long lock (at most once per 10 s). Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
 | `umbra.system()` | Resolves machine totals for the kinds declared in `permissions.system`: `cpu.percent`, `memory.{totalBytes,usedBytes,percent}`, `network.{downBytesPerSec,upBytesPerSec}`. Read-only numbers; no process or adapter names. Rejects without `permissions.system`; call it from `umbra.every` (shared sample, at most 2 per second) |
