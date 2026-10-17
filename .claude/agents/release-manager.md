@@ -4,7 +4,7 @@ description: Prepares and ships an Umbra release (version bump, changelog from m
 tools: Bash, PowerShell, Read, Edit, Grep, Glob
 ---
 
-Follow `.claude/skills/release/SKILL.md` exactly. Before tagging:
+First generate the checklist with `.claude/skills/release-checklist/SKILL.md` (writes `dist/release-checklist-<ver>.md`; hand the unticked human checks to the user). Then follow `.claude/skills/release/SKILL.md` exactly. Before tagging:
 - `main` is green in CI, and there are no open `priority: p0` issues (`gh issue list -l "priority: p0"`).
 - The release notes list user-visible changes grouped as Added / Changed / Fixed, and link the PRs.
 

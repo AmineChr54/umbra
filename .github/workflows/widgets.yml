@@ -4,7 +4,7 @@ name: Widgets
 # Merges to main: regenerate widgets/index.json and themes/index.json so new widgets and themes appear in Umbra's Browse page.
 on:
   pull_request:
-    paths: ["widgets/**", "themes/**", "scripts/catalog.mjs"]
+    paths: ["widgets/**", "themes/**", "scripts/catalog.mjs", "scripts/check-bump.mjs"]
   push:
     branches: [main]
     paths: ["widgets/**", "themes/**", "scripts/catalog.mjs"]
@@ -18,10 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Validate widgets
         run: node scripts/catalog.mjs
+      - name: Changed widgets and themes bump their version
+        run: node scripts/check-bump.mjs origin/${{ github.base_ref }}
 
   publish-catalog:
     if: github.event_name == 'push'
