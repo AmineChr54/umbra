@@ -117,6 +117,22 @@ public sealed class WidgetSettings
         double.IsFinite(value) ? Math.Round(Math.Clamp(value, MinScale, MaxScale), 2) : 1.0;
 }
 
+/// <summary>Where the Settings window was when it was last closed, so it opens there again (#111). Sizes are logical (96-DPI) pixels.</summary>
+public sealed class SettingsPlacement
+{
+    /// <summary>Device name of the monitor the window was on; null = never saved.</summary>
+    public string? Monitor { get; set; }
+    /// <summary>Offset of the window's top-left corner from that monitor's top-left corner.</summary>
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    /// <summary>The window was maximized (X/Y/Width/Height are then the restored bounds).</summary>
+    public bool Maximized { get; set; }
+    /// <summary>Last open page (one of <see cref="SettingsWindow.Pages"/>); null = General.</summary>
+    public string? Page { get; set; }
+}
+
 /// <summary>User settings persisted to %APPDATA%\Umbra\settings.json.</summary>
 public sealed class Settings
 {
@@ -124,6 +140,10 @@ public sealed class Settings
     public Dictionary<string, WidgetSettings> Widgets { get; set; } = new();
     /// <summary>Global hotkeys by action id (see <see cref="Hotkey.Actions"/>), e.g. "edit-mode": "Ctrl+Alt+E". No entry = off.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = new();
+
+    /// <summary>Last placement and page of the Settings window; owned by the window, never by a (possibly stale) Settings save or a backup.</summary>
+    public SettingsPlacement SettingsPanel { get => _settingsPanel; set => _settingsPanel = value ?? new(); } // a null in the file means defaults
+    SettingsPlacement _settingsPanel = new();
 
     static string FilePath => Path.Combine(AppPaths.DataDir, "settings.json");
 
