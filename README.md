@@ -14,7 +14,7 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 
 ## Features
 
-- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
+- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent color or match the Windows accent live, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
 - **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
 - **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games.
 - **Notifications and media:** with permission, a widget can show a Windows notification (`umbra.notify`) or read and control the current media session (`umbra.media`).
@@ -33,6 +33,8 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
 | **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
+
+Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps to the Browse search, **Ctrl+1** to **Ctrl+7** switch pages, and the arrow keys move through the sidebar and the refresh interval. Switches and buttons have names for screen readers.
 
 ## Automate Umbra (CLI, scripts and AI agents)
 
