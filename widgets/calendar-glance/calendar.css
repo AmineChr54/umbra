@@ -1,0 +1,19 @@
+html, body { height: 100%; overflow: hidden; }
+.cal { height: 100%; padding: 16px 18px 12px; display: flex; flex-direction: column; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex: none; }
+.date { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.02em; }
+.stale { font-size: 11px; color: var(--text-3); }
+.stale[hidden] { display: none; }
+.list { flex: 1; min-height: 0; overflow: hidden; margin-top: 8px; }
+.day { margin: 10px 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.day:first-child { margin-top: 0; }
+.ev { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
+.when { flex: none; width: 46px; font-size: 12px; color: var(--text-2); text-align: left; }
+.what { min-width: 0; flex: 1; }
+.title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.loc { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev.now .when { color: var(--accent); font-weight: 600; }
+.ev.now .title { color: var(--accent-strong); }
+.ev.past { opacity: 0.45; }
+.more { margin-top: 4px; font-size: 11px; color: var(--text-3); }
+.empty { height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 12px; font-size: 13px; color: var(--text-2); }
