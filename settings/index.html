@@ -36,7 +36,7 @@
         <button data-page="general" class="active" aria-current="page"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
         <button data-page="layouts"><span class="ico" data-icon="layers"></span>Layouts</button>
-        <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
+        <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse<span class="count hot" id="browseCount"></span></button>
         <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
         <button data-page="hotkeys"><span class="ico" data-icon="keyboard"></span>Hotkeys</button>
         <button data-page="privacy"><span class="ico" data-icon="lock"></span>Data &amp; privacy</button>
@@ -185,6 +185,15 @@
         <div class="search">
           <span class="ico" data-icon="search"></span>
           <input id="search" placeholder="Search widgets" aria-label="Search widgets" aria-keyshortcuts="Control+F /" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="toolbar">
+          <div class="segmented" id="browseFilter" role="group" aria-label="Filter widgets">
+            <button class="on" data-filter="all">All</button>
+            <button data-filter="installed">Installed</button>
+            <button data-filter="updates">Updates<span id="updatesCount"></span></button>
+          </div>
+          <span class="toolbar-status" id="updateStatus" role="status"></span>
+          <button class="btn small primary" id="updateAll" hidden><span class="ico" data-icon="download"></span>Update all</button>
         </div>
         <div class="grid" id="catalog"></div>
       </section>

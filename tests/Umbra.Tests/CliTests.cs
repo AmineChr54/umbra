@@ -7,6 +7,28 @@ using Scaffold = cli::Umbra.Cli.Scaffold;
 
 namespace Umbra.Tests;
 
+public class UpdateAllCommandTests
+{
+    static Task<JsonObject> NoSend(string c, JsonObject a) => Task.FromResult(Protocol.Ok(null));
+
+    [Theory]
+    [InlineData("update", "--all")]
+    [InlineData("update-all")]
+    public async Task Cli_maps_update_all(params string[] args) =>
+        Assert.Equal("update-all", (await CommandLine.TranslateAsync(args, NoSend)).Cmd);
+
+    [Fact]
+    public async Task Plain_update_still_only_checks_for_an_umbra_update() =>
+        Assert.Equal("check-update", (await CommandLine.TranslateAsync(new[] { "update" }, NoSend)).Cmd);
+
+    [Fact]
+    public void Protocol_and_mcp_expose_update_all()
+    {
+        Assert.Contains("update-all", Protocol.Commands.Select(c => c.Cmd));
+        Assert.Contains("update_all_widgets", McpServer.ToolNames);
+    }
+}
+
 public class McpServerTests
 {
     readonly List<(string Cmd, JsonObject Args)> _sent = new();

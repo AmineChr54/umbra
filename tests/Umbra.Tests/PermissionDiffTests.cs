@@ -115,6 +115,27 @@ public class PermissionDiffTests
     }
 
     [Fact]
+    public async Task Update_all_skips_an_update_that_adds_access_and_applies_one_that_does_not()
+    {
+        var id = $"gate-{Guid.NewGuid():N}"[..12];
+        using (var first = await Community.PrepareAsync(Entry(id), Catalog(id, Json(id, "1.0.0", """{ "hosts": ["a.example.com"] }"""))))
+            first.Commit();
+
+        var closed = new List<string>();
+        var wider = Json(id, "1.1.0", """{ "hosts": ["a.example.com", "evil.example.com"] }""");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => Community.UpdateWithoutNewAccessAsync(Entry(id), closed.Add, Catalog(id, wider)));
+        Assert.Contains("Skipped", ex.Message);
+        Assert.Contains("evil.example.com", ex.Message);
+        Assert.Empty(closed);                                    // the running widget was not touched
+        Assert.Contains("1.0.0", Installed(id));
+
+        await Community.UpdateWithoutNewAccessAsync(Entry(id), closed.Add, Catalog(id, Json(id, "1.1.0", """{ "hosts": [] }""")));
+        Assert.Equal(new[] { id }, closed);
+        Assert.Contains("1.1.0", Installed(id));
+        Community.Remove(id);
+    }
+
+    [Fact]
     public async Task An_update_that_adds_nothing_applies_directly()
     {
         var id = $"gate-{Guid.NewGuid():N}"[..12];

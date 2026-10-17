@@ -271,11 +271,16 @@ sealed class Control(App app)
                     copy["installed"] = installed is not null;
                     copy["builtin"] = installed?.IsPermanent == true;
                     copy["installedVersion"] = installed?.Version;
-                    copy["updateAvailable"] = installed is { Source: WidgetSource.Community }
-                        && Community.CompareVersions(copy["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
+                    copy["updateAvailable"] = Community.IsUpdate(copy, installed);
                     list.Add(copy);
                 }
                 return list;
+            }
+
+            case "update-all":
+            {
+                try { return (await app.UpdateAllWidgetsAsync()).ToJson(); }
+                catch (InvalidOperationException ex) { throw new CommandException(ex.Message); }
             }
 
             case "install":

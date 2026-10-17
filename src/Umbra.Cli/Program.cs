@@ -97,6 +97,7 @@ static void PrintHelp()
           catalog                        community widgets on GitHub
           install <id> [--accept-permissions]  install/update a community widget; an update that adds permissions needs the flag
           remove <id>                    uninstall a community widget
+          update --all                   update every installed community widget that has a newer version (failures are listed, the rest still update; updates that add permissions are skipped and listed)
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
           hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E

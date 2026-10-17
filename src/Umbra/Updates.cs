@@ -222,6 +222,7 @@ sealed class UpdateService : IDisposable
             Log.Write($"Update check failed: {ex.Message}");
         }
         LastChecked = DateTime.Now;
+        if (_app.Settings.General.CheckForUpdates) await _app.CheckWidgetUpdatesAsync(); // the same toggle covers widget updates
         _app.SettingsChangedElsewhere();
         if (download && Available is not null && !AppPaths.IsPortable) await DownloadQuietlyAsync();
     }
