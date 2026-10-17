@@ -172,7 +172,8 @@ page by the same factor (like browser zoom), so your page always lays out at the
   redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
 - In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by
   Umbra's overlay with an outline and a corner handle: presses move the widget, the handle resizes it and Ctrl+wheel
-  zooms it. Mouse presses on your page are taken by the overlay then, so don't rely on interaction (capture-phase listeners and keyboard events can still reach it). Locked widgets are left alone. A page can't
+  zooms it. The last widget pressed is selected (stronger outline) and takes the keyboard; its arrow keys nudge it
+  (1 px, Shift: 10 px or one grid step), only while the host sees the key physically down. Mouse presses on your page are taken by the overlay then, so don't rely on interaction (capture-phase listeners and keyboard events can still reach it). Locked widgets are left alone. A page can't
   resize or zoom itself: in edit mode, the host resizes only during a real mouse press on the handle and zooms only
   while Ctrl is physically held over the widget.
 
