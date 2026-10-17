@@ -139,8 +139,10 @@ input { font: inherit; color: inherit; }
 .btn .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 700ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.check { display: inline-flex; align-items: center; gap: 9px; color: var(--text-2); font-size: 12.5px; cursor: pointer; }
-.check input { position: absolute; opacity: 0; pointer-events: none; }
+/* position: relative keeps the hidden input inside the label; otherwise focusing it scrolls the clipped page. */
+.check { position: relative; display: inline-flex; align-items: center; gap: 9px; color: var(--text-2); font-size: 12.5px; cursor: pointer; }
+.check input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.check input:focus-visible + span { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 .check span {
   width: 18px; height: 18px; border-radius: 6px;
   box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.2);
