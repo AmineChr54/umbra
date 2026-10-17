@@ -56,6 +56,14 @@ static class CommandLine
             }
             case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
+            case "hotkeys":
+            {
+                // umbractl hotkeys | hotkeys reset | hotkeys <action> <keys|off>
+                if (a.Length == 1) return ("hotkeys", new JsonObject());
+                if (a[1] == "reset") return ("hotkeys", O(("reset", true)));
+                var keys = Arg(a, 2, "keys (e.g. Ctrl+Alt+E, or off)");
+                return ("hotkeys", O(("action", a[1]), ("keys", keys.Equals("off", StringComparison.OrdinalIgnoreCase) ? "" : keys)));
+            }
             case "approvals":
                 // List only. Approving a widget's command is a human action (prompt or Settings > My widgets).
                 return ("approvals", a.Length > 1 ? O(("id", a[1])) : new JsonObject());

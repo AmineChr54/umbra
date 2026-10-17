@@ -23,6 +23,61 @@ sealed class App : ApplicationContext
     /// </summary>
     public bool EditMode { get; private set; }
 
+    /// <summary>All widgets temporarily hidden by the "toggle-widgets" hotkey. Not saved.</summary>
+    public bool WidgetsHidden { get; private set; }
+
+    readonly HotkeyService _hotkeys;
+
+    /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
+    void RunHotkey(string action)
+    {
+        switch (action)
+        {
+            case "edit-mode": SetEditMode(!EditMode); break;
+            case "refresh-all": foreach (var w in _windows.Values) w.RefreshData(); break;
+            case "toggle-widgets":
+                WidgetsHidden = !WidgetsHidden;
+                foreach (var w in _windows.Values) w.Visible = !WidgetsHidden;
+                break;
+            case "open-settings": ShowSettings(); break;
+        }
+    }
+
+    public System.Text.Json.Nodes.JsonObject DescribeHotkeys() => new()
+    {
+        ["hotkeys"] = _hotkeys.Describe(Settings.Hotkeys),
+        ["widgetsHidden"] = WidgetsHidden,
+    };
+
+    /// <summary>Sets (or with empty keys clears) one hotkey, rejecting invalid or duplicate combinations; other apps' conflicts show as a failed status.</summary>
+    public void SetHotkey(string action, string keys)
+    {
+        if (!Hotkey.IsAction(action)) throw new ArgumentException($"Unknown hotkey action '{action}'. Actions: {string.Join(", ", Hotkey.Actions.Select(a => a.Id))}");
+        var next = new Dictionary<string, string>(Settings.Hotkeys);
+        if (string.IsNullOrWhiteSpace(keys)) next.Remove(action);
+        else
+        {
+            if (!Hotkey.TryParse(keys, out _, out _, out var err)) throw new ArgumentException(err);
+            next[action] = Hotkey.Normalize(keys)!;
+            if (Hotkey.Validate(next).TryGetValue(action, out var conflict)) throw new ArgumentException(conflict);
+        }
+        Settings.Hotkeys = next;
+        ApplyHotkeys();
+    }
+
+    public void ResetHotkeys()
+    {
+        Settings.Hotkeys = new();
+        ApplyHotkeys();
+    }
+
+    void ApplyHotkeys()
+    {
+        _hotkeys.Apply(Settings.Hotkeys);
+        SaveSettings();
+        SettingsChangedElsewhere();
+    }
+
     public App(bool openSettings, bool background = false)
     {
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
@@ -38,6 +93,8 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
 
         SyncWindows();
+        _hotkeys = new HotkeyService(RunHotkey);
+        _hotkeys.Apply(Settings.Hotkeys);
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
@@ -175,7 +232,7 @@ sealed class App : ApplicationContext
                     win = new WidgetWindow(this, m, inst);
                     win.FormClosed += (_, _) => _windows.Remove(inst);
                     _windows[inst] = win;
-                    win.Show();
+                    if (!WidgetsHidden) win.Show();
                 }
                 else if (!enabled && open)
                 {
@@ -270,6 +327,7 @@ sealed class App : ApplicationContext
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; }
+        incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         Settings = incoming;
         SaveSettings();
         SyncWindows();
@@ -328,6 +386,7 @@ sealed class App : ApplicationContext
         _tray.Visible = false;
         _tray.Dispose();
         Updater.Dispose();
+        _hotkeys.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();

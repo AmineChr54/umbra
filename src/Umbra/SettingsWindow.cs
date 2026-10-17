@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form
     readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "about" };
+    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "hotkeys", "about" };
 
     public SettingsWindow(App app)
     {
@@ -90,6 +90,17 @@ sealed class SettingsWindow : Form
 
             case "setEditMode":
                 _app.SetEditMode(msg["value"]?.GetValue<bool>() == true); // re-sends the state
+                break;
+
+            case "setHotkey":
+                try { _app.SetHotkey(msg["action"]?.GetValue<string>() ?? "", msg["keys"]?.GetValue<string>() ?? ""); }
+                catch (ArgumentException ex) { Post(new JsonObject { ["type"] = "commandError", ["error"] = ex.Message }); }
+                SendState();
+                break;
+
+            case "resetHotkeys":
+                _app.ResetHotkeys();
+                SendState();
                 break;
 
             case "resetPosition":
@@ -287,6 +298,7 @@ sealed class SettingsWindow : Form
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
             ["themeCss"] = _app.ThemeCss,
+            ["hotkeys"] = _app.DescribeHotkeys()["hotkeys"]!.DeepClone(),
             ["widgets"] = widgets,
         });
     }

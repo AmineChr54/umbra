@@ -90,11 +90,12 @@ static void PrintHelp()
           install|remove <id>            install/update or uninstall a community widget
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
+          hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
           install-theme|remove-theme <id>  install/update or uninstall a community theme
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
           create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
-                                         PNG of a widget or Settings page (general|widgets|browse|themes|about)
+                                         PNG of a widget or Settings page (general|widgets|browse|themes|hotkeys|about)
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
