@@ -430,7 +430,7 @@ sealed class App : ApplicationContext
         menu.Items.Add("Refresh all", null, (_, _) => { foreach (var w in _windows.Values) w.RefreshData(); });
         menu.Items.Add("Open data folder", null, (_, _) =>
         {
-            try { System.Diagnostics.Process.Start("explorer.exe", AppPaths.DataDir); }
+            try { System.Diagnostics.Process.Start("explorer.exe", $"\"{AppPaths.DataDir}\""); }
             catch (Exception ex) { Log.Write($"Open data folder failed: {ex.Message}"); }
         });
         menu.Items.Add("Restart Umbra", null, (_, _) => Restart());

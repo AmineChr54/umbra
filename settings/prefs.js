@@ -56,7 +56,7 @@
     // Both only apply on start: after a change in this session, offer to restart right here.
     const needsRestart = (btn) => { sec.querySelector(btn).style.display = ""; };
     for (const b of ["#pf-restart-hw", "#pf-restart-proxy"])
-      sec.querySelector(b).addEventListener("click", () => post({ type: "restart" }));
+      sec.querySelector(b).addEventListener("click", () => { flushSave(); post({ type: "restart" }); });
     bind("hardwareAcceleration", null, (gen, i) => { gen.hardwareAcceleration = i.checked; needsRestart("#pf-restart-hw"); });
     bind("startupDelaySeconds", null, (gen, i) => { const v = Math.max(0, Math.min(300, Math.round(Number(i.value) || 0))); i.value = v; gen.startupDelaySeconds = v; });
     bind("proxy", null, (gen, i) => { gen.proxy = i.value.trim() || "system"; needsRestart("#pf-restart-proxy"); });
