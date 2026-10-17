@@ -110,6 +110,24 @@
       ]
     },
     {
+      "id": "github-activity",
+      "name": "GitHub Activity",
+      "description": "Open pull requests, open issues, the latest CI run and the latest release of one public repository. Click a row to open it.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "api.github.com"
+      ],
+      "files": [
+        "gh.css",
+        "gh.js",
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "internships",
       "name": "Internships",
       "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
@@ -140,6 +158,22 @@
         "index.html",
         "pomodoro.css",
         "pomodoro.js",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "quick-notes",
+      "name": "Quick Notes",
+      "description": "A scratchpad on your desktop with up to five note tabs. Saves as you type and shows a character count. Everything stays on your PC.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "index.html",
+        "notes.css",
+        "notes.js",
         "preview.png",
         "widget.json"
       ]
