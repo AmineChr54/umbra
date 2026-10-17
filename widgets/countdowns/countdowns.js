@@ -61,11 +61,22 @@ async function save() {
 
 // ---------- formatting ----------
 
-const fmtDay = new Intl.DateTimeFormat([], { day: "numeric", month: "short" });
-const fmtMonthYear = new Intl.DateTimeFormat([], { month: "short", year: "numeric" });
-const fmtLong = new Intl.DateTimeFormat([], { weekday: "short", day: "numeric", month: "long", year: "numeric" });
-const fmtTime = new Intl.DateTimeFormat([], { hour: "numeric", minute: "2-digit" });
-const fmtWeekday = new Intl.DateTimeFormat([], { weekday: "short" });
+// Formats follow the Windows region (umbra.locale / umbra.hour12), which the host sends after load, so build them on use.
+const dtf = (opts) => {
+  const cache = new Map();
+  return {
+    format: (d) => {
+      const key = umbra.locale + "|" + umbra.hour12;
+      if (!cache.has(key)) cache.set(key, new Intl.DateTimeFormat(umbra.locale, { ...opts, ...(opts.hour ? { hour12: umbra.hour12 } : {}) }));
+      return cache.get(key).format(d);
+    },
+  };
+};
+const fmtDay = dtf({ day: "numeric", month: "short" });
+const fmtMonthYear = dtf({ month: "short", year: "numeric" });
+const fmtLong = dtf({ weekday: "short", day: "numeric", month: "long", year: "numeric" });
+const fmtTime = dtf({ hour: "numeric", minute: "2-digit" });
+const fmtWeekday = dtf({ weekday: "short" });
 
 /** Short date under a tile: "11 Nov", "Nov 2027", or the time when it's today or tomorrow. */
 function shortWhen(ev, s) {
@@ -455,6 +466,7 @@ umbra.ready.then(async () => {
 });
 
 umbra.onSettings(() => { if (!first) render(); });
+umbra.onTimeChanged?.(() => { if (!first) render(); }); // time zone or clock changed: remaining times and "today" move
 umbra.store?.onChange(async () => {
   await load();
   if (draft?.id && !events.some((x) => x.id === draft.id)) closeSheet();

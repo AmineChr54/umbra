@@ -14,9 +14,15 @@ sealed class SingleInstance : IDisposable
 
     public bool IsFirst { get; }
 
-    public SingleInstance()
+    /// <param name="waitForPrevious">A restart: wait (up to <see cref="Tray.RestartWait"/>) for the old instance to exit instead of treating it as a second launch.</param>
+    public SingleInstance(bool waitForPrevious = false)
     {
         _mutex = new Mutex(true, $@"Local\{Protocol.PipeName}", out var created);
+        if (!created && waitForPrevious)
+        {
+            try { created = _mutex.WaitOne(Tray.RestartWait); }
+            catch (AbandonedMutexException) { created = true; } // the old instance died without releasing it; ours now
+        }
         IsFirst = created;
     }
 

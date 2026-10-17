@@ -3,6 +3,13 @@ body { font-size: 13.5px; user-select: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 input { font: inherit; color: inherit; }
 
+/* Keyboard focus: a bright ring that shows on black, for everything that can take focus. Mouse clicks don't show it. */
+button:focus-visible, select:focus-visible, input[type=color]:focus-visible, input[type=time]:focus-visible, input[type=number]:focus-visible, input[type=text]:focus-visible,
+.input:focus-visible, .search:focus-within {
+  outline: 2px solid var(--accent-strong); outline-offset: 2px;
+}
+.nav button:focus-visible, .segmented button:focus-visible { outline-offset: -2px; }
+
 .ico { display: inline-flex; width: 16px; height: 16px; flex: none; }
 .ico svg { width: 100%; height: 100%; }
 
@@ -184,6 +191,7 @@ input { font: inherit; color: inherit; }
   transition: box-shadow 200ms;
 }
 .wcard:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.wcard.focus, .wcard.focus:hover { box-shadow: inset 0 0 0 2px var(--accent), 0 0 24px rgba(139, 147, 255, 0.25); }
 .wcard-main { display: flex; align-items: center; gap: 18px; padding: 16px 20px; }
 .thumb {
   width: 112px; height: 64px; flex: none; border-radius: 10px;
@@ -223,7 +231,8 @@ input { font: inherit; color: inherit; }
   transition: transform 160ms var(--ease-out);
 }
 .range:active::-webkit-slider-thumb { transform: scale(1.15); }
-.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-strong); }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--accent-strong); }
+.range:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 6px; }
 .range:disabled { opacity: 0.4; cursor: default; }
 .size-val {
   min-width: 46px; height: 26px; padding: 0 6px; border-radius: 7px;
@@ -340,6 +349,13 @@ input { font: inherit; color: inherit; }
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
 .toast.error { color: #ff9a9d; }
+.toast.has-action { display: flex; align-items: center; gap: 14px; }
+.toast.has-action.show { pointer-events: auto; }
+.toast-action {
+  padding: 4px 10px; border: 0; border-radius: 8px; cursor: pointer;
+  font: inherit; font-weight: 650; color: var(--accent, #8b93ff); background: rgba(255, 255, 255, 0.08);
+}
+.toast-action:hover { background: rgba(255, 255, 255, 0.14); }
 
 /* ---------- local commands (permissions.commands) ---------- */
 .cmds:empty { display: none; }
@@ -377,8 +393,81 @@ input { font: inherit; color: inherit; }
 .sw-line { width: 78%; background: var(--t-text2, #6b707b); }
 .sw-line.short { width: 52%; }
 .sw-dot { position: absolute; right: 14px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--t-accent, #8b93ff); }
+/* What's new (About, after an update) */
+.whatsnew { width: min(520px, 100%); margin: 8px 0 26px; padding: 16px 18px; text-align: left; border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--tint, rgba(255, 255, 255, 0.03)); }
+.whatsnew h2 { margin: 0 0 8px; font-size: 14px; font-weight: 650; }
+.whatsnew-body { max-height: 220px; overflow-y: auto; margin-bottom: 12px; color: var(--text-2); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.whatsnew-body h4 { margin: 10px 0 4px; color: var(--text); font-size: 12.5px; font-weight: 650; }
+.whatsnew-body p { margin: 0 0 6px; }
+.whatsnew-body ul { margin: 0 0 6px; padding-left: 18px; }
+.whatsnew-body a { color: var(--accent, #8b93ff); text-decoration: underline; cursor: pointer; }
 /* Update notice (About) */
 .update { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
 .update-text { font-size: 13px; color: var(--text-2); }
 .update.has-update .update-text { color: var(--text); font-weight: 600; }
 .nav button.dot::after { content: ""; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #8b93ff; }
+
+/* ---------- Windows contrast themes (forced colors) ----------
+   The browser replaces colors with the user's palette and removes box-shadows, so anything drawn only with a
+   fill or a shadow (switch, segmented control, borders, focus rings) is redrawn here with borders, outlines and
+   the Highlight / HighlightText pair. Tokens come from shared/umbra.css. */
+@media (forced-colors: active) {
+  .side { background: Canvas; }
+  .nav button:hover, .side-foot .link:hover { outline: 1px solid Highlight; outline-offset: -1px; }
+  .nav button.active { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; }
+  .nav button.active::before { background: Highlight; box-shadow: none; }
+  .nav button.dot::after { background: Highlight; }
+  .content::-webkit-scrollbar-thumb { background: CanvasText; border-color: Canvas; }
+
+  .group, .wcard, .ccard, .search, .hint, .empty, .thumb, .cmd, .toast, .size-val, .hero { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .hero { background: Canvas; }
+  .hero-art { display: none; }
+  .hero-text { margin-right: 0; }
+  .hint { background: Canvas; }
+  .badge, .chip { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .thumb.fallback, .cthumb:not(.has-img):not(.swatch) { background-image: none; }
+  .skeleton { background: Canvas; outline: 1px dashed CanvasText; }
+  .wcard:hover, .ccard:hover { outline-color: Highlight; outline-width: 2px; }
+  .tcard.active::after { box-shadow: none; border: 2px solid Highlight; }
+  /* Theme previews show the theme's own colors, like a chart. */
+  .cthumb.swatch, .cthumb.swatch * { forced-color-adjust: none; }
+  .sw-card { outline: 1px solid var(--t-line, CanvasText); outline-offset: -1px; }
+
+  .switch span { border: 1px solid CanvasText; background: Canvas; box-shadow: none; }
+  .switch span::after { top: 3px; left: 3px; background: CanvasText; }
+  .switch input:checked + span { background: Highlight; border-color: Highlight; box-shadow: none; }
+  .switch input:checked + span::after { background: HighlightText; }
+  .switch input:focus-visible + span { outline: 2px solid Highlight; outline-offset: 3px; }
+
+  .segmented { box-shadow: none; border: 1px solid CanvasText; background: Canvas; }
+  .segmented button:hover { outline: 1px solid Highlight; outline-offset: -1px; }
+  .segmented button.on { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; font-weight: 700; box-shadow: none; }
+
+  .btn { border: 1px solid ButtonText; box-shadow: none; }
+  .btn:hover { border-color: Highlight; }
+  .btn.primary, .btn.primary:hover { background: Canvas; }
+  .btn.primary { border-color: Highlight; outline: 1px solid Highlight; outline-offset: -2px; box-shadow: none; }
+  .btn.primary:hover { border-color: ButtonText; outline-color: ButtonText; }
+  .btn.done, .btn[disabled] { color: GrayText; border-color: GrayText; background: Canvas; opacity: 1; }
+  .btn .spin { border-color: currentColor; border-right-color: transparent; }
+
+  .check span { border: 1.5px solid CanvasText; box-shadow: none; }
+  .check input:checked + span { background: Highlight; border-color: Highlight; }
+  .check input:checked + span::after { border-color: HighlightText; }
+  .check input:focus-visible + span { outline: 2px solid Highlight; outline-offset: 2px; }
+
+  .input, .select { border: 1px solid ButtonText; box-shadow: none; }
+  .input:hover, .select:hover { border-color: Highlight; }
+  .input:focus, .select:focus { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  .select { appearance: auto; background-image: none; padding-right: 12px; }
+  .search:focus-within { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+
+  .range { background: ButtonText; }
+  .range::-webkit-slider-thumb { box-sizing: border-box; background: Canvas; border: 3px solid Highlight; box-shadow: none; }
+  .range:focus-visible { outline: 2px solid Highlight; outline-offset: 6px; }
+  .range:focus-visible::-webkit-slider-thumb { box-shadow: none; border-color: CanvasText; }
+  .range:disabled { opacity: 1; background: GrayText; }
+  .range:disabled::-webkit-slider-thumb { border-color: GrayText; }
+  .size-val[disabled] { color: GrayText; opacity: 1; }
+  .size-val:hover:not([disabled]) { outline-color: Highlight; }
+}

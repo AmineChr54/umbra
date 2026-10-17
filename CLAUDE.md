@@ -22,15 +22,20 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 |---|---|
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
-| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
+| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); host-drawn right-click menu (`ContextMenuRequested`; `RemovedCopy.cs` backs its Undo); `CaptureAsync` |
+| `src/Umbra/CrashRecovery.cs`, `shared/crashed.html` | `CoreWebView2.ProcessFailed` policy: renderer exit reloads (a hung renderer is only logged) (max 3 per 10 min), then the host-owned "This widget stopped working" page (Reload button); browser-process exit recreates the environment and view; Data & privacy shows the count |
+| `src/Umbra/Tray.cs` | Tray tooltip text and the "update ready" badge icon; `--restart` flag (the new process waits for the old one's single-instance mutex) |
+| `src/Umbra/EditPill.cs` | The host-drawn "Editing widgets · Snap · Done" pill per monitor in edit mode: its own non-activating, Progman-owned window just above the widgets (not a WebView, so never in a capture) |
 | `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
 | `src/Umbra/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
 | `src/Umbra/Themes.cs` | `Theme`: theme.json model, token allow-list and value validation, generated `:root` CSS (applied by `shared/umbra.js`); installed in `%APPDATA%\Umbra\themes\<id>`, catalog in `themes/` |
 | `src/Umbra/Protocol.cs` (`PortableMode`), `Log.cs` (`AppPaths`) | Portable mode: `portable.txt` next to `Umbra.exe` puts data (and the WebView2 cache) in `<AppDir>\data`; no autostart, no self-install; pipe/mutex name carries a data-dir hash. `UMBRA_DATA_DIR` still wins |
-| `src/Umbra/Updates.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`), and `UpdateService` (daily GitHub check, download + run installer) |
-| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on remove) |
+| `src/Umbra/Updates.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`), and `UpdateService` (daily GitHub check, background download + verify, silent installer run with `/UPDATE=1`; `Umbra.iss` then starts `Umbra.exe --updated`; release notes shown once after an update via `General.LastSeenVersion`) |
+| `src/Umbra/ToastService.cs`, `Notifier.cs` | `umbra.notify`: real toasts via `ToastNotificationManager` (installer shortcut AUMID `AmineChr54.Umbra`; portable/source runs register their own under HKCU; balloon fallback), plus the rate limit and text/action/XML helpers |
+| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
+| `src/Umbra/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
 | `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |
@@ -69,6 +74,10 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
   user, in the widget's data dir, with a scrubbed environment, a timeout (max 120 s) and a 1 MB output cap, never
   while the widget is disabled. Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
+- Updating an installed catalog widget never grants new access silently: `Community.PrepareAsync` diffs the downloaded manifest against the
+  installed one (`PermissionDiff`: hosts, system, media, notifications, commands) and `PendingInstall.Require` refuses until the user accepted.
+  Settings asks with a host-drawn box (`SettingsWindow.ConfirmNewAccess`), `umbractl install` needs `--accept-permissions`, and the MCP
+  server strips that argument. Any new install path (e.g. "Update all") must go through `PrepareAsync`/`InstallAsync` with `acceptPermissions` false by default.
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
   `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
@@ -96,6 +105,10 @@ Use `umbractl capture <widget-id|settings:<page>> out.png`, then look at the PNG
 - Labels: `type: bug|feature|docs|widget|chore`, `area: host|widgets|settings|sdk|ai|installer|ci|docs`,
   `priority: p0|p1|p2`, plus `good first issue` and `help wanted`.
 - One issue per PR when possible, with `Closes #N` in the body. CI (`.github/workflows/ci.yml`) must pass.
+- Before starting an issue, skip it if it has an assignee; otherwise comment "I'm taking this" so work isn't duplicated.
+- Contributors without write access work from a fork (`gh repo fork AmineChr54/umbra --clone`, then
+  `gh pr create --repo AmineChr54/umbra`). They can't set labels, assignees or the board, and never merge; the
+  maintainer does that. A first-time contributor's CI waits for the maintainer to approve the run.
 - Releases: bump the version, tag `vX.Y.Z` and push. `release.yml` builds and attaches the installer
   (see `.claude/skills/release`).
 

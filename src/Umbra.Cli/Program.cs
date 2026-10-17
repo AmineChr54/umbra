@@ -52,7 +52,8 @@ try
         Console.Error.WriteLine($"umbractl: {reply["error"]?.GetValue<string>() ?? "error"}");
         return 1;
     }
-    Console.WriteLine(reply["result"]?.ToJsonString(pretty) ?? "ok");
+    // A text result (diagnostics) is printed as it is so it can be piped to the clipboard or pasted.
+    Console.WriteLine(reply["result"] is JsonValue { } v && v.TryGetValue<string>(out var text) ? text : reply["result"]?.ToJsonString(pretty) ?? "ok");
     return 0;
 }
 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or TimeoutException or JsonException or FormatException)
@@ -82,10 +83,11 @@ static void PrintHelp()
           layouts [list|save|apply|delete <name>]  saved arrangements of positions, sizes and enabled widgets
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
-          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--peek-seconds 1-60]
+          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]
                   [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--default-scale 0.5-3]
                   [--log-level errors|normal|verbose] [--developer-mode on|off] [--hardware-acceleration on|off]
                   [--startup-delay 0-300] [--proxy system|none|https://host:port]
+                  [--snap on|off] [--snap-grid 0-200] [--snap-edges on|off] [--snap-gap 0-100]
           check-update                   look for a newer Umbra on GitHub (install it from the tray or Settings > About)
           reset-position <id>            back to the default position
           add-instance <id>              run another copy of a widget (own options, position, data); ids look like sp500#2
@@ -93,8 +95,9 @@ static void PrintHelp()
           refresh [id]                   fetch fresh data now
           reload                         re-scan widget folders
           catalog                        community widgets on GitHub
-          install|remove <id>            install/update or uninstall a community widget
-          update --all                   update every installed community widget that has a newer version (failures are listed, the rest still update)
+          install <id> [--accept-permissions]  install/update a community widget; an update that adds permissions needs the flag
+          remove <id>                    uninstall a community widget
+          update --all                   update every installed community widget that has a newer version (failures are listed, the rest still update; updates that add permissions are skipped and listed)
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
           hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
@@ -111,6 +114,7 @@ static void PrintHelp()
           backup <file>                 save settings, layout, theme and widget data (no approvals)
           restore <file>                restore from a backup (validated; approvals are not restored)
           logs [n]                      last n log lines
+          diagnostics                   Markdown block for bug reports (versions, monitors, widgets, log; no settings values)
           quit                           exit Umbra
           send <command> [json]          raw control-protocol command
           mcp                            run as an MCP server on stdio:  claude mcp add umbra -- umbractl mcp
