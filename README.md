@@ -1,6 +1,6 @@
 # Umbra
 
-**Desktop widgets that live on your wallpaper.** Umbra pins small, crisp, true-black widgets to the Windows desktop. They sit under your apps, stay visible with Win+D and start with Windows. A live **S&P 500** card is one click away in Browse, and anyone can publish more through a pull request.
+**Desktop widgets that live on your wallpaper.** Umbra pins small, crisp, true-black widgets to the Windows desktop. They sit under your apps, stay visible with Win+D and start with Windows. Browse has about 20 widgets, such as S&P 500, clock, weather, pomodoro, to-do, habits and an application tracker, and anyone can publish more through a pull request.
 
 ![S&P 500 widget](docs/demo-umbra.png)
 
@@ -12,9 +12,12 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 
 ## Features
 
-- **Settings panel:** start with Windows, refresh interval and animations. Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked or reset to its default position. Changes apply live.
+- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
 - **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
-- **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
+- **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games.
+- **Notifications and media:** with permission, a widget can show a Windows notification (`umbra.notify`) or read and control the current media session (`umbra.media`).
+- **Data and privacy:** the **Data & privacy** page shows what each widget can reach and store, and offers backup, restore, reset and a safe mode that turns community widgets off.
+- **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. The catalog is also published as a static site (`node scripts/site.mjs`). See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
 - **Themes:** the **Themes** page installs community themes (colors and corner radius for every widget) and switches between them live. Themes are plain data with no code, and "Umbra Black" is the built-in default. Writing one takes a single `theme.json`, see [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Sandboxed:** a widget can only reach the HTTPS hosts declared in its `widget.json`, and every other request is blocked by the host app. A widget can start a local program only if it declared that exact command in `widget.json` and you approved it.
 - **OLED-first:** opaque true-black windows with DWM-rounded corners, so text renders with full DirectWrite quality.
@@ -25,9 +28,9 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | | |
 |---|---|
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
-| **General:** start with Windows, refresh interval, animations. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
+| **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
-| **Browse:** install, update or remove community widgets in one click. | **About:** version, source code and links to report issues or build a widget. |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
 
 ## Automate Umbra (CLI, scripts and AI agents)
 
@@ -55,7 +58,7 @@ umbractl install clock                # community catalog: catalog, install, rem
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
 umbractl new my-widget                # scaffold a working widget and show it
-umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, ...)
+umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, settings:privacy, ...)
 umbractl data todo                    # a widget's saved data (umbra.store); data <id> <key> <json> to set
 umbractl approvals                    # local commands widgets declare and whether you approved them (read-only)
 umbractl help                         # everything else
@@ -85,7 +88,7 @@ Under the hood, both talk to the running app over a per-user named pipe with one
 - **Single instance + startup:** a mutex plus a named pipe means a second launch opens Settings in the running copy. "Start with Windows" is the `HKCU\...\Run\Umbra` value, which the installer and the Settings toggle both read and write.
 - **Community catalog** (`scripts/catalog.mjs`, `.github/workflows/widgets.yml`): pull requests are validated in CI, and merges regenerate `widgets/index.json`. The app downloads files into a temp folder, checks paths, file types, size and id, and only then installs them.
 
-### S&P 500 algorithms (`widgets/sp500`)
+### Example: S&P 500 algorithms (`widgets/sp500`)
 
 1. **Data:** Yahoo Finance chart API (`range=1d&interval=5m`, or `5d/15m`), parsed as real JSON: `regularMarketPrice`, `chartPreviousClose`, the closes and timestamps, and the trading period for the open/closed dot. `null` gaps are dropped.
 2. **Math:** `change = price - prevClose` and `percent = change / prevClose * 100`. The sign picks the theme: green, red or grey.
@@ -111,7 +114,7 @@ The original lightweight Rainmeter skin is still in [`extras/rainmeter`](extras/
 
 ## Limitations
 
-Market data comes from Yahoo's unofficial endpoint. It may be delayed or change without notice, so don't use it for trading. Umbra is Windows 10 1809+ / Windows 11 only.
+Market data comes from Yahoo's unofficial endpoint. It may be delayed or change without notice, so don't use it for trading. Umbra is Windows 10 1809+ / Windows 11 only (it targets `net10.0-windows10.0.19041.0`).
 
 ## License
 

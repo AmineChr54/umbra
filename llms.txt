@@ -13,6 +13,7 @@
 ## Examples
 
 - [S&P 500 widget](https://github.com/AmineChr54/umbra/tree/main/widgets/sp500): data fetching, options, SVG chart, animation
+- [Pomodoro widget](https://github.com/AmineChr54/umbra/tree/main/widgets/pomodoro): timers, saved state
 - [Clock widget](https://github.com/AmineChr54/umbra/tree/main/widgets/clock): offline widget with toggle options
 
 ## Automation

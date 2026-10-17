@@ -46,7 +46,7 @@ public static class Protocol
         ("privacy", "Read-only privacy overview per widget: reachable hosts, declared commands with approval status, saved-data size and recent blocked requests: {id?}"),
         ("backup", "Write settings, layout, theme, hotkeys and widget data to one JSON file (never command approvals): {path}"),
         ("restore", "Replace settings, layout and widget data from a backup file written by backup: {path}. Validated first; approvals are not restored"),
-        ("capture","PNG of a widget or a Settings page: {target: <id or instance id>|settings:<general|widgets|browse|themes|about>, path?}"),
+        ("capture","PNG of a widget or a Settings page: {target: <id or instance id>|settings:<general|widgets|browse|themes|hotkeys|privacy|about>, path?}"),
         ("open-settings", "Open the Settings window: {page?}"),
         ("logs", "Last lines of umbra.log: {lines?}"),
         ("quit", "Exit Umbra"),
