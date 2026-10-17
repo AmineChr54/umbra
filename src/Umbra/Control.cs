@@ -323,7 +323,7 @@ sealed class Control(App app)
         {
             var page = target.Contains(':') ? target[(target.IndexOf(':') + 1)..] : "general";
             var wasOpen = app.SettingsOpen;
-            var win = app.ShowSettings();
+            var win = app.ShowSettings(background: true);
             try { png = await win.CaptureAsync(page); }
             finally { if (!wasOpen) win.Close(); }
         }
