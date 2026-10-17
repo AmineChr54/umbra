@@ -372,6 +372,14 @@ sealed class WidgetWindow : Form
                 HandleSystem(msg!);
                 break;
 
+            case "notify":
+                HandleNotify(msg!);
+                break;
+
+            case "media":
+                await HandleMedia(msg!);
+                break;
+
             case "run":
                 await HandleRun(msg!);
                 break;
@@ -503,6 +511,58 @@ sealed class WidgetWindow : Form
         {
             reply["ok"] = true;
             reply["data"] = SystemMetrics.Read(Manifest.Permissions.System);
+        }
+        Post(reply);
+    }
+
+    /// <summary>umbra.notify: needs permissions.notifications, the user's switch for this widget, and stays within the rate limit.</summary>
+    void HandleNotify(JsonNode msg)
+    {
+        var reply = new JsonObject { ["type"] = "notifyResult", ["id"] = msg["id"]?.DeepClone() };
+        string? error = null;
+        var title = Notifier.Clean(msg["title"] is JsonValue t && t.GetValueKind() == JsonValueKind.String ? t.GetValue<string>() : null, Notifier.MaxTitle);
+        var body = Notifier.Clean(msg["body"] is JsonValue b && b.GetValueKind() == JsonValueKind.String ? b.GetValue<string>() : null, Notifier.MaxBody);
+        var url = msg["url"] is JsonValue u && u.GetValueKind() == JsonValueKind.String ? u.GetValue<string>() : null;
+        if (!Manifest.Permissions.Notifications) error = "This widget has no permissions.notifications";
+        else if (!(Alive && Ws.Enabled) || !Ws.Notifications) error = "Notifications are off for this widget (Settings)";
+        else if (title.Length == 0) error = "A title is required";
+        else if (url is not null && !(Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == "https" || uri.Scheme == "http"))) error = "url must be http(s)";
+        else if (!_app.Notify(Instance, App.InstanceLabel(Manifest, Instance), title, body, url)) error = "Rate limit reached (5 per 10 minutes)";
+        reply["ok"] = error is null;
+        if (error is not null) reply["error"] = error;
+        Post(reply);
+    }
+
+    /// <summary>umbra.media: "get" needs permissions.media "read"; "control" needs "control" and a recent physical press on the widget.</summary>
+    async Task HandleMedia(JsonNode msg)
+    {
+        var reply = new JsonObject { ["type"] = "mediaResult", ["id"] = msg["id"]?.DeepClone() };
+        try
+        {
+            var media = Manifest.Permissions.Media;
+            if (!(Alive && Ws.Enabled)) throw new WidgetCommandException("The widget is disabled");
+            var action = msg["action"] is JsonValue a && a.GetValueKind() == JsonValueKind.String ? a.GetValue<string>() : null;
+            if (action == "get")
+            {
+                if (!media.Contains("read")) throw new WidgetCommandException("This widget has no permissions.media \"read\"");
+                reply["data"] = await MediaService.NowPlayingAsync();
+            }
+            else if (action == "control")
+            {
+                if (!media.Contains("control")) throw new WidgetCommandException("This widget has no permissions.media \"control\"");
+                var cmd = msg["command"] is JsonValue c && c.GetValueKind() == JsonValueKind.String ? c.GetValue<string>() : null;
+                if (!MediaService.IsCommand(cmd)) throw new WidgetCommandException("Unknown media command");
+                if (!RecentUserPress()) throw new WidgetCommandException("Click the widget first: media controls need a physical click");
+                reply["data"] = await MediaService.ControlAsync(cmd!);
+            }
+            else throw new WidgetCommandException("Unknown media action");
+            reply["ok"] = true;
+        }
+        catch (Exception ex)
+        {
+            reply["ok"] = false;
+            reply["error"] = ex is WidgetCommandException ? ex.Message : "Media is not available";
+            if (ex is not WidgetCommandException) Log.Write($"[{Manifest.Id}] media failed: {ex.Message}");
         }
         Post(reply);
     }

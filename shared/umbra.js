@@ -66,6 +66,8 @@
       case "fetchResult":
       case "runResult":
       case "systemResult":
+      case "notifyResult":
+      case "mediaResult":
       case "storeResult": {
         const p = pending.get(m.id);
         if (!p) return;
@@ -101,6 +103,14 @@
   const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
   /** Machine totals declared in widget.json permissions.system: { cpu:{percent}, memory:{totalBytes,usedBytes,percent}, network:{downBytesPerSec,upBytesPerSec} }. */
   const system = () => request({ type: "system" }, 10000);
+  /** Windows notification from this widget. Needs permissions.notifications and the user's per-widget switch; 5 per 10 minutes. Clicking opens url (http/https). */
+  const notify = ({ title, body, url }) => request({ type: "notify", title, body, url }, 10000);
+  /** Windows media session. nowPlaying() needs permissions.media "read": { title, artist, album, app, status, playing, canPlay, canPause, canNext, canPrevious, art? (data URL) } or null. */
+  const media = {
+    nowPlaying: () => request({ type: "media", action: "get" }, 10000),
+    /** command: play | pause | toggle | next | previous. Needs "control" and a click on the widget just before. */
+    control: (command) => request({ type: "media", action: "control", command }, 10000),
+  };
   /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
   const fetchText = (url) => request({ type: "fetchText", url }, 25000);
 
@@ -245,6 +255,8 @@
     fetchJson,
     run,
     system,
+    notify,
+    media,
     fetchText,
     store,
     every,
