@@ -568,5 +568,9 @@ public class ProtocolTests
         // The second monitor counts too.
         var two = new[] { area, new System.Drawing.Rectangle(1920, 0, 1920, 1040) };
         Assert.True(WidgetGeometry.KeepsOnScreen(new System.Drawing.Rectangle(new System.Drawing.Point(2500, 10), size), two, 32));
+        // A widget that is already too far out may move back toward the screen, but not further out.
+        var off = new System.Drawing.Rectangle(new System.Drawing.Point(-290, 10), size);
+        Assert.True(WidgetGeometry.NudgeAllowed(off, new System.Drawing.Rectangle(new System.Drawing.Point(-289, 10), size), areas, 32));
+        Assert.False(WidgetGeometry.NudgeAllowed(off, new System.Drawing.Rectangle(new System.Drawing.Point(-291, 10), size), areas, 32));
     }
 }

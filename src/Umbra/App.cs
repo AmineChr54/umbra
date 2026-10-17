@@ -446,6 +446,7 @@ sealed class App : ApplicationContext
     {
         foreach (var key in _windows.Keys.Where(k => k == id || (!id.Contains('#') && InstanceId.WidgetOf(k) == id)).ToList())
         {
+            if (EditSelection == key) EditSelection = null;
             _windows[key].Close();
             _windows.Remove(key);
         }

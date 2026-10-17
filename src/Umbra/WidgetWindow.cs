@@ -452,13 +452,14 @@ sealed class WidgetWindow : Form
         if (vk == 0 || _resizing || !CanArrange || !Alive || _app.EditSelection != Instance) return;
         if (Native.GetForegroundWindow() != Handle || !IsKeyDown(vk)) return;
 
-        var grid = _app.Settings.General.SnapGrid;
+        var general = _app.Settings.General;
+        var grid = Snap.IsActive(general) ? general.SnapGrid : 0;
         bool big = IsKeyDown(Native.VK_SHIFT);
         var to = new Point(
             sx == 0 ? Left : WidgetGeometry.NudgeTo(Left, sx, big, grid),
             sy == 0 ? Top : WidgetGeometry.NudgeTo(Top, sy, big, grid));
         var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
-        if (!WidgetGeometry.KeepsOnScreen(new Rectangle(to, Size), areas, (int)(WidgetGeometry.NudgeKeepVisible * DeviceDpi / 96.0))) return;
+        if (!WidgetGeometry.NudgeAllowed(Bounds, new Rectangle(to, Size), areas, (int)(WidgetGeometry.NudgeKeepVisible * DeviceDpi / 96.0))) return;
 
         Location = to;
         RememberPosition();

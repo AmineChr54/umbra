@@ -33,6 +33,21 @@ public static class WidgetGeometry
         return false;
     }
 
+    /// <summary>Total area of the rectangle that lies inside the work areas.</summary>
+    static long VisibleArea(Rectangle r, IReadOnlyList<Rectangle> workAreas)
+    {
+        long sum = 0;
+        foreach (var w in workAreas) { var i = Rectangle.Intersect(w, r); if (i.Width > 0 && i.Height > 0) sum += (long)i.Width * i.Height; }
+        return sum;
+    }
+
+    /// <summary>
+    /// Whether a nudge from <paramref name="from"/> to <paramref name="to"/> is allowed: the result keeps enough on screen,
+    /// or at least does not show less than before (so a widget that is partly or fully off screen can be nudged back).
+    /// </summary>
+    public static bool NudgeAllowed(Rectangle from, Rectangle to, IReadOnlyList<Rectangle> workAreas, int keep) =>
+        KeepsOnScreen(to, workAreas, keep) || VisibleArea(to, workAreas) >= VisibleArea(from, workAreas);
+
     /// <summary>Window size for a scale: manifest size (logical pixels) x monitor DPI x scale.</summary>
     public static Size ScaledSize(int width, int height, int dpi, double scale) => new(
         (int)Math.Round(width * dpi / 96.0 * scale),
