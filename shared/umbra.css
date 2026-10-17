@@ -54,3 +54,61 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
   animation: none !important;
   transition: none !important;
 }
+
+/* <umbra-status>: the freshness dot from the SDK (umbra.status). Live and stale show a small dot with the age on
+   hover; offline keeps "Offline, last data 10:42" visible. placement="below-end" for a status in a top-right header. */
+umbra-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  margin: -6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  cursor: default;
+}
+umbra-status[data-state="none"] { display: none; }
+umbra-status > i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--up);
+  opacity: 0.75;
+  transition: background 300ms, opacity 300ms, box-shadow 300ms;
+}
+umbra-status[data-state="stale"] > i { background: var(--text-3); opacity: 1; }
+umbra-status[data-state="offline"] > i { background: transparent; opacity: 1; box-shadow: inset 0 0 0 1.5px var(--text-3); }
+umbra-status > span { white-space: nowrap; }
+umbra-status[data-state="live"] > span, umbra-status[data-state="stale"] > span {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  left: 0;
+  padding: 3px 8px;
+  border-radius: var(--radius-s);
+  background: var(--surface-3);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  color: var(--text-2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+  z-index: 2;
+}
+umbra-status[placement="below-end"] > span { bottom: auto; top: calc(100% - 2px); left: auto; right: 0; }
+umbra-status[data-state="live"]:hover > span, umbra-status[data-state="stale"]:hover > span { opacity: 1; }
+/* Windows contrast themes (forced colors): the browser swaps in the user's palette, so map the tokens to system
+   colors and let direction show as a glyph instead of green/red. Add trend-up / trend-down to a value's element
+   to get the arrow. Themes that set tokens still apply, but these win while a contrast theme is on. */
+@media (forced-colors: active) {
+  :root:root {
+    --bg: Canvas; --surface-1: Canvas; --surface-2: Canvas; --surface-3: Canvas;
+    --line: CanvasText; --line-strong: CanvasText;
+    --text: CanvasText; --text-2: CanvasText; --text-3: CanvasText;
+    --accent: Highlight; --accent-strong: Highlight; --accent-soft: Canvas;
+    --up: CanvasText; --down: CanvasText; --flat: CanvasText;
+  }
+  .trend-up::before { content: "\25B2\00A0"; }
+  .trend-down::before { content: "\25BC\00A0"; }
+}

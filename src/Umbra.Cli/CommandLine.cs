@@ -77,8 +77,11 @@ static class CommandLine
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 if (Flag(a, "--hide-fullscreen") is string hf) o["hideOnFullscreen"] = OnOff(hf);
+                if (Flag(a, "--energy-saver") is string es) o["slowOnEnergySaver"] = OnOff(es);
                 if (Flag(a, "--snap-grid") is string sgr) o["snapGrid"] = int.Parse(sgr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--snap-edges") is string sed) o["snapEdges"] = OnOff(sed);
+                if (Flag(a, "--snap-gap") is string sgp) o["snapGap"] = int.Parse(sgp, CultureInfo.InvariantCulture);
+                if (Flag(a, "--snap") is string sna) o["snap"] = OnOff(sna);
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
                 if (Flag(a, "--corner-radius") is string cr) o["cornerRadius"] = cr;
                 if (Flag(a, "--animation-speed") is string asp) o["animationSpeed"] = asp;
@@ -97,7 +100,16 @@ static class CommandLine
                 if (Flag(a, "--reduce-transparency") is string rt) o["reduceTransparency"] = OnOff(rt);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
+            case "install":
+            {
+                // An update that adds hosts, media, notifications or commands is refused (and the new access listed) until
+                // the person at the keyboard repeats it with --accept-permissions.
+                var id = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing widget id. Run umbractl help.");
+                var o = O(("id", id));
+                if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                return ("install", o);
+            }
+            case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "hotkeys":
             {
@@ -135,6 +147,8 @@ static class CommandLine
             }
             case "settings":
                 return ("open-settings", a.Length > 1 ? O(("page", a[1])) : new JsonObject());
+            case "diagnostics":
+                return ("diagnostics", new JsonObject());
             case "logs":
                 return ("logs", O(("lines", a.Length > 1 ? int.Parse(a[1]) : 50)));
             case "create":

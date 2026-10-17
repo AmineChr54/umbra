@@ -20,6 +20,17 @@ static class WebHost
         _env ??= CoreWebView2Environment.CreateAsync(null, AppPaths.WebViewDataDir,
             new CoreWebView2EnvironmentOptions { AdditionalBrowserArguments = Prefs.WebViewArguments(WebSettings) });
 
+    static int _generation;
+
+    /// <summary>Counts how often the environment was replaced: a window remembers it so only the first to see the browser process die replaces it.</summary>
+    public static int EnvironmentGeneration => Volatile.Read(ref _generation);
+
+    /// <summary>Drops the cached environment after the browser process died, unless another window already did (<paramref name="seen"/> is the generation it ran on).</summary>
+    public static void RecreateEnvironment(int seen)
+    {
+        if (Interlocked.CompareExchange(ref _generation, seen + 1, seen) == seen) _env = null;
+    }
+
     /// <summary>Set by App before the first WebView2 is created (hardware acceleration and proxy are read once).</summary>
     public static GeneralSettings WebSettings { get; set; } = new();
 
@@ -43,7 +54,9 @@ static class WebHost
         var core = view.CoreWebView2;
         var s = core.Settings;
         s.AreDevToolsEnabled = System.Diagnostics.Debugger.IsAttached || (sandbox is not null && Prefs.DeveloperMode);
-        s.AreDefaultContextMenusEnabled = sandbox is not null && Prefs.DeveloperMode;
+        // Widget pages raise ContextMenuRequested, and WidgetWindow answers it with the host-drawn menu (Handled), so
+        // the Edge menu itself never shows. Settings keeps the default menus off.
+        s.AreDefaultContextMenusEnabled = sandbox is not null;
         s.IsZoomControlEnabled = false;
         s.IsPinchZoomEnabled = false;
         s.IsStatusBarEnabled = false;

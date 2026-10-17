@@ -21,6 +21,7 @@ sealed class SettingsWindow : Form
     public static readonly string[] Pages = { "general", "widgets", "layouts", "browse", "themes", "hotkeys", "privacy", "about" };
 
     readonly bool _background;
+    string? _page; // last page the panel showed, saved on close
 
     /// <summary>Background windows (used for captures) are shown off-screen, outside the taskbar, without taking focus.</summary>
     protected override bool ShowWithoutActivation => _background;
@@ -36,6 +37,7 @@ sealed class SettingsWindow : Form
         AutoScaleMode = AutoScaleMode.None;
         Controls.Add(_view);
         ApplyDpiSize();
+        if (!background) RestorePlacement();
         if (background)
         {
             ShowInTaskbar = false;
@@ -52,6 +54,26 @@ sealed class SettingsWindow : Form
         MinimumSize = new Size((int)(760 * s), (int)(520 * s));
         ClientSize = new Size(Math.Min((int)(1000 * s), wa.Width - 40), Math.Min((int)(700 * s), wa.Height - 40));
         CenterToScreen();
+    }
+
+    /// <summary>Opens where it was last closed if that monitor is still connected; otherwise it stays centered (<see cref="Placement.ResolveWindow"/>).</summary>
+    void RestorePlacement()
+    {
+        var saved = _app.Settings.SettingsPanel;
+        static float ScaleOf(MonitorInfo m) => Native.MonitorScale(new Point(m.Bounds.X + m.Bounds.Width / 2, m.Bounds.Y + m.Bounds.Height / 2));
+        if (Placement.ResolveWindow(Placement.Monitors(), saved, ScaleOf, new Size(760, 520)) is not { } r) return;
+        StartPosition = FormStartPosition.Manual;
+        Bounds = r;
+        if (saved.Maximized) WindowState = FormWindowState.Maximized;
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (_background || e.Cancel || !IsHandleCreated) return;
+        // RestoreBounds is the normal rectangle even while maximized or minimized.
+        var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+        _app.SaveSettingsPlacement(Placement.Capture(Placement.Monitors(), bounds, DeviceDpi / 96f, WindowState == FormWindowState.Maximized, _page));
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -88,7 +110,18 @@ sealed class SettingsWindow : Form
         {
             case "load":
                 SendState();
+                // Reopen on the last page; a page asked for explicitly (umbractl settings <page>) runs after this and wins.
+                if (!_background && _app.Settings.SettingsPanel.Page is { } last && last != "general" && Pages.Contains(last))
+                    _ = _view.CoreWebView2.ExecuteScriptAsync($"show('{last}')");
                 _loaded.TrySetResult();
+                break;
+
+            case "page":
+                if (msg["page"]?.GetValue<string>() is string pg && Pages.Contains(pg)) _page = pg;
+                break;
+
+            case "close": // Esc in the page
+                Close();
                 break;
 
             case "save":
@@ -132,9 +165,15 @@ sealed class SettingsWindow : Form
                     switch (msg["type"]!.GetValue<string>())
                     {
                         case "saveLayout": _app.SaveLayout(name); break;
-                        case "applyLayout": _app.ApplyLayout(name); break;
+                        case "applyLayout":
+                            _app.ApplyLayout(name);
+                            Post(new JsonObject { ["type"] = "notice", ["text"] = $"Applied layout {name}" });
+                            break;
                         case "renameLayout": _app.RenameLayout(name, msg["to"]?.GetValue<string>() ?? ""); break;
-                        case "deleteLayout": _app.DeleteLayout(name); break;
+                        case "deleteLayout":
+                            _app.DeleteLayout(name);
+                            Post(new JsonObject { ["type"] = "layoutDeleted", ["name"] = name });
+                            break;
                         case "undoDeleteLayout": _app.UndoDeleteLayout(); break;
                         case "pinLayout": _app.PinLayout(name, msg["pinned"]?.GetValue<bool>() == true); break;
                     }
@@ -200,6 +239,27 @@ sealed class SettingsWindow : Form
                     Log.Write($"Update failed: {ex.Message}");
                     Post(new JsonObject { ["type"] = "updateError", ["error"] = ex.Message });
                 }
+                break;
+
+            case "copyDiagnostics":
+                try
+                {
+                    Clipboard.SetDataObject(Diagnostics.Format(Diagnostics.Collect(_app)), true, 5, 100);
+                    Post(new JsonObject { ["type"] = "notice", ["text"] = "Copied, paste it into the issue" });
+                }
+                catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or System.Threading.ThreadStateException)
+                { Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Couldn't copy: {ex.Message}" }); }
+                break;
+
+            case "reportIssue":
+            {
+                var snap = Diagnostics.Collect(_app);
+                WebHost.OpenExternal(Diagnostics.IssueUrl(Community.Repo, snap.Version, Diagnostics.IssueWindows(snap)));
+                break;
+            }
+
+            case "restart":
+                _app.Restart();
                 break;
 
             case "openUrl":
@@ -307,30 +367,68 @@ sealed class SettingsWindow : Form
                 {
                     var entry = _catalog.FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                                 ?? throw new InvalidOperationException("Widget not in catalog");
+                    using var pending = await Community.PrepareAsync(entry);
+                    // Host-drawn, so the Settings page (or a widget) can't accept new access on the user's behalf.
+                    if (pending.NeedsApproval && !ConfirmNewAccess(pending))
+                        throw new InvalidOperationException("Not updated: the new access was declined");
                     _app.CloseWidget(id);
-                    await Community.InstallAsync(entry);
+                    pending.Commit();
                 });
                 break;
 
             case "remove":
+            {
+                string? undo = null;
                 await RunJob(id, () =>
                 {
                     _app.CloseWidget(id); // every copy
-                    Community.Remove(id); // folder and the data of every copy
-                    _app.ForgetInstances(id);
+                    undo = WidgetTrash.Move(_app.Settings, id); // folder, data and settings of every copy, kept for Undo
+                    try
+                    {
+                        Community.Remove(id);
+                        _app.ForgetInstances(id);
+                    }
+                    catch (Exception ex) when (undo is not null)
+                    {
+                        // The widget is already in the trash, so it counts as removed; keep the Undo offer instead of failing the job.
+                        Log.Write($"Remove of {id} left leftovers after it was trashed: {ex.Message}");
+                    }
                     return Task.CompletedTask;
-                });
+                }, () => undo);
                 break;
+            }
+
+            case "undoRemove":
+            {
+                string? error = null;
+                string? name = null;
+                try { name = _app.RestoreWidget(id)?.Name; } // here id is the undo token from jobDone
+                catch (InvalidOperationException ex) { error = ex.Message; Log.Write($"Undo remove failed: {ex.Message}"); }
+                Post(new JsonObject { ["type"] = "undoDone", ["name"] = name, ["error"] = error });
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
         }
     }
 
-    async Task RunJob(string id, Func<Task> job)
+    /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
+    bool ConfirmNewAccess(Community.PendingInstall p)
+    {
+        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants new access:\n\n"
+            + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
+            + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
+            + "\n\nUpdate and allow this?";
+        return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+    }
+
+    async Task RunJob(string id, Func<Task> job, Func<string?>? undo = null)
     {
         string? error = null;
         try { await job(); }
         catch (Exception ex) { error = ex.Message; Log.Write($"Widget job {id} failed: {ex}"); }
         _app.ReloadWidgets();
-        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error });
+        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error, ["undo"] = undo?.Invoke() });
         SendState();
         await SendCatalog(refetch: false);
     }
@@ -414,6 +512,8 @@ sealed class SettingsWindow : Form
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
             ["themeCss"] = _app.ThemeCss,
+            ["accentCss"] = Prefs.AccentCss(_app.Settings.General),
+            ["systemAccent"] = Prefs.SystemAccent?.Accent ?? "",
             ["hotkeys"] = _app.DescribeHotkeys()["hotkeys"]!.DeepClone(),
             ["monitors"] = new JsonArray(Placement.Monitors().Select((m, i) => (JsonNode?)new JsonObject { ["name"] = m.Name, ["label"] = $"Monitor {i + 1}{(m.Primary ? " (primary)" : "")} - {m.Bounds.Width}x{m.Bounds.Height}" }).ToArray()),
             ["widgets"] = widgets,
@@ -474,6 +574,14 @@ sealed class SettingsWindow : Form
         if (page == "browse") _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
         if (page == "themes") _themesSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
         await _view.CoreWebView2.ExecuteScriptAsync($"show('{page}')");
+    }
+
+    /// <summary>Shows My widgets scrolled to one copy's card, which is highlighted for a moment (the page's own focusWidget function).</summary>
+    public async Task ShowWidgetAsync(string instance)
+    {
+        if (!InstanceId.IsValid(instance)) throw new ArgumentException($"Invalid widget id '{instance}'");
+        await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        await _view.CoreWebView2.ExecuteScriptAsync($"focusWidget({JsonSerializer.Serialize(instance)})");
     }
 
     /// <summary>A pixel-exact PNG of one Settings page (only this window's web content, never the screen).</summary>
