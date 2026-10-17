@@ -20,6 +20,8 @@ static partial class Native
     public const int WM_GETMINMAXINFO = 0x0024;
     public const int WM_SIZING = 0x0214;
     public const int WM_MOVING = 0x0216;
+    public const int WM_EXITSIZEMOVE = 0x0232;
+    public const int WS_EX_LAYERED = 0x00080000, WS_EX_TRANSPARENT = 0x00000020;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT { public int Left, Top, Right, Bottom; }
@@ -27,7 +29,7 @@ static partial class Native
     [StructLayout(LayoutKind.Sequential)]
     public struct MINMAXINFO { public POINT Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize; }
 
-    public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040;
     public static readonly IntPtr HWND_BOTTOM = new(1);
     public static readonly IntPtr HWND_TOPMOST = new(-1), HWND_NOTOPMOST = new(-2);
 
@@ -102,6 +104,24 @@ static partial class Native
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool fAttach);
+
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr MonitorFromPoint(POINT pt, uint flags);
+
+    [LibraryImport("shcore.dll")]
+    public static partial int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
+
+    /// <summary>The scale factor (1 = 96 DPI) of the monitor nearest to a screen point; 1 if Windows can't say.</summary>
+    public static float MonitorScale(Point screenPoint)
+    {
+        try
+        {
+            var mon = MonitorFromPoint(new POINT { X = screenPoint.X, Y = screenPoint.Y }, 2 /* MONITOR_DEFAULTTONEAREST */);
+            if (mon != IntPtr.Zero && GetDpiForMonitor(mon, 0 /* MDT_EFFECTIVE_DPI */, out var dpi, out _) == 0 && dpi > 0) return dpi / 96f;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+        return 1f;
+    }
 
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
