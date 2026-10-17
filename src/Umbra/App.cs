@@ -29,6 +29,10 @@ sealed class App : ApplicationContext
     public bool WidgetsHidden { get; private set; }
 
     readonly HotkeyService _hotkeys;
+    readonly WindowsAccent _windowsAccent;
+
+    /// <summary>Locked / display off / Energy Saver state (#104); widgets pause and slow down from it.</summary>
+    public PowerState Power { get; }
 
     /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
     public bool HiddenByFullscreen { get; private set; }
@@ -98,7 +102,37 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
     }
 
+    WakeRefresh? _wakeRefresh;
+
+    /// <summary>Resume / network back / unlock (#102): widgets fetch now instead of waiting for their next tick.</summary>
+    void RefreshAfterWake(string trigger)
+    {
+        Log.Verbose($"Refreshing widgets after {trigger}");
+        foreach (var w in _windows.Values) w.RefreshData();
+    }
+
     void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
+
+    // SystemEvents raises these on its own thread, and a clock change often sends several in a row: coalesce them on the UI thread.
+    readonly System.Windows.Forms.Timer _timeTimer = new() { Interval = 300 };
+    string? _timeSignature;
+
+    void OnTimeChanged(object? s, EventArgs e) => _ui.Post(_ => { _timeTimer.Stop(); _timeTimer.Start(); }, null);
+
+    /// <summary>Settings broadcasts (WM_SETTINGCHANGE) are frequent; only a different time zone counts.</summary>
+    void OnPreferenceChanged(object? s, Microsoft.Win32.UserPreferenceChangedEventArgs e) => _ui.Post(_ =>
+    {
+        if (!TimeChange.ZoneChanged(_timeSignature, TimeChange.Signature())) return;
+        _timeTimer.Stop();
+        _timeTimer.Start();
+    }, null);
+
+    void TimeTimerTick(object? s, EventArgs e)
+    {
+        _timeTimer.Stop();
+        _timeSignature = TimeChange.Signature();
+        foreach (var w in _windows.Values) w.NotifyTimeChanged();
+    }
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
@@ -197,6 +231,8 @@ sealed class App : ApplicationContext
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
         Prefs.Configure(Settings.General);
+        _windowsAccent = new WindowsAccent(() => _ui.Post(_ => OnSystemAccentChanged(), null));
+        Prefs.SystemAccent = _windowsAccent.Read();
         WebHost.WebSettings = Settings.General;
         Manifests = WidgetManifest.DiscoverAll();
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
@@ -210,6 +246,8 @@ sealed class App : ApplicationContext
         _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
+        Power = new PowerState(_ui); // before the windows: their settings payload reads it
+        Power.Changed += () => { foreach (var w in _windows.Values) w.PushPower(); };
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
@@ -218,6 +256,11 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        _timeSignature = TimeChange.Signature();
+        _timeTimer.Tick += TimeTimerTick;
+        Microsoft.Win32.SystemEvents.TimeChanged += OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
+        _wakeRefresh = new WakeRefresh(_ui, RefreshAfterWake, () => Settings.General.RefreshSeconds);
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
@@ -251,7 +294,7 @@ sealed class App : ApplicationContext
         {
             var r = await Restore.RunAsync(
                 () => OnUi(() => Task.FromResult(Restore.ToRestore(Settings, Manifests))),
-                Community.FetchCatalogAsync, Community.InstallAsync, Log.Write);
+                Community.FetchCatalogAsync, e => Community.InstallAsync(e), Log.Write);
             await OnUi(() =>
             {
                 _restoring.Clear();
@@ -538,6 +581,25 @@ sealed class App : ApplicationContext
 
     public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.RoundCorners(w.Handle); }
 
+    /// <summary>
+    /// Windows reported new colors: re-read the accent and, when "Match Windows accent" is on, re-tint widgets and Settings at once.
+    /// Windows can fire the event just before the value is readable, so it is checked once more shortly after.
+    /// </summary>
+    void OnSystemAccentChanged(bool recheck = true)
+    {
+        var now = _windowsAccent.Read();
+        if (now != Prefs.SystemAccent)
+        {
+            Prefs.SystemAccent = now;
+            if (Prefs.IsWindowsAccent(Settings.General.Accent))
+            {
+                foreach (var w in _windows.Values) w.PushSettings();
+                SettingsChangedElsewhere();
+            }
+        }
+        if (recheck) _ = Task.Delay(500).ContinueWith(_ => _ui.Post(_ => OnSystemAccentChanged(false), null));
+    }
+
     /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
     public string ThemeCss => Theme.CssFor(Settings.General.Theme);
 
@@ -574,10 +636,16 @@ sealed class App : ApplicationContext
         _tray.Visible = false;
         _tray.Dispose();
         Updater.Dispose();
+        _windowsAccent.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        Microsoft.Win32.SystemEvents.TimeChanged -= OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnPreferenceChanged;
+        _timeTimer.Dispose();
+        _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        Power.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();

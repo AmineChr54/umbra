@@ -20,6 +20,12 @@
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "description": "Semantic version. Bump it on every change so users see an Update button."
     },
+    "changelog": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "What changed in this version, in a sentence or two. Shown when an update asks the user for new access; the first line is the short form."
+    },
     "entry": { "type": "string", "default": "index.html", "description": "The page Umbra loads, relative to the widget folder." },
     "preview": { "type": "string", "description": "Screenshot shown in Browse (PNG, 2x, black background)." },
     "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },

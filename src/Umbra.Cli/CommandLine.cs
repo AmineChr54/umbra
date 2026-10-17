@@ -76,6 +76,7 @@ static class CommandLine
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 if (Flag(a, "--hide-fullscreen") is string hf) o["hideOnFullscreen"] = OnOff(hf);
+                if (Flag(a, "--energy-saver") is string es) o["slowOnEnergySaver"] = OnOff(es);
                 if (Flag(a, "--snap-grid") is string sgr) o["snapGrid"] = int.Parse(sgr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--snap-edges") is string sed) o["snapEdges"] = OnOff(sed);
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
@@ -96,7 +97,16 @@ static class CommandLine
                 if (Flag(a, "--reduce-transparency") is string rt) o["reduceTransparency"] = OnOff(rt);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
+            case "install":
+            {
+                // An update that adds hosts, media, notifications or commands is refused (and the new access listed) until
+                // the person at the keyboard repeats it with --accept-permissions.
+                var id = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing widget id. Run umbractl help.");
+                var o = O(("id", id));
+                if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                return ("install", o);
+            }
+            case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "hotkeys":
             {

@@ -5,9 +5,9 @@
   const bridge = window.chrome && window.chrome.webview;
   const post = (msg) => bridge && bridge.postMessage(msg);
 
-  let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
+  let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
-  const handlers = { settings: [], refresh: [], store: [] };
+  const handlers = { settings: [], refresh: [], store: [], time: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -62,6 +62,9 @@
         break;
       case "refresh":
         handlers.refresh.forEach((fn) => fn());
+        break;
+      case "timeChanged": // system clock or time zone changed; widgets that don't listen get a refresh
+        (handlers.time.length ? handlers.time : handlers.refresh).forEach((fn) => fn());
         break;
       case "fetchResult":
       case "runResult":
@@ -127,20 +130,31 @@
     onChange: (fn) => handlers.store.push(fn),
   };
 
-  /** Run fn now and then every refreshSeconds (re-scheduled when the user changes the interval). */
+  /**
+   * Run fn now and then every refreshSeconds (re-scheduled when the user changes the interval).
+   * While the PC is locked or the display is off (settings.paused) nothing runs; fn runs once when it resumes.
+   */
   function every(fn) {
     let timer;
+    let wasPaused = false;
     const schedule = () => {
       clearTimeout(timer);
+      if (settings.paused) return;
       timer = setTimeout(async () => { await run(); }, settings.refreshSeconds * 1000);
     };
     const run = async () => {
+      if (settings.paused) return;
       try { await fn(); } catch (err) { console.error(err); }
       schedule();
     };
     handlers.refresh.push(run);
-    handlers.settings.push(schedule);
-    ready.then(run);
+    handlers.settings.push(() => {
+      const resumed = wasPaused && !settings.paused;
+      wasPaused = !!settings.paused;
+      if (resumed) run(); // one refresh on resume, then the normal interval
+      else schedule();
+    });
+    ready.then(() => { wasPaused = !!settings.paused; run(); });
   }
 
   // Drag anywhere to move the widget: once the pointer travels a few pixels with the
@@ -194,6 +208,12 @@
                  background: rgba(139, 147, 255, 0.05); box-shadow: inset 0 0 0 calc(1.5px * var(--k)) rgba(139, 147, 255, 0.75); }
         .grip { position: absolute; right: 0; bottom: 0; width: calc(24px * var(--k)); height: calc(24px * var(--k)); cursor: nwse-resize; }
         .grip svg { position: absolute; right: calc(5px * var(--k)); bottom: calc(5px * var(--k)); width: calc(11px * var(--k)); height: calc(11px * var(--k)); }
+        /* Windows contrast themes drop box-shadows and backgrounds, so draw the frame as a real border. */
+        @media (forced-colors: active) {
+          .frame { background: none; box-shadow: none; border: calc(2px * var(--k)) solid Highlight; }
+          .grip { background: Highlight; }
+          .grip svg { stroke: HighlightText; }
+        }
       </style><div class="frame"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
         stroke="#aab0ff" stroke-width="1.6" stroke-linecap="round"><path d="M10 2 2 10M10 6.5 6.5 10"/></svg></div>`;
       grip = root.querySelector(".grip");
@@ -238,12 +258,22 @@
     requestAnimationFrame(step);
   }
 
+  // The Windows region format (Settings > Region), sent by the host as a BCP-47 tag. A tag Intl rejects falls back to en-US.
+  function locale() {
+    const tag = settings.locale;
+    if (typeof tag === "string" && tag) {
+      try { return Intl.getCanonicalLocales(tag)[0]; } catch { /* fall through */ }
+    }
+    return "en-US";
+  }
+
   const formatters = new Map();
-  /** 7744.06 -> "7,744.06" */
+  /** 7744.06 -> "7,744.06" (or "7.744,06" etc. in the user's Windows region) */
   function fmt(n, decimals = 2) {
-    if (!formatters.has(decimals))
-      formatters.set(decimals, new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
-    return formatters.get(decimals).format(n);
+    const key = locale() + "|" + decimals;
+    if (!formatters.has(key))
+      formatters.set(key, new Intl.NumberFormat(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
+    return formatters.get(key).format(n);
   }
 
   window.umbra = {
@@ -251,7 +281,13 @@
     get settings() { return settings; },
     get options() { return settings.options || {}; },
     get widget() { return widget; },
+    /** The user's Windows region format as a BCP-47 tag, e.g. "de-DE". Pass it to Intl or toLocale*String. */
+    get locale() { return locale(); },
+    /** True when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to Intl.DateTimeFormat. */
+    get hour12() { return !!settings.hour12; },
     onSettings: (fn) => handlers.settings.push(fn),
+    /** fn() runs when the system clock or time zone changed (travel, clock correction). Date already reflects the new zone; re-render and re-schedule anything tied to "today" or midnight. Without a listener, umbra.every callbacks run instead. */
+    onTimeChanged: (fn) => handlers.time.push(fn),
     fetchJson,
     run,
     system,
