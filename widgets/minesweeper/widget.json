@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "minesweeper",
+  "name": "Minesweeper",
+  "description": "Classic Minesweeper on your desktop: left click to reveal, right click to flag, double-click a number to chord. Three board sizes, best times and win counts per size, and the game in progress survives restarts.",
+  "author": "Yacine-DH",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "width": 320,
+  "height": 400,
+  "permissions": { "hosts": [] },
+  "options": {
+    "difficulty": {
+      "label": "Difficulty",
+      "type": "select",
+      "default": "beginner",
+      "choices": [
+        { "value": "beginner", "label": "Beginner (9x9, 10 mines)" },
+        { "value": "intermediate", "label": "Intermediate (16x16, 40 mines)" },
+        { "value": "expert", "label": "Expert (30x16, 99 mines)" }
+      ],
+      "hint": "Changing it starts a new game."
+    },
+    "marks": {
+      "label": "Question marks",
+      "type": "toggle",
+      "default": true,
+      "hint": "A third right click puts a ? on a cell."
+    }
+  }
+}
