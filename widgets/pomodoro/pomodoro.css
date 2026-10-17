@@ -1,0 +1,36 @@
+html, body { height: 100%; overflow: hidden; }
+.pm { height: 100%; display: flex; flex-direction: column; padding: 14px 18px 14px; gap: 8px; }
+.head { display: flex; align-items: center; justify-content: space-between; height: 20px; }
+.phase { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.dots { display: flex; gap: 5px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.14); }
+.dots i.on { background: var(--accent); }
+.dial { position: relative; width: 150px; height: 150px; margin: 0 auto; flex: none; }
+.dial svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.dial circle { fill: none; stroke-width: 6; }
+.track { stroke: rgba(255,255,255,0.09); }
+.arc { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 326.7; stroke-dashoffset: 0; }
+.pm.brk .arc { stroke: var(--up); }
+.pm.brk .dots i.on { background: var(--up); }
+.center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.time { font-family: var(--font-display); font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.pm.done .arc { animation: soft 2.4s ease-in-out infinite; }
+.pm.done .sub { color: var(--accent-strong); }
+@keyframes soft { 50% { opacity: 0.45; } }
+.ctl { display: flex; gap: 8px; justify-content: center; }
+.btn { height: 30px; padding: 0 16px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); background: var(--surface-3); border: 0; border-radius: 9px; cursor: pointer; }
+.btn:hover { background: #1e1e25; }
+.btn.primary { min-width: 84px; color: #000; background: var(--accent); }
+.pm.brk .btn.primary { background: var(--up); }
+.btn.primary:hover { filter: brightness(1.1); }
+.stats { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.totals { display: flex; flex-direction: column; gap: 4px; }
+.totals div { display: flex; flex-direction: column; }
+.totals b { font-family: var(--font-display); font-size: 15px; font-weight: 600; line-height: 1.2; }
+.totals span { font-size: 11px; color: var(--text-3); }
+.chart { display: flex; align-items: flex-end; gap: 5px; height: 52px; }
+.bar { width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
+.bar i { display: block; width: 100%; min-height: 2px; border-radius: 3px; background: rgba(255,255,255,0.16); }
+.bar.today i { background: var(--accent); }
+.bar em { font-style: normal; font-size: 11px; color: var(--text-3); line-height: 1; }

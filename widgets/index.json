@@ -94,6 +94,22 @@
       ]
     },
     {
+      "id": "pomodoro",
+      "name": "Pomodoro",
+      "description": "A focus timer with a progress ring, start, pause and skip, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "index.html",
+        "pomodoro.css",
+        "pomodoro.js",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "script-runner",
       "name": "Script Runner",
       "description": "Run your own PowerShell, Python or Bash scripts from the desktop and see the exit code, time and output. Scripts are the commands declared in widget.json; you approve each one once.",
@@ -198,6 +214,22 @@
         "repeat.js",
         "todo.css",
         "todo.js",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "tracker",
+      "name": "Application Tracker",
+      "description": "Track internship and job applications: company, role, status, date and follow-up. Status filters with counts, and due follow-ups highlighted. Add and edit right in the widget.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "index.html",
+        "preview.png",
+        "tracker.css",
+        "tracker.js",
         "widget.json"
       ]
     },

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "tracker",
+  "name": "Application Tracker",
+  "description": "Track internship and job applications: company, role, status, date and follow-up. Status filters with counts, and due follow-ups highlighted. Add and edit right in the widget.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 380,
+  "height": 460,
+  "defaultPosition": { "x": 420, "y": 24 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "Applications" },
+    "soonDays": { "label": "Follow-up warning days", "type": "number", "default": 2, "min": 0, "max": 30, "step": 1,
+                  "hint": "Follow-ups within this many days are marked as soon. Due and overdue ones are always highlighted." }
+  }
+}
