@@ -98,7 +98,7 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
     }
 
-    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
+    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); UpdateEditPills(); }, null);
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
@@ -392,6 +392,7 @@ sealed class App : ApplicationContext
         foreach (var inst in _windows.Keys.Where(k => !live.Contains(k)).ToList()) CloseWidget(inst);
         foreach (var inst in _startHidden.Where(k => !Settings.Widgets.TryGetValue(k, out var s) || !s.StartHidden).ToList()) _startHidden.Remove(inst);
         ApplyVisibility();
+        RefreshEditPills();
     }
 
     /// <summary>Closes one copy (an instance id), or every copy of a widget (its plain id).</summary>
@@ -516,6 +517,55 @@ sealed class App : ApplicationContext
         EditMode = on;
         Log.Write($"Edit mode {(on ? "on" : "off")}");
         foreach (var w in _windows.Values) w.PushSettings();
+        UpdateEditPills();
+        SettingsChangedElsewhere();
+    }
+
+    readonly List<EditPill> _pills = new();
+
+    /// <summary>The "Done" pills: one per monitor that shows a widget (the primary one if none does) while edit mode is on, none otherwise.</summary>
+    void UpdateEditPills()
+    {
+        if (!EditMode)
+        {
+            foreach (var p in _pills) p.Close();
+            _pills.Clear();
+            return;
+        }
+        var screens = Placement.Monitors();
+        var areas = _windows.Values.Where(w => w.IsHandleCreated && w.Visible)
+            .Select(w => Placement.Find(screens, w.Bounds)).OfType<MonitorInfo>().Select(m => m.WorkArea).Distinct().ToList();
+        if (areas.Count == 0) areas = screens.Where(s => s.Primary).Select(s => s.WorkArea).Take(1).ToList();
+        // Only touch pills that must appear or go, so a save or a drag never makes them flicker.
+        foreach (var p in _pills.Where(p => !areas.Contains(p.Area)).ToList()) { p.Close(); _pills.Remove(p); }
+        var added = false;
+        foreach (var area in areas.Where(a => _pills.All(p => p.Area != a)))
+        {
+            var pill = new EditPill(this, area);
+            _pills.Add(pill);
+            pill.Show();
+            added = true;
+        }
+        foreach (var p in _pills) p.RefreshState();
+        if (added) LowerWidgets();
+    }
+
+    /// <summary>Moves the pills to the monitors that show widgets now (a widget was dragged to another monitor, added or removed).</summary>
+    public void RefreshEditPills() { if (EditMode) UpdateEditPills(); }
+
+    /// <summary>Puts every widget back at the bottom, under the edit pills (a pill is shown at the bottom too, so the widgets go under it).</summary>
+    public void LowerWidgets()
+    {
+        if (Peeking) return;
+        foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.SendToBottom(w.Handle);
+    }
+
+    /// <summary>The pill's snap switch: flips snapping and refreshes the pills, tray and Settings.</summary>
+    public void ToggleSnap()
+    {
+        Snap.Toggle(Settings.General);
+        SaveSettings();
+        foreach (var p in _pills) p.RefreshState();
         SettingsChangedElsewhere();
     }
 
@@ -567,6 +617,7 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        foreach (var p in _pills) p.Close();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();

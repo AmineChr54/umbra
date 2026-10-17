@@ -57,6 +57,8 @@ public sealed class GeneralSettings
     public int SnapGrid { get; set; }
     /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
     public bool SnapEdges { get; set; } = true;
+    /// <summary>Master switch for snapping (the edit-mode pill toggles it); the grid and edge settings above are kept while it is off.</summary>
+    public bool SnapEnabled { get; set; } = true;
 }
 
 /// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>

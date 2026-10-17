@@ -115,6 +115,7 @@ sealed class Control(App app)
                 }
                 Prefs.ApplyGeneral(a, g);
                 if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
+                if (a["snap"] is JsonNode sn) g.SnapEnabled = Bool(sn, "snap");
                 if (a["snapGrid"] is JsonNode sg)
                 {
                     var grid = Int(sg, "snapGrid");
