@@ -27,13 +27,14 @@
     group.append(row("Default size for new widgets", "Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
     group.append(row("Interface text size", "Percent; 80 to 140. Affects widgets that size text from the design tokens.", `<input type="number" id="pf-fontScale" min="80" max="140" step="5" style="width:72px" aria-label="Interface text size">`));
     group.append(row("Window border", "The hairline around widget windows.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-borderColor" aria-label="Border color"><label class="switch"><input type="checkbox" id="pf-borderEnabled"><span></span></label></span>`));
+    group.append(row("Match Windows accent", "Follows the accent color of Windows and updates when it changes. Dark accents are lightened to stay readable.", `<label class="switch"><input type="checkbox" id="pf-accentWindows"><span></span></label>`));
     group.append(row("Accent color", "Overrides the theme's accent. Reset to follow the theme.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-accent" aria-label="Accent color"><button class="btn" id="pf-accentReset">Reset</button></span>`));
     group.append(row("Light text", "Brighter text colors for busy or bright wallpapers.", `<label class="switch"><input type="checkbox" id="pf-lightText"><span></span></label>`));
     group.append(row("Reduce transparency", "Solid lines and tints, and fully opaque widget windows (ignores per-widget opacity).", `<label class="switch"><input type="checkbox" id="pf-reduceTransparency"><span></span></label>`));
-    group.append(row("Developer mode", "Right-click a widget for devtools (inspect, console). Widgets opened after the change; leave off normally.", `<label class="switch"><input type="checkbox" id="pf-developerMode"><span></span></label>`));
-    group.append(row("Hardware acceleration", "Turn off if widgets flicker or the GPU misbehaves. Restart Umbra to apply.", `<label class="switch"><input type="checkbox" id="pf-hardwareAcceleration"><span></span></label>`));
+    group.append(row("Developer mode", "Adds Inspect (devtools, console) to the widget right-click menu. Widgets opened after the change; leave off normally.", `<label class="switch"><input type="checkbox" id="pf-developerMode"><span></span></label>`));
+    group.append(row("Hardware acceleration", "Turn off if widgets flicker or the GPU misbehaves. Restart Umbra to apply.", `<span style="display:flex;gap:10px;align-items:center"><button class="btn small" id="pf-restart-hw" style="display:none">Restart now</button><label class="switch"><input type="checkbox" id="pf-hardwareAcceleration"><span></span></label></span>`));
     group.append(row("Startup delay", "Seconds to wait after signing in before Umbra starts (0 to 300).", `<input type="number" id="pf-startupDelaySeconds" min="0" max="300" step="1" style="width:72px" aria-label="Startup delay seconds">`));
-    group.append(row("Proxy", "system, none, or https://host:port for widget requests and update checks. Restart Umbra to apply.", `<input type="text" id="pf-proxy" placeholder="system" style="width:200px" aria-label="Proxy">`));
+    group.append(row("Proxy", "system, none, or https://host:port for widget requests and update checks. Restart Umbra to apply.", `<span style="display:flex;gap:10px;align-items:center"><button class="btn small" id="pf-restart-proxy" style="display:none">Restart now</button><input type="text" id="pf-proxy" placeholder="system" style="width:200px" aria-label="Proxy"></span>`));
     group.append(row("Log file", "Opens umbra.log.", `<button class="btn" id="pf-openLog">Open log</button>`));
     page.append(sec);
 
@@ -47,13 +48,18 @@
     bind("borderEnabled", null, (gen, i) => (gen.borderEnabled = i.checked));
     bind("borderColor", null, (gen, i) => (gen.borderColor = i.value));
     bind("accent", null, (gen, i) => (gen.accent = i.value));
+    bind("accentWindows", null, (gen, i) => (gen.accent = i.checked ? "windows" : ""));
     bind("lightText", null, (gen, i) => (gen.lightText = i.checked));
     bind("reduceTransparency", null, (gen, i) => (gen.reduceTransparency = i.checked));
     sec.querySelector("#pf-accentReset").addEventListener("click", () => { g().accent = ""; save(true); window.prefsRender(); });
     bind("developerMode", null, (gen, i) => (gen.developerMode = i.checked));
-    bind("hardwareAcceleration", null, (gen, i) => (gen.hardwareAcceleration = i.checked));
+    // Both only apply on start: after a change in this session, offer to restart right here.
+    const needsRestart = (btn) => { sec.querySelector(btn).style.display = ""; };
+    for (const b of ["#pf-restart-hw", "#pf-restart-proxy"])
+      sec.querySelector(b).addEventListener("click", () => { flushSave(); post({ type: "restart" }); });
+    bind("hardwareAcceleration", null, (gen, i) => { gen.hardwareAcceleration = i.checked; needsRestart("#pf-restart-hw"); });
     bind("startupDelaySeconds", null, (gen, i) => { const v = Math.max(0, Math.min(300, Math.round(Number(i.value) || 0))); i.value = v; gen.startupDelaySeconds = v; });
-    bind("proxy", null, (gen, i) => (gen.proxy = i.value.trim() || "system"));
+    bind("proxy", null, (gen, i) => { gen.proxy = i.value.trim() || "system"; needsRestart("#pf-restart-proxy"); });
     sec.querySelector("#pf-openLog").addEventListener("click", () => post({ type: "openLog" }));
   }
 
@@ -69,7 +75,11 @@
     set("fontScale", (i) => (i.value = Math.round((gen.fontScale || 1) * 100)));
     set("borderEnabled", (i) => (i.checked = gen.borderEnabled !== false));
     set("borderColor", (i) => (i.value = gen.borderColor || "#26282e"));
-    set("accent", (i) => (i.value = gen.accent || "#8b93ff"));
+    const win = String(gen.accent || "").toLowerCase() === "windows";
+    set("accentWindows", (i) => (i.checked = win));
+    set("accent", (i) => { i.value = win ? state.systemAccent || "#8b93ff" : gen.accent || "#8b93ff"; i.disabled = win; });
+    const reset = document.getElementById("pf-accentReset");
+    if (reset) reset.disabled = win;
     set("lightText", (i) => (i.checked = !!gen.lightText));
     set("reduceTransparency", (i) => (i.checked = !!gen.reduceTransparency));
     set("developerMode", (i) => (i.checked = !!gen.developerMode));
