@@ -105,12 +105,29 @@ sealed class WidgetWindow : Form
                 base.WndProc(ref m);
                 LimitTrackSize(m.LParam);
                 return;
+            case Native.WM_MOVING when _app.EditMode && !Ws.Locked && !_resizing:
+                SnapMove(m.LParam);
+                m.Result = 1;
+                return;
             case Native.WM_SIZING when _resizing:
                 KeepAspect(m.LParam);
                 m.Result = 1;
                 return;
         }
         base.WndProc(ref m);
+    }
+
+    /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
+    unsafe void SnapMove(IntPtr lParam)
+    {
+        if ((ModifierKeys & Keys.Shift) != 0) return;
+        var r = (Native.RECT*)lParam;
+        var g = _app.Settings.General;
+        var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
+        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
+        var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
+        r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>

@@ -18,6 +18,10 @@ public sealed class GeneralSettings
     public bool HideOnFullscreen { get; set; }
     /// <summary>How long Peek (hotkey or "peek" command) keeps the widgets above other windows, 1-60 s.</summary>
     public int PeekSeconds { get; set; } = 5;
+    /// <summary>Grid in physical pixels that widgets snap to while moved in edit mode; 0 = no grid.</summary>
+    public int SnapGrid { get; set; }
+    /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
+    public bool SnapEdges { get; set; } = true;
 }
 
 public sealed class WidgetSettings

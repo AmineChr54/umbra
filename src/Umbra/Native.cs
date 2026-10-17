@@ -19,6 +19,7 @@ static partial class Native
     public const int HTBOTTOMRIGHT = 17;
     public const int WM_GETMINMAXINFO = 0x0024;
     public const int WM_SIZING = 0x0214;
+    public const int WM_MOVING = 0x0216;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT { public int Left, Top, Right, Bottom; }
