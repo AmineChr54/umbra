@@ -1,0 +1,26 @@
+html, body { height: 100%; overflow: hidden; }
+.gh { height: 100%; display: flex; flex-direction: column; padding: 18px 16px 12px; gap: 12px; }
+.head h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note { margin-top: 3px; min-height: 15px; font-size: 11px; color: var(--text-3); }
+.note.warn { color: var(--down); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stat {
+  display: block; padding: 8px 10px; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-m);
+}
+.stat:hover { border-color: var(--line-strong); }
+.stat .k { font-size: 11px; color: var(--text-3); }
+.stat .v { margin-top: 2px; font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--text-2); }
+.list { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
+.sec { margin: 6px 0 2px 4px; font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.row {
+  display: flex; gap: 8px; align-items: baseline; width: 100%; padding: 5px 6px; text-align: left;
+  font: inherit; font-size: 12px; color: var(--text); background: transparent; border: 0;
+  border-radius: var(--radius-s); cursor: pointer;
+}
+.row:hover { background: var(--surface-2); }
+.row .n { flex: none; color: var(--text-3); }
+.row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .w { flex: none; color: var(--text-3); font-size: 11px; }
+.empty { padding: 6px; font-size: 12px; color: var(--text-3); }
