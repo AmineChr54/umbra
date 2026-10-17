@@ -163,8 +163,7 @@ sealed class App : ApplicationContext
         {
             ApplyLayout(name);
             Log.Write($"Monitors changed, applied layout '{name}'");
-            _balloonUrl = null;
-            _tray.ShowBalloonTip(4000, "Umbra", $"Applied layout {name}", ToolTipIcon.None);
+            ShowBalloon(4000, "Umbra", $"Applied layout {name}", ToolTipIcon.None, null);
         }
         catch (Exception ex) { Log.Write($"Auto-switch to layout '{name}' failed: {ex.Message}"); }
     }
