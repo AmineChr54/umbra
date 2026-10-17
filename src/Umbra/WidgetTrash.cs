@@ -7,7 +7,7 @@ namespace Umbra;
 /// Settings > Remove does not delete: the widget folder, every copy's umbra.store data and the copies' settings
 /// (options, position, size) move to %APPDATA%\Umbra\trash\&lt;id&gt;-&lt;timestamp&gt;\ so Undo can put them back.
 /// Entries older than <see cref="Retention"/> are purged at startup. The trash is never read by backups.
-/// The working folders of <c>permissions.commands</c> runs (dataun) are not kept and not restored.
+/// The working folders of <c>permissions.commands</c> runs (data\run) are not kept and not restored.
 /// umbractl / MCP <c>remove</c> still deletes for good (<see cref="Community.Remove"/>).
 /// </summary>
 static partial class WidgetTrash

@@ -317,7 +317,7 @@ static class Community
         long total = 0;
         foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
         {
-            var rel = Path.GetRelativePath(folder, file).Replace('\', '/');
+            var rel = Path.GetRelativePath(folder, file).Replace('\\', '/');
             if (!IsSafeRelativePath(rel)) throw new InvalidOperationException($"Unsafe or disallowed file in the trash entry: '{rel}'");
             total += new FileInfo(file).Length;
             if (total > MaxWidgetBytes) throw new InvalidOperationException("The trashed widget is larger than 5 MB");
