@@ -6,12 +6,14 @@ static class Program
     /// Umbra.exe              start (or, if already running, open Settings in the running instance)
     /// Umbra.exe --background start without opening Settings (used by the Start with Windows entry)
     /// Umbra.exe --safe       start with community widgets off (not saved; the next normal start restores them)
+    /// Umbra.exe --updated    start again after the installer ran a self-update (quiet like --background, but no startup delay)
     /// Automation: umbractl / umbractl mcp talk to the running instance over the control pipe (Protocol.cs).
     /// </summary>
     [STAThread]
     static void Main(string[] args)
     {
-        var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
+        var updated = args.Contains("--updated", StringComparer.OrdinalIgnoreCase);
+        var background = args.Contains("--background", StringComparer.OrdinalIgnoreCase) || updated;
 
         var safe = args.Contains("--safe", StringComparer.OrdinalIgnoreCase);
 
@@ -30,7 +32,7 @@ static class Program
         }
 
         // Startup delay after sign-in (Settings > Advanced); only for the autostart launch.
-        if (background && Prefs.StartupDelay(Settings.Load().General) is > 0 and var delay) Thread.Sleep(delay * 1000);
+        if (background && !updated && Prefs.StartupDelay(Settings.Load().General) is > 0 and var delay) Thread.Sleep(delay * 1000);
 
         ApplicationConfiguration.Initialize();
         Application.SetColorMode(SystemColorMode.Dark);

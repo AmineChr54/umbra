@@ -71,6 +71,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
   padding: 1px 6px; border-radius: 5px;
   background: rgba(255, 255, 255, 0.05); color: var(--text-2); letter-spacing: 0.04em;
 }
-.card.stale .foot #updated { color: #e0a54a; }
+.foot .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .foot #updated { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* old data (stale or offline): dim the figures */
+.quote { transition: opacity 400ms; }
+html[data-stale] .quote { opacity: 0.55; }
 .chart:not(.ready) svg, .card.empty .delta { visibility: hidden; }

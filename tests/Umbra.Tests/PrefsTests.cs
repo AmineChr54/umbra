@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Xunit;
 using Umbra;
@@ -118,6 +119,50 @@ public class PrefsTests
             Assert.ThrowsAny<Exception>(() => Prefs.ApplyGeneral(JsonNode.Parse(bad)!.AsObject(), new GeneralSettings()));
     }
 
+    [Theory]
+    [InlineData("windows")]
+    [InlineData(" Windows ")]
+    public void Accent_windows_is_accepted_and_normalised(string input)
+    {
+        var g = new GeneralSettings();
+        Prefs.ApplyGeneral(JsonNode.Parse($$"""{"accent":"{{input}}"}""")!.AsObject(), g);
+        Assert.Equal("windows", g.Accent);
+    }
+
+    [Fact]
+    public void Windows_accent_drives_the_accent_tokens()
+    {
+        var g = new GeneralSettings { Accent = "windows" };
+        var sys = Prefs.FromWindows((0x00, 0x78, 0xD4), (0x60, 0xCD, 0xFF));
+        var css = Prefs.AppearanceCss(g, sys);
+        Assert.Contains($"--accent:{sys.Accent};--accent-strong:{sys.Strong};", css);
+        Assert.Matches(@"(?i)^:root\{(?:--[a-z0-9-]+:[#a-z0-9.,%() \/-]+;)+\}$", css);
+        Assert.Equal(sys.Accent, Prefs.ResolveAccent(g, sys));
+        // Without a readable system color the theme wins, and a picked color ignores the system one.
+        Assert.Equal("", Prefs.AppearanceCss(g, null));
+        Assert.Equal("", Prefs.ResolveAccent(g, null));
+        Assert.Equal("#112233", Prefs.ResolveAccent(new GeneralSettings { Accent = "#112233" }, sys));
+    }
+
+    [Fact]
+    public void Dark_windows_accent_is_lightened_to_stay_readable_on_black()
+    {
+        var pair = Prefs.FromWindows((0x00, 0x00, 0x30), (0x00, 0x00, 0x20));
+        Assert.NotEqual("#000030", pair.Accent);
+        Assert.True(Contrast(pair.Accent) >= 4.4, pair.Accent);
+        Assert.True(Contrast(pair.Strong) >= Contrast(pair.Accent), $"{pair.Strong} vs {pair.Accent}");
+        // A bright accent is left alone.
+        Assert.Equal("#0078d4", Prefs.FromWindows((0x00, 0x78, 0xD4), (0x60, 0xCD, 0xFF)).Accent);
+    }
+
+    /// <summary>WCAG contrast ratio of a "#rrggbb" color against black.</summary>
+    static double Contrast(string hex)
+    {
+        static double Lin(string h) { var x = Convert.ToInt32(h, 16) / 255.0; return x <= 0.03928 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4); }
+        var l = 0.2126 * Lin(hex[1..3]) + 0.7152 * Lin(hex[3..5]) + 0.0722 * Lin(hex[5..7]);
+        return (l + 0.05) / 0.05;
+    }
+
     [Fact]
     public void ReduceTransparency_makes_tints_solid_and_windows_opaque()
     {
@@ -136,6 +181,27 @@ public class PrefsTests
         Prefs.Configure(new GeneralSettings { BorderColor = "#010203" });
         Assert.Equal(Native.ColorRef(1, 2, 3), Prefs.BorderColorRef);
         Prefs.Configure(new GeneralSettings());
+    }
+
+    [Theory]
+    [InlineData("de-DE", "de-DE")]
+    [InlineData("fr-FR", "fr-FR")]
+    [InlineData("sr-Latn-RS", "sr-Latn-RS")]
+    [InlineData("", "en-US")]
+    public void Locale_is_the_bcp47_region_format(string culture, string expected) =>
+        Assert.Equal(expected, Prefs.LocaleOf(CultureInfo.GetCultureInfo(culture)));
+
+    [Fact]
+    public void Hour12_follows_the_short_time_pattern()
+    {
+        Assert.False(Prefs.Hour12Of(CultureInfo.GetCultureInfo("de-DE")));
+        Assert.False(Prefs.Hour12Of(CultureInfo.GetCultureInfo("fr-FR")));
+        Assert.True(Prefs.Hour12Of(CultureInfo.GetCultureInfo("en-US")));
+        var custom = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        custom.DateTimeFormat.ShortTimePattern = "HH:mm";
+        Assert.False(Prefs.Hour12Of(custom));
+        custom.DateTimeFormat.ShortTimePattern = "'at' h:mm tt";
+        Assert.True(Prefs.Hour12Of(custom));
     }
 
     [Fact]

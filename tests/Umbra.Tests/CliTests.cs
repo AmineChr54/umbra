@@ -28,6 +28,21 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task Install_widget_never_forwards_acceptPermissions()
+    {
+        // Accepting new widget access is the user's decision, so an agent can't pass it through the MCP tool.
+        await Server().HandleAsync(Call("tools/call", new JsonObject
+        {
+            ["name"] = "install_widget",
+            ["arguments"] = new JsonObject { ["id"] = "todo", ["acceptPermissions"] = true },
+        }));
+        var (cmd, args) = Assert.Single(_sent);
+        Assert.Equal("install", cmd);
+        Assert.Equal("todo", args["id"]!.GetValue<string>());
+        Assert.Null(args["acceptPermissions"]);
+    }
+
+    [Fact]
     public async Task Notifications_get_no_reply()
     {
         var note = new JsonObject { ["jsonrpc"] = "2.0", ["method"] = "notifications/initialized" };
@@ -278,6 +293,13 @@ public class CommandLineTests
         return (cmd, a.ToJsonString());
     }
 
+    [Fact]
+    public async Task Install_takes_first_non_flag_as_id()
+    {
+        Assert.Equal(("install", """{"id":"todo","acceptPermissions":true}"""), await T("install", "--accept-permissions", "todo"));
+        Assert.Equal(("install", """{"id":"todo","acceptPermissions":true}"""), await T("install", "todo", "--accept-permissions"));
+    }
+
     [Theory]
     [InlineData("1.5", """{"id":"sp500","scale":1.5}""")]
     [InlineData("150%", """{"id":"sp500","scale":1.5}""")]
@@ -291,6 +313,13 @@ public class CommandLineTests
             await T("configure", "sp500", "--scale", "2", "--enabled", "on", "--locked", "off", "--x", "-100", "--y", "40"));
 
     [Fact]
+    public async Task Install_accepts_new_permissions_only_with_the_flag()
+    {
+        Assert.Equal(("install", """{"id":"todo"}"""), await T("install", "todo"));
+        Assert.Equal(("install", """{"id":"todo","acceptPermissions":true}"""), await T("install", "todo", "--accept-permissions"));
+    }
+
+    [Fact]
     public async Task Configure_rejects_a_bad_scale() =>
         await Assert.ThrowsAsync<ArgumentException>(() => T("configure", "sp500", "--scale", "big"));
 
@@ -301,6 +330,8 @@ public class CommandLineTests
         Assert.Equal(("peek", "{}"), await T("peek"));
         Assert.Equal(("peek", """{"seconds":8}"""), await T("peek", "8"));
         Assert.Equal(("set-general", """{"hideOnFullscreen":true,"peekSeconds":3}"""), await T("general", "--hide-fullscreen", "on", "--peek-seconds", "3"));
+        Assert.Equal(("set-general", """{"snap":false}"""), await T("general", "--snap", "off"));
+        Assert.Equal(("set-general", """{"slowOnEnergySaver":false}"""), await T("general", "--energy-saver", "off"));
     }
 
     [Fact]

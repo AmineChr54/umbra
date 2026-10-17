@@ -96,6 +96,26 @@ public static partial class Updates
         digest is not null && digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) && digest.Length == 71
         && string.Equals(digest[7..], sha256Hex, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>WinVerifyTrust results Umbra installs: 0 (valid signature) or TRUST_E_NOSIGNATURE (unsigned release; the SHA-256 digest still protects it). Anything else, e.g. a bad or tampered signature, is refused.</summary>
+    public static bool SignatureAcceptable(int winVerifyTrustResult) => winVerifyTrustResult is 0 or unchecked((int)0x800B0100);
+
+    /// <summary>Installer switches for a self-update: no window, no message box, no restart prompt, no cancel; /UPDATE=1 tells Umbra.iss to start the app again afterwards.</summary>
+    public static string InstallerArguments(string logPath) => $"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /SP- /UPDATE=1 /LOG=\"{logPath}\"";
+
+    /// <summary>What a start finds after Umbra handed over to the installer: running the expected version means it worked, anything else means the installer failed.</summary>
+    public enum UpdateOutcome { None, Applied, Failed }
+
+    /// <summary>Reads the marker <see cref="UpdateService"/> leaves before it runs the installer and compares it with the running version.</summary>
+    public static (UpdateOutcome Outcome, string? To, string? Log) ReadPending(string? json, string currentVersion)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return (UpdateOutcome.None, null, null);
+        JsonNode? root;
+        try { root = JsonNode.Parse(json); } catch (JsonException) { return (UpdateOutcome.None, null, null); }
+        var to = Str(root?["to"]);
+        if (to is null || Compare(to, "0.0.0") is null) return (UpdateOutcome.None, null, null);
+        return (Compare(currentVersion, to) is >= 0 ? UpdateOutcome.Applied : UpdateOutcome.Failed, to, Str(root?["log"]));
+    }
+
     /// <summary>The download must be HTTPS from github.com's release downloads for this repo and named UmbraSetup-&lt;version&gt;.exe.</summary>
     public static bool IsValidInstaller(string url, string name, string version)
     {
@@ -109,27 +129,41 @@ public static partial class Updates
     }
 }
 
-/// <summary>Checks GitHub for a newer release (at start and every 24 hours) and runs the installer on request.</summary>
+/// <summary>
+/// Checks GitHub for a newer release (at start and every 24 hours), downloads it in the background after those
+/// automatic checks, and hands over to the installer on request.
+/// </summary>
 sealed class UpdateService : IDisposable
 {
     static readonly HttpClient Http = CreateClient();
     readonly App _app;
     readonly System.Windows.Forms.Timer _timer = new() { Interval = (int)TimeSpan.FromHours(24).TotalMilliseconds };
     readonly System.Windows.Forms.Timer _first = new() { Interval = 20_000 };
-    bool _installing;
+    readonly System.Windows.Forms.Timer _outcome = new() { Interval = 3_000 };
+    bool _installing, _started;
+    Task<string>? _staging;       // download + verification of the installer for _stagingVersion (resolves to the file path)
+    string? _stagingVersion, _stagingDir;
 
     public ReleaseInfo? Available { get; private set; }
     public DateTime? LastChecked { get; private set; }
     public string? Error { get; private set; }
+    /// <summary>Download progress 0-100 while the installer is being fetched, otherwise null.</summary>
+    public int? Progress { get; private set; }
+    /// <summary>True when the installer for <see cref="Available"/> is downloaded and verified: the next click only restarts Umbra.</summary>
+    public bool Ready => Available is not null && _staging is { IsCompletedSuccessfully: true } && _stagingVersion == Available.Version;
+
+    static string PendingFile => Path.Combine(AppPaths.DataDir, "update-pending.json");
 
     public UpdateService(App app)
     {
         _app = app;
-        _timer.Tick += async (_, _) => await CheckAsync(manual: false);
+        _timer.Tick += async (_, _) => await CheckAsync(manual: false, download: true);
         _timer.Start();
         // Let the desktop settle before the first request.
-        _first.Tick += async (_, _) => { _first.Stop(); await CheckAsync(manual: false); };
+        _first.Tick += async (_, _) => { _first.Stop(); await CheckAsync(manual: false, download: true); };
         _first.Start();
+        _outcome.Tick += (_, _) => { _outcome.Stop(); ReportPreviousUpdate(); };
+        _outcome.Start();
     }
 
     static HttpClient CreateClient()
@@ -142,8 +176,11 @@ sealed class UpdateService : IDisposable
 
     public static string CurrentVersion => Application.ProductVersion.Split('+')[0];
 
-    /// <summary>Queries GitHub. An automatic check does nothing when the user turned update checks off.</summary>
-    public async Task CheckAsync(bool manual)
+    /// <summary>
+    /// Queries GitHub. An automatic check does nothing when the user turned update checks off. Only the host's own timers
+    /// pass <paramref name="download"/>: a control command can check but never makes Umbra fetch or run an installer.
+    /// </summary>
+    public async Task CheckAsync(bool manual, bool download = false)
     {
         if (!manual && !_app.Settings.General.CheckForUpdates) return;
         try
@@ -167,31 +204,69 @@ sealed class UpdateService : IDisposable
         }
         LastChecked = DateTime.Now;
         _app.SettingsChangedElsewhere();
+        if (download && Available is not null && !AppPaths.IsPortable) await DownloadQuietlyAsync();
     }
 
-    /// <summary>Downloads the installer for <see cref="Available"/> to a temp folder, runs it silently and exits Umbra.</summary>
-    public async Task InstallAsync()
+    /// <summary>Background download after a daily check: a failure is only logged, the next check or "Update now" tries again.</summary>
+    async Task DownloadQuietlyAsync()
+    {
+        try { await StageAsync(); }
+        catch (Exception ex) { Log.Write($"Background update download failed: {ex.Message}"); }
+        _app.SettingsChangedElsewhere(); // About shows "Restart to update" (or the failure)
+    }
+
+    ReleaseInfo CheckInstallable()
     {
         if (AppPaths.IsPortable) throw new InvalidOperationException("Portable copies don't self-update: download the new zip from the release page");
         var rel = Available ?? throw new InvalidOperationException("No update available");
-        if (_installing) throw new InvalidOperationException("Update already in progress");
         if (!Updates.IsValidInstaller(rel.AssetUrl, rel.AssetName, rel.Version))
             throw new InvalidOperationException("Update download failed validation");
         if (rel.Digest is null) throw new InvalidOperationException("Release has no SHA-256 digest; refusing to install");
-        _installing = true;
-        var dir = Path.Combine(Path.GetTempPath(), $"umbra-update-{Guid.NewGuid():N}");
-        var started = false;
+        return rel;
+    }
+
+    /// <summary>Downloads and verifies the installer for <see cref="Available"/> once; concurrent callers share the same download. Returns the file path.</summary>
+    Task<string> StageAsync()
+    {
+        var rel = CheckInstallable();
+        if (_staging is { IsFaulted: false, IsCanceled: false } t && _stagingVersion == rel.Version) return t;
+        DiscardStaged();
+        _stagingVersion = rel.Version;
+        return _staging = DownloadAsync(rel);
+    }
+
+    /// <summary>Drops the staged download. With <paramref name="failedDir"/> (a download that just failed) it only resets the state
+    /// when that is still the current download, so a newer download is never wiped by an older one failing.</summary>
+    void DiscardStaged(string? failedDir = null)
+    {
+        if (failedDir is not null && _stagingDir != failedDir)
+        {
+            try { Directory.Delete(failedDir, true); } catch { /* best effort */ }
+            return;
+        }
+        _staging = null;
+        _stagingVersion = null;
+        if (_stagingDir is { } d) try { Directory.Delete(d, true); } catch { /* best effort */ }
+        _stagingDir = null;
+    }
+
+    async Task<string> DownloadAsync(ReleaseInfo rel)
+    {
+        var dir = _stagingDir = Path.Combine(Path.GetTempPath(), $"umbra-update-{Guid.NewGuid():N}");
         try
         {
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, rel.AssetName);
+            Progress = 0;
+            _app.SettingsChangedElsewhere();
             using (var resp = await Http.GetAsync(rel.AssetUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 resp.EnsureSuccessStatusCode();
                 var final = resp.RequestMessage?.RequestUri;
                 if (final is null || final.Scheme != Uri.UriSchemeHttps || !Updates.IsAllowedDownloadHost(final.Host))
                     throw new InvalidOperationException("Download was redirected to an unexpected host");
-                if (resp.Content.Headers.ContentLength > Updates.MaxDownloadBytes) throw new InvalidOperationException("Installer is too large");
+                var length = resp.Content.Headers.ContentLength;
+                if (length > Updates.MaxDownloadBytes) throw new InvalidOperationException("Installer is too large");
                 await using var src = await resp.Content.ReadAsStreamAsync();
                 await using var dst = File.Create(file);
                 var buf = new byte[81920];
@@ -202,24 +277,85 @@ sealed class UpdateService : IDisposable
                     total += n;
                     if (total > Updates.MaxDownloadBytes) throw new InvalidOperationException("Installer is too large");
                     await dst.WriteAsync(buf.AsMemory(0, n));
+                    if (length is > 0 && (int)Math.Min(100, total * 100 / length.Value) is var pct && pct != Progress)
+                    {
+                        Progress = pct;
+                        _app.SettingsChangedElsewhere();
+                    }
                 }
             }
-            if (new FileInfo(file).Length < 1_000_000) throw new InvalidOperationException("Downloaded installer looks incomplete");
-            string hash;
-            await using (var fs = File.OpenRead(file))
-                hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(fs));
-            if (!Updates.DigestMatches(rel.Digest, hash)) throw new InvalidOperationException("Installer checksum does not match GitHub's digest");
-            if (SignatureStatus(file) is not (0 or unchecked((int)0x800B0100))) // valid, or unsigned (the digest above still protects it) throw new InvalidOperationException("Installer signature is not valid");
-            Log.Write($"Running {file}");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, "/SILENT /NORESTART") { UseShellExecute = true });
-            started = true;
-            _app.QuitSoon();
+            await VerifyAsync(file, rel);
+            return file;
+        }
+        catch
+        {
+            DiscardStaged(dir);
+            throw;
         }
         finally
         {
-            _installing = false;
-            if (!started) try { Directory.Delete(dir, true); } catch { /* best effort */ }
+            Progress = null;
+            _app.SettingsChangedElsewhere();
         }
+    }
+
+    /// <summary>Size, SHA-256 against GitHub's digest, then Authenticode. Runs after the download and again right before the installer starts.</summary>
+    static async Task VerifyAsync(string file, ReleaseInfo rel)
+    {
+        if (new FileInfo(file).Length < 1_000_000) throw new InvalidOperationException("Downloaded installer looks incomplete");
+        string hash;
+        await using (var fs = File.OpenRead(file))
+            hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(fs));
+        if (!Updates.DigestMatches(rel.Digest, hash)) throw new InvalidOperationException("Installer checksum does not match GitHub's digest");
+        // Valid, or unsigned (the digest above still protects it); anything else is refused.
+        if (!Updates.SignatureAcceptable(SignatureStatus(file))) throw new InvalidOperationException("Installer signature is not valid");
+    }
+
+    /// <summary>
+    /// Runs the downloaded installer invisibly and exits Umbra; the installer starts the new version again. Downloads first
+    /// when the background download has not finished. Only the host calls this (tray, About): there is no control command for it.
+    /// </summary>
+    public async Task InstallAsync()
+    {
+        var rel = CheckInstallable();
+        if (_installing) throw new InvalidOperationException("Update already in progress");
+        _installing = true;
+        try
+        {
+            var file = await StageAsync();
+            try { await VerifyAsync(file, rel); }
+            catch { DiscardStaged(); throw; } // changed on disk since the download: never run it
+            var log = Path.Combine(Path.GetTempPath(), "UmbraUpdate.log");
+            // The next start compares the running version with this to tell "updated" from "installer failed".
+            File.WriteAllText(PendingFile, new JsonObject { ["from"] = CurrentVersion, ["to"] = rel.Version, ["log"] = log }.ToJsonString());
+            _app.SaveSettings(); // options and widget positions are on disk before Umbra goes away
+            Log.Write($"Running {file}");
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, Updates.InstallerArguments(log)) { UseShellExecute = true }); }
+            catch { try { File.Delete(PendingFile); } catch { /* best effort */ } throw; }
+            _started = true;
+            _app.QuitSoon();
+        }
+        finally { _installing = false; }
+    }
+
+    /// <summary>After a start: if Umbra handed over to the installer last time and is still on the old version, say so (the installer starts Umbra again even when it fails).</summary>
+    void ReportPreviousUpdate()
+    {
+        try
+        {
+            if (!File.Exists(PendingFile)) return;
+            var (outcome, to, log) = Updates.ReadPending(File.ReadAllText(PendingFile), CurrentVersion);
+            File.Delete(PendingFile);
+            if (outcome == Updates.UpdateOutcome.Applied) Log.Write($"Updated to {CurrentVersion}");
+            else if (outcome == Updates.UpdateOutcome.Failed)
+            {
+                Error = $"The update to v{to} failed, Umbra is still on v{CurrentVersion}";
+                Log.Write($"{Error}. Installer log: {log}");
+                _app.ShowTrayMessage($"{Error}. Open Settings > About to try again.", ToolTipIcon.Error);
+                _app.SettingsChangedElsewhere();
+            }
+        }
+        catch (Exception ex) { Log.Write($"Could not read the update marker: {ex.Message}"); }
     }
 
     /// <summary>Authenticode check through WinVerifyTrust (hash, chain and revocation).</summary>
@@ -265,6 +401,8 @@ sealed class UpdateService : IDisposable
         {
             ["version"] = Available.Version, ["url"] = Available.PageUrl, ["asset"] = Available.AssetName, ["notes"] = Available.Notes,
         },
+        ["ready"] = Ready,
+        ["progress"] = Progress,
         ["lastChecked"] = LastChecked?.ToString("o"),
         ["error"] = Error,
     };
@@ -273,5 +411,7 @@ sealed class UpdateService : IDisposable
     {
         _timer.Dispose();
         _first.Dispose();
+        _outcome.Dispose();
+        if (!_started) DiscardStaged(); // the installer needs its file after Umbra exits
     }
 }

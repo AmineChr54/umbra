@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Web.WebView2.Core;
@@ -118,14 +119,22 @@ sealed class WidgetWindow : Form
     /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
     unsafe void SnapMove(IntPtr lParam)
     {
-        if ((ModifierKeys & Keys.Shift) != 0) return;
-        var r = (Native.RECT*)lParam;
         var g = _app.Settings.General;
+        if (!Snap.IsActive(g) || (ModifierKeys & Keys.Shift) != 0) return;
+        var r = (Native.RECT*)lParam;
         var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
         var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
         var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
         var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
         r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
+    }
+
+    /// <summary>Esc while this widget has keyboard focus (it only gets it after a real press) ends edit mode.</summary>
+    void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Escape || !_app.EditMode) return;
+        e.Handled = true;
+        _app.SetEditMode(false);
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
@@ -188,6 +197,7 @@ sealed class WidgetWindow : Form
         await WebHost.InitAsync(_view, sandbox: Manifest);
         _view.CoreWebView2.WebMessageReceived += OnMessage;
         _view.CoreWebView2.ProcessFailed += OnProcessFailed;
+        _view.KeyDown += OnViewKeyDown; // WebView2 forwards accelerator keys (Esc included) here
         _view.CoreWebView2.Navigate(url);
     }
 
@@ -195,18 +205,43 @@ sealed class WidgetWindow : Form
 
     readonly CrashRecovery _recovery = new();
     int _envGeneration;
-    bool _recovering, _stopped;
+    bool _recovering, _stopped, _settling;
+    CrashReaction _pending = CrashReaction.Ignore; // a crash that arrived while a recovery was running
+    Panel? _failedPanel;
 
     /// <summary>
-    /// A WebView2 process died. Renderer gone or hung: reload (at most 3 times per 10 minutes, then the "stopped working"
+    /// A WebView2 process died. Renderer gone: reload (at most 3 times per 10 minutes, then the "stopped working"
     /// page). Browser process gone: build a new environment and view first. Other kinds are only logged.
     /// </summary>
     async void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
     {
         var reaction = CrashRecovery.Classify(e.ProcessFailedKind);
         Log.Write($"[{Instance}] {CrashRecovery.LogMarker}: {e.ProcessFailedKind} ({e.Reason}, exit code {e.ExitCode})");
-        if (reaction == CrashReaction.Ignore || _recovering || _stopped || !Alive) return;
+        if (reaction == CrashReaction.Ignore || _stopped || !Alive) return;
+        if (_recovering)
+        {
+            // Same incident (several processes report one crash within the settle delay) unless it is a stronger reaction; later is a new crash.
+            if (!_settling || reaction > _current) _pending = (CrashReaction)Math.Max((int)_pending, (int)reaction);
+            return;
+        }
         _recovering = true;
+        try
+        {
+            while (reaction != CrashReaction.Ignore && !_stopped && Alive)
+            {
+                _current = reaction;
+                await RecoverAsync(reaction);
+                reaction = _pending;
+                _pending = CrashReaction.Ignore;
+            }
+        }
+        finally { _recovering = false; _pending = CrashReaction.Ignore; }
+    }
+
+    CrashReaction _current;
+
+    async Task RecoverAsync(CrashReaction reaction)
+    {
         try
         {
             var giveUp = !_recovery.TryAcquire(System.Environment.TickCount64);
@@ -219,7 +254,9 @@ sealed class WidgetWindow : Form
             }
             else Log.Write($"[{Instance}] reloading widget ({_recovery.Used}/{CrashRecovery.MaxRecoveries})");
 
-            await Task.Delay(giveUp ? 0 : 500); // let the dead process finish going away
+            _settling = true;
+            try { await Task.Delay(giveUp ? 0 : 500); } // let the dead process finish going away
+            finally { _settling = false; }
             if (!Alive) return;
             var url = giveUp ? WebHost.Url("shared/crashed.html") : Manifest.PageUrl;
             if (reaction == CrashReaction.RecreateBrowser) await RecreateViewAsync(url);
@@ -228,8 +265,37 @@ sealed class WidgetWindow : Form
         catch (Exception ex)
         {
             Log.Write($"[{Instance}] widget recovery failed: {ex.Message}");
+            if (Alive) ShowFailedState();
         }
+    }
+
+    async Task RetryRecreateAsync()
+    {
+        _recovering = true;
+        try { _current = CrashReaction.RecreateBrowser; await RecoverAsync(CrashReaction.RecreateBrowser); }
         finally { _recovering = false; }
+    }
+
+    /// <summary>Recreating the WebView2 failed, so there is no page to show: stop retrying and show a plain host-drawn message with a Reload button.</summary>
+    void ShowFailedState()
+    {
+        _stopped = true;
+        CrashRecovery.SetStopped(Instance, true);
+        _ready = false;
+        _failedPanel?.Dispose();
+        var panel = new Panel { Dock = DockStyle.Fill, BackColor = Color.Black };
+        var label = new Label
+        {
+            Text = "This widget stopped working.",
+            ForeColor = Color.White, BackColor = Color.Black, AutoSize = false, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter,
+        };
+        var button = new Button { Text = "Reload", Dock = DockStyle.Bottom, Height = 32, FlatStyle = FlatStyle.Flat, ForeColor = Color.White, BackColor = Color.FromArgb(40, 40, 40), TabStop = false };
+        button.Click += (_, _) => ReloadAfterStop();
+        panel.Controls.Add(label);
+        panel.Controls.Add(button);
+        Controls.Add(panel);
+        panel.BringToFront();
+        _failedPanel = panel;
     }
 
     /// <summary>The browser process died, so the WebView2 control is unusable: replace the environment (once, however many windows saw it) and the control.</summary>
@@ -248,11 +314,19 @@ sealed class WidgetWindow : Form
     /// <summary>The Reload button on the "stopped working" page (only honoured while that page is showing).</summary>
     void ReloadAfterStop()
     {
-        if (!_stopped || _recovering || !Alive || _view.CoreWebView2 is null) return;
+        if (!_stopped || _recovering || !Alive) return;
         _stopped = false;
         CrashRecovery.SetStopped(Instance, false);
         _recovery.Reset();
-        _view.CoreWebView2.Navigate(Manifest.PageUrl);
+        if (_failedPanel is not null)
+        {
+            // The WebView2 itself could not be recreated: try again from scratch.
+            _failedPanel.Dispose();
+            _failedPanel = null;
+            _ = RetryRecreateAsync();
+            return;
+        }
+        if (_view.CoreWebView2 is not null) _view.CoreWebView2.Navigate(Manifest.PageUrl);
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
@@ -394,6 +468,7 @@ sealed class WidgetWindow : Form
                 RememberPosition();
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
+                _app.RefreshEditPills();
                 break;
 
             case "resize":
@@ -460,6 +535,11 @@ sealed class WidgetWindow : Form
 
             case "run":
                 await HandleRun(msg!);
+                break;
+
+            case "exitEdit":
+                // The page saw Esc. Only honoured while this window is the foreground one and Esc is physically down (a page can't fake it).
+                if (_app.EditMode && Native.GetForegroundWindow() == Handle && IsKeyDown(Native.VK_ESCAPE)) _app.SetEditMode(false);
                 break;
 
             case "pointer":
@@ -744,23 +824,40 @@ sealed class WidgetWindow : Form
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
+    /// <summary>Tells the page that pausing or Energy Saver changed (#104); unlike <see cref="PushSettings"/> it leaves the window alone.</summary>
+    public void PushPower()
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
+    }
+
     public void RefreshData()
     {
         if (_ready) Post(new JsonObject { ["type"] = "refresh" });
     }
 
+    /// <summary>The system clock or time zone changed: the SDK runs the page's onTimeChanged handlers, or its refresh handlers when it has none.</summary>
+    public void NotifyTimeChanged()
+    {
+        if (_ready) Post(TimeChange.Message());
+    }
+
     JsonObject SettingsPayload()
     {
         var ws = Ws;
+        var saver = _app.Power.EnergySaver && _app.Settings.General.SlowOnEnergySaver; // true = intervals are stretched
         return new JsonObject
         {
-            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["refreshSeconds"] = PowerPolicy.Refresh(Prefs.EffectiveRefresh(ws, _app.Settings.General), saver, true),
+            ["paused"] = _app.Power.Paused,
+            ["energySaver"] = saver,
             ["animations"] = Prefs.MotionOn(_app.Settings.General),
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
-            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
+            ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
+            ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
+            ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),
         };

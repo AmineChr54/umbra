@@ -36,6 +36,8 @@ MinVersion=10.0.17763
 CloseApplications=force
 ChangesEnvironment=yes
 RestartApplications=no
+; A self-update (silent) keeps the startup/shortcut/PATH choices made at the first install.
+UsePreviousTasks=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -63,6 +65,8 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; Value
 
 [Run]
 Filename: "{app}\Umbra.exe"; Description: "Launch Umbra"; Flags: nowait postinstall skipifsilent
+; Self-update (Umbra ran us with /UPDATE=1): start the new version again, as the user rather than the installer's token.
+Filename: "{app}\Umbra.exe"; Parameters: "--updated"; Flags: nowait runasoriginaluser; Check: IsSelfUpdate
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -71,6 +75,15 @@ Type: filesandordirs; Name: "{app}"
 const
   WebView2Key = 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
   WebView2UserKey = 'Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+
+var
+  Installed: Boolean;
+
+{ Umbra's own update runs us with /UPDATE=1 (see Updates.InstallerArguments). A manual run never has it. }
+function IsSelfUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE|0}') = '1';
+end;
 
 function WebView2Installed: Boolean;
 var
@@ -88,11 +101,35 @@ begin
   Result := True;
   if not WebView2Installed then
   begin
-    if MsgBox('Umbra needs the Microsoft Edge WebView2 Runtime, which is not installed on this PC.' + #13#10#13#10 +
+    if not WizardSilent and (MsgBox('Umbra needs the Microsoft Edge WebView2 Runtime, which is not installed on this PC.' + #13#10#13#10 +
               'Open the download page now? You can run this setup again afterwards.',
-              mbConfirmation, MB_YESNO) = IDYES then
+              mbConfirmation, MB_YESNO) = IDYES) then
       ShellExec('open', 'https://developer.microsoft.com/microsoft-edge/webview2/', '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
     Result := False;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    Installed := True;
+end;
+
+{ Never leave the user without Umbra: if a self-update stops before the new files are in place, start the version that is still there. }
+procedure DeinitializeSetup;
+var
+  Exe: String;
+  ResultCode: Integer;
+begin
+  if IsSelfUpdate and not Installed then
+  begin
+    try
+      Exe := ExpandConstant('{app}\Umbra.exe');
+      if FileExists(Exe) then
+        Exec(Exe, '--updated', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+    except
+      // The app folder is not known when Setup stopped very early: nothing to start.
+    end;
   end;
 end;
 

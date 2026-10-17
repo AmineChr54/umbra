@@ -5,9 +5,9 @@ namespace Umbra;
 /// <summary>What a widget window does about a failed WebView2 process.</summary>
 enum CrashReaction
 {
-    /// <summary>Only log it (GPU, utility and sandbox processes restart on their own; a frame crash leaves the page up).</summary>
+    /// <summary>Only log it (a hung renderer too: it may recover on its own, and a reload would lose widget state; GPU, utility and sandbox processes restart on their own; a frame crash leaves the page up).</summary>
     Ignore,
-    /// <summary>The page's renderer exited or hangs: reload the page.</summary>
+    /// <summary>The page's renderer exited: reload the page.</summary>
     Reload,
     /// <summary>The browser process died: the whole WebView2 (and its environment) has to be created again.</summary>
     RecreateBrowser,
@@ -27,7 +27,7 @@ sealed class CrashRecovery
 
     public static CrashReaction Classify(CoreWebView2ProcessFailedKind kind) => kind switch
     {
-        CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive => CrashReaction.Reload,
+        CoreWebView2ProcessFailedKind.RenderProcessExited => CrashReaction.Reload,
         CoreWebView2ProcessFailedKind.BrowserProcessExited => CrashReaction.RecreateBrowser,
         _ => CrashReaction.Ignore,
     };
@@ -64,4 +64,12 @@ sealed class CrashRecovery
 
     /// <summary>Log line prefix that Data &amp; privacy counts (see <see cref="Backup.Privacy"/>).</summary>
     public const string LogMarker = "widget process failed";
+
+    /// <summary>
+    /// Matches only a log line the host wrote itself: <c>yyyy-MM-dd HH:mm:ss  [instance] widget process failed</c> at the start of
+    /// the line, so a widget-controlled string inside another log line cannot forge a crash. Group 1 is the instance id.
+    /// </summary>
+    public static readonly System.Text.RegularExpressions.Regex LogLine = new(
+        @"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}  \[([^\]]+)\] " + System.Text.RegularExpressions.Regex.Escape(LogMarker) + ":",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
 }

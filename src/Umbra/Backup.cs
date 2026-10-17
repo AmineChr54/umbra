@@ -118,7 +118,7 @@ static class Backup
         var crashes = new Dictionary<string, int>();
         foreach (var line in Log.Tail(2000))
         {
-            var m = Regex.Match(line, @"\[([^\]]+)\] " + Regex.Escape(CrashRecovery.LogMarker));
+            var m = CrashRecovery.LogLine.Match(line);
             if (!m.Success) continue;
             var w = InstanceId.IsValid(m.Groups[1].Value) ? InstanceId.WidgetOf(m.Groups[1].Value) : m.Groups[1].Value;
             crashes[w] = crashes.GetValueOrDefault(w) + 1;
