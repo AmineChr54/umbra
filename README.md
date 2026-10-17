@@ -58,7 +58,7 @@ umbractl configure sp500 --refresh 300 --opacity 0.8   # per-widget refresh inte
 umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --show-on-ac on   # start hidden; show only in a time range / on AC (--show-from always clears)
 umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
-umbractl install clock                # community catalog: catalog, install, remove
+umbractl install clock                # community catalog: catalog, install, remove (an update that adds hosts, media, notifications or commands is refused until you repeat it with --accept-permissions)
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
 umbractl new my-widget                # scaffold a working widget and show it

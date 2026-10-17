@@ -294,7 +294,7 @@ sealed class App : ApplicationContext
         {
             var r = await Restore.RunAsync(
                 () => OnUi(() => Task.FromResult(Restore.ToRestore(Settings, Manifests))),
-                Community.FetchCatalogAsync, Community.InstallAsync, Log.Write);
+                Community.FetchCatalogAsync, e => Community.InstallAsync(e), Log.Write);
             await OnUi(() =>
             {
                 _restoring.Clear();

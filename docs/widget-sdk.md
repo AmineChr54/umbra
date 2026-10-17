@@ -49,6 +49,7 @@ Nothing ships inside the app; every widget, including S&P 500, is installed from
 | `id` | Equals the folder name. `^[a-z0-9][a-z0-9-]{1,39}$` |
 | `name`, `description`, `author` | Required, non-empty |
 | `version` | Required, `1.2.3`. Bump it on every change (users get an Update button) |
+| `changelog` | Optional, up to 500 characters: what changed in this version. Shown when an update asks for new access, and carried in the catalog index |
 | `entry` | Default `index.html` |
 | `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
 | `themeable` | Default `true`. `false` keeps your own look: the user's [theme](#themes) is not applied to the widget |

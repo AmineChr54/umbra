@@ -42,7 +42,7 @@ public static class Protocol
         ("refresh", "Make widgets fetch fresh data now: {id?}"),
         ("reload", "Re-scan widget folders (after editing files on disk)"),
         ("catalog", "The community catalog from GitHub, with installed/update flags"),
-        ("install", "Install or update a community widget from the catalog: {id}"),
+        ("install", "Install or update a community widget from the catalog: {id}, acceptPermissions? (an update that adds hosts, media, notifications or commands is refused, listing the new access, unless true)"),
         ("remove", "Uninstall a community widget: {id}"),
         ("create-widget", "Write a local widget: {id, files{path:content}, overwrite?}; binary files as base64"),
         ("approvals", "Read-only: the local commands widgets declare and whether the user approved them: {id?}. Approving is a human action in Settings"),

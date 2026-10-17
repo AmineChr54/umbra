@@ -141,9 +141,26 @@ static class Community
         catch { return null; }
     }
 
-    /// <summary>Installs or updates one widget. Everything is downloaded to a temp folder and validated first.</summary>
-    public static async Task InstallAsync(JsonNode entry)
+    /// <summary>
+    /// Installs or updates one widget. Everything is downloaded to a temp folder and validated first. An update that
+    /// adds permissions (hosts, system, media, notifications, commands) throws <see cref="PermissionsChangedException"/>
+    /// unless <paramref name="acceptPermissions"/> is true, which only a user action may set.
+    /// </summary>
+    public static async Task InstallAsync(JsonNode entry, bool acceptPermissions = false)
     {
+        using var pending = await PrepareAsync(entry);
+        pending.Require(acceptPermissions);
+        pending.Commit();
+    }
+
+    /// <summary>
+    /// Downloads and fully validates a catalog widget without writing it. <see cref="PendingInstall.Added"/> is what
+    /// it would add to the installed copy; call <see cref="PendingInstall.Require"/> then <see cref="PendingInstall.Commit"/>.
+    /// <paramref name="fetch"/> replaces the download (tests).
+    /// </summary>
+    public static async Task<PendingInstall> PrepareAsync(JsonNode entry, Func<string, Task<byte[]>>? fetch = null)
+    {
+        fetch ??= GetBytes;
         var id = entry["id"]?.GetValue<string>() ?? "";
         if (!WidgetManifest.IdPattern().IsMatch(id)) throw new InvalidOperationException($"Invalid widget id '{id}'");
         var files = (entry["files"] as JsonArray)?.Select(f => f?.GetValue<string>() ?? "").ToList() ?? new();
@@ -157,7 +174,7 @@ static class Community
             foreach (var rel in files)
             {
                 if (!IsSafeRelativePath(rel)) throw new InvalidOperationException($"Unsafe file path '{rel}'");
-                var data = await GetBytes($"{id}/{rel}");
+                var data = await fetch($"{id}/{rel}");
                 total += data.Length;
                 if (total > MaxWidgetBytes) throw new InvalidOperationException("Widget is larger than 5 MB");
                 var dest = Path.Combine(staging, rel.Replace('/', Path.DirectorySeparatorChar));
@@ -170,12 +187,61 @@ static class Community
             if (manifest.Id != id)
                 throw new InvalidOperationException("widget.json id does not match the catalog");
 
-            Commit(staging, id);
-            Log.Write($"Installed community widget {id} {entry["version"]}");
+            var installed = InstalledManifest(id);
+            return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null);
         }
-        finally
+        catch
         {
             try { Directory.Delete(staging, recursive: true); } catch { }
+            throw;
+        }
+    }
+
+    /// <summary>The community copy on disk, or null when the widget is not installed (or its widget.json does not load, so it holds no access).</summary>
+    static WidgetManifest? InstalledManifest(string id)
+    {
+        try
+        {
+            var file = Path.Combine(AppPaths.CommunityDir, id, "widget.json");
+            return File.Exists(file) ? WidgetManifest.Parse(File.ReadAllText(file)) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException) { return null; }
+    }
+
+    /// <summary>A downloaded, validated widget that is not installed yet. Dispose removes the staging folder.</summary>
+    public sealed class PendingInstall : IDisposable
+    {
+        readonly string _staging;
+        public WidgetManifest Manifest { get; }
+        /// <summary>Permissions the installed copy lacks (everything, for a fresh install).</summary>
+        public PermissionDiff Added { get; }
+
+        readonly bool _isUpdate;
+
+        internal PendingInstall(string staging, WidgetManifest manifest, PermissionDiff added, bool isUpdate)
+        {
+            _staging = staging; Manifest = manifest; Added = added; _isUpdate = isUpdate;
+        }
+
+        /// <summary>True when an installed copy would gain access: the user must accept it first.</summary>
+        public bool NeedsApproval => _isUpdate && !Added.IsEmpty;
+
+        /// <summary>Throws <see cref="PermissionsChangedException"/> when approval is needed and <paramref name="accepted"/> is false.</summary>
+        public void Require(bool accepted)
+        {
+            if (NeedsApproval && !accepted) throw new PermissionsChangedException(Manifest.Name, Manifest.Version, Added);
+        }
+
+        /// <summary>Replaces the installed folder. Call <see cref="Require"/> first.</summary>
+        public void Commit()
+        {
+            Community.Commit(_staging, Manifest.Id);
+            Log.Write($"Installed community widget {Manifest.Id} {Manifest.Version}");
+        }
+
+        public void Dispose()
+        {
+            try { Directory.Delete(_staging, recursive: true); } catch { }
         }
     }
 

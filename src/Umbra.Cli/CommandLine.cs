@@ -97,7 +97,16 @@ static class CommandLine
                 if (Flag(a, "--reduce-transparency") is string rt) o["reduceTransparency"] = OnOff(rt);
                 return ("set-general", o);
             }
-            case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
+            case "install":
+            {
+                // An update that adds hosts, media, notifications or commands is refused (and the new access listed) until
+                // the person at the keyboard repeats it with --accept-permissions.
+                var id = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing widget id. Run umbractl help.");
+                var o = O(("id", id));
+                if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                return ("install", o);
+            }
+            case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "hotkeys":
             {
