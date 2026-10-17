@@ -24,6 +24,7 @@ const ICONS = {
   keyboard: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10.5h.01M11 10.5h.01M15 10.5h.01M17.5 10.5h.01M8 14h8"/>',
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  copy: '<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1"/>',
 };
 function icons(root = document) {
   for (const el of $$("[data-icon]", root)) {
@@ -76,6 +77,8 @@ function openLink(key) {
   const urls = { repo, issues: `${repo}/issues`, contribute: `${repo}/blob/main/CONTRIBUTING.md` };
   post({ type: "openUrl", url: urls[key] || key });
 }
+$("#reportIssue").addEventListener("click", () => post({ type: "reportIssue" }));
+$("#copyDiagnostics").addEventListener("click", () => post({ type: "copyDiagnostics" }));
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-url]");
   if (b) openLink(b.dataset.url);

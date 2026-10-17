@@ -134,6 +134,8 @@ static class CommandLine
             }
             case "settings":
                 return ("open-settings", a.Length > 1 ? O(("page", a[1])) : new JsonObject());
+            case "diagnostics":
+                return ("diagnostics", new JsonObject());
             case "logs":
                 return ("logs", O(("lines", a.Length > 1 ? int.Parse(a[1]) : 50)));
             case "create":

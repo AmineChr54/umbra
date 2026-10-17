@@ -32,7 +32,7 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
 | **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
-| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code, **Copy diagnostics** for bug reports, and links to report an issue (pre-filled with your version) or build a widget. |
 
 ## Automate Umbra (CLI, scripts and AI agents)
 
@@ -62,6 +62,7 @@ umbractl install-theme ember          # also remove-theme; then: umbractl theme 
 umbractl new my-widget                # scaffold a working widget and show it
 umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, settings:privacy, ...)
 umbractl data todo                    # a widget's saved data (umbra.store); data <id> <key> <json> to set
+umbractl diagnostics                  # Markdown for a bug report: versions, monitors, enabled widgets, last log lines (no settings values or proxy address)
 umbractl approvals                    # local commands widgets declare and whether you approved them (read-only)
 umbractl help                         # everything else
 ```
@@ -72,7 +73,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 The Settings window has a **Data & privacy** page: per widget it shows the hosts it can reach, its commands, how much it has saved and recent blocked requests (with a Delete data button), plus Export/Import backup, Open data folder / log and Reset everything. Backups never include command approvals.
 

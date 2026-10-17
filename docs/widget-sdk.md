@@ -288,6 +288,7 @@ umbractl privacy [id]                # hosts, commands, saved data, blocked requ
 umbractl backup <file>               # settings, layout, theme, widget data (never approvals)
 umbractl restore <file>              # validated restore; approve widget commands again
 umbractl logs                        # load errors and blocked requests
+umbractl diagnostics                 # Markdown block for bug reports (no option values or proxy address)
 ```
 
 Through MCP (`claude mcp add umbra -- umbractl mcp`) an agent does the same with `create_widget`,

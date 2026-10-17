@@ -98,6 +98,7 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         new("backup_settings", "backup", "Write settings, layouts, theme, hotkeys and widget data to a JSON file at an absolute path. Command approvals are never included.", Schema(Obj(("path", P("string", "Output file path"))), "path")),
         new("restore_settings", "restore", "Replace settings, layouts and widget data from a backup file (validated first). Command approvals are not restored: the user must approve again.", Schema(Obj(("path", P("string", "Backup file path"))), "path")),
         new("read_logs", "logs", "The last lines of Umbra's log: widget load errors, blocked network requests, crashes.", Schema(Obj(("lines", P("integer", "How many lines (default 50)"))))),
+        new("diagnostics", "diagnostics", "Read-only Markdown for a bug report: Umbra version, Windows build, WebView2, monitors with DPI, GPU and proxy on or off, enabled widgets with versions and the last 30 log lines with user paths hidden. Contains no option values, proxy address or widget data.", Schema(new())),
         new("widget_authoring_guide", "", "How to write an Umbra widget: the manifest format, the JavaScript SDK (umbra.fetchJson, umbra.every, options...), the sandbox and the design rules, plus the widget.json JSON Schema. Read this before create_widget.", Schema(new())),
     };
 
@@ -356,6 +357,7 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         var result = reply["result"];
         if (tool.Name == "capture" && result?["base64"] is JsonNode b64)
             return Obj(("content", new JsonArray(Obj(("type", "image"), ("data", b64.GetValue<string>()), ("mimeType", "image/png")))));
+        if (result is JsonValue { } rv && rv.TryGetValue<string>(out var text)) return Text(text);
         return Text(result?.ToJsonString(Pretty) ?? "ok");
     }
 

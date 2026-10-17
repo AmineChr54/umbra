@@ -52,7 +52,8 @@ try
         Console.Error.WriteLine($"umbractl: {reply["error"]?.GetValue<string>() ?? "error"}");
         return 1;
     }
-    Console.WriteLine(reply["result"]?.ToJsonString(pretty) ?? "ok");
+    // A text result (diagnostics) is printed as it is so it can be piped to the clipboard or pasted.
+    Console.WriteLine(reply["result"] is JsonValue { } v && v.TryGetValue<string>(out var text) ? text : reply["result"]?.ToJsonString(pretty) ?? "ok");
     return 0;
 }
 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or IOException or TimeoutException or JsonException or FormatException)
@@ -110,6 +111,7 @@ static void PrintHelp()
           backup <file>                 save settings, layout, theme and widget data (no approvals)
           restore <file>                restore from a backup (validated; approvals are not restored)
           logs [n]                      last n log lines
+          diagnostics                   Markdown block for bug reports (versions, monitors, widgets, log; no settings values)
           quit                           exit Umbra
           send <command> [json]          raw control-protocol command
           mcp                            run as an MCP server on stdio:  claude mcp add umbra -- umbractl mcp

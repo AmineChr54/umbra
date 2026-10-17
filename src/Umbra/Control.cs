@@ -354,6 +354,9 @@ sealed class Control(App app)
             case "logs":
                 return new JsonArray(Log.Tail(a["lines"] is JsonNode n ? Int(n, "lines") : 50).Select(l => (JsonNode?)l).ToArray());
 
+            case "diagnostics":
+                return Diagnostics.Format(Diagnostics.Collect(app));
+
             case "quit":
                 app.QuitSoon();
                 return null;
