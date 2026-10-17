@@ -252,6 +252,7 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
         UpdateTrayStatus();
         _tray.BalloonTipClicked += (_, _) => _balloonClick?.Invoke();
+        AnnounceUpdate();
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
         Power = new PowerState(_ui); // before the windows: their settings payload reads it
@@ -286,10 +287,28 @@ sealed class App : ApplicationContext
         }
     }
 
-    static async Task ShowBrowseAsync(SettingsWindow win)
+    static async Task ShowBrowseAsync(SettingsWindow win) => await ShowPageAsync(win, "browse");
+
+    static async Task ShowPageAsync(SettingsWindow win, string page)
     {
-        try { await win.ShowPageAsync("browse"); }
-        catch (Exception ex) { Log.Write($"Could not open Browse: {ex.Message}"); }
+        try { await win.ShowPageAsync(page); }
+        catch (Exception ex) { Log.Write($"Could not open {page}: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// After a self-update, shows one balloon "Umbra updated to x.y" that opens About, where the release notes are.
+    /// The version is recorded first, so it shows once per version; a first install shows nothing.
+    /// </summary>
+    void AnnounceUpdate()
+    {
+        var current = UpdateService.CurrentVersion;
+        var announce = Updates.ShouldAnnounce(Settings.General.LastSeenVersion, current);
+        var next = Updates.NextLastSeen(Settings.General.LastSeenVersion, current);
+        if (next != Settings.General.LastSeenVersion) { Settings.General.LastSeenVersion = next; SaveSettings(); }
+        if (!announce) return;
+        Log.Write($"Updated to {current}");
+        _ = ObserveAsync(Updater.LoadWhatsNewAsync(current), "Release notes");
+        ShowBalloon(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None, () => _ = ShowPageAsync(ShowSettings(), "about"));
     }
 
     /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
@@ -463,6 +482,13 @@ sealed class App : ApplicationContext
     {
         _balloonClick = onClick;
         _tray.ShowBalloonTip(ms, title, text, icon);
+    }
+
+    /// <summary>Awaits a fire-and-forget task so an exception is logged instead of going unobserved.</summary>
+    static async Task ObserveAsync(Task task, string what)
+    {
+        try { await task; }
+        catch (Exception ex) { Log.Write($"{what} failed: {ex.Message}"); }
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
@@ -681,6 +707,7 @@ sealed class App : ApplicationContext
         var s = backup.Settings;
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
         s.General.LegacyRestoreDone = true;
+        s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
         s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
         Settings = s;
         SaveSettings();
@@ -709,6 +736,7 @@ sealed class App : ApplicationContext
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
+        incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
         Settings = incoming;
         SaveSettings();

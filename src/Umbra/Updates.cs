@@ -53,6 +53,22 @@ public static partial class Updates
 
     public static bool IsNewer(string current, string candidate) => Compare(candidate, current) is > 0;
 
+    /// <summary>Notes of one release by tag. Only used with a version that passed <see cref="Compare"/>.</summary>
+    public static string ReleaseByTagApi(string version) => $"https://api.github.com/repos/AmineChr54/umbra/releases/tags/v{version}";
+
+    public static string ReleasePageUrl(string version) => $"https://github.com/AmineChr54/umbra/releases/tag/v{version}";
+
+    /// <summary>True when Umbra was updated since it last ran. A first install (nothing recorded) or an unreadable value never announces.</summary>
+    public static bool ShouldAnnounce(string? lastSeen, string current) =>
+        !string.IsNullOrEmpty(lastSeen) && IsNewer(lastSeen, current);
+
+    /// <summary>The version to record after this start: the running one when first seen or newer, never a downgrade (so going back and forth does not announce twice).</summary>
+    public static string NextLastSeen(string? lastSeen, string current)
+    {
+        if (Compare(current, "0.0.0") is null) return lastSeen ?? "";
+        return string.IsNullOrEmpty(lastSeen) || Compare(lastSeen, current) is null || IsNewer(lastSeen, current) ? current : lastSeen;
+    }
+
     static string? Str(JsonNode? n) => n is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
     /// <summary>
@@ -145,6 +161,9 @@ sealed class UpdateService : IDisposable
     string? _stagingVersion, _stagingDir;
 
     public ReleaseInfo? Available { get; private set; }
+    /// <summary>Set for this session when Umbra was just updated; About shows it. Null otherwise.</summary>
+    public ReleaseInfo? WhatsNew { get; private set; }
+    public string? WhatsNewVersion { get; private set; }
     public DateTime? LastChecked { get; private set; }
     public string? Error { get; private set; }
     /// <summary>Download progress 0-100 while the installer is being fetched, otherwise null.</summary>
@@ -205,6 +224,26 @@ sealed class UpdateService : IDisposable
         LastChecked = DateTime.Now;
         _app.SettingsChangedElsewhere();
         if (download && Available is not null && !AppPaths.IsPortable) await DownloadQuietlyAsync();
+    }
+
+    /// <summary>
+    /// Marks this session as "just updated to <paramref name="version"/>" and fetches that release's notes (skipped when update
+    /// checks are off; About then offers only the link). The notes are plain text for the panel, never HTML.
+    /// </summary>
+    public async Task LoadWhatsNewAsync(string version)
+    {
+        try
+        {
+            WhatsNewVersion = version;
+            _app.SettingsChangedElsewhere();
+            if (!_app.Settings.General.CheckForUpdates) return;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var json = await Http.GetStringAsync(Updates.ReleaseByTagApi(version), cts.Token);
+            var rel = Updates.ParseRelease(json);
+            if (rel is not null && rel.Version == version) WhatsNew = rel;
+        }
+        catch (Exception ex) { Log.Write($"Could not fetch release notes for {version}: {ex.Message}"); }
+        _app.SettingsChangedElsewhere();
     }
 
     /// <summary>Background download after a daily check: a failure is only logged, the next check or "Update now" tries again.</summary>
@@ -400,6 +439,10 @@ sealed class UpdateService : IDisposable
         ["available"] = Available is null ? null : new JsonObject
         {
             ["version"] = Available.Version, ["url"] = Available.PageUrl, ["asset"] = Available.AssetName, ["notes"] = Available.Notes,
+        },
+        ["whatsNew"] = WhatsNewVersion is null ? null : new JsonObject
+        {
+            ["version"] = WhatsNewVersion, ["url"] = WhatsNew?.PageUrl ?? Updates.ReleasePageUrl(WhatsNewVersion), ["notes"] = WhatsNew?.Notes ?? "",
         },
         ["ready"] = Ready,
         ["progress"] = Progress,

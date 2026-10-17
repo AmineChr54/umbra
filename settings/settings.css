@@ -389,6 +389,14 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 .sw-line { width: 78%; background: var(--t-text2, #6b707b); }
 .sw-line.short { width: 52%; }
 .sw-dot { position: absolute; right: 14px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--t-accent, #8b93ff); }
+/* What's new (About, after an update) */
+.whatsnew { width: min(520px, 100%); margin: 8px 0 26px; padding: 16px 18px; text-align: left; border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--tint, rgba(255, 255, 255, 0.03)); }
+.whatsnew h2 { margin: 0 0 8px; font-size: 14px; font-weight: 650; }
+.whatsnew-body { max-height: 220px; overflow-y: auto; margin-bottom: 12px; color: var(--text-2); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.whatsnew-body h4 { margin: 10px 0 4px; color: var(--text); font-size: 12.5px; font-weight: 650; }
+.whatsnew-body p { margin: 0 0 6px; }
+.whatsnew-body ul { margin: 0 0 6px; padding-left: 18px; }
+.whatsnew-body a { color: var(--accent, #8b93ff); text-decoration: underline; cursor: pointer; }
 /* Update notice (About) */
 .update { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 6px; }
 .update-text { font-size: 13px; color: var(--text-2); }

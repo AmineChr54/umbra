@@ -33,7 +33,7 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
 | **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
-| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code, **Copy diagnostics** for bug reports, and links to report an issue (pre-filled with your version) or build a widget. |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates (after an update, the release notes once), source code, **Copy diagnostics** for bug reports, and links to report an issue (pre-filled with your version) or build a widget. |
 
 Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps to the Browse search, **Ctrl+1** to **Ctrl+7** switch pages, and the arrow keys move through the sidebar and the refresh interval. Switches and buttons have names for screen readers.
 
