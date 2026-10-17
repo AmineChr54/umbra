@@ -670,6 +670,12 @@ sealed class WidgetWindow : Form
         if (_ready) Post(new JsonObject { ["type"] = "refresh" });
     }
 
+    /// <summary>The system clock or time zone changed: the SDK runs the page's onTimeChanged handlers, or its refresh handlers when it has none.</summary>
+    public void NotifyTimeChanged()
+    {
+        if (_ready) Post(TimeChange.Message());
+    }
+
     JsonObject SettingsPayload()
     {
         var ws = Ws;
