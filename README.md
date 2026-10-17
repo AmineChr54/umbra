@@ -32,7 +32,7 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
 | **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
-| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates (after an update, the release notes once), source code and links to report issues or build a widget. |
 
 ## Automate Umbra (CLI, scripts and AI agents)
 

@@ -9,6 +9,7 @@ sealed class App : ApplicationContext
     readonly NotifyIcon _tray;
     readonly Notifier _notifier = new();
     string? _balloonUrl;
+    Action? _balloonAction; // what a click on the current balloon does instead of opening _balloonUrl
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
     public UpdateService Updater { get; }
@@ -207,7 +208,12 @@ sealed class App : ApplicationContext
         _tray.ContextMenuStrip = new ContextMenuStrip();
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
-        _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            if (_balloonAction is { } act) act();
+            else if (_balloonUrl is { } u) WebHost.OpenExternal(u);
+        };
+        AnnounceUpdate();
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
         SyncWindows();
@@ -235,10 +241,29 @@ sealed class App : ApplicationContext
         }
     }
 
-    static async Task ShowBrowseAsync(SettingsWindow win)
+    static async Task ShowBrowseAsync(SettingsWindow win) => await ShowPageAsync(win, "browse");
+
+    static async Task ShowPageAsync(SettingsWindow win, string page)
     {
-        try { await win.ShowPageAsync("browse"); }
-        catch (Exception ex) { Log.Write($"Could not open Browse: {ex.Message}"); }
+        try { await win.ShowPageAsync(page); }
+        catch (Exception ex) { Log.Write($"Could not open {page}: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// After a self-update, shows one balloon "Umbra updated to x.y" that opens About, where the release notes are.
+    /// The version is recorded first, so it shows once per version; a first install shows nothing.
+    /// </summary>
+    void AnnounceUpdate()
+    {
+        var current = UpdateService.CurrentVersion;
+        var announce = Updates.ShouldAnnounce(Settings.General.LastSeenVersion, current);
+        var next = Updates.NextLastSeen(Settings.General.LastSeenVersion, current);
+        if (next != Settings.General.LastSeenVersion) { Settings.General.LastSeenVersion = next; SaveSettings(); }
+        if (!announce) return;
+        Log.Write($"Updated to {current}");
+        _ = Updater.LoadWhatsNewAsync(current);
+        _balloonAction = () => _ = ShowPageAsync(ShowSettings(), "about");
+        _tray.ShowBalloonTip(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None);
     }
 
     /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
@@ -351,6 +376,7 @@ sealed class App : ApplicationContext
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
         _balloonUrl = url;
+        _balloonAction = null;
         Log.Write($"[{instance}] notify: {title}");
         _tray.ShowBalloonTip(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None);
         return true;
@@ -476,6 +502,7 @@ sealed class App : ApplicationContext
         var s = backup.Settings;
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
         s.General.LegacyRestoreDone = true;
+        s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
         Settings = s;
         SaveSettings();
         _hotkeys.Apply(Settings.Hotkeys);
@@ -503,6 +530,7 @@ sealed class App : ApplicationContext
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
+        incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
         Settings = incoming;
         SaveSettings();
         SyncWindows();

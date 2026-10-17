@@ -131,7 +131,66 @@ function renderUpdate() {
   $("#updateInstall").disabled = false;
   $("#updateCheck").disabled = false;
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
+  renderWhatsNew();
 }
+
+// Release notes are untrusted text from GitHub: build DOM nodes with textContent only, never innerHTML. Only https
+// links become clickable, and the host opens them in the browser.
+const NOTE_LINK = /\[([^\]\n]{1,200})\]\((https:\/\/[^\s)]{1,500})\)|(https:\/\/[^\s<>()\[\]]{1,500})/g;
+function noteInline(parent, text) {
+  text = text.replace(/\*\*|__|`/g, "");
+  let last = 0, m;
+  NOTE_LINK.lastIndex = 0;
+  while ((m = NOTE_LINK.exec(text))) {
+    if (m.index > last) parent.append(text.slice(last, m.index));
+    const url = m[2] || m[3].replace(/[.,;:!?]+$/, "");
+    const a = document.createElement("a");
+    a.textContent = m[1] || url;
+    a.dataset.href = url;
+    a.tabIndex = 0;
+    a.setAttribute("role", "link");
+    parent.append(a);
+    last = m.index + (m[2] ? m[0].length : url.length);
+    NOTE_LINK.lastIndex = last;
+  }
+  if (last < text.length) parent.append(text.slice(last));
+}
+function renderNotes(host, notes) {
+  host.replaceChildren();
+  let list = null;
+  for (const raw of String(notes || "").replace(/<[^>]*>/g, "").split(/\r?\n/)) {
+    const line = raw.trim();
+    const bullet = /^[-*+]\s+(.*)$/.exec(line);
+    if (bullet) {
+      if (!list) host.append((list = document.createElement("ul")));
+      noteInline(list.appendChild(document.createElement("li")), bullet[1]);
+      continue;
+    }
+    list = null;
+    if (!line) continue;
+    const head = /^#{1,6}\s+(.*)$/.exec(line);
+    const el = document.createElement(head ? "h4" : "p");
+    noteInline(el, head ? head[1] : line);
+    host.append(el);
+  }
+}
+function renderWhatsNew() {
+  const w = state.update && state.update.whatsNew;
+  $("#whatsNew").hidden = !w;
+  if (!w) return;
+  $("#whatsNewTitle").textContent = `What's new in Umbra ${w.version}`;
+  const body = $("#whatsNewBody");
+  if (body.dataset.src !== w.notes) { body.dataset.src = w.notes; renderNotes(body, w.notes); } // not on every state push: keeps the scroll position
+  $("#whatsNewBody").hidden = !w.notes;
+  $("#whatsNewFull").dataset.href = w.url;
+}
+$("#whatsNew").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-href]");
+  if (t) post({ type: "openUrl", url: t.dataset.href });
+});
+$("#whatsNew").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.dataset && e.target.dataset.href) post({ type: "openUrl", url: e.target.dataset.href });
+});
 $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
 $("#updateInstall").addEventListener("click", () => {
   if (state.update && state.update.portable) { post({ type: "openUrl", url: state.update.available.url }); return; }
