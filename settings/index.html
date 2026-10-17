@@ -38,6 +38,7 @@
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
         <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
         <button data-page="hotkeys"><span class="ico" data-icon="keyboard"></span>Hotkeys</button>
+        <button data-page="privacy"><span class="ico" data-icon="lock"></span>Data &amp; privacy</button>
         <button data-page="about"><span class="ico" data-icon="info"></span>About</button>
       </nav>
 
@@ -176,6 +177,23 @@
         </header>
         <div class="group" id="hotkeyList"></div>
         <p><button class="btn" id="hotkeyReset">Reset all</button></p>
+      </section>
+
+      <!-- Data and privacy -->
+      <section class="page" data-page="privacy">
+        <header class="page-head">
+          <h1>Data &amp; privacy</h1>
+          <p>What each widget can reach, run and has saved. Widgets can only contact the hosts listed here; anything else is blocked.</p>
+        </header>
+        <div class="group" id="privacyList"></div>
+        <div class="group">
+          <div class="row"><div class="row-text"><div class="row-title">Backup</div><div class="row-sub">Settings, layout, theme, hotkeys and widget data in one file. Command approvals are never included.</div></div>
+            <button class="btn" id="exportBackup">Export</button><button class="btn" id="importBackup">Import</button></div>
+          <div class="row"><div class="row-text"><div class="row-title">Files</div><div class="row-sub">Where Umbra keeps its data and log.</div></div>
+            <button class="btn" id="openDataFolder">Open data folder</button><button class="btn" id="openLogBtn">Open log</button></div>
+          <div class="row"><div class="row-text"><div class="row-title">Reset everything</div><div class="row-sub">Back to a fresh start: settings, positions and saved widget data. Installed widgets stay.</div></div>
+            <button class="btn danger" id="resetAll">Reset</button></div>
+        </div>
       </section>
 
       <!-- About -->

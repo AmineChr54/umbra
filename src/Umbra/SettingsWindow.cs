@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form
     readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "hotkeys", "about" };
+    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "hotkeys", "privacy", "about" };
 
     readonly bool _background;
 
@@ -178,6 +178,61 @@ sealed class SettingsWindow : Form
 
             case "openUrl":
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
+                break;
+
+            case "privacy":
+                Post(new JsonObject { ["type"] = "privacy", ["widgets"] = Backup.Privacy(_app) });
+                break;
+
+            case "deleteData":
+            {
+                var wid = msg["widget"]?.GetValue<string>() ?? "";
+                var name = _app.Manifests.FirstOrDefault(w => w.Id == wid)?.Name;
+                if (name is null) break;
+                if (MessageBox.Show(this, $"Delete everything {name} has saved? This cannot be undone.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) break;
+                foreach (var inst in _app.Settings.Instances(wid)) WidgetStore.Delete(inst);
+                Post(new JsonObject { ["type"] = "privacy", ["widgets"] = Backup.Privacy(_app) });
+                break;
+            }
+
+            case "exportBackup":
+            {
+                using var dlg = new SaveFileDialog { Filter = "Umbra backup (*.json)|*.json", FileName = $"umbra-backup-{DateTime.Now:yyyy-MM-dd}.json" };
+                if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                try
+                {
+                    File.WriteAllText(dlg.FileName, Backup.Create(_app.Settings).ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                    Post(new JsonObject { ["type"] = "notice", ["text"] = "Backup saved" });
+                }
+                catch (Exception ex) { Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Backup failed: {ex.Message}" }); }
+                break;
+            }
+
+            case "importBackup":
+            {
+                using var dlg = new OpenFileDialog { Filter = "Umbra backup (*.json)|*.json" };
+                if (dlg.ShowDialog(this) != DialogResult.OK) break;
+                try
+                {
+                    var parsed = Backup.ReadFile(dlg.FileName);
+                    if (MessageBox.Show(this, "Replace your current settings, layout and widget data with this backup? Command approvals are not restored.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) break;
+                    _app.RestoreBackup(parsed);
+                    Post(new JsonObject { ["type"] = "notice", ["text"] = "Backup restored" });
+                }
+                catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+                { Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Restore failed: {ex.Message}" }); }
+                break;
+            }
+
+            case "resetAll":
+                // Settings, layout and widget data go back to a fresh install; installed widgets, themes and command approvals are kept.
+                if (MessageBox.Show(this, "Reset all settings, widget positions and saved widget data to a fresh start? Installed widgets stay.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) break;
+                _app.RestoreBackup(new Backup.Parsed(new Settings(), new Dictionary<string, JsonObject>()));
+                Post(new JsonObject { ["type"] = "notice", ["text"] = "Reset to defaults" });
+                break;
+
+            case "openDataFolder":
+                System.Diagnostics.Process.Start("explorer.exe", AppPaths.DataDir);
                 break;
 
             case "openLog":
