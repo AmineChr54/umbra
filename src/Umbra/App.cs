@@ -131,8 +131,48 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    public App(bool openSettings, bool background = false)
+    /// <summary>Safe mode: community widgets stay closed (nothing is deleted or disabled in settings). Not saved, so the next normal start restores everything.</summary>
+    public bool SafeMode { get; private set; }
+
+    public Layouts Layouts { get; } = Layouts.Load();
+
+    public void SetSafeMode(bool on)
     {
+        if (SafeMode == on) return;
+        SafeMode = on;
+        Log.Write($"Safe mode {(on ? "on" : "off")}");
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Saves the current positions, sizes and enabled widgets under a name.</summary>
+    public void SaveLayout(string name)
+    {
+        Layouts.Capture(name, Settings);
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Switches to a saved layout live; returns how many widget copies it changed.</summary>
+    public int ApplyLayout(string name)
+    {
+        var n = Layouts.Apply(name, Settings);
+        SaveSettings();
+        SyncWindows();
+        foreach (var w in _windows.Values) w.PushSettings();
+        SettingsChangedElsewhere();
+        return n;
+    }
+
+    public bool DeleteLayout(string name)
+    {
+        var ok = Layouts.Delete(name);
+        SettingsChangedElsewhere();
+        return ok;
+    }
+
+    public App(bool openSettings, bool background = false, bool safe = false)
+    {
+        SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
         Prefs.Configure(Settings.General);
@@ -229,6 +269,8 @@ sealed class App : ApplicationContext
     /// <summary>Exits shortly after the current pipe reply has been written.</summary>
     public void QuitSoon() => _ = Task.Delay(300).ContinueWith(_ => _ui.Post(_ => ExitThread(), null));
 
+    Font? _trayBold; // one shared bold font for the tray menu (a new one per rebuild would leak)
+
     void BuildTrayMenu()
     {
         var menu = _tray.ContextMenuStrip!;
@@ -243,13 +285,27 @@ sealed class App : ApplicationContext
                     Log.Write($"Update failed: {ex.Message}");
                     _tray.ShowBalloonTip(4000, "Umbra", $"Update failed: {ex.Message}", ToolTipIcon.Error);
                 }
-            }).Font = new Font(menu.Font, FontStyle.Bold);
+            }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
         }
-        menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = new Font(menu.Font, FontStyle.Bold);
+        menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
         menu.Items.Add(edit);
+        var safe = new ToolStripMenuItem("Safe mode (community widgets off)") { Checked = SafeMode };
+        safe.Click += (_, _) => SetSafeMode(!SafeMode);
+        menu.Items.Add(safe);
+        var layouts = new ToolStripMenuItem("Layouts");
+        foreach (var name in Layouts.Items.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            layouts.DropDownItems.Add(name, null, (_, _) => ApplyLayout(name));
+        if (layouts.DropDownItems.Count > 0) layouts.DropDownItems.Add(new ToolStripSeparator());
+        layouts.DropDownItems.Add("Save current layout", null, (_, _) =>
+        {
+            var n = Layouts.Items.Count + 1;
+            while (Layouts.Items.ContainsKey($"Layout {n}")) n++;
+            try { SaveLayout($"Layout {n}"); } catch (Exception ex) { Log.Write($"Save layout failed: {ex.Message}"); }
+        });
+        menu.Items.Add(layouts);
         menu.Items.Add(new ToolStripSeparator());
         foreach (var m in Manifests)
             foreach (var inst in Settings.Instances(m.Id))
@@ -283,7 +339,7 @@ sealed class App : ApplicationContext
         foreach (var m in Manifests)
             foreach (var inst in Settings.Instances(m.Id))
             {
-                var enabled = Settings.For(m, inst).Enabled;
+                var enabled = Settings.For(m, inst).Enabled && !(SafeMode && m.Source != WidgetSource.BuiltIn);
                 var open = _windows.TryGetValue(inst, out var win);
                 if (enabled && !open)
                 {
@@ -375,6 +431,30 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
     }
 
+    /// <summary>Replaces settings (positions included) and widget data from a validated backup; approvals are untouched.</summary>
+    public void RestoreBackup(Backup.Parsed backup)
+    {
+        Backup.WriteData(backup, WidgetStore.CopyIds().Concat(Settings.Widgets.Keys));
+        foreach (var id in _windows.Keys.ToList()) CloseWidget(id);
+        var s = backup.Settings;
+        if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
+        s.General.LegacyRestoreDone = true;
+        Settings = s;
+        SaveSettings();
+        _hotkeys.Apply(Settings.Hotkeys);
+        SyncWindows();
+        BuildTrayMenu();
+        SettingsChangedElsewhere();
+    }
+
+    readonly Dictionary<string, long> _handScaledAt = new();
+
+    /// <summary>A zoom by hand (handle, Ctrl+wheel) just happened: an in-flight Settings save must not revert it.</summary>
+    public void NoteHandScale(string instance) => _handScaledAt[instance] = System.Environment.TickCount64;
+
+    bool HandScaledRecently(string instance) =>
+        _handScaledAt.TryGetValue(instance, out var t) && System.Environment.TickCount64 - t < 2000;
+
     public void ApplySettings(Settings incoming)
     {
         // Positions are owned by the widget windows (dragging), so keep the current ones.
@@ -384,7 +464,7 @@ sealed class App : ApplicationContext
         foreach (var (id, cur) in Settings.Widgets)
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
-            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; }
+            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         Settings = incoming;
         SaveSettings();

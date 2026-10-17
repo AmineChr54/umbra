@@ -52,6 +52,7 @@ sealed class Control(App app)
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
                     ["editMode"] = app.EditMode,
+                    ["safeMode"] = app.SafeMode,
                     ["update"] = app.Updater.ToJson(),
                     ["updateAvailable"] = app.Updater.Available?.Version,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
@@ -112,6 +113,13 @@ sealed class Control(App app)
                     g.PeekSeconds = secs;
                 }
                 Prefs.ApplyGeneral(a, g);
+                if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
+                if (a["snapGrid"] is JsonNode sg)
+                {
+                    var grid = Int(sg, "snapGrid");
+                    if (grid is < 0 or > Snap.MaxGrid) throw new CommandException($"snapGrid must be between 0 (off) and {Snap.MaxGrid}");
+                    g.SnapGrid = grid;
+                }
                 if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
@@ -174,6 +182,30 @@ sealed class Control(App app)
                 }
                 app.Peek();
                 return new JsonObject { ["peeking"] = app.Peeking, ["seconds"] = app.Settings.General.PeekSeconds, ["hidden"] = app.WidgetsHidden || app.HiddenByFullscreen };
+
+            case "safe-mode":
+                if (a["on"] is JsonNode sm) app.SetSafeMode(Bool(sm, "on"));
+                return new JsonObject { ["safeMode"] = app.SafeMode };
+
+            case "layouts":
+            {
+                var op = a["op"] is null ? "list" : Str(a, "op");
+                try
+                {
+                    switch (op)
+                    {
+                        case "list": break;
+                        case "save": app.SaveLayout(Str(a, "name")); break;
+                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.Layouts.ToJson() };
+                        case "delete":
+                            if (!app.DeleteLayout(Str(a, "name"))) throw new CommandException($"No layout '{Str(a, "name")}'");
+                            break;
+                        default: throw new CommandException("op must be list, save, apply or delete");
+                    }
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }
+                return new JsonObject { ["layouts"] = app.Layouts.ToJson() };
+            }
 
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
@@ -287,6 +319,26 @@ sealed class Control(App app)
             case "approvals":
                 // Read-only on purpose: there is no control command that approves or revokes a command.
                 return app.Commands.Approvals.Describe(app.Manifests, a["id"] is null ? null : Target(a).Manifest.Id);
+
+            case "privacy":
+                return Backup.Privacy(app, a["id"] is null ? null : Target(a).Manifest.Id);
+
+            case "backup":
+            {
+                var path = Path.GetFullPath(Str(a, "path"));
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, Backup.Create(app.Settings).ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                return new JsonObject { ["path"] = path, ["bytes"] = new FileInfo(path).Length };
+            }
+
+            case "restore":
+            {
+                Backup.Parsed parsed;
+                try { parsed = Backup.ReadFile(Path.GetFullPath(Str(a, "path"))); }
+                catch (InvalidDataException ex) { throw new CommandException(ex.Message); }
+                app.RestoreBackup(parsed);
+                return new JsonObject { ["widgets"] = parsed.Settings.Widgets.Count, ["data"] = parsed.Data.Count, ["note"] = "Command approvals are not part of a backup; approve again if needed" };
+            }
 
             case "capture":
                 return await Capture(Str(a, "target"), a["path"]?.GetValue<string>());

@@ -78,7 +78,9 @@ static void PrintHelp()
           configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--locked on|off] [--x N] [--y N] [--monitor N|primary] [--refresh 30-600|default] [--opacity 0.2-1|opaque]
                                          change several widget settings at once (scale = size and zoom)
           peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
-          edit-mode [on|off]             move/resize/zoom widgets by hand; no argument = show the state
+          safe-mode [on|off]             community widgets off (not saved); no argument = show the state
+          layouts [list|save|apply|delete <name>]  saved arrangements of positions, sizes and enabled widgets
+          edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
           general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--peek-seconds 1-60]
                   [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--default-scale 0.5-3]
@@ -104,6 +106,9 @@ static void PrintHelp()
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
           approvals [id]                 local commands widgets declare and whether you approved them (read-only)
+          privacy [id]                  hosts, commands, saved data and blocked requests per widget (read-only)
+          backup <file>                 save settings, layout, theme and widget data (no approvals)
+          restore <file>                restore from a backup (validated; approvals are not restored)
           logs [n]                      last n log lines
           quit                           exit Umbra
           send <command> [json]          raw control-protocol command

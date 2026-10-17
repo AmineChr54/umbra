@@ -41,6 +41,9 @@ umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); al
 umbractl add-instance sp500           # a second copy (sp500#2) with its own options, position and data; remove-instance sp500#2
 umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings); off to clear
 umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
+umbractl safe-mode on                 # community widgets off, nothing deleted (also `Umbra.exe --safe`; not saved, next normal start restores)
+umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts delete Work`, `layouts`
+umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off); hold Shift while dragging to skip snapping
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)
@@ -62,7 +65,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 The server also exposes every installed widget's files as read-only **resources** (`umbra://widgets/<id>/<file>`, same path and extension rules as agent-written files, 5 MB cap) so an agent can read a widget before editing it, and three **prompts**, `new_widget`, `fix_widget` and `restyle_widget`, that walk it through `widget_authoring_guide`, `create_widget` and `capture`.
 

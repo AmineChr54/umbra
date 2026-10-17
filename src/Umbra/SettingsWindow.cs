@@ -104,6 +104,10 @@ sealed class SettingsWindow : Form
                 _app.SetEditMode(msg["value"]?.GetValue<bool>() == true); // re-sends the state
                 break;
 
+            case "setSafeMode":
+                _app.SetSafeMode(msg["value"]?.GetValue<bool>() == true); // re-sends the state
+                break;
+
             case "setHotkey":
                 try { _app.SetHotkey(msg["action"]?.GetValue<string>() ?? "", msg["keys"]?.GetValue<string>() ?? ""); }
                 catch (ArgumentException ex) { Post(new JsonObject { ["type"] = "commandError", ["error"] = ex.Message }); }
@@ -319,6 +323,8 @@ sealed class SettingsWindow : Form
             ["version"] = Application.ProductVersion.Split('+')[0],
             ["startup"] = Startup.IsEnabled(),
             ["editMode"] = _app.EditMode,
+            ["safeMode"] = _app.SafeMode,
+            ["layouts"] = _app.Layouts.ToJson(),
             ["update"] = _app.Updater.ToJson(),
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),

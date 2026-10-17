@@ -144,7 +144,7 @@ page by the same factor (like browser zoom), so your page always lays out at the
   redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
 - In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by
   Umbra's overlay with an outline and a corner handle: presses move the widget, the handle resizes it and Ctrl+wheel
-  zooms it. Your page gets no clicks then, so don't rely on interaction. Locked widgets are left alone. A page can't
+  zooms it. Mouse presses on your page are taken by the overlay then, so don't rely on interaction (capture-phase listeners and keyboard events can still reach it). Locked widgets are left alone. A page can't
   resize or zoom itself: in edit mode, the host resizes only during a real mouse press on the handle and zooms only
   while Ctrl is physically held over the widget.
 
@@ -277,6 +277,9 @@ umbractl set weather city Paris      # change an option, typed by the schema
 umbractl capture weather shot.png    # PNG of just the widget
 umbractl configure weather --scale 2 # check how it looks at 200 % (back with --scale 1)
 umbractl data weather                # what the widget saved with umbra.store (set: data <id> <key> <json>)
+umbractl privacy [id]                # hosts, commands, saved data, blocked requests (read-only)
+umbractl backup <file>               # settings, layout, theme, widget data (never approvals)
+umbractl restore <file>              # validated restore; approve widget commands again
 umbractl logs                        # load errors and blocked requests
 ```
 

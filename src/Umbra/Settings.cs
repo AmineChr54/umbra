@@ -38,6 +38,10 @@ public sealed class GeneralSettings
     public int StartupDelaySeconds { get; set; }
     /// <summary>"system", "none" or "https://host:port" (restart needed).</summary>
     public string Proxy { get; set; } = "system";
+    /// <summary>Grid in physical pixels that widgets snap to while moved in edit mode; 0 = no grid.</summary>
+    public int SnapGrid { get; set; }
+    /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
+    public bool SnapEdges { get; set; } = true;
 }
 
 public sealed class WidgetSettings
