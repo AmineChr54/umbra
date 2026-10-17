@@ -5,6 +5,8 @@ description: Ship a new Umbra version - bump Directory.Build.props, write notes,
 
 # Release Umbra
 
+Run `.claude/skills/release-checklist` first: it produces `dist/release-checklist-<ver>.md` with the build, install and human checks.
+
 1. **Pick the version** (semver):
    - patch: fixes only
    - minor: features
