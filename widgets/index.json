@@ -240,6 +240,26 @@
       ]
     },
     {
+      "id": "prayer-times",
+      "name": "Prayer Times",
+      "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated times from the Aladhan API (no key); tune the method and per-prayer minutes to match your mosque.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "api.aladhan.com"
+      ],
+      "notifications": true,
+      "files": [
+        "index.html",
+        "prayer-times.css",
+        "prayer-times.js",
+        "preview.png",
+        "times.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "quick-notes",
       "name": "Quick Notes",
       "description": "A scratchpad on your desktop with up to five note tabs. Saves as you type and shows a character count. Everything stays on your PC.",

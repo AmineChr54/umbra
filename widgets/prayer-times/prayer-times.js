@@ -65,7 +65,7 @@
     render();
     try {
       for (const m of missing) {
-        const url = `${API}/${m.y}/${m.m}?city=${encodeURIComponent(o.city)}&country=${encodeURIComponent(o.country)}&method=${o.method}&school=${o.school}`;
+        const url = `${API}/${m.y}/${m.m}?city=${encodeURIComponent(o.city)}&country=${encodeURIComponent(o.country)}&method=${encodeURIComponent(o.method)}&school=${encodeURIComponent(o.school)}`;
         const parsed = T.parseCalendar(await umbra.fetchJson(url));
         if (!cache || cache.key !== key) return;            // the user changed city/method meanwhile; this answer is stale
         cache.months[m.id] = { ...parsed, fetchedAt: Date.now() };
