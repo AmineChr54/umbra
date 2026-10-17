@@ -275,8 +275,17 @@ sealed class Control(App app)
                     throw new CommandException($"'{id}' is built in and always installed");
                 var entry = (await Community.FetchCatalogAsync()).FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                             ?? throw new CommandException($"'{id}' is not in the community catalog");
+                // Nothing is written until the user accepted any access the update adds. Passing acceptPermissions is
+                // the CLI user saying so (--accept-permissions); the MCP server never forwards it. Commands stay
+                // approved by hash, so an accepted command still needs its own approval before it runs.
+                using var pending = await Community.PrepareAsync(entry);
+                try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
+                catch (PermissionsChangedException ex)
+                {
+                    throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install {id} --accept-permissions (or update it in Settings > Browse).");
+                }
                 app.CloseWidget(id);
-                await Community.InstallAsync(entry);
+                pending.Commit();
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
                 return Describe(app.Manifests.First(m => m.Id == id), id);

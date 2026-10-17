@@ -281,8 +281,12 @@ sealed class SettingsWindow : Form
                 {
                     var entry = _catalog.FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                                 ?? throw new InvalidOperationException("Widget not in catalog");
+                    using var pending = await Community.PrepareAsync(entry);
+                    // Host-drawn, so the Settings page (or a widget) can't accept new access on the user's behalf.
+                    if (pending.NeedsApproval && !ConfirmNewAccess(pending))
+                        throw new InvalidOperationException("Not updated: the new access was declined");
                     _app.CloseWidget(id);
-                    await Community.InstallAsync(entry);
+                    pending.Commit();
                 });
                 break;
 
@@ -296,6 +300,16 @@ sealed class SettingsWindow : Form
                 });
                 break;
         }
+    }
+
+    /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
+    bool ConfirmNewAccess(Community.PendingInstall p)
+    {
+        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants new access:\n\n"
+            + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
+            + (string.IsNullOrWhiteSpace(p.Manifest.Changelog) ? "" : "\n\nWhat's new: " + p.Manifest.Changelog.Trim())
+            + "\n\nUpdate and allow this?";
+        return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
     }
 
     async Task RunJob(string id, Func<Task> job)

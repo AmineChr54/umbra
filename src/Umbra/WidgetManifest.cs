@@ -15,6 +15,8 @@ public sealed partial class WidgetManifest
     public string Description { get; set; } = "";
     public string Author { get; set; } = "";
     public string Version { get; set; } = "1.0.0";
+    /// <summary>What changed in this version (max 500 characters); shown when an update asks for new access.</summary>
+    public string? Changelog { get; set; }
     public string Entry { get; set; } = "index.html";
     public string? Preview { get; set; }
     public int Width { get; set; } = 320;
