@@ -460,6 +460,8 @@ sealed class Control(App app)
             ["scale"] = ws.Scale,
             ["refreshSeconds"] = ws.RefreshSeconds,
             ["opacity"] = ws.Opacity,
+            ["startHidden"] = ws.StartHidden,
+            ["showWhen"] = ws.ShowWhen is { } sw ? new JsonObject { ["from"] = sw.From, ["to"] = sw.To, ["onAc"] = sw.OnAc, ["monitor"] = sw.Monitor } : null,
             ["open"] = win is not null,
             ["bounds"] = win is null ? null : new JsonObject { ["x"] = win.Left, ["y"] = win.Top, ["width"] = win.Width, ["height"] = win.Height },
             ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),

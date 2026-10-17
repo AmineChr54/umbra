@@ -36,11 +36,29 @@ sealed class App : ApplicationContext
 
     bool ShouldHide => WidgetsHidden || HiddenByFullscreen;
 
+    /// <summary>Instances with "start hidden" that the user has not revealed yet (#66). Not saved.</summary>
+    readonly HashSet<string> _startHidden = new();
+    readonly System.Windows.Forms.Timer _rulesTimer = new() { Interval = 15000 };
+
+    /// <summary>Whether this widget copy may be on screen: global hide states, start-hidden and its "show only when" rules.</summary>
+    bool WantVisible(string inst)
+    {
+        if (ShouldHide || _startHidden.Contains(inst)) return false;
+        var rules = Settings.Widgets.TryGetValue(inst, out var ws) ? ws.ShowWhen : null;
+        if (rules is null) return true;
+        return Prefs.RulesAllow(rules, DateTime.Now.TimeOfDay,
+            SystemInformation.PowerStatus.PowerLineStatus != PowerLineStatus.Offline,
+            name => Screen.AllScreens.Any(s => s.DeviceName.Equals(name, StringComparison.OrdinalIgnoreCase)));
+    }
+
     /// <summary>Shows or hides every widget window from the hotkey and fullscreen states. Only changes windows whose state differs, so nothing flickers.</summary>
     void ApplyVisibility()
     {
-        foreach (var w in _windows.Values)
-            if (w.Visible == ShouldHide) w.Visible = !ShouldHide;
+        foreach (var (inst, w) in _windows)
+        {
+            var want = WantVisible(inst);
+            if (w.Visible != want) w.Visible = want;
+        }
     }
 
     void CheckFullscreen()
@@ -89,6 +107,7 @@ sealed class App : ApplicationContext
             case "refresh-all": foreach (var w in _windows.Values) w.RefreshData(); break;
             case "toggle-widgets":
                 WidgetsHidden = !WidgetsHidden;
+                if (!WidgetsHidden) _startHidden.Clear();
                 ApplyVisibility();
                 break;
             case "peek": Peek(); break;
@@ -187,11 +206,14 @@ sealed class App : ApplicationContext
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
 
+        foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
         _fullscreenTimer.Tick += (_, _) => CheckFullscreen();
         _fullscreenTimer.Start();
+        _rulesTimer.Tick += (_, _) => ApplyVisibility();
+        _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
@@ -346,7 +368,7 @@ sealed class App : ApplicationContext
                     win = new WidgetWindow(this, m, inst);
                     win.FormClosed += (_, _) => _windows.Remove(inst);
                     _windows[inst] = win;
-                    if (!ShouldHide) win.Show();
+                    if (WantVisible(inst)) win.Show();
                 }
                 else if (!enabled && open)
                 {
@@ -355,6 +377,8 @@ sealed class App : ApplicationContext
             }
         var live = Manifests.SelectMany(m => Settings.Instances(m.Id)).ToHashSet();
         foreach (var inst in _windows.Keys.Where(k => !live.Contains(k)).ToList()) CloseWidget(inst);
+        foreach (var inst in _startHidden.Where(k => !Settings.Widgets.TryGetValue(k, out var s) || !s.StartHidden).ToList()) _startHidden.Remove(inst);
+        ApplyVisibility();
     }
 
     /// <summary>Closes one copy (an instance id), or every copy of a widget (its plain id).</summary>
@@ -488,7 +512,7 @@ sealed class App : ApplicationContext
         else if (Settings.Widgets.TryGetValue(id, out var ws)) { ws.X = ws.Y = null; SaveSettings(); }
     }
 
-    public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); }
+    public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.RoundCorners(w.Handle); }
 
     /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
     public string ThemeCss => Theme.CssFor(Settings.General.Theme);

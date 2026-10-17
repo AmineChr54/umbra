@@ -601,7 +601,7 @@ sealed class WidgetWindow : Form
     public void PushSettings()
     {
         ApplyBounds();
-        Opacity = Ws.Opacity is double o ? Prefs.ClampOpacity(o) : 1.0;
+        Opacity = Ws.Opacity is double o ? Prefs.ClampOpacity(o, _app.Settings.General.ReduceTransparency) : 1.0;
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
@@ -620,6 +620,7 @@ sealed class WidgetWindow : Form
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
+            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
             ["scale"] = ws.Scale,
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),

@@ -48,6 +48,8 @@ umbractl edit-mode on                 # move/resize/zoom by hand; off, or no arg
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)
 umbractl configure sp500 --refresh 300 --opacity 0.8   # per-widget refresh interval (or default) and opacity (or opaque)
+umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --show-on-ac on   # start hidden; show only in a time range / on AC (--show-from always clears)
+umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove
 umbractl themes                       # installed and community themes; theme <id> switches live
