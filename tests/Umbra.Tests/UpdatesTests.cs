@@ -142,4 +142,53 @@ public class UpdatesTests
         Assert.Equal("sha256:" + new string('c', 64), Updates.ParseRelease(json)!.Digest);
         Assert.Null(Updates.ParseRelease(Release())!.Digest);
     }
+
+    [Theory]
+    [InlineData("1.4.0", "1.5.0", true)]
+    [InlineData("1.9.9", "1.10.0", true)]
+    [InlineData("1.5.0", "1.5.0", false)]
+    [InlineData("1.5.0", "1.4.0", false)]
+    [InlineData("", "1.5.0", false)]   // first install: nothing to announce
+    [InlineData(null, "1.5.0", false)]
+    [InlineData("garbage", "1.5.0", false)]
+    public void ShouldAnnounce_only_after_a_real_update(string? lastSeen, string current, bool expected) =>
+        Assert.Equal(expected, Updates.ShouldAnnounce(lastSeen, current));
+
+    [Theory]
+    [InlineData("", "1.5.0", "1.5.0")]      // first install records the running version
+    [InlineData("1.4.0", "1.5.0", "1.5.0")] // update
+    [InlineData("1.5.0", "1.5.0", "1.5.0")]
+    [InlineData("1.5.0", "1.4.0", "1.5.0")] // a downgrade must not make the next upgrade announce again
+    [InlineData("garbage", "1.5.0", "1.5.0")]
+    public void NextLastSeen_never_goes_backwards(string lastSeen, string current, string expected) =>
+        Assert.Equal(expected, Updates.NextLastSeen(lastSeen, current));
+
+    [Fact]
+    public void Announcing_happens_once_per_version()
+    {
+        var seen = "1.4.0";
+        var shown = 0;
+        foreach (var run in new[] { "1.5.0", "1.5.0", "1.5.0", "1.6.0", "1.6.0" })
+        {
+            if (Updates.ShouldAnnounce(seen, run)) shown++;
+            seen = Updates.NextLastSeen(seen, run);
+        }
+        Assert.Equal(2, shown);
+    }
+
+    [Fact]
+    public void Release_notes_urls_are_fixed_github_addresses()
+    {
+        Assert.Equal("https://api.github.com/repos/AmineChr54/umbra/releases/tags/v1.5.0", Updates.ReleaseByTagApi("1.5.0"));
+        Assert.Equal("https://github.com/AmineChr54/umbra/releases/tag/v1.5.0", Updates.ReleasePageUrl("1.5.0"));
+    }
+
+    [Fact]
+    public void Settings_keep_the_last_seen_version_in_the_file()
+    {
+        var s = new Settings();
+        Assert.Equal("", s.General.LastSeenVersion);
+        s.General.LastSeenVersion = "1.5.0";
+        Assert.Equal("1.5.0", Settings.FromJson(s.ToJson()).General.LastSeenVersion);
+    }
 }
