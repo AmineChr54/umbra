@@ -7,7 +7,7 @@
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
-  const handlers = { settings: [], refresh: [], store: [] };
+  const handlers = { settings: [], refresh: [], store: [], status: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -55,6 +55,7 @@
         applyMotion();
         applyEdit();
         applyTheme(); applyAppearance();
+        updateStatus(); // the stale threshold follows the refresh interval
         handlers.settings.forEach((fn) => fn(settings));
         break;
       case "editScale": // live scale while the corner handle is dragged; keeps the overlay's outline size steady
@@ -92,8 +93,94 @@
     });
   }
 
+  // Data freshness. Every fetchJson/fetchText outcome is tracked, so a widget that fetches gets a shared
+  // "Updated 3 min ago" / "Offline" state for free; ok() and failed(err) override it for data that arrives another way.
+  // States: none (nothing fetched yet), live, stale (data older than 3x the refresh interval), offline (2+ failures in a
+  // row, or a failure with nothing loaded since the widget started). <html data-stale> is set for stale and offline.
+  const STALE_AFTER = 3;  // x refreshSeconds
+  let lastData = null;    // when the data on screen was fetched (restored data counts, see ok(at))
+  let sessionOk = false;  // a fetch succeeded since the widget started
+  let failures = 0;       // consecutive failures
+  let lastError = null;
+  let statusState = "none";
+  let statusTimer = 0;
+  const statusEls = new Set();
+
+  const clock = (d) => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  function ago(d) {
+    const m = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m} min ago`;
+    return m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`;
+  }
+  function computeStatus() {
+    if (!lastData && !failures) return "none";
+    if (failures >= 2 || (failures >= 1 && !sessionOk)) return "offline";
+    if (lastData && Date.now() - lastData.getTime() > STALE_AFTER * (settings.refreshSeconds || 60) * 1000) return "stale";
+    return "live";
+  }
+  function paintStatus(el) {
+    el.dataset.state = statusState;
+    const text = statusState === "offline" ? (lastData ? `Offline · last data ${clock(lastData)}` : "Offline")
+      : lastData ? `Updated ${ago(lastData)}` : "";
+    const label = el.lastElementChild;
+    if (label && label.textContent !== text) label.textContent = text;
+  }
+  function updateStatus() {
+    const next = computeStatus();
+    const changed = next !== statusState;
+    statusState = next;
+    document.documentElement.toggleAttribute("data-stale", next === "stale" || next === "offline");
+    statusEls.forEach(paintStatus);
+    if (changed) handlers.status.forEach((fn) => fn(next));
+  }
+  function markStatus() {
+    if (!statusTimer) statusTimer = setInterval(updateStatus, 30000); // ages the label, flips live to stale
+    updateStatus();
+  }
+  const status = {
+    /** Data arrived (fetchJson/fetchText call this). Pass a Date only to show data restored from umbra.store as "last data". */
+    ok(at) {
+      if (at instanceof Date && !isNaN(at)) {
+        if (!lastData || at > lastData) lastData = at;
+      } else {
+        lastData = new Date(); sessionOk = true; failures = 0; lastError = null;
+      }
+      markStatus();
+    },
+    /** Loading failed: the request, or a response you couldn't use. The Error fetchJson rejected with is only counted once. */
+    failed(err) {
+      if (err != null && err === lastError) return;
+      lastError = err ?? new Error("Failed");
+      failures++;
+      markStatus();
+    },
+    /** "none" | "live" | "stale" | "offline" */
+    get state() { return statusState; },
+    /** When the data on screen was fetched, or null. */
+    get lastOk() { return lastData; },
+    /** Failures in a row since the last success. */
+    get failures() { return failures; },
+    /** fn(state) runs whenever the state changes. */
+    onChange: (fn) => handlers.status.push(fn),
+  };
+
+  /** <umbra-status>: a small dot. Hover for "Updated 3 min ago"; "Offline, last data 10:42" stays visible when offline. Styled in umbra.css. */
+  class UmbraStatus extends HTMLElement {
+    connectedCallback() {
+      if (!this.firstElementChild) this.innerHTML = '<i aria-hidden="true"></i><span></span>';
+      if (!this._hover) { this._hover = () => paintStatus(this); this.addEventListener("pointerenter", this._hover); }
+      statusEls.add(this);
+      paintStatus(this);
+    }
+    disconnectedCallback() { statusEls.delete(this); }
+  }
+  if (!customElements.get("umbra-status")) customElements.define("umbra-status", UmbraStatus);
+
+  const tracked = (p) => p.then((v) => { status.ok(); return v; }, (e) => { status.failed(e); throw e; });
+
   /** Fetch JSON through the host (bypasses CORS). The host must be listed in widget.json permissions.hosts. */
-  const fetchJson = (url) => request({ type: "fetchJson", url }, 25000);
+  const fetchJson = (url) => tracked(request({ type: "fetchJson", url }, 25000));
 
   /**
    * Run one of the commands declared in widget.json permissions.commands. Only the id and string params are sent;
@@ -112,7 +199,7 @@
     control: (command) => request({ type: "media", action: "control", command }, 10000),
   };
   /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
-  const fetchText = (url) => request({ type: "fetchText", url }, 25000);
+  const fetchText = (url) => tracked(request({ type: "fetchText", url }, 25000));
 
   /** This widget's own saved data (any JSON per key), kept by the host across restarts. */
   const store = {
@@ -258,6 +345,7 @@
     notify,
     media,
     fetchText,
+    status,
     store,
     every,
     openUrl: (url) => post({ type: "openUrl", url }),

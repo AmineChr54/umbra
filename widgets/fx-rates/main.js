@@ -1,5 +1,5 @@
-const rowsEl = document.getElementById("rows"), foot = document.getElementById("foot");
-let data = null, updated = null, failed = false;
+const rowsEl = document.getElementById("rows"), note = document.getElementById("note");
+let data = null, updated = null; // updated: date of the newest ECB rate
 const parse = s => [...new Set(String(s || "").toUpperCase().split(/[\s,;]+/).filter(c => /^[A-Z]{3}$/.test(c) && c !== "EUR"))].slice(0, 6);
 const day = d => d.toISOString().slice(0, 10);
 
@@ -12,15 +12,14 @@ function spark(vals) {
 
 function render() {
   const codes = parse(umbra.options.currencies), dec = Math.max(2, Math.min(6, +umbra.options.decimals || 4));
-  if (!codes.length) { rowsEl.innerHTML = '<li class="empty">Pick currencies in the widget options.</li>'; foot.textContent = ""; return; }
+  if (!codes.length) { rowsEl.innerHTML = '<li class="empty">Pick currencies in the widget options.</li>'; note.textContent = ""; return; }
   rowsEl.innerHTML = codes.map(c => {
     const s = data && data.series[c];
     if (!s || !s.length) return `<li><span class="c">${c}</span><span></span><span class="v num">-</span><span class="d">-</span></li>`;
     const last = s[s.length - 1], pct = (last / s[0] - 1) * 100, cls = Math.abs(pct) < 0.005 ? "" : pct > 0 ? "up" : "down";
     return `<li><span class="c">${c}</span><span class="${cls}">${spark(s)}</span><span class="v num">${umbra.fmt(last, dec)}</span><span class="d num ${cls}">${pct > 0 ? "+" : ""}${pct.toFixed(2)}%</span></li>`;
   }).join("");
-  foot.className = failed ? "err" : "";
-  foot.textContent = updated ? (failed ? "Offline, showing " : "Updated ") + updated : failed ? "Offline" : "Loading...";
+  note.textContent = updated ? `Rates of ${updated}` : umbra.status?.state === "none" ? "Loading..." : "";
 }
 
 async function load() {
@@ -33,17 +32,19 @@ async function load() {
     const series = {};
     for (const c of codes) series[c] = dates.map(d => j.rates[d][c]).filter(v => v != null);
     data = { series };
-    updated = `${dates[dates.length - 1]}, checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-    failed = false;
-    await umbra.store.set("last", { data, updated });
-  } catch (e) { failed = true; }
+    updated = dates[dates.length - 1];
+    await umbra.store.set("last", { data, updated, at: Date.now() });
+  } catch (e) { umbra.status?.failed(e); }
   render();
 }
 
 (async () => {
   await umbra.ready;
   const last = await umbra.store.get("last", null);
-  if (last) { data = last.data; updated = last.updated; }
+  if (last) {
+    data = last.data; updated = String(last.updated).split(",")[0]; // older saves also held ", checked <time>"
+    if (last.at) umbra.status?.ok(new Date(last.at)); // show the saved copy as "last data"
+  }
   render();
   umbra.every(async () => { await load(); umbra.rendered(); });
   let prev = umbra.options.currencies;
