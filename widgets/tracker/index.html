@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Application Tracker</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="tracker.css">
+</head>
+<body>
+  <main class="tr" id="app">
+    <header class="head">
+      <h1 class="title" id="title">Applications</h1>
+      <button class="add" id="add" data-no-drag aria-label="Add an application" title="Add an application">
+        <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></svg>
+      </button>
+    </header>
+    <nav class="chips" id="chips" data-no-drag aria-label="Filter by status"></nav>
+    <section class="list" id="list"></section>
+
+    <form class="sheet" id="sheet" data-no-drag autocomplete="off" hidden>
+      <div class="sheet-head">
+        <h2 id="sheet-title">New application</h2>
+        <button type="button" class="icon-btn" id="close" aria-label="Close">
+          <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <input class="field" id="f-company" maxlength="60" placeholder="Company" spellcheck="false" aria-label="Company">
+        <input class="field" id="f-role" maxlength="80" placeholder="Role" spellcheck="false" aria-label="Role">
+        <div class="seg" id="f-status" role="radiogroup" aria-label="Status"></div>
+        <div class="row">
+          <label for="f-date">Applied</label>
+          <input class="field num" type="date" id="f-date" min="1900-01-01" max="2999-12-31">
+        </div>
+        <div class="row">
+          <label for="f-follow">Follow up</label>
+          <div class="pair">
+            <input class="field num" type="date" id="f-follow" min="1900-01-01" max="2999-12-31">
+            <button type="button" class="btn small" id="clear-follow">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn danger" id="delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="save">Save</button>
+      </div>
+    </form>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="tracker.js"></script>
+</body>
+</html>

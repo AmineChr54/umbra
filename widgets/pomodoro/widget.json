@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "pomodoro",
+  "name": "Pomodoro",
+  "description": "A focus timer with a progress ring, start, pause and skip, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 300,
+  "height": 340,
+  "defaultPosition": { "x": 24, "y": 24 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "work": { "label": "Focus minutes", "type": "number", "default": 25, "min": 1, "max": 180, "step": 1 },
+    "shortBreak": { "label": "Short break minutes", "type": "number", "default": 5, "min": 1, "max": 60, "step": 1 },
+    "longBreak": { "label": "Long break minutes", "type": "number", "default": 15, "min": 1, "max": 90, "step": 1 },
+    "longEvery": { "label": "Long break after", "type": "number", "default": 4, "min": 2, "max": 10, "step": 1,
+                   "hint": "Number of focus sessions before a long break." },
+    "autoStart": { "label": "Start next session automatically", "type": "toggle", "default": false }
+  }
+}

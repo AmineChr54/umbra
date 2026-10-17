@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Pomodoro</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="pomodoro.css">
+</head>
+<body>
+  <main class="pm" id="app">
+    <header class="head">
+      <span class="phase" id="phase">Focus</span>
+      <span class="dots" id="dots" aria-label="Sessions in this cycle"></span>
+    </header>
+    <section class="dial">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="track" cx="60" cy="60" r="52"/>
+        <circle class="arc" id="arc" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="center">
+        <div class="time num" id="time">25:00</div>
+        <div class="sub" id="sub">Ready</div>
+      </div>
+    </section>
+    <div class="ctl" data-no-drag>
+      <button class="btn primary" id="toggle">Start</button>
+      <button class="btn" id="skip">Skip</button>
+    </div>
+    <section class="stats">
+      <div class="totals">
+        <div><b class="num" id="today">0m</b><span>today</span></div>
+        <div><b class="num" id="week">0m</b><span>last 7 days</span></div>
+      </div>
+      <div class="chart" id="chart" aria-label="Focus minutes, last 7 days"></div>
+    </section>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="pomodoro.js"></script>
+</body>
+</html>
