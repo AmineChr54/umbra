@@ -176,6 +176,10 @@ sealed class SettingsWindow : Form
                 }
                 break;
 
+            case "restart":
+                _app.Restart();
+                break;
+
             case "openUrl":
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
                 break;

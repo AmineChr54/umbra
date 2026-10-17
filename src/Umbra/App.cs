@@ -203,10 +203,12 @@ sealed class App : ApplicationContext
 
         Updater = new UpdateService(this);
         _tray = new NotifyIcon { Icon = AppIcon, Text = "Umbra", Visible = true };
-        _tray.DoubleClick += (_, _) => ShowSettings();
+        // One left click, like OneDrive and PowerToys. ShowSettings only focuses an open window, so a double-click never opens two.
+        _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowSettings(); };
         _tray.ContextMenuStrip = new ContextMenuStrip();
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
+        UpdateTrayStatus();
         _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
@@ -289,6 +291,47 @@ sealed class App : ApplicationContext
     {
         if (_settingsWindow is { IsDisposed: false }) _settingsWindow.RefreshState();
         BuildTrayMenu();
+        UpdateTrayStatus();
+    }
+
+    Icon? _badgedIcon;
+    bool _badged;
+
+    /// <summary>Refreshes the tray tooltip (widget count, edit/safe mode, update) and shows the update dot while an Umbra update is ready.</summary>
+    void UpdateTrayStatus()
+    {
+        _tray.Text = Tray.Tooltip(_windows.Count, EditMode, SafeMode, Updater.Available is not null);
+        var badge = Updater.Available is not null;
+        if (badge == _badged) return;
+        _badged = badge;
+        if (badge)
+        {
+            try { _badgedIcon = Tray.WithBadge(AppIcon, SystemInformation.SmallIconSize); _tray.Icon = _badgedIcon; }
+            catch (Exception ex) { Log.Write($"Tray badge failed: {ex.Message}"); _badged = false; }
+        }
+        else
+        {
+            _tray.Icon = AppIcon;
+            _badgedIcon?.Dispose();
+            _badgedIcon = null;
+        }
+    }
+
+    /// <summary>Starts a fresh Umbra that waits for this one to exit, then exits. For settings that only apply on start (GPU, proxy).</summary>
+    public void Restart()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppPaths.ExePath, Tray.RestartArg) { UseShellExecute = false });
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Restart failed: {ex.Message}");
+            _tray.ShowBalloonTip(4000, "Umbra", $"Could not restart: {ex.Message}", ToolTipIcon.Error);
+            return;
+        }
+        Log.Write("Restarting");
+        QuitSoon();
     }
 
     /// <summary>Exits shortly after the current pipe reply has been written.</summary>
@@ -342,6 +385,12 @@ sealed class App : ApplicationContext
             }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh all", null, (_, _) => { foreach (var w in _windows.Values) w.RefreshData(); });
+        menu.Items.Add("Open data folder", null, (_, _) =>
+        {
+            try { System.Diagnostics.Process.Start("explorer.exe", AppPaths.DataDir); }
+            catch (Exception ex) { Log.Write($"Open data folder failed: {ex.Message}"); }
+        });
+        menu.Items.Add("Restart Umbra", null, (_, _) => Restart());
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
     }
 
@@ -392,6 +441,7 @@ sealed class App : ApplicationContext
         foreach (var inst in _windows.Keys.Where(k => !live.Contains(k)).ToList()) CloseWidget(inst);
         foreach (var inst in _startHidden.Where(k => !Settings.Widgets.TryGetValue(k, out var s) || !s.StartHidden).ToList()) _startHidden.Remove(inst);
         ApplyVisibility();
+        UpdateTrayStatus();
     }
 
     /// <summary>Closes one copy (an instance id), or every copy of a widget (its plain id).</summary>
@@ -466,6 +516,7 @@ sealed class App : ApplicationContext
         SaveSettings();
         SyncWindows();
         BuildTrayMenu();
+        UpdateTrayStatus();
     }
 
     /// <summary>Replaces settings (positions included) and widget data from a validated backup; approvals are untouched.</summary>
@@ -562,6 +613,7 @@ sealed class App : ApplicationContext
     {
         _tray.Visible = false;
         _tray.Dispose();
+        _badgedIcon?.Dispose();
         Updater.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
         _fullscreenTimer.Dispose();

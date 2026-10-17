@@ -31,9 +31,9 @@
     group.append(row("Light text", "Brighter text colors for busy or bright wallpapers.", `<label class="switch"><input type="checkbox" id="pf-lightText"><span></span></label>`));
     group.append(row("Reduce transparency", "Solid lines and tints, and fully opaque widget windows (ignores per-widget opacity).", `<label class="switch"><input type="checkbox" id="pf-reduceTransparency"><span></span></label>`));
     group.append(row("Developer mode", "Right-click a widget for devtools (inspect, console). Widgets opened after the change; leave off normally.", `<label class="switch"><input type="checkbox" id="pf-developerMode"><span></span></label>`));
-    group.append(row("Hardware acceleration", "Turn off if widgets flicker or the GPU misbehaves. Restart Umbra to apply.", `<label class="switch"><input type="checkbox" id="pf-hardwareAcceleration"><span></span></label>`));
+    group.append(row("Hardware acceleration", "Turn off if widgets flicker or the GPU misbehaves. Restart Umbra to apply.", `<span style="display:flex;gap:10px;align-items:center"><button class="btn small" id="pf-restart-hw" style="display:none">Restart now</button><label class="switch"><input type="checkbox" id="pf-hardwareAcceleration"><span></span></label></span>`));
     group.append(row("Startup delay", "Seconds to wait after signing in before Umbra starts (0 to 300).", `<input type="number" id="pf-startupDelaySeconds" min="0" max="300" step="1" style="width:72px" aria-label="Startup delay seconds">`));
-    group.append(row("Proxy", "system, none, or https://host:port for widget requests and update checks. Restart Umbra to apply.", `<input type="text" id="pf-proxy" placeholder="system" style="width:200px" aria-label="Proxy">`));
+    group.append(row("Proxy", "system, none, or https://host:port for widget requests and update checks. Restart Umbra to apply.", `<span style="display:flex;gap:10px;align-items:center"><button class="btn small" id="pf-restart-proxy" style="display:none">Restart now</button><input type="text" id="pf-proxy" placeholder="system" style="width:200px" aria-label="Proxy"></span>`));
     group.append(row("Log file", "Opens umbra.log.", `<button class="btn" id="pf-openLog">Open log</button>`));
     page.append(sec);
 
@@ -51,9 +51,13 @@
     bind("reduceTransparency", null, (gen, i) => (gen.reduceTransparency = i.checked));
     sec.querySelector("#pf-accentReset").addEventListener("click", () => { g().accent = ""; save(true); window.prefsRender(); });
     bind("developerMode", null, (gen, i) => (gen.developerMode = i.checked));
-    bind("hardwareAcceleration", null, (gen, i) => (gen.hardwareAcceleration = i.checked));
+    // Both only apply on start: after a change in this session, offer to restart right here.
+    const needsRestart = (btn) => { sec.querySelector(btn).style.display = ""; };
+    for (const b of ["#pf-restart-hw", "#pf-restart-proxy"])
+      sec.querySelector(b).addEventListener("click", () => post({ type: "restart" }));
+    bind("hardwareAcceleration", null, (gen, i) => { gen.hardwareAcceleration = i.checked; needsRestart("#pf-restart-hw"); });
     bind("startupDelaySeconds", null, (gen, i) => { const v = Math.max(0, Math.min(300, Math.round(Number(i.value) || 0))); i.value = v; gen.startupDelaySeconds = v; });
-    bind("proxy", null, (gen, i) => (gen.proxy = i.value.trim() || "system"));
+    bind("proxy", null, (gen, i) => { gen.proxy = i.value.trim() || "system"; needsRestart("#pf-restart-proxy"); });
     sec.querySelector("#pf-openLog").addEventListener("click", () => post({ type: "openLog" }));
   }
 
