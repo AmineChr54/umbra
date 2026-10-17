@@ -6,10 +6,11 @@
 param(
   [Parameter(Mandatory)][string]$Installer,
   [string]$Version,
-  [string]$Out = (Join-Path $PSScriptRoot '..\dist\winget')
+  [string]$Out
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+if (-not $Out) { $Out = Join-Path $root 'dist\winget' }
 if (-not $Version) {
   $Version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props'))).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 }
