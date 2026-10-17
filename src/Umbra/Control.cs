@@ -107,6 +107,7 @@ sealed class Control(App app)
                 if (a["animations"] is JsonNode an) g.Animations = Bool(an, "animations");
                 if (a["checkForUpdates"] is JsonNode cu) g.CheckForUpdates = Bool(cu, "checkForUpdates");
                 if (a["hideOnFullscreen"] is JsonNode hf) g.HideOnFullscreen = Bool(hf, "hideOnFullscreen");
+                if (a["slowOnEnergySaver"] is JsonNode es) g.SlowOnEnergySaver = Bool(es, "slowOnEnergySaver");
                 if (a["peekSeconds"] is JsonNode ps)
                 {
                     var secs = Int(ps, "peekSeconds");

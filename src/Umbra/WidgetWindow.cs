@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Web.WebView2.Core;
@@ -665,6 +666,12 @@ sealed class WidgetWindow : Form
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
+    /// <summary>Tells the page that pausing or Energy Saver changed (#104); unlike <see cref="PushSettings"/> it leaves the window alone.</summary>
+    public void PushPower()
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
+    }
+
     public void RefreshData()
     {
         if (_ready) Post(new JsonObject { ["type"] = "refresh" });
@@ -673,15 +680,20 @@ sealed class WidgetWindow : Form
     JsonObject SettingsPayload()
     {
         var ws = Ws;
+        var saver = _app.Power.EnergySaver && _app.Settings.General.SlowOnEnergySaver; // true = intervals are stretched
         return new JsonObject
         {
-            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["refreshSeconds"] = PowerPolicy.Refresh(Prefs.EffectiveRefresh(ws, _app.Settings.General), saver, true),
+            ["paused"] = _app.Power.Paused,
+            ["energySaver"] = saver,
             ["animations"] = Prefs.MotionOn(_app.Settings.General),
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
-            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
+            ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
+            ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
+            ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),
         };

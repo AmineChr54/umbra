@@ -27,6 +27,7 @@
     group.append(row("Default size for new widgets", "Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
     group.append(row("Interface text size", "Percent; 80 to 140. Affects widgets that size text from the design tokens.", `<input type="number" id="pf-fontScale" min="80" max="140" step="5" style="width:72px" aria-label="Interface text size">`));
     group.append(row("Window border", "The hairline around widget windows.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-borderColor" aria-label="Border color"><label class="switch"><input type="checkbox" id="pf-borderEnabled"><span></span></label></span>`));
+    group.append(row("Match Windows accent", "Follows the accent color of Windows and updates when it changes. Dark accents are lightened to stay readable.", `<label class="switch"><input type="checkbox" id="pf-accentWindows"><span></span></label>`));
     group.append(row("Accent color", "Overrides the theme's accent. Reset to follow the theme.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-accent" aria-label="Accent color"><button class="btn" id="pf-accentReset">Reset</button></span>`));
     group.append(row("Light text", "Brighter text colors for busy or bright wallpapers.", `<label class="switch"><input type="checkbox" id="pf-lightText"><span></span></label>`));
     group.append(row("Reduce transparency", "Solid lines and tints, and fully opaque widget windows (ignores per-widget opacity).", `<label class="switch"><input type="checkbox" id="pf-reduceTransparency"><span></span></label>`));
@@ -47,6 +48,7 @@
     bind("borderEnabled", null, (gen, i) => (gen.borderEnabled = i.checked));
     bind("borderColor", null, (gen, i) => (gen.borderColor = i.value));
     bind("accent", null, (gen, i) => (gen.accent = i.value));
+    bind("accentWindows", null, (gen, i) => (gen.accent = i.checked ? "windows" : ""));
     bind("lightText", null, (gen, i) => (gen.lightText = i.checked));
     bind("reduceTransparency", null, (gen, i) => (gen.reduceTransparency = i.checked));
     sec.querySelector("#pf-accentReset").addEventListener("click", () => { g().accent = ""; save(true); window.prefsRender(); });
@@ -69,7 +71,11 @@
     set("fontScale", (i) => (i.value = Math.round((gen.fontScale || 1) * 100)));
     set("borderEnabled", (i) => (i.checked = gen.borderEnabled !== false));
     set("borderColor", (i) => (i.value = gen.borderColor || "#26282e"));
-    set("accent", (i) => (i.value = gen.accent || "#8b93ff"));
+    const win = String(gen.accent || "").toLowerCase() === "windows";
+    set("accentWindows", (i) => (i.checked = win));
+    set("accent", (i) => { i.value = win ? state.systemAccent || "#8b93ff" : gen.accent || "#8b93ff"; i.disabled = win; });
+    const reset = document.getElementById("pf-accentReset");
+    if (reset) reset.disabled = win;
     set("lightText", (i) => (i.checked = !!gen.lightText));
     set("reduceTransparency", (i) => (i.checked = !!gen.reduceTransparency));
     set("developerMode", (i) => (i.checked = !!gen.developerMode));
