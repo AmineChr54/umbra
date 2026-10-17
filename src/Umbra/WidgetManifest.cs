@@ -74,6 +74,16 @@ public sealed partial class WidgetManifest
         return builtInList.Concat(community).ToList();
     }
 
+    /// <summary>First line only, control characters removed, at most 500 characters (it is shown in a native dialog).</summary>
+    public static string? SanitizeChangelog(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var line = text.Trim().Split((char)10, 2)[0];
+        var clean = new string(line.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        if (clean.Length > 500) clean = clean[..500];
+        return clean.Length == 0 ? null : clean;
+    }
+
     /// <summary>Parses widget.json text. Throws on invalid JSON; does not check the id.</summary>
     public static WidgetManifest Parse(string text)
     {
@@ -88,6 +98,7 @@ public sealed partial class WidgetManifest
                 && perms.TryGetProperty("commands", out var cmds))
                 CommandSpec.CheckKeys(cmds);
         }
+        m.Changelog = SanitizeChangelog(m.Changelog);
         CommandSpec.ValidateAll(m.Permissions.Commands);
         SystemMetrics.Validate(m.Permissions.System);
         MediaService.Validate(m.Permissions.Media);

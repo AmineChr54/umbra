@@ -12,6 +12,17 @@ public class PermissionDiffTests
         WidgetManifest.Parse($$"""{ "id": "{{id}}", "name": "Demo", "version": "{{version}}", "permissions": {{permissions}} }""");
 
     [Fact]
+    public void Changelog_is_first_line_without_control_chars_and_capped()
+    {
+        var m = Cl("Fixed" + (char)7 + " bug" + (char)10 + "Second line");
+        Assert.Equal("Fixed bug", m.Changelog);
+        var big = Cl(new string((char)120, 900));
+        Assert.Equal(500, big.Changelog!.Length);
+    }
+
+    static WidgetManifest Cl(string c) => WidgetManifest.Parse(new JsonObject { ["id"] = "demo", ["name"] = "D", ["version"] = "1.0.0", ["changelog"] = c }.ToJsonString());
+
+    [Fact]
     public void Same_permissions_have_no_diff() =>
         Assert.True(PermissionDiff.Compute(M("""{ "hosts": ["a.example.com"], "notifications": true }"""), M("""{ "hosts": ["a.example.com"], "notifications": true }""", "1.1.0")).IsEmpty);
 

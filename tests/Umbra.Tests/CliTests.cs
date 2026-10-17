@@ -293,6 +293,13 @@ public class CommandLineTests
         return (cmd, a.ToJsonString());
     }
 
+    [Fact]
+    public async Task Install_takes_first_non_flag_as_id()
+    {
+        Assert.Equal(("install", """{"id":"todo","acceptPermissions":true}"""), await T("install", "--accept-permissions", "todo"));
+        Assert.Equal(("install", """{"id":"todo","acceptPermissions":true}"""), await T("install", "todo", "--accept-permissions"));
+    }
+
     [Theory]
     [InlineData("1.5", """{"id":"sp500","scale":1.5}""")]
     [InlineData("150%", """{"id":"sp500","scale":1.5}""")]

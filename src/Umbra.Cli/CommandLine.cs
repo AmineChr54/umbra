@@ -101,7 +101,8 @@ static class CommandLine
             {
                 // An update that adds hosts, media, notifications or commands is refused (and the new access listed) until
                 // the person at the keyboard repeats it with --accept-permissions.
-                var o = O(("id", Arg(a, 1, "widget id")));
+                var id = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing widget id. Run umbractl help.");
+                var o = O(("id", id));
                 if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
                 return ("install", o);
             }

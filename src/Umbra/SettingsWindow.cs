@@ -311,7 +311,7 @@ sealed class SettingsWindow : Form
     {
         var text = $"{p.Manifest.Name} {p.Manifest.Version} wants new access:\n\n"
             + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
-            + (string.IsNullOrWhiteSpace(p.Manifest.Changelog) ? "" : "\n\nWhat's new: " + p.Manifest.Changelog.Trim())
+            + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
             + "\n\nUpdate and allow this?";
         return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
     }
