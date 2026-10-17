@@ -148,7 +148,8 @@ sealed class App : ApplicationContext
 
     /// <summary>Monitor setup the last time it settled; a layout is only switched when this changes.</summary>
     /// <remarks>Read and written only on the UI thread: <c>_layoutTimer</c> is a WinForms timer and <see cref="SwitchLayoutForSetup"/> runs from its Tick.</remarks>
-    string _knownSetup = CurrentFingerprint();
+    // Not computed in the constructor: touching Screen before the message loop runs makes WebView2 fail later with RPC_E_CHANGED_MODE.
+    string? _knownSetup;
     readonly System.Windows.Forms.Timer _layoutTimer = new() { Interval = 2000 };
 
     /// <summary>After a monitor change settles: with the option on, applies the layout pinned to the new setup and says so in a balloon.</summary>
@@ -156,8 +157,10 @@ sealed class App : ApplicationContext
     {
         _layoutTimer.Stop();
         var setup = CurrentFingerprint();
-        if (setup == _knownSetup) return;
+        var first = _knownSetup is null;
+        var previous = _knownSetup;
         _knownSetup = setup;
+        if (first || setup == previous) return;
         if (!Settings.General.AutoSwitchLayouts || Layouts.FindPinned(setup) is not { } name) return;
         try
         {
@@ -322,6 +325,7 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         _layoutTimer.Tick += (_, _) => SwitchLayoutForSetup();
+        _ui.Post(_ => _knownSetup ??= CurrentFingerprint(), null); // first reading once the message loop runs
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         _timeSignature = TimeChange.Signature();
         _timeTimer.Tick += TimeTimerTick;
