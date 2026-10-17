@@ -345,14 +345,38 @@ sealed class SettingsWindow : Form
                 break;
 
             case "remove":
+            {
+                string? undo = null;
                 await RunJob(id, () =>
                 {
                     _app.CloseWidget(id); // every copy
-                    Community.Remove(id); // folder and the data of every copy
-                    _app.ForgetInstances(id);
+                    undo = WidgetTrash.Move(_app.Settings, id); // folder, data and settings of every copy, kept for Undo
+                    try
+                    {
+                        Community.Remove(id);
+                        _app.ForgetInstances(id);
+                    }
+                    catch (Exception ex) when (undo is not null)
+                    {
+                        // The widget is already in the trash, so it counts as removed; keep the Undo offer instead of failing the job.
+                        Log.Write($"Remove of {id} left leftovers after it was trashed: {ex.Message}");
+                    }
                     return Task.CompletedTask;
-                });
+                }, () => undo);
                 break;
+            }
+
+            case "undoRemove":
+            {
+                string? error = null;
+                string? name = null;
+                try { name = _app.RestoreWidget(id)?.Name; } // here id is the undo token from jobDone
+                catch (InvalidOperationException ex) { error = ex.Message; Log.Write($"Undo remove failed: {ex.Message}"); }
+                Post(new JsonObject { ["type"] = "undoDone", ["name"] = name, ["error"] = error });
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
         }
     }
 
@@ -366,13 +390,13 @@ sealed class SettingsWindow : Form
         return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
     }
 
-    async Task RunJob(string id, Func<Task> job)
+    async Task RunJob(string id, Func<Task> job, Func<string?>? undo = null)
     {
         string? error = null;
         try { await job(); }
         catch (Exception ex) { error = ex.Message; Log.Write($"Widget job {id} failed: {ex}"); }
         _app.ReloadWidgets();
-        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error });
+        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error, ["undo"] = undo?.Invoke() });
         SendState();
         await SendCatalog(refetch: false);
     }

@@ -235,6 +235,7 @@ sealed class App : ApplicationContext
         SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
+        try { WidgetTrash.Purge(); } catch (Exception ex) { Log.Write($"Trash purge failed: {ex.Message}"); }
         Prefs.Configure(Settings.General);
         _windowsAccent = new WindowsAccent(() => _ui.Post(_ => OnSystemAccentChanged(), null));
         Prefs.SystemAccent = _windowsAccent.Read();
@@ -629,6 +630,18 @@ sealed class App : ApplicationContext
     {
         Settings.RemoveExtraInstances(widgetId);
         SaveSettings();
+    }
+
+    /// <summary>Undo of Settings > Remove: brings back the trashed widget with its data, options and position. Returns its manifest.</summary>
+    public WidgetManifest? RestoreWidget(string token)
+    {
+        string id;
+        try { id = WidgetTrash.Restore(Settings, token); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { throw new InvalidOperationException($"Could not restore the widget: {ex.Message}"); }
+        SaveSettings();
+        ReloadWidgets();
+        SettingsChangedElsewhere();
+        return Manifests.FirstOrDefault(m => m.Id == id);
     }
 
     /// <summary>

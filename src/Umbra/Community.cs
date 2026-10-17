@@ -301,6 +301,30 @@ static class Community
         CopyDirectory(staging, target);
     }
 
+    /// <summary>
+    /// Same checks a catalog install does, for a widget folder that is already on disk (a trash entry about to be restored):
+    /// widget.json parses and its id equals <paramref name="id"/>, the entry file exists, every file has a safe relative path
+    /// and an allowed type, and the total size is within 5 MB. Throws <see cref="InvalidOperationException"/> otherwise.
+    /// </summary>
+    internal static void ValidateFolder(string folder, string id)
+    {
+        var manifestPath = Path.Combine(folder, "widget.json");
+        if (!File.Exists(manifestPath)) throw new InvalidOperationException("The trash entry has no widget.json");
+        WidgetManifest manifest;
+        try { manifest = WidgetManifest.Parse(File.ReadAllText(manifestPath)); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { throw new InvalidOperationException($"The trashed widget.json is invalid: {ex.Message}"); }
+        if (manifest.Id != id) throw new InvalidOperationException($"The trashed widget.json id is '{manifest.Id}', expected '{id}'");
+        long total = 0;
+        foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(folder, file).Replace('\\', '/');
+            if (!IsSafeRelativePath(rel)) throw new InvalidOperationException($"Unsafe or disallowed file in the trash entry: '{rel}'");
+            total += new FileInfo(file).Length;
+            if (total > MaxWidgetBytes) throw new InvalidOperationException("The trashed widget is larger than 5 MB");
+        }
+        if (!File.Exists(Path.Combine(folder, manifest.Entry.Replace('/', Path.DirectorySeparatorChar)))) throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing from the trash entry");
+    }
+
     public static void Remove(string id)
     {
         if (!WidgetManifest.IdPattern().IsMatch(id)) return;
