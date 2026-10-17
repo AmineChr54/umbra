@@ -240,6 +240,13 @@ static class Community
         if (!WidgetManifest.IdPattern().IsMatch(id)) return;
         var target = Path.Combine(AppPaths.CommunityDir, id);
         if (Directory.Exists(target)) Directory.Delete(target, recursive: true);
+        // A legacy id may also exist as a stale built-in folder from an old install (per-user, so writable).
+        if (Restore.LegacyIds.Contains(id))
+        {
+            var old = Path.Combine(AppPaths.WidgetsDir, id);
+            try { if (Directory.Exists(old)) Directory.Delete(old, recursive: true); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Write($"Could not delete old built-in copy of {id}: {ex.Message}"); }
+        }
         WidgetStore.DeleteAll(id);
         CommandApprovals.Shared.Revoke(id);
         // Working folders of every copy ("sp500" and "sp500__2", ...).

@@ -196,7 +196,7 @@ sealed class Control(App app)
                     copy.Remove("files");
                     var installed = app.Manifests.FirstOrDefault(m => m.Id == copy["id"]?.GetValue<string>());
                     copy["installed"] = installed is not null;
-                    copy["builtin"] = installed?.Source == WidgetSource.BuiltIn;
+                    copy["builtin"] = installed?.IsPermanent == true;
                     copy["installedVersion"] = installed?.Version;
                     copy["updateAvailable"] = installed is { Source: WidgetSource.Community }
                         && Community.CompareVersions(copy["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
@@ -208,7 +208,7 @@ sealed class Control(App app)
             case "install":
             {
                 var id = Str(a, "id");
-                if (app.Manifests.Any(m => m.Id == id && m.Source == WidgetSource.BuiltIn))
+                if (app.Manifests.Any(m => m.Id == id && m.IsPermanent))
                     throw new CommandException($"'{id}' is built in and always installed");
                 var entry = (await Community.FetchCatalogAsync()).FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                             ?? throw new CommandException($"'{id}' is not in the community catalog");
@@ -222,7 +222,7 @@ sealed class Control(App app)
             case "remove":
             {
                 var (m, _) = Target(a);
-                if (m.Source == WidgetSource.BuiltIn) throw new CommandException($"'{m.Id}' is built in; disable it instead");
+                if (m.IsPermanent) throw new CommandException($"'{m.Id}' is built in; disable it instead");
                 app.CloseWidget(m.Id);
                 Community.Remove(m.Id); // folder and the data of every copy
                 app.ForgetInstances(m.Id);
@@ -370,7 +370,7 @@ sealed class Control(App app)
             ["description"] = m.Description,
             ["author"] = m.Author,
             ["version"] = m.Version,
-            ["source"] = m.Source == WidgetSource.BuiltIn ? "builtin" : "community",
+            ["source"] = m.IsPermanent ? "builtin" : "community",
             ["folder"] = Path.Combine(m.Source == WidgetSource.BuiltIn ? AppPaths.WidgetsDir : AppPaths.CommunityDir, m.Folder),
             ["enabled"] = ws.Enabled,
             ["locked"] = ws.Locked,
