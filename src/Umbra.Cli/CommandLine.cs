@@ -76,6 +76,7 @@ static class CommandLine
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 if (Flag(a, "--hide-fullscreen") is string hf) o["hideOnFullscreen"] = OnOff(hf);
+                if (Flag(a, "--energy-saver") is string es) o["slowOnEnergySaver"] = OnOff(es);
                 if (Flag(a, "--snap-grid") is string sgr) o["snapGrid"] = int.Parse(sgr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--snap-edges") is string sed) o["snapEdges"] = OnOff(sed);
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);

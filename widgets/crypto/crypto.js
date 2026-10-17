@@ -29,11 +29,11 @@ function opts() {
 /** Currency string; small prices get more decimals so they don't read as 0.00. */
 function money(v, cur) {
   const digits = cur === "jpy" ? (v < 1 ? 4 : 0) : v >= 1 ? 2 : v >= 0.01 ? 4 : 6;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: cur.toUpperCase(), minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
+  return new Intl.NumberFormat(umbra.locale, { style: "currency", currency: cur.toUpperCase(), minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v);
 }
 
 function compact(v, cur) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: cur.toUpperCase(), notation: "compact", maximumFractionDigits: 1 }).format(v);
+  return new Intl.NumberFormat(umbra.locale, { style: "currency", currency: cur.toUpperCase(), notation: "compact", maximumFractionDigits: 1 }).format(v);
 }
 
 async function load() {

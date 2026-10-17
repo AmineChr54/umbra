@@ -17,7 +17,7 @@ function render() {
     const s = data && data.series[c];
     if (!s || !s.length) return `<li><span class="c">${c}</span><span></span><span class="v num">-</span><span class="d">-</span></li>`;
     const last = s[s.length - 1], pct = (last / s[0] - 1) * 100, cls = Math.abs(pct) < 0.005 ? "" : pct > 0 ? "up" : "down";
-    return `<li><span class="c">${c}</span><span class="${cls}">${spark(s)}</span><span class="v num">${umbra.fmt(last, dec)}</span><span class="d num ${cls}">${pct > 0 ? "+" : ""}${pct.toFixed(2)}%</span></li>`;
+    return `<li><span class="c">${c}</span><span class="${cls}">${spark(s)}</span><span class="v num">${umbra.fmt(last, dec)}</span><span class="d num ${cls}">${pct > 0 ? "+" : ""}${umbra.fmt(pct)}%</span></li>`;
   }).join("");
   note.textContent = updated ? `Rates of ${updated}` : umbra.status?.state === "none" ? "Loading..." : "";
 }

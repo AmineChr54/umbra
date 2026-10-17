@@ -140,3 +140,23 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 /* old data (stale or offline): dim the figures */
 .quote { transition: opacity 400ms; }
 html[data-stale] .quote { opacity: 0.55; }
+
+/* Windows contrast themes: tokens map to system colors (umbra.css), so draw the chart with them explicitly
+   (forced-color-adjust: none, chart only) and replace gradients and glows with plain strokes. */
+@media (forced-colors: active) {
+  .card { background: Canvas; }
+  .pill { outline: 1px solid CanvasText; outline-offset: -1px; box-shadow: none; }
+  .market i { outline: 1px solid CanvasText; }
+  .market.open i { animation: none; box-shadow: none; }
+  .market:not(.open) i { background: Canvas; }
+  .foot .range { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .chart { forced-color-adjust: none; }
+  .line { stroke: CanvasText; filter: none; }
+  .fill-top { stop-color: CanvasText; stop-opacity: 0.18; }
+  .fill-bottom { stop-color: CanvasText; stop-opacity: 0; }
+  .ref, .cross { stroke: GrayText; }
+  .dot { fill: CanvasText; stroke: Canvas; }
+  .halo { display: none; }
+  .hover-dot { fill: Highlight; stroke: Canvas; }
+  .tip { color: CanvasText; background: Canvas; box-shadow: none; outline: 1px solid CanvasText; }
+}

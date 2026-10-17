@@ -97,9 +97,9 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, locale, hour12, editMode, paused, energySaver, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets. `paused` is true while the PC is locked or the display is off; `energySaver` is true while Windows Energy Saver is on and the user allows slowing down, in which case `refreshSeconds` is already 4x longer. Both arrive through `umbra.onSettings` |
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
-| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
+| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all", after the PC resumes from sleep, when the network comes back and after a long lock (at most once per 10 s). Errors are caught and logged. Does not run while `umbra.settings.paused` and runs once when the PC is unlocked or the display is back on |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
 | `umbra.system()` | Resolves machine totals for the kinds declared in `permissions.system`: `cpu.percent`, `memory.{totalBytes,usedBytes,percent}`, `network.{downBytesPerSec,upBytesPerSec}`. Read-only numbers; no process or adapter names. Rejects without `permissions.system`; call it from `umbra.every` (shared sample, at most 2 per second) |
@@ -117,7 +117,9 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.openUrl(url)` | Opens an http(s) link in the user's browser (links never navigate the widget) |
 | `umbra.rendered()` | Call once the first real frame is drawn; screenshots wait for it |
 | `umbra.tween(from, to, ms, onFrame)` | Ease-out-cubic number animation; jumps straight to `to` when motion is off or the window is hidden |
-| `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"` |
+| `umbra.locale` | The user's Windows region format as a BCP-47 tag (`"de-DE"`). Pass it to `Intl.*` and `toLocale*String` instead of `[]` or a hard-coded `"en-US"`; `"en-US"` before the host has sent settings |
+| `umbra.hour12` | `true` when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to `Intl.DateTimeFormat` or `toLocaleTimeString`, and let an option override it if you offer one |
+| `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"`, or `"7.744,06"` when Windows is set to German: it follows `umbra.locale` |
 
 Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.fetchJson` always works.
 
@@ -161,7 +163,7 @@ See `widgets/todo` for an example.
 
 **Appearance**: the user can pick a corner radius (`--radius-s/m/l` are overridden after the theme) and calm motion, which sets `--motion-scale: 2`; multiply your durations with `calc(200ms * var(--motion-scale, 1))`. `umbra.onSettings` reports the widget's own refresh interval as `refreshSeconds` when the user set one.
 
-**More appearance options**: the user can also set an accent color (`--accent`, `--accent-strong`, `--accent-soft`, also passed as `umbra.settings.accent`, empty = theme), light text (brighter `--text*`), an interface font (`--font`, `--font-display`), a text size (`--font-scale`, applied to the base font size of `umbra.css`; use `em`/`rem` to follow it), a window border on/off and color, and "reduce transparency" (solid `--line*` and `--accent-soft`, opaque windows). Avoid translucent colors of your own if you want to honor it.
+**More appearance options**: the user can also set an accent color (`--accent`, `--accent-strong`, `--accent-soft`, also passed as `umbra.settings.accent`, empty = theme; "Match Windows accent" follows the system accent live, lightened if it is too dark for black), light text (brighter `--text*`), an interface font (`--font`, `--font-display`), a text size (`--font-scale`, applied to the base font size of `umbra.css`; use `em`/`rem` to follow it), a window border on/off and color, and "reduce transparency" (solid `--line*` and `--accent-soft`, opaque windows). Avoid translucent colors of your own if you want to honor it.
 
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.
@@ -206,6 +208,14 @@ theme can change:
 | `--up`, `--down`, `--flat` | `#2fd58b`, `#ff5a5f`, `#9aa0aa` | Rising, falling and unchanged values |
 | `--radius-s`, `--radius-m`, `--radius-l` | `8px`, `12px`, `18px` | Corner radii |
 
+**Windows contrast themes**: when Windows has a contrast theme on, the page runs with `forced-colors: active`:
+Windows replaces colors and drops `box-shadow`s and most backgrounds. `umbra.css` then maps the tokens to system
+colors (`Canvas`, `CanvasText`, `Highlight`; `--up`, `--down` and `--flat` all become `CanvasText`) and ignores theme
+tokens. To stay readable, draw borders and separators with `border` or `outline` instead of shadows, and don't rely
+on color alone: give a rising or falling value the `trend-up` or `trend-down` class and `umbra.css` adds a ▲ or ▼ in
+front of it (only in that mode). Use `forced-color-adjust: none` only for things that must keep their own colors,
+such as a chart, and then pick system colors yourself.
+
 ## Themes
 
 A theme is a folder `themes/<id>/` with a `theme.json` (and optionally a preview image). It is data only: a map of
@@ -237,7 +247,9 @@ tokens follows the theme live when the user switches. Widgets that set `"themeab
 - **True black background (`#000`)**, no transparency. Umbra is built for OLED, where black pixels are off,
   and the window has DWM rounded corners and a hairline border.
 - Text 11 px or larger; tabular numbers for values that change.
-- Calm by default: no constant animation, no network calls faster than `umbra.every`.
+- Calm by default: no constant animation, no network calls faster than `umbra.every`. If you run your own timers or
+  fetch loops, stop them while `umbra.settings.paused` is true, start again (with one refresh) when it turns false, and
+  use `umbra.settings.refreshSeconds` as the interval so Energy Saver slows you down too.
 - Fit the declared `width` x `height` exactly; the window does not scroll or reflow. When the user resizes it,
   Umbra zooms the whole page instead.
 

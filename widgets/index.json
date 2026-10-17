@@ -2,11 +2,29 @@
   "schema": 1,
   "widgets": [
     {
+      "id": "buddy",
+      "name": "Buddy",
+      "description": "Pair with a friend using a one-time code and see a green dot when they are online. Needs the small relay in tools/buddy-relay.",
+      "author": "AmineChr54",
+      "version": "1.0.1",
+      "preview": "preview.png",
+      "hosts": [
+        "umbra-buddy-relay.umbra-server.workers.dev"
+      ],
+      "files": [
+        "index.html",
+        "main.js",
+        "preview.png",
+        "style.css",
+        "widget.json"
+      ]
+    },
+    {
       "id": "calendar-glance",
       "name": "Calendar glance",
       "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "calendar.google.com",
@@ -53,7 +71,7 @@
       "name": "Clock",
       "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [],
       "files": [
@@ -67,7 +85,7 @@
       "name": "Countdowns",
       "description": "Count down to birthdays, trips and deadlines as dot grids, bars or rings, plus how far this year, month or week has gone. Add and edit right in the widget.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [],
       "files": [
