@@ -7,7 +7,7 @@
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
-  const handlers = { settings: [], refresh: [], store: [], status: [], time: [] };
+  const handlers = { settings: [], refresh: [], store: [], status: [], time: [], notification: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -84,6 +84,9 @@
         m.ok ? p.resolve(m.data) : p.reject(new Error(m.error || "Request failed"));
         break;
       }
+      case "notificationAction":
+        handlers.notification.forEach((fn) => fn({ id: m.action, tag: m.tag ?? null }));
+        break;
       case "storeChanged":
         handlers.store.forEach((fn) => fn(m.key ?? null));
         break;
@@ -197,8 +200,12 @@
   const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
   /** Machine totals declared in widget.json permissions.system: { cpu:{percent}, memory:{totalBytes,usedBytes,percent}, network:{downBytesPerSec,upBytesPerSec} }. */
   const system = () => request({ type: "system" }, 10000);
-  /** Windows notification from this widget. Needs permissions.notifications and the user's per-widget switch; 5 per 10 minutes. Clicking opens url (http/https). */
-  const notify = ({ title, body, url }) => request({ type: "notify", title, body, url }, 10000);
+  /**
+   * Windows toast from this widget. Needs permissions.notifications and the user's per-widget switch; 5 per 10 minutes.
+   * Clicking opens url (HTTPS, host in permissions.hosts). tag replaces this widget's earlier toast with the same tag.
+   * actions (up to 2 of { id, label }) become buttons; a click calls the umbra.onNotificationAction handlers.
+   */
+  const notify = ({ title, body, url, tag, actions }) => request({ type: "notify", title, body, url, tag, actions }, 10000);
   /** Windows media session. nowPlaying() needs permissions.media "read": { title, artist, album, app, status, playing, canPlay, canPause, canNext, canPrevious, art? (data URL) } or null. */
   const media = {
     nowPlaying: () => request({ type: "media", action: "get" }, 10000),
@@ -396,6 +403,8 @@
     /** True when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to Intl.DateTimeFormat. */
     get hour12() { return !!settings.hour12; },
     onSettings: (fn) => handlers.settings.push(fn),
+    /** fn({ id, tag }) when the user clicks a button on one of this widget's toasts (id from notify's actions, tag as sent or null). */
+    onNotificationAction: (fn) => handlers.notification.push(fn),
     /** fn() runs when the system clock or time zone changed (travel, clock correction). Date already reflects the new zone; re-render and re-schedule anything tied to "today" or midnight. Without a listener, umbra.every callbacks run instead. */
     onTimeChanged: (fn) => handlers.time.push(fn),
     fetchJson,

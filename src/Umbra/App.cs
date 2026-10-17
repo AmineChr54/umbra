@@ -8,8 +8,10 @@ sealed class App : ApplicationContext
     readonly Dictionary<string, WidgetWindow> _windows = new();
     readonly NotifyIcon _tray;
     readonly Notifier _notifier = new();
-    string? _balloonUrl;
+    string? _balloonUrl; // only for the balloon fallback; toasts carry their own URL
     Action? _balloonAction; // what a click on the current balloon does instead of opening _balloonUrl
+    ToastService? _toasts;
+    bool _toastsTried;
     readonly SynchronizationContext _ui;
     SettingsWindow? _settingsWindow;
     public UpdateService Updater { get; }
@@ -397,7 +399,7 @@ sealed class App : ApplicationContext
         catch (Exception ex)
         {
             Log.Write($"Restart failed: {ex.Message}");
-            ShowBalloon(4000, "Umbra", $"Could not restart: {ex.Message}", ToolTipIcon.Error, null, null);
+            ShowBalloon(4000, "Umbra", $"Could not restart: {ex.Message}", ToolTipIcon.Error, null);
             return;
         }
         Log.Write("Restarting");
@@ -471,14 +473,14 @@ sealed class App : ApplicationContext
     /// <summary>A balloon from Umbra itself (not a widget), e.g. a failed update.</summary>
     public void ShowTrayMessage(string text, ToolTipIcon icon)
     {
-        ShowBalloon(5000, "Umbra", text, icon, null, null);
+        ShowBalloon(5000, "Umbra", text, icon, null);
     }
 
     /// <summary>
-    /// The only place a tray balloon is shown: it resets what a click does first, so a later balloon without a target
-    /// never inherits the previous one's URL or action (e.g. opening About).
+    /// The one place a tray balloon is shown: it resets the click target (URL and action) first, so clicking an unrelated
+    /// balloon never opens an earlier balloon's URL or About.
     /// </summary>
-    void ShowBalloon(int ms, string title, string text, ToolTipIcon icon, string? url, Action? action)
+    void ShowBalloon(int ms, string title, string text, ToolTipIcon icon, string? url, Action? action = null)
     {
         _balloonUrl = url;
         _balloonAction = action;
@@ -493,12 +495,27 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
-    /// <summary>Shows a widget's notification (balloon/toast from the tray icon) unless its rate limit is used up; clicking opens <paramref name="url"/>.</summary>
-    public bool Notify(string instance, string widgetName, string title, string body, string? url)
+    /// <summary>
+    /// Shows a widget's notification as a Windows toast (clicking opens <paramref name="url"/>; buttons go back to the widget) unless its
+    /// rate limit is used up. Falls back to a tray balloon when toasts can't be created or shown.
+    /// </summary>
+    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag = null, IReadOnlyList<NotifyAction>? actions = null)
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
         Log.Write($"[{instance}] notify: {title}");
-        ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url, null);
+        if (!_toastsTried) { _toastsTried = true; _toasts = ToastService.TryCreate(); }
+        if (_toasts is { } toasts)
+        {
+            try
+            {
+                toasts.Show(instance, widgetName, title, body, url, tag, actions ?? [],
+                    u => _ui.Post(_ => WebHost.OpenExternal(u), null),
+                    id => _ui.Post(_ => Window(instance)?.NotificationAction(tag, id), null));
+                return true;
+            }
+            catch (Exception ex) { Log.Write($"Toast failed, using a balloon: {ex.Message}"); }
+        }
+        ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url);
         return true;
     }
 
