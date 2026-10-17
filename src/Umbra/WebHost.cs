@@ -20,6 +20,17 @@ static class WebHost
         _env ??= CoreWebView2Environment.CreateAsync(null, AppPaths.WebViewDataDir,
             new CoreWebView2EnvironmentOptions { AdditionalBrowserArguments = Prefs.WebViewArguments(WebSettings) });
 
+    static int _generation;
+
+    /// <summary>Counts how often the environment was replaced: a window remembers it so only the first to see the browser process die replaces it.</summary>
+    public static int EnvironmentGeneration => Volatile.Read(ref _generation);
+
+    /// <summary>Drops the cached environment after the browser process died, unless another window already did (<paramref name="seen"/> is the generation it ran on).</summary>
+    public static void RecreateEnvironment(int seen)
+    {
+        if (Interlocked.CompareExchange(ref _generation, seen + 1, seen) == seen) _env = null;
+    }
+
     /// <summary>Set by App before the first WebView2 is created (hardware acceleration and proxy are read once).</summary>
     public static GeneralSettings WebSettings { get; set; } = new();
 

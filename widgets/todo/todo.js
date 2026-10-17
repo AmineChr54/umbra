@@ -330,4 +330,5 @@ umbra.ready.then(async () => {
 });
 
 umbra.onSettings(() => { if (!first) render(); });
+umbra.onTimeChanged?.(() => { if (!first) render(); }); // time zone or clock changed: today may be a different day
 umbra.store?.onChange(async () => { await load(); render(); });

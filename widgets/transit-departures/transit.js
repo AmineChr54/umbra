@@ -2,7 +2,6 @@
   const API = "https://v6.bvg.transport.rest";
   const $ = id => document.getElementById(id);
   let data = null;      // last good { stopName, deps: [{ when, planned, delay, line, product, direction, cancelled }] }
-  let stale = false;
   let error = "";
   let first = true;
 
@@ -23,13 +22,14 @@
 
   async function load() {
     const query = String(umbra.options.stop || "").trim();
-    if (!query) { data = null; stale = false; error = "Set a stop in Settings."; return; }
+    if (!query) { data = null; error = "Set a stop in Settings."; return; }
     try {
       const stop = await resolveStop(query);
       const r = await umbra.fetchJson(`${API}/stops/${encodeURIComponent(stop.id)}/departures?duration=90&results=60`);
       const list = Array.isArray(r) ? r : r.departures || [];
       data = {
         key: query,
+        at: Date.now(),
         stopName: shortName(stop.name),
         deps: list.map(d => ({
           when: Date.parse(d.when || d.plannedWhen || ""),
@@ -40,16 +40,17 @@
           cancelled: !!d.cancelled,
         })).filter(d => !Number.isNaN(d.when)),
       };
-      stale = false; error = "";
+      error = "";
       umbra.store.set("last", data).catch(() => {});
     } catch (e) {
-      if (e && e.notFound) { data = null; stale = false; error = `No stop found for "${query}".`; return; }
-      stale = true;
+      if (e && e.notFound) { data = null; error = `No stop found for "${query}".`; return; }
+      umbra.status?.failed(e); // already counted when it was the fetch that failed
       if (!data || data.key !== query) {
         const c = await umbra.store.get("last", null);
         data = c && c.key === query ? c : null;
+        if (data && data.at) umbra.status?.ok(new Date(data.at)); // show the saved copy as "last data"
       }
-      if (!data) { stale = false; error = "Could not load departures. Check your connection."; }
+      if (!data) { error = "Could not load departures. Check your connection."; }
     }
   }
 
@@ -58,7 +59,6 @@
     const walk = Math.max(0, Number(o.walk) || 0);
     const rows = Math.max(1, Math.min(10, Number(o.rows) || 7));
     const wanted = String(o.lines || "").split(",").map(s => s.trim().toLowerCase().replace(/\s+/g, "")).filter(Boolean);
-    $("stale").hidden = !stale;
     const list = $("list");
     list.textContent = "";
     if (!data) {

@@ -32,8 +32,8 @@
         </div>
       </div>
 
-      <nav class="nav" id="nav">
-        <button data-page="general" class="active"><span class="ico" data-icon="sliders"></span>General</button>
+      <nav class="nav" id="nav" aria-label="Settings pages">
+        <button data-page="general" class="active" aria-current="page"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
         <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
@@ -48,7 +48,7 @@
     </aside>
 
     <main class="content" id="content">
-      <div id="safeBanner" hidden style="margin:0 0 16px;padding:10px 14px;border:1px solid #d8a13a;border-radius:10px;background:rgba(216,161,58,.12);color:#f0c674">
+      <div id="safeBanner" role="status" hidden style="margin:0 0 16px;padding:10px 14px;border:1px solid #d8a13a;border-radius:10px;background:rgba(216,161,58,.12);color:#f0c674">
         <strong>Safe mode is on.</strong> Community widgets are not running. Nothing was deleted or disabled; the next normal start of Umbra restores them. <button id="safeOff" type="button">Turn off safe mode</button>
       </div>
       <!-- General -->
@@ -69,15 +69,22 @@
           <div class="row">
             <div class="row-text">
               <div class="row-title">Refresh interval</div>
-              <div class="row-sub">How often widgets fetch fresh data.</div>
+              <div class="row-sub">How often widgets fetch fresh data. They stop while the PC is locked or the display is off, and refresh once when you are back.</div>
             </div>
-            <div class="segmented" id="interval">
+            <div class="segmented" id="interval" role="radiogroup">
               <button data-v="30">30s</button>
               <button data-v="60">1m</button>
               <button data-v="120">2m</button>
               <button data-v="300">5m</button>
               <button data-v="600">10m</button>
             </div>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Slow down on Energy Saver</div>
+              <div class="row-sub">While Windows Energy Saver is on, widgets refresh 4 times less often to save battery and API quota.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="slowEnergySaver"><span></span></label>
           </div>
           <div class="row">
             <div class="row-text">
@@ -111,7 +118,7 @@
 
         <div class="hint">
           <span class="ico" data-icon="mouse"></span>
-          Drag a widget anywhere on the desktop to move it. To resize it, turn on Edit mode in My widgets or the tray menu. Double-click it to open the source. Umbra lives in the tray.
+          Drag a widget to move it (unless it's locked). To resize it, turn on Edit mode in My widgets or the tray menu. Some widgets open their source on double-click. Umbra lives in the tray.
         </div>
       </section>
 
@@ -150,7 +157,7 @@
 
         <div class="search">
           <span class="ico" data-icon="search"></span>
-          <input id="search" placeholder="Search widgets" autocomplete="off" spellcheck="false">
+          <input id="search" placeholder="Search widgets" aria-label="Search widgets" aria-keyshortcuts="Control+F /" autocomplete="off" spellcheck="false">
         </div>
         <div class="grid" id="catalog"></div>
       </section>
@@ -211,7 +218,8 @@
           </div>
           <div class="about-links">
             <button class="btn" data-url="repo"><span class="ico" data-icon="github"></span>Source code</button>
-            <button class="btn" data-url="issues"><span class="ico" data-icon="bug"></span>Report an issue</button>
+            <button class="btn" id="reportIssue"><span class="ico" data-icon="bug"></span>Report an issue</button>
+            <button class="btn" id="copyDiagnostics" title="Copies your Umbra and Windows versions, monitors and the last log lines to the clipboard. No settings values, proxy address or widget data."><span class="ico" data-icon="copy"></span>Copy diagnostics</button>
             <button class="btn" data-url="contribute"><span class="ico" data-icon="plus"></span>Build a widget</button>
           </div>
           <p class="about-small">Open source under the MIT license. Market data from Yahoo Finance; delayed and not for trading.</p>
@@ -220,7 +228,7 @@
     </main>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <template id="tpl-installed">
     <article class="wcard">
@@ -242,7 +250,7 @@
           <div class="size">
             <span class="size-label">Size</span>
             <input type="range" class="range scale" min="50" max="300" step="5" aria-label="Size">
-            <button class="size-val" title="Reset to 100%"></button>
+            <button class="size-val" title="Reset to 100%" aria-label="Reset size to 100%"></button>
           </div>
           <div class="spacer"></div>
           <button class="btn small copy"><span class="ico" data-icon="plus"></span>Add another copy</button>
@@ -280,7 +288,7 @@
       </div>
       <div class="cfoot tfoot">
         <button class="btn small action"></button>
-        <button class="btn small danger remove" title="Remove theme"><span class="ico" data-icon="trash"></span></button>
+        <button class="btn small danger remove" title="Remove theme" aria-label="Remove theme"><span class="ico" data-icon="trash"></span></button>
       </div>
     </article>
   </template>
