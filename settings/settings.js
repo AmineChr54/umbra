@@ -42,6 +42,9 @@ let catalogError = null;
 let themes = null;     // [{ id, name, tokens, installed, builtin, updateAvailable }]
 let themesError = null;
 const busy = new Map(); // id -> "install" | "remove"
+let catalogLoading = false;
+let browseFilter = "all"; // all | installed | updates
+let updatingAll = null;   // { ids, index, total } while "Update all" runs
 
 // ---------- navigation ----------
 function show(page) {
@@ -52,7 +55,7 @@ function show(page) {
   });
   $$(".page").forEach((p) => p.classList.toggle("active", p.dataset.page === page));
   $("#content").scrollTop = 0;
-  if (page === "browse" && !catalog) loadCatalog();
+  if (page === "browse" && !catalog && !catalogLoading) loadCatalog();
   if (page === "themes" && !themes) loadThemes();
   if (page === "privacy") post({ type: "privacy" });
   post({ type: "page", page }); // the host remembers the last page for the next open
@@ -595,15 +598,40 @@ $("#layoutName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("
 function loadCatalog() {
   catalog = null;
   catalogError = null;
+  catalogLoading = true;
   renderCatalog();
   post({ type: "catalog" });
 }
 $("#reloadCatalog").addEventListener("click", loadCatalog);
 $("#search").addEventListener("input", renderCatalog);
+$$("#browseFilter button").forEach((b) => b.addEventListener("click", () => { browseFilter = b.dataset.filter; renderCatalog(); }));
+$("#updateAll").addEventListener("click", () => {
+  const ids = (catalog || []).filter((w) => w.updateAvailable).map((w) => w.id);
+  if (!ids.length || updatingAll) return;
+  updatingAll = { ids, index: 0, total: ids.length };
+  for (const id of ids) busy.set(id, "install");
+  renderCatalog();
+  post({ type: "updateAll" });
+});
+
+// Filter chips, the Browse badge in the sidebar and the Update all button, all derived from the catalog the host last sent
+// (the host re-sends it after any install/remove, wherever it was started from, so the counts stay right).
+function renderBrowseBar() {
+  const n = (catalog || []).filter((w) => w.updateAvailable).length;
+  $("#updatesCount").textContent = n ? ` (${n})` : "";
+  $("#browseCount").textContent = n || "";
+  $$("#browseFilter button").forEach((b) => b.classList.toggle("on", b.dataset.filter === browseFilter));
+  const all = $("#updateAll");
+  all.hidden = !n && !updatingAll;
+  all.disabled = !!updatingAll;
+  all.lastChild.textContent = updatingAll ? "Updating..." : n === 1 ? "Update 1 widget" : `Update all (${n})`;
+  $("#updateStatus").textContent = updatingAll && updatingAll.index ? `Updating ${updatingAll.index} of ${updatingAll.total}...` : "";
+}
 
 function renderCatalog() {
   const grid = $("#catalog");
   grid.textContent = "";
+  renderBrowseBar();
   if (catalogError) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Couldn't reach the community catalog.<br><small>${escapeHtml(catalogError)}</small></div>`;
     return;
@@ -613,9 +641,14 @@ function renderCatalog() {
     return;
   }
   const q = $("#search").value.trim().toLowerCase();
-  const items = catalog.filter((w) => !q || [w.name, w.description, w.author, w.id].join(" ").toLowerCase().includes(q));
+  const inFilter = (w) => browseFilter === "updates" ? w.updateAvailable : browseFilter === "installed" ? w.installed : true;
+  const items = catalog.filter((w) => inFilter(w) && (!q || [w.name, w.description, w.author, w.id].join(" ").toLowerCase().includes(q)));
   if (!items.length) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${q ? "No widgets match your search." : "The catalog is empty. Be the first to submit one!"}</div>`;
+    const none = q ? "No widgets match your search."
+      : browseFilter === "updates" ? "Everything is up to date."
+      : browseFilter === "installed" ? "No community widgets installed yet."
+      : "The catalog is empty. Be the first to submit one!";
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${none}</div>`;
     return;
   }
   for (const w of items) {
@@ -800,6 +833,7 @@ bridge && bridge.addEventListener("message", (e) => {
       applyTheme(m.themeCss);
       applyAccent(m.accentCss);
       renderGeneral();
+      if (!catalog && !catalogLoading && !catalogError && m.settings.general.checkForUpdates !== false) loadCatalog();
       if (!recording) renderHotkeys();
       if (themes) renderThemes();
       renderUpdate();
@@ -828,6 +862,7 @@ bridge && bridge.addEventListener("message", (e) => {
       renderUpdate();
       break;
     case "catalog":
+      catalogLoading = false;
       catalogError = m.error;
       catalog = m.error && !m.widgets.length ? null : m.widgets;
       renderCatalog();
@@ -837,6 +872,19 @@ bridge && bridge.addEventListener("message", (e) => {
       themes = m.error && !m.themes.length ? null : m.themes;
       renderThemes();
       break;
+    case "updateProgress":
+      if (updatingAll) { updatingAll.index = m.index; renderBrowseBar(); }
+      break;
+    case "updateAllDone": {
+      for (const id of updatingAll ? updatingAll.ids : []) busy.delete(id);
+      updatingAll = null;
+      const r = m.result || { updated: [], failed: [] };
+      if (m.error) toast(`Update all failed: ${m.error}`, true);
+      else if (r.failed.length) toast(`Updated ${r.updated.length}, failed: ${r.failed.map((f) => `${f.id} (${f.error})`).join("; ")}`, true);
+      else toast(r.updated.length ? `Updated ${r.updated.length} widget${r.updated.length === 1 ? "" : "s"}` : "Everything is up to date");
+      renderCatalog();
+      break;
+    }
     case "jobDone": {
       const kind = busy.get(m.id);
       busy.delete(m.id);

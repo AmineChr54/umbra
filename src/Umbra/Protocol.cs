@@ -43,6 +43,7 @@ public static class Protocol
         ("reload", "Re-scan widget folders (after editing files on disk)"),
         ("catalog", "The community catalog from GitHub, with installed/update flags"),
         ("install", "Install or update a community widget from the catalog: {id}, acceptPermissions? (an update that adds hosts, media, notifications or commands is refused, listing the new access, unless true)"),
+        ("update-all", "Update every installed community widget that has a newer catalog version, one after another; a failure doesn't stop the rest; an update that adds permissions is skipped (listed in failed with the new access, never accepted here): returns {updated:[{id,version}], failed:[{id,error}]}"),
         ("remove", "Uninstall a community widget and delete its saved data for good: {id} (Settings > Remove keeps it 7 days for Undo)"),
         ("create-widget", "Write a local widget: {id, files{path:content}, overwrite?}; binary files as base64"),
         ("approvals", "Read-only: the local commands widgets declare and whether the user approved them: {id?}. Approving is a human action in Settings"),

@@ -154,6 +154,23 @@ static class Community
     }
 
     /// <summary>
+    /// The install used by "update all": downloads and validates first, then refuses (throws, nothing written, the running
+    /// widget untouched) an update that adds hosts, system, media, notifications or commands, naming the new access and how
+    /// to accept it. <paramref name="beforeCommit"/> gets the widget id just before the folder is replaced (to close its window).
+    /// </summary>
+    public static async Task UpdateWithoutNewAccessAsync(JsonNode entry, Action<string>? beforeCommit = null, Func<string, Task<byte[]>>? fetch = null)
+    {
+        using var pending = await PrepareAsync(entry, fetch);
+        try { pending.Require(accepted: false); }
+        catch (PermissionsChangedException ex)
+        {
+            throw new InvalidOperationException($"Skipped, needs your approval: {string.Join("; ", ex.Diff.Describe())}. Update it from Settings > Browse or with umbractl install {pending.Manifest.Id} --accept-permissions.");
+        }
+        beforeCommit?.Invoke(pending.Manifest.Id);
+        pending.Commit();
+    }
+
+    /// <summary>
     /// Downloads and fully validates a catalog widget without writing it. <see cref="PendingInstall.Added"/> is what
     /// it would add to the installed copy; call <see cref="PendingInstall.Require"/> then <see cref="PendingInstall.Commit"/>.
     /// <paramref name="fetch"/> replaces the download (tests).
@@ -366,6 +383,45 @@ static class Community
         }
     }
 
+    /// <summary>True when the catalog entry is newer than the installed community copy (built-in widgets never update from the catalog).</summary>
+    public static bool IsUpdate(JsonNode? entry, WidgetManifest? installed) =>
+        installed is { Source: WidgetSource.Community }
+        && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
+
+    /// <summary>The catalog entries that would update an installed widget, in catalog order.</summary>
+    public static List<JsonNode> Outdated(IEnumerable<JsonNode?> catalog, IEnumerable<WidgetManifest> installed)
+    {
+        var byId = installed.GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.First());
+        return catalog
+            .Where(e => e?["id"]?.GetValue<string>() is { } id && IsUpdate(e, byId.GetValueOrDefault(id)))
+            .Select(e => e!).ToList();
+    }
+
+    /// <summary>
+    /// Installs the given updates one after another. A failure is recorded and the rest still run, so the caller
+    /// can report every failure together. <paramref name="progress"/> gets (index from 1, total, widget id) before each one.
+    /// </summary>
+    public static async Task<UpdateAllResult> UpdateAllAsync(IReadOnlyList<JsonNode> entries, Func<JsonNode, Task> install, Action<int, int, string>? progress = null)
+    {
+        var result = new UpdateAllResult();
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var id = entries[i]["id"]?.GetValue<string>() ?? "?";
+            progress?.Invoke(i + 1, entries.Count, id);
+            try
+            {
+                await install(entries[i]);
+                result.Updated.Add((id, entries[i]["version"]?.GetValue<string>() ?? ""));
+            }
+            catch (Exception ex)
+            {
+                Log.Write($"Update of {id} failed: {ex.Message}");
+                result.Failed.Add((id, ex.Message));
+            }
+        }
+        return result;
+    }
+
     /// <summary>Semantic-ish version compare ("1.2.0" &gt; "1.10.0" is handled numerically).</summary>
     public static int CompareVersions(string a, string b)
     {
@@ -378,4 +434,17 @@ static class Community
         }
         return 0;
     }
+}
+
+/// <summary>Outcome of "update all": what was updated and what failed (with the reason).</summary>
+sealed class UpdateAllResult
+{
+    public List<(string Id, string Version)> Updated { get; } = new();
+    public List<(string Id, string Error)> Failed { get; } = new();
+
+    public JsonObject ToJson() => new()
+    {
+        ["updated"] = new JsonArray(Updated.Select(u => (JsonNode)new JsonObject { ["id"] = u.Id, ["version"] = u.Version }).ToArray()),
+        ["failed"] = new JsonArray(Failed.Select(f => (JsonNode)new JsonObject { ["id"] = f.Id, ["error"] = f.Error }).ToArray()),
+    };
 }

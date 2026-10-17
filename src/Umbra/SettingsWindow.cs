@@ -376,6 +376,22 @@ sealed class SettingsWindow : Form
                 });
                 break;
 
+            case "updateAll":
+            {
+                UpdateAllResult? result = null;
+                string? error = null;
+                try
+                {
+                    result = await _app.UpdateAllWidgetsAsync((i, n, wid) =>
+                        Post(new JsonObject { ["type"] = "updateProgress", ["index"] = i, ["total"] = n, ["id"] = wid }));
+                }
+                catch (Exception ex) { error = ex.Message; Log.Write($"Update all failed: {ex}"); }
+                Post(new JsonObject { ["type"] = "updateAllDone", ["error"] = error, ["result"] = result?.ToJson() });
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
+
             case "remove":
             {
                 string? undo = null;
@@ -548,11 +564,11 @@ sealed class SettingsWindow : Form
             copy["installed"] = installed is not null;
             copy["builtin"] = installed?.IsPermanent == true;
             copy["installedVersion"] = installed?.Version;
-            copy["updateAvailable"] = installed is { Source: WidgetSource.Community }
-                && Community.CompareVersions(copy["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
+            copy["updateAvailable"] = Community.IsUpdate(copy, installed);
             copy["previewUrl"] = previews.FirstOrDefault(x => x.wid == wid).Item2;
             list.Add(copy);
         }
+        if (error is null) _app.NoteCatalog(_catalog);
         Post(new JsonObject { ["type"] = "catalog", ["error"] = error, ["widgets"] = list });
         _catalogSent.TrySetResult();
     }

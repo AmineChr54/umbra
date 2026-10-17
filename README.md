@@ -60,6 +60,7 @@ umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --s
 umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove (an update that adds hosts, media, notifications or commands is refused until you repeat it with --accept-permissions)
+umbractl update --all                 # update every community widget that has a newer version (failures listed, the rest still update; an update that adds hosts, media, notifications or commands is skipped and listed, accept it per widget with install --accept-permissions or in Settings)
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
 umbractl new my-widget                # scaffold a working widget and show it
@@ -76,7 +77,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `update_all_widgets`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 The Settings window has a **Data & privacy** page: per widget it shows the hosts it can reach, its commands, how much it has saved and recent blocked requests (with a Delete data button), plus Export/Import backup, Open data folder / log and Reset everything. Backups never include command approvals.
 

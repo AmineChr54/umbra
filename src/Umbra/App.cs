@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace Umbra;
 
 /// <summary>Owns the settings, the widget windows, the tray icon and the Settings window.</summary>
@@ -490,6 +492,24 @@ sealed class App : ApplicationContext
             }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
         }
+        if (Settings.General.CheckForUpdates && WidgetUpdateCount is > 0 and var pending)
+        {
+            menu.Items.Add(pending == 1 ? "Update 1 widget" : $"Update {pending} widgets", null, async (_, _) =>
+            {
+                try
+                {
+                    var r = await UpdateAllWidgetsAsync();
+                    var text = r.Failed.Count == 0 ? $"Updated {r.Updated.Count} widget(s)"
+                        : $"Updated {r.Updated.Count}, failed: {string.Join(", ", r.Failed.Select(f => f.Id))}";
+                    ShowTrayMessage(text, r.Failed.Count == 0 ? ToolTipIcon.Info : ToolTipIcon.Warning);
+                }
+                catch (Exception ex)
+                {
+                    Log.Write($"Widget update failed: {ex.Message}");
+                    ShowTrayMessage($"Widget update failed: {ex.Message}", ToolTipIcon.Error);
+                }
+            });
+        }
         if (UndoRemoveLabel is { } undo)
         {
             menu.Items.Add($"Undo remove {undo}", null, (_, _) => UndoRemove());
@@ -759,6 +779,49 @@ sealed class App : ApplicationContext
         SyncWindows();
         BuildTrayMenu();
         UpdateTrayStatus();
+    }
+
+    /// <summary>The community catalog as last fetched (daily check, Browse, update all). Null until the first fetch.</summary>
+    JsonArray? _catalogSeen;
+    bool _updatingAll;
+
+    /// <summary>Remember a freshly fetched catalog so the tray can offer "Update n widgets" without another request.</summary>
+    public void NoteCatalog(JsonArray catalog)
+    {
+        _catalogSeen = catalog;
+        BuildTrayMenu();
+    }
+
+    /// <summary>How many installed community widgets have a newer catalog version, judged against the last fetched catalog.</summary>
+    public int WidgetUpdateCount => _catalogSeen is null ? 0 : Community.Outdated(_catalogSeen, Manifests).Count;
+
+    /// <summary>The automatic check: refreshes the catalog quietly (offline is fine) so the tray count stays current.</summary>
+    public async Task CheckWidgetUpdatesAsync()
+    {
+        try { _catalogSeen = await Community.FetchCatalogAsync(); }
+        catch (Exception ex) { Log.Write($"Widget update check failed: {ex.Message}"); }
+    }
+
+    /// <summary>
+    /// Installs every available widget update, one after another; a failure doesn't stop the rest. An update that adds
+    /// permissions is never applied here: it is reported in <c>Failed</c> as skipped, with the new access listed.
+    /// <paramref name="progress"/> gets (index, total, id) before each widget.
+    /// </summary>
+    public async Task<UpdateAllResult> UpdateAllWidgetsAsync(Action<int, int, string>? progress = null)
+    {
+        if (_updatingAll) throw new InvalidOperationException("Widgets are already being updated");
+        _updatingAll = true;
+        try
+        {
+            _catalogSeen = await Community.FetchCatalogAsync();
+            var result = await Community.UpdateAllAsync(Community.Outdated(_catalogSeen, Manifests), entry =>
+                // Never silently accepts new access: such an update is reported as skipped and the widget keeps running.
+                Community.UpdateWithoutNewAccessAsync(entry, CloseWidget), progress);
+            ReloadWidgets(); // also reopens a widget whose update failed
+            SettingsChangedElsewhere();
+            return result;
+        }
+        finally { _updatingAll = false; }
     }
 
     /// <summary>Replaces settings (positions included) and widget data from a validated backup; approvals are untouched.</summary>

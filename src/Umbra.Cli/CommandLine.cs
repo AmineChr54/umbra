@@ -51,6 +51,10 @@ static class CommandLine
                 return ("peek", a.Length > 1 ? O(("seconds", int.Parse(a[1], CultureInfo.InvariantCulture))) : new JsonObject());
             case "theme":
                 return ("theme", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
+            case "update-all":
+                return ("update-all", new JsonObject());
+            case "update" when a.Contains("--all"):
+                return ("update-all", new JsonObject());
             case "check-update" or "update":
                 return ("check-update", new JsonObject());
             case "safe-mode":
