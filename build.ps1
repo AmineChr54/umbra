@@ -31,5 +31,16 @@ if (-not $iscc) { throw "Inno Setup 6 not found. Install it with: winget install
 & $iscc "/DAppVersion=$version" "/DPublishDir=$publish" (Join-Path $root 'installer\Umbra.iss')
 if ($LASTEXITCODE) { throw "Inno Setup failed" }
 
+# Portable zip: the same publish folder plus the portable.txt marker (data then lives in <folder>\data).
+$zip = Join-Path $root "dist\Umbra-$version-portable.zip"
+$stage = Join-Path $root 'dist\portable\Umbra'
+if (Test-Path (Split-Path $stage)) { Remove-Item (Split-Path $stage) -Recurse -Force }
+Copy-Item $publish $stage -Recurse
+New-Item (Join-Path $stage 'portable.txt') -ItemType File | Out-Null
+if (Test-Path $zip) { Remove-Item $zip -Force }
+Compress-Archive -Path $stage -DestinationPath $zip
+Remove-Item (Split-Path $stage) -Recurse -Force
+Write-Host "Built $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)" -ForegroundColor Green
+
 $setup = Join-Path $root "dist\UmbraSetup-$version.exe"
 Write-Host "Built $setup ($([math]::Round((Get-Item $setup).Length / 1MB, 1)) MB)" -ForegroundColor Green

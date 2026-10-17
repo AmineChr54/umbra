@@ -128,7 +128,7 @@ copies share it. Use `umbra.widget.instance` only if you need to tell copies apa
 **Saving data.** Options are for settings the user picks in **My widgets**. Anything the widget itself creates
 (a task list, events, "already seen" ids) goes in `umbra.store`. It is private to the widget, survives restarts
 and widget updates, and is deleted when a community widget is removed. It lives in
-`%APPDATA%\Umbra\data\<id>.json`. Don't use `localStorage`: every widget shares one origin, so other widgets could read it.
+`%APPDATA%\Umbra\data\<id>.json` (`<app>\data\data\<id>.json` in portable mode, where `%APPDATA%\Umbra` means the `data` folder next to `Umbra.exe`). Don't use `localStorage`: every widget shares one origin, so other widgets could read it.
 
 ```js
 const tasks = await umbra.store.get("tasks", []);

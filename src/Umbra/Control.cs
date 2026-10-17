@@ -49,6 +49,7 @@ sealed class Control(App app)
                     ["protocol"] = 1,
                     ["exe"] = AppPaths.ExePath,
                     ["dataDir"] = AppPaths.DataDir,
+                    ["portable"] = AppPaths.IsPortable,
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
                     ["editMode"] = app.EditMode,

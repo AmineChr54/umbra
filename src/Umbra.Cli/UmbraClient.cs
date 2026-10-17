@@ -41,7 +41,5 @@ static class UmbraClient
 
     /// <summary>The community widgets folder (mirrors AppPaths in Umbra.exe, including UMBRA_DATA_DIR).</summary>
     public static string CommunityDir =>
-        Path.Combine(Environment.GetEnvironmentVariable("UMBRA_DATA_DIR") is { Length: > 0 } custom
-            ? custom
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Umbra"), "widgets");
+        Path.Combine(PortableMode.DataDir(AppContext.BaseDirectory), "widgets");
 }

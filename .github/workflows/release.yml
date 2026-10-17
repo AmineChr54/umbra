@@ -86,9 +86,10 @@ jobs:
         shell: pwsh
         run: |
           $setup = "dist/UmbraSetup-$env:VERSION.exe"
+          $portable = "dist/Umbra-$env:VERSION-portable.zip"
           gh release view $env:TAG *> $null
-          if ($LASTEXITCODE -eq 0) { gh release upload $env:TAG $setup --clobber }
-          else { gh release create $env:TAG $setup --title "Umbra $env:VERSION" --generate-notes }
+          if ($LASTEXITCODE -eq 0) { gh release upload $env:TAG $setup $portable --clobber }
+          else { gh release create $env:TAG $setup $portable --title "Umbra $env:VERSION" --generate-notes }
 
       # Attach the filled manifests to the run; submit them to microsoft/winget-pkgs (see CONTRIBUTING.md).
       - uses: actions/upload-artifact@v4

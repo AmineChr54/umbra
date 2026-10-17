@@ -379,6 +379,8 @@ sealed class SettingsWindow : Form
             ["type"] = "state",
             ["version"] = Application.ProductVersion.Split('+')[0],
             ["startup"] = Startup.IsEnabled(),
+            ["portable"] = AppPaths.IsPortable,
+            ["dataDir"] = AppPaths.DataDir,
             ["editMode"] = _app.EditMode,
             ["safeMode"] = _app.SafeMode,
             ["layouts"] = _app.Layouts.ToJson(),

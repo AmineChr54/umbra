@@ -172,6 +172,7 @@ sealed class UpdateService : IDisposable
     /// <summary>Downloads the installer for <see cref="Available"/> to a temp folder, runs it silently and exits Umbra.</summary>
     public async Task InstallAsync()
     {
+        if (AppPaths.IsPortable) throw new InvalidOperationException("Portable copies don't self-update: download the new zip from the release page");
         var rel = Available ?? throw new InvalidOperationException("No update available");
         if (_installing) throw new InvalidOperationException("Update already in progress");
         if (!Updates.IsValidInstaller(rel.AssetUrl, rel.AssetName, rel.Version))
@@ -258,6 +259,7 @@ sealed class UpdateService : IDisposable
     public JsonObject ToJson() => new()
     {
         ["enabled"] = _app.Settings.General.CheckForUpdates,
+        ["portable"] = AppPaths.IsPortable,
         ["current"] = CurrentVersion,
         ["available"] = Available is null ? null : new JsonObject
         {
