@@ -91,6 +91,10 @@ sealed class SettingsWindow : Form
                 _loaded.TrySetResult();
                 break;
 
+            case "close": // Esc in the page
+                Close();
+                break;
+
             case "save":
                 if (msg["settings"] is JsonNode s) { _app.ApplySettings(Settings.FromJson(s)); SendState(); }
                 break;

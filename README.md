@@ -34,6 +34,8 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
 | **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
 
+Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps to the Browse search, **Ctrl+1** to **Ctrl+7** switch pages, and the arrow keys move through the sidebar and the refresh interval. Switches and buttons have names for screen readers.
+
 ## Automate Umbra (CLI, scripts and AI agents)
 
 The installer puts `umbractl` on your PATH. Every command prints JSON and starts Umbra in the background if it isn't running.
