@@ -54,3 +54,18 @@ html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="
   animation: none !important;
   transition: none !important;
 }
+
+/* Windows contrast themes (forced colors): the browser swaps in the user's palette, so map the tokens to system
+   colors and let direction show as a glyph instead of green/red. Add trend-up / trend-down to a value's element
+   to get the arrow. Themes that set tokens still apply, but these win while a contrast theme is on. */
+@media (forced-colors: active) {
+  :root:root {
+    --bg: Canvas; --surface-1: Canvas; --surface-2: Canvas; --surface-3: Canvas;
+    --line: CanvasText; --line-strong: CanvasText;
+    --text: CanvasText; --text-2: CanvasText; --text-3: CanvasText;
+    --accent: Highlight; --accent-strong: Highlight; --accent-soft: Canvas;
+    --up: CanvasText; --down: CanvasText; --flat: CanvasText;
+  }
+  .trend-up::before { content: "\25B2\00A0"; }
+  .trend-down::before { content: "\25BC\00A0"; }
+}
