@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "github-activity",
+  "name": "GitHub Activity",
+  "description": "Open pull requests, open issues, the latest CI run and the latest release of one public repository. Click a row to open it.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 360,
+  "height": 420,
+  "defaultPosition": { "x": 400, "y": 24 },
+  "permissions": { "hosts": ["api.github.com"] },
+  "options": {
+    "repo": { "label": "Repository", "type": "text", "default": "AmineChr54/umbra", "hint": "owner/name of a public repository. Unauthenticated GitHub allows 60 requests an hour, so data refreshes at most every 15 minutes." },
+    "rows": { "label": "Rows per list", "type": "number", "default": 3, "min": 1, "max": 6, "step": 1 }
+  }
+}

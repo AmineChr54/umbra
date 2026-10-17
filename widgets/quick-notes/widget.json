@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "quick-notes",
+  "name": "Quick Notes",
+  "description": "A scratchpad on your desktop with up to five note tabs. Saves as you type and shows a character count. Everything stays on your PC.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 300,
+  "defaultPosition": { "x": 24, "y": 500 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "tabs": { "label": "Note tabs", "type": "number", "default": 3, "min": 1, "max": 5, "step": 1 },
+    "fontSize": { "label": "Text size", "type": "number", "default": 14, "min": 11, "max": 20, "step": 1 }
+  }
+}

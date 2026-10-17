@@ -1,0 +1,22 @@
+html, body { height: 100%; overflow: hidden; }
+.notes { height: 100%; display: flex; flex-direction: column; padding: 14px 14px 10px; gap: 8px; }
+.tabs { display: flex; gap: 4px; }
+.tab {
+  flex: 1; min-width: 0; padding: 5px 0; font: inherit; font-size: 12px; font-weight: 500;
+  color: var(--text-3); background: transparent; border: 1px solid var(--line);
+  border-radius: var(--radius-s); cursor: pointer;
+}
+.tab:hover { color: var(--text-2); }
+.tab.on { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
+.tab.full::after { content: " \2022"; color: var(--accent); }
+textarea {
+  flex: 1; min-height: 0; resize: none; width: 100%;
+  background: var(--surface-1); color: var(--text); font-family: inherit; line-height: 1.45;
+  border: 1px solid var(--line); border-radius: var(--radius-m); padding: 10px 12px; outline: none;
+}
+textarea:focus { border-color: var(--line-strong); }
+textarea::placeholder { color: var(--text-3); }
+textarea::-webkit-scrollbar { width: 6px; }
+textarea::-webkit-scrollbar-button { display: none; }
+textarea::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
+.foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); }
