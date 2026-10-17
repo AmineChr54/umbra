@@ -24,7 +24,7 @@
       "name": "Calendar glance",
       "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "calendar.google.com",
@@ -71,7 +71,7 @@
       "name": "Clock",
       "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [],
       "files": [
@@ -85,7 +85,7 @@
       "name": "Countdowns",
       "description": "Count down to birthdays, trips and deadlines as dot grids, bars or rings, plus how far this year, month or week has gone. Add and edit right in the widget.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [],
       "files": [
@@ -102,7 +102,7 @@
       "name": "Crypto price",
       "description": "Price, 24h change and a sparkline for any coin on CoinGecko.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [
         "api.coingecko.com"
@@ -138,7 +138,7 @@
       "name": "Exchange rates",
       "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [
         "api.frankfurter.dev"
@@ -294,7 +294,7 @@
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "preview": "preview.png",
       "hosts": [
         "query1.finance.yahoo.com"

@@ -3,6 +3,13 @@ body { font-size: 13.5px; user-select: none; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 input { font: inherit; color: inherit; }
 
+/* Keyboard focus: a bright ring that shows on black, for everything that can take focus. Mouse clicks don't show it. */
+button:focus-visible, select:focus-visible, input[type=color]:focus-visible, input[type=time]:focus-visible, input[type=number]:focus-visible, input[type=text]:focus-visible,
+.input:focus-visible, .search:focus-within {
+  outline: 2px solid var(--accent-strong); outline-offset: 2px;
+}
+.nav button:focus-visible, .segmented button:focus-visible { outline-offset: -2px; }
+
 .ico { display: inline-flex; width: 16px; height: 16px; flex: none; }
 .ico svg { width: 100%; height: 100%; }
 
@@ -223,7 +230,8 @@ input { font: inherit; color: inherit; }
   transition: transform 160ms var(--ease-out);
 }
 .range:active::-webkit-slider-thumb { transform: scale(1.15); }
-.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--accent-strong); }
+.range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--accent-strong); }
+.range:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 6px; }
 .range:disabled { opacity: 0.4; cursor: default; }
 .size-val {
   min-width: 46px; height: 26px; padding: 0 6px; border-radius: 7px;
@@ -378,3 +386,68 @@ input { font: inherit; color: inherit; }
 .update-text { font-size: 13px; color: var(--text-2); }
 .update.has-update .update-text { color: var(--text); font-weight: 600; }
 .nav button.dot::after { content: ""; width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #8b93ff; }
+
+/* ---------- Windows contrast themes (forced colors) ----------
+   The browser replaces colors with the user's palette and removes box-shadows, so anything drawn only with a
+   fill or a shadow (switch, segmented control, borders, focus rings) is redrawn here with borders, outlines and
+   the Highlight / HighlightText pair. Tokens come from shared/umbra.css. */
+@media (forced-colors: active) {
+  .side { background: Canvas; }
+  .nav button:hover, .side-foot .link:hover { outline: 1px solid Highlight; outline-offset: -1px; }
+  .nav button.active { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; }
+  .nav button.active::before { background: Highlight; box-shadow: none; }
+  .nav button.dot::after { background: Highlight; }
+  .content::-webkit-scrollbar-thumb { background: CanvasText; border-color: Canvas; }
+
+  .group, .wcard, .ccard, .search, .hint, .empty, .thumb, .cmd, .toast, .size-val, .hero { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .hero { background: Canvas; }
+  .hero-art { display: none; }
+  .hero-text { margin-right: 0; }
+  .hint { background: Canvas; }
+  .badge, .chip { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .thumb.fallback, .cthumb:not(.has-img):not(.swatch) { background-image: none; }
+  .skeleton { background: Canvas; outline: 1px dashed CanvasText; }
+  .wcard:hover, .ccard:hover { outline-color: Highlight; outline-width: 2px; }
+  .tcard.active::after { box-shadow: none; border: 2px solid Highlight; }
+  /* Theme previews show the theme's own colors, like a chart. */
+  .cthumb.swatch, .cthumb.swatch * { forced-color-adjust: none; }
+  .sw-card { outline: 1px solid var(--t-line, CanvasText); outline-offset: -1px; }
+
+  .switch span { border: 1px solid CanvasText; background: Canvas; box-shadow: none; }
+  .switch span::after { top: 3px; left: 3px; background: CanvasText; }
+  .switch input:checked + span { background: Highlight; border-color: Highlight; box-shadow: none; }
+  .switch input:checked + span::after { background: HighlightText; }
+  .switch input:focus-visible + span { outline: 2px solid Highlight; outline-offset: 3px; }
+
+  .segmented { box-shadow: none; border: 1px solid CanvasText; background: Canvas; }
+  .segmented button:hover { outline: 1px solid Highlight; outline-offset: -1px; }
+  .segmented button.on { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; font-weight: 700; box-shadow: none; }
+
+  .btn { border: 1px solid ButtonText; box-shadow: none; }
+  .btn:hover { border-color: Highlight; }
+  .btn.primary, .btn.primary:hover { background: Canvas; }
+  .btn.primary { border-color: Highlight; outline: 1px solid Highlight; outline-offset: -2px; box-shadow: none; }
+  .btn.primary:hover { border-color: ButtonText; outline-color: ButtonText; }
+  .btn.done, .btn[disabled] { color: GrayText; border-color: GrayText; background: Canvas; opacity: 1; }
+  .btn .spin { border-color: currentColor; border-right-color: transparent; }
+
+  .check span { border: 1.5px solid CanvasText; box-shadow: none; }
+  .check input:checked + span { background: Highlight; border-color: Highlight; }
+  .check input:checked + span::after { border-color: HighlightText; }
+  .check input:focus-visible + span { outline: 2px solid Highlight; outline-offset: 2px; }
+
+  .input, .select { border: 1px solid ButtonText; box-shadow: none; }
+  .input:hover, .select:hover { border-color: Highlight; }
+  .input:focus, .select:focus { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  .select { appearance: auto; background-image: none; padding-right: 12px; }
+  .search:focus-within { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+
+  .range { background: ButtonText; }
+  .range::-webkit-slider-thumb { box-sizing: border-box; background: Canvas; border: 3px solid Highlight; box-shadow: none; }
+  .range:focus-visible { outline: 2px solid Highlight; outline-offset: 6px; }
+  .range:focus-visible::-webkit-slider-thumb { box-shadow: none; border-color: CanvasText; }
+  .range:disabled { opacity: 1; background: GrayText; }
+  .range:disabled::-webkit-slider-thumb { border-color: GrayText; }
+  .size-val[disabled] { color: GrayText; opacity: 1; }
+  .size-val:hover:not([disabled]) { outline-color: Highlight; }
+}
