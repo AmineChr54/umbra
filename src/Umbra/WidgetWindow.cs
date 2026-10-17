@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Web.WebView2.Core;
@@ -118,14 +119,22 @@ sealed class WidgetWindow : Form
     /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
     unsafe void SnapMove(IntPtr lParam)
     {
-        if ((ModifierKeys & Keys.Shift) != 0) return;
-        var r = (Native.RECT*)lParam;
         var g = _app.Settings.General;
+        if (!Snap.IsActive(g) || (ModifierKeys & Keys.Shift) != 0) return;
+        var r = (Native.RECT*)lParam;
         var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
         var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
         var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
         var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
         r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
+    }
+
+    /// <summary>Esc while this widget has keyboard focus (it only gets it after a real press) ends edit mode.</summary>
+    void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Escape || !_app.EditMode) return;
+        e.Handled = true;
+        _app.SetEditMode(false);
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
@@ -173,6 +182,7 @@ sealed class WidgetWindow : Form
         {
             await WebHost.InitAsync(_view, sandbox: Manifest);
             _view.CoreWebView2.WebMessageReceived += OnMessage;
+            _view.KeyDown += OnViewKeyDown; // WebView2 forwards accelerator keys (Esc included) here
             _view.CoreWebView2.Navigate(Manifest.PageUrl);
         }
         catch (Exception ex)
@@ -274,7 +284,12 @@ sealed class WidgetWindow : Form
         _app.NoteHandScale(Instance);
         RememberPosition();
         PushSettings();
-        // A wheel notch can fire many times a second: write settings.json and refresh the tray/Settings once it settles.
+        SaveSoon();
+    }
+
+    /// <summary>A wheel notch or a held arrow key can fire many times a second: write settings.json and refresh the tray/Settings once it settles.</summary>
+    void SaveSoon()
+    {
         _saveTimer ??= new System.Windows.Forms.Timer { Interval = 300 };
         _saveTimer.Tick -= FlushScale;
         _saveTimer.Tick += FlushScale;
@@ -316,12 +331,14 @@ sealed class WidgetWindow : Form
                 RememberPosition();
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
+                _app.RefreshEditPills();
                 break;
 
             case "resize":
                 // The edit-mode corner handle. Only a real press on this window starts the native size loop.
                 // Messages still arrive during the modal size loop, so a second "resize" must not nest.
                 if (_resizing || !CanArrange || !PressedOnThisWindow()) return;
+                SelectForEdit();
                 var before = Size;
                 _resizing = true;
                 try
@@ -346,6 +363,10 @@ sealed class WidgetWindow : Form
                 if (steps == 0 || now - _lastZoomAt < 50) return;
                 _lastZoomAt = now;
                 SetScaleByHand(Ws.Scale + 0.1 * steps);
+                break;
+
+            case "nudge":
+                Nudge(msg?["dir"]?.GetValue<string>());
                 break;
 
             case "rendered":
@@ -384,15 +405,65 @@ sealed class WidgetWindow : Form
                 await HandleRun(msg!);
                 break;
 
+            case "exitEdit":
+                // The page saw Esc. Only honoured while this window is the foreground one and Esc is physically down (a page can't fake it).
+                if (_app.EditMode && Native.GetForegroundWindow() == Handle && IsKeyDown(Native.VK_ESCAPE)) _app.SetEditMode(false);
+                break;
+
             case "pointer":
-                if (PressedOnThisWindow()) MarkPressed();
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 break;
 
             case "focus":
-                if (PressedOnThisWindow()) MarkPressed();
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 TakeKeyboardFocus();
                 break;
         }
+    }
+
+    /// <summary>A physical press on this widget in edit mode makes it the one the arrow keys move.</summary>
+    void SelectForEdit()
+    {
+        if (CanArrange) _app.SelectForEdit(Instance);
+    }
+
+    /// <summary>Redraws the stronger outline when this widget becomes (or stops being) the selected one.</summary>
+    public void ShowEditSelected(bool selected)
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "editSelected", ["selected"] = selected });
+    }
+
+    /// <summary>
+    /// Arrow-key nudge in edit mode: 1 px, Shift 10 px (one grid step when snapping is on). The page only reports which
+    /// arrow it saw; the host moves the window only for the selected, unlocked widget while it holds the foreground
+    /// (which a widget gets only after a physical click) and that arrow key is physically down. The widget can't leave
+    /// its work area completely, and the new spot is saved like after a drag.
+    /// </summary>
+    void Nudge(string? dir)
+    {
+        var (sx, sy, vk) = dir switch
+        {
+            "left" => (-1, 0, Native.VK_LEFT),
+            "right" => (1, 0, Native.VK_RIGHT),
+            "up" => (0, -1, Native.VK_UP),
+            "down" => (0, 1, Native.VK_DOWN),
+            _ => (0, 0, 0),
+        };
+        if (vk == 0 || _resizing || !CanArrange || !Alive || _app.EditSelection != Instance) return;
+        if (Native.GetForegroundWindow() != Handle || !IsKeyDown(vk)) return;
+
+        var general = _app.Settings.General;
+        var grid = Snap.IsActive(general) ? general.SnapGrid : 0;
+        bool big = IsKeyDown(Native.VK_SHIFT);
+        var to = new Point(
+            sx == 0 ? Left : WidgetGeometry.NudgeTo(Left, sx, big, grid),
+            sy == 0 ? Top : WidgetGeometry.NudgeTo(Top, sy, big, grid));
+        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        if (!WidgetGeometry.NudgeAllowed(Bounds, new Rectangle(to, Size), areas, (int)(WidgetGeometry.NudgeKeepVisible * DeviceDpi / 96.0))) return;
+
+        Location = to;
+        RememberPosition();
+        SaveSoon();
     }
 
     /// <summary>Remembers a real press on this window, and which window was in front at that moment.</summary>
@@ -665,24 +736,42 @@ sealed class WidgetWindow : Form
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
+    /// <summary>Tells the page that pausing or Energy Saver changed (#104); unlike <see cref="PushSettings"/> it leaves the window alone.</summary>
+    public void PushPower()
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
+    }
+
     public void RefreshData()
     {
         if (_ready) Post(new JsonObject { ["type"] = "refresh" });
     }
 
+    /// <summary>The system clock or time zone changed: the SDK runs the page's onTimeChanged handlers, or its refresh handlers when it has none.</summary>
+    public void NotifyTimeChanged()
+    {
+        if (_ready) Post(TimeChange.Message());
+    }
+
     JsonObject SettingsPayload()
     {
         var ws = Ws;
+        var saver = _app.Power.EnergySaver && _app.Settings.General.SlowOnEnergySaver; // true = intervals are stretched
         return new JsonObject
         {
-            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["refreshSeconds"] = PowerPolicy.Refresh(Prefs.EffectiveRefresh(ws, _app.Settings.General), saver, true),
+            ["paused"] = _app.Power.Paused,
+            ["energySaver"] = saver,
             ["animations"] = Prefs.MotionOn(_app.Settings.General),
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
-            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
+            ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
+            ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
+            ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
+            ["editSelected"] = _app.EditMode && _app.EditSelection == Instance,
             ["options"] = ws.Options.DeepClone(),
         };
     }

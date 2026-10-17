@@ -104,4 +104,12 @@ public class PlacementTests
         Assert.Null(old.SettingsPanel.Monitor);
         Assert.Null(Placement.ResolveWindow(new[] { Main }, old.SettingsPanel, _ => 1f, Min));
     }
+
+    [Fact]
+    public void A_null_settingsPanel_in_the_file_means_defaults()
+    {
+        var s = Settings.FromJson(System.Text.Json.Nodes.JsonNode.Parse("""{ "settingsPanel": null }""")!);
+        Assert.NotNull(s.SettingsPanel);
+        Assert.Null(s.SettingsPanel.Monitor);
+    }
 }

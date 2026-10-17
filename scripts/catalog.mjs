@@ -19,8 +19,9 @@ const SEMVER = /^\d+\.\d+\.\d+$/;
 const HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
 const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".woff", ".woff2", ".ttf", ".otf", ".txt", ".md"]);
 const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_CHANGELOG = 500;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
-const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "entry", "preview", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -111,6 +112,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
   for (const k of ["name", "description", "author", "version"])
     if (typeof m[k] !== "string" || !m[k].trim()) fail(id, `"${k}" is required`);
   if (m.version && !SEMVER.test(m.version)) fail(id, `"version" must look like 1.2.3`);
+  if (m.changelog !== undefined && (typeof m.changelog !== "string" || !m.changelog.trim() || m.changelog.length > MAX_CHANGELOG))
+    fail(id, `"changelog" must be a non-empty string of at most ${MAX_CHANGELOG} characters (what changed in this version)`);
   const entry = m.entry || "index.html";
   if (!existsSync(join(dir, entry))) fail(id, `entry file "${entry}" not found`);
   if (m.preview && !existsSync(join(dir, m.preview))) fail(id, `preview "${m.preview}" not found`);
@@ -151,6 +154,7 @@ for (const id of readdirSync(widgetsDir).sort()) {
     description: m.description,
     author: m.author,
     version: m.version,
+    ...(typeof m.changelog === "string" && m.changelog.trim() ? { changelog: m.changelog.trim() } : {}),
     preview: m.preview ?? null,
     hosts,
     ...(system.length ? { system } : {}),
