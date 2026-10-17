@@ -49,4 +49,59 @@ public class PlacementTests
         Assert.False(g.HideOnFullscreen);
         Assert.Equal(5, g.PeekSeconds);
     }
+
+    // Settings window placement (#111)
+    static readonly Size Min = new(760, 520);
+
+    [Fact]
+    public void Capture_then_resolve_gives_the_same_rectangle_on_the_same_monitor()
+    {
+        var screens = new[] { Main, Side };
+        var rect = new Rectangle(1920 + 80, 60, 1000, 700);
+        var saved = Placement.Capture(screens, rect, 1f, false, "themes");
+        Assert.Equal(Side.Name, saved.Monitor);
+        Assert.Equal("themes", saved.Page);
+        Assert.Equal(rect, Placement.ResolveWindow(screens, saved, _ => 1f, Min));
+    }
+
+    [Fact]
+    public void Capture_stores_logical_pixels_and_resolve_rescales_them_to_the_monitor_dpi()
+    {
+        var screens = new[] { Main };
+        var saved = Placement.Capture(screens, new Rectangle(150, 90, 1500, 900), 1.5f, true, null);
+        Assert.True(saved.Maximized);
+        Assert.Equal((100, 60, 1000, 600), (saved.X, saved.Y, saved.Width, saved.Height));
+        Assert.Equal(new Rectangle(125, 75, 1250, 750), Placement.ResolveWindow(screens, saved, _ => 1.25f, Min));
+    }
+
+    [Fact]
+    public void Resolve_returns_null_when_the_monitor_is_unplugged_or_nothing_was_saved()
+    {
+        var saved = Placement.Capture(new[] { Main, Side }, new Rectangle(1920 + 80, 60, 1000, 700), 1f, false, null);
+        Assert.Null(Placement.ResolveWindow(new[] { Main }, saved, _ => 1f, Min));
+        Assert.Null(Placement.ResolveWindow(new[] { Main, Side }, new SettingsPlacement(), _ => 1f, Min));
+    }
+
+    [Fact]
+    public void Resolve_keeps_the_window_visible_on_a_smaller_work_area_and_above_the_minimum_size()
+    {
+        var saved = new SettingsPlacement { Monitor = Side.Name, X = 1200, Y = 1000, Width = 3000, Height = 3000 };
+        Assert.Equal(new Rectangle(1920, 0, 1280, 1024), Placement.ResolveWindow(new[] { Main, Side }, saved, _ => 1f, Min));
+
+        var tiny = new SettingsPlacement { Monitor = Main.Name, X = -500, Y = -500, Width = 100, Height = 100 };
+        Assert.Equal(new Rectangle(0, 0, 760, 520), Placement.ResolveWindow(new[] { Main }, tiny, _ => 1f, Min));
+    }
+
+    [Fact]
+    public void Placement_survives_a_settings_roundtrip_and_old_files_default_to_unsaved()
+    {
+        var s = new Settings();
+        s.SettingsPanel = new SettingsPlacement { Monitor = Main.Name, X = 5, Y = 6, Width = 1000, Height = 700, Maximized = true, Page = "hotkeys" };
+        var back = Settings.FromJson(s.ToJson()).SettingsPanel;
+        Assert.Equal((Main.Name, 5, 6, 1000, 700, true, "hotkeys"), (back.Monitor, back.X, back.Y, back.Width, back.Height, back.Maximized, back.Page));
+
+        var old = Settings.FromJson(System.Text.Json.Nodes.JsonNode.Parse("""{ "widgets": {} }""")!);
+        Assert.Null(old.SettingsPanel.Monitor);
+        Assert.Null(Placement.ResolveWindow(new[] { Main }, old.SettingsPanel, _ => 1f, Min));
+    }
 }

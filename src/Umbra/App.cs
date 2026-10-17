@@ -476,6 +476,7 @@ sealed class App : ApplicationContext
         var s = backup.Settings;
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
         s.General.LegacyRestoreDone = true;
+        s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
         Settings = s;
         SaveSettings();
         _hotkeys.Apply(Settings.Hotkeys);
@@ -503,6 +504,7 @@ sealed class App : ApplicationContext
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
+        incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
         Settings = incoming;
         SaveSettings();
         SyncWindows();
@@ -524,6 +526,9 @@ sealed class App : ApplicationContext
         if (_windows.TryGetValue(id, out var w)) w.ResetPosition();
         else if (Settings.Widgets.TryGetValue(id, out var ws)) { ws.X = ws.Y = null; SaveSettings(); }
     }
+
+    /// <summary>Remembers where the Settings window was closed (see <see cref="SettingsPlacement"/>).</summary>
+    public void SaveSettingsPlacement(SettingsPlacement p) { Settings.SettingsPanel = p; Settings.Save(); }
 
     public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.RoundCorners(w.Handle); }
 

@@ -103,6 +103,24 @@ static partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool fAttach);
 
+    [LibraryImport("user32.dll")]
+    public static partial IntPtr MonitorFromPoint(POINT pt, uint flags);
+
+    [LibraryImport("shcore.dll")]
+    public static partial int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
+
+    /// <summary>The scale factor (1 = 96 DPI) of the monitor nearest to a screen point; 1 if Windows can't say.</summary>
+    public static float MonitorScale(Point screenPoint)
+    {
+        try
+        {
+            var mon = MonitorFromPoint(new POINT { X = screenPoint.X, Y = screenPoint.Y }, 2 /* MONITOR_DEFAULTTONEAREST */);
+            if (mon != IntPtr.Zero && GetDpiForMonitor(mon, 0 /* MDT_EFFECTIVE_DPI */, out var dpi, out _) == 0 && dpi > 0) return dpi / 96f;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+        return 1f;
+    }
+
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 

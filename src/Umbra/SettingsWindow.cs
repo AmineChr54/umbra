@@ -21,6 +21,7 @@ sealed class SettingsWindow : Form
     public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "hotkeys", "privacy", "about" };
 
     readonly bool _background;
+    string? _page; // last page the panel showed, saved on close
 
     /// <summary>Background windows (used for captures) are shown off-screen, outside the taskbar, without taking focus.</summary>
     protected override bool ShowWithoutActivation => _background;
@@ -36,6 +37,7 @@ sealed class SettingsWindow : Form
         AutoScaleMode = AutoScaleMode.None;
         Controls.Add(_view);
         ApplyDpiSize();
+        if (!background) RestorePlacement();
         if (background)
         {
             ShowInTaskbar = false;
@@ -52,6 +54,26 @@ sealed class SettingsWindow : Form
         MinimumSize = new Size((int)(760 * s), (int)(520 * s));
         ClientSize = new Size(Math.Min((int)(1000 * s), wa.Width - 40), Math.Min((int)(700 * s), wa.Height - 40));
         CenterToScreen();
+    }
+
+    /// <summary>Opens where it was last closed if that monitor is still connected; otherwise it stays centered (<see cref="Placement.ResolveWindow"/>).</summary>
+    void RestorePlacement()
+    {
+        var saved = _app.Settings.SettingsPanel;
+        static float ScaleOf(MonitorInfo m) => Native.MonitorScale(new Point(m.Bounds.X + m.Bounds.Width / 2, m.Bounds.Y + m.Bounds.Height / 2));
+        if (Placement.ResolveWindow(Placement.Monitors(), saved, ScaleOf, new Size(760, 520)) is not { } r) return;
+        StartPosition = FormStartPosition.Manual;
+        Bounds = r;
+        if (saved.Maximized) WindowState = FormWindowState.Maximized;
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        base.OnFormClosing(e);
+        if (_background || e.Cancel || !IsHandleCreated) return;
+        // RestoreBounds is the normal rectangle even while maximized or minimized.
+        var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+        _app.SaveSettingsPlacement(Placement.Capture(Placement.Monitors(), bounds, DeviceDpi / 96f, WindowState == FormWindowState.Maximized, _page));
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -88,7 +110,14 @@ sealed class SettingsWindow : Form
         {
             case "load":
                 SendState();
+                // Reopen on the last page; a page asked for explicitly (umbractl settings <page>) runs after this and wins.
+                if (!_background && _app.Settings.SettingsPanel.Page is { } last && last != "general" && Pages.Contains(last))
+                    _ = _view.CoreWebView2.ExecuteScriptAsync($"show('{last}')");
                 _loaded.TrySetResult();
+                break;
+
+            case "page":
+                if (msg["page"]?.GetValue<string>() is string pg && Pages.Contains(pg)) _page = pg;
                 break;
 
             case "save":

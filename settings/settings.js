@@ -48,6 +48,7 @@ function show(page) {
   if (page === "browse" && !catalog) loadCatalog();
   if (page === "themes" && !themes) loadThemes();
   if (page === "privacy") post({ type: "privacy" });
+  post({ type: "page", page }); // the host remembers the last page for the next open
 }
 $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
 
