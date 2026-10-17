@@ -47,7 +47,7 @@
     el.className = "ev" + (running && !ev.allDay ? " now" : "") + (!ev.allDay && ev.end <= nowMs && ev.end > ev.start ? " past" : "");
     const when = document.createElement("div");
     when.className = "when num";
-    when.textContent = ev.allDay ? "All day" : timeText(ev.start, o.clock === "12");
+    when.textContent = ev.allDay ? "All day" : timeText(ev.start, o.clock === "12" || (o.clock !== "24" && umbra.hour12));
     const what = document.createElement("div");
     what.className = "what";
     const title = document.createElement("div");
@@ -69,7 +69,7 @@
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const days = o.showTomorrow === false ? 1 : 2;
     const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days).getTime();
-    $("date").textContent = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+    $("date").textContent = now.toLocaleDateString(umbra.locale,{ weekday: "long", day: "numeric", month: "short" });
     $("stale").hidden = !stale;
     const list = $("list");
     list.textContent = "";
@@ -147,6 +147,7 @@
     if (umbra.options.url !== lastUrl) { lastUrl = umbra.options.url; icsText = null; await load(); }
     render();
   });
+  umbra.onTimeChanged?.(() => { if (icsText != null) render(); }); // time zone or clock changed: re-lay out the day
   // Keep "now" fresh between refreshes.
   setInterval(() => { if (icsText != null) render(); }, 60000);
 })();

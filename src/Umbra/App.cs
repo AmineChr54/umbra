@@ -26,10 +26,17 @@ sealed class App : ApplicationContext
     /// </summary>
     public bool EditMode { get; private set; }
 
+    /// <summary>The widget copy last pressed in edit mode: the one the arrow keys nudge. Null outside edit mode.</summary>
+    public string? EditSelection { get; private set; }
+
     /// <summary>All widgets temporarily hidden by the "toggle-widgets" hotkey. Not saved.</summary>
     public bool WidgetsHidden { get; private set; }
 
     readonly HotkeyService _hotkeys;
+    readonly WindowsAccent _windowsAccent;
+
+    /// <summary>Locked / display off / Energy Saver state (#104); widgets pause and slow down from it.</summary>
+    public PowerState Power { get; }
 
     /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
     public bool HiddenByFullscreen { get; private set; }
@@ -99,7 +106,37 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
     }
 
-    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
+    WakeRefresh? _wakeRefresh;
+
+    /// <summary>Resume / network back / unlock (#102): widgets fetch now instead of waiting for their next tick.</summary>
+    void RefreshAfterWake(string trigger)
+    {
+        Log.Verbose($"Refreshing widgets after {trigger}");
+        foreach (var w in _windows.Values) w.RefreshData();
+    }
+
+    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); UpdateEditPills(); }, null);
+
+    // SystemEvents raises these on its own thread, and a clock change often sends several in a row: coalesce them on the UI thread.
+    readonly System.Windows.Forms.Timer _timeTimer = new() { Interval = 300 };
+    string? _timeSignature;
+
+    void OnTimeChanged(object? s, EventArgs e) => _ui.Post(_ => { _timeTimer.Stop(); _timeTimer.Start(); }, null);
+
+    /// <summary>Settings broadcasts (WM_SETTINGCHANGE) are frequent; only a different time zone counts.</summary>
+    void OnPreferenceChanged(object? s, Microsoft.Win32.UserPreferenceChangedEventArgs e) => _ui.Post(_ =>
+    {
+        if (!TimeChange.ZoneChanged(_timeSignature, TimeChange.Signature())) return;
+        _timeTimer.Stop();
+        _timeTimer.Start();
+    }, null);
+
+    void TimeTimerTick(object? s, EventArgs e)
+    {
+        _timeTimer.Stop();
+        _timeSignature = TimeChange.Signature();
+        foreach (var w in _windows.Values) w.NotifyTimeChanged();
+    }
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
@@ -198,16 +235,20 @@ sealed class App : ApplicationContext
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
         Prefs.Configure(Settings.General);
+        _windowsAccent = new WindowsAccent(() => _ui.Post(_ => OnSystemAccentChanged(), null));
+        Prefs.SystemAccent = _windowsAccent.Read();
         WebHost.WebSettings = Settings.General;
         Manifests = WidgetManifest.DiscoverAll();
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
 
         Updater = new UpdateService(this);
         _tray = new NotifyIcon { Icon = AppIcon, Text = "Umbra", Visible = true };
-        _tray.DoubleClick += (_, _) => ShowSettings();
+        // One left click, like OneDrive and PowerToys. ShowSettings only focuses an open window, so a double-click never opens two.
+        _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowSettings(); };
         _tray.ContextMenuStrip = new ContextMenuStrip();
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
+        UpdateTrayStatus();
         _tray.BalloonTipClicked += (_, _) =>
         {
             if (_balloonAction is { } act) act();
@@ -216,6 +257,8 @@ sealed class App : ApplicationContext
         AnnounceUpdate();
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
+        Power = new PowerState(_ui); // before the windows: their settings payload reads it
+        Power.Changed += () => { foreach (var w in _windows.Values) w.PushPower(); };
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
@@ -224,6 +267,11 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        _timeSignature = TimeChange.Signature();
+        _timeTimer.Tick += TimeTimerTick;
+        Microsoft.Win32.SystemEvents.TimeChanged += OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
+        _wakeRefresh = new WakeRefresh(_ui, RefreshAfterWake, () => Settings.General.RefreshSeconds);
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
@@ -261,9 +309,8 @@ sealed class App : ApplicationContext
         if (next != Settings.General.LastSeenVersion) { Settings.General.LastSeenVersion = next; SaveSettings(); }
         if (!announce) return;
         Log.Write($"Updated to {current}");
-        _ = Updater.LoadWhatsNewAsync(current);
-        _balloonAction = () => _ = ShowPageAsync(ShowSettings(), "about");
-        _tray.ShowBalloonTip(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None);
+        _ = ObserveAsync(Updater.LoadWhatsNewAsync(current), "Release notes");
+        ShowBalloon(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None, null, () => _ = ShowPageAsync(ShowSettings(), "about"));
     }
 
     /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
@@ -276,7 +323,7 @@ sealed class App : ApplicationContext
         {
             var r = await Restore.RunAsync(
                 () => OnUi(() => Task.FromResult(Restore.ToRestore(Settings, Manifests))),
-                Community.FetchCatalogAsync, Community.InstallAsync, Log.Write);
+                Community.FetchCatalogAsync, e => Community.InstallAsync(e), Log.Write);
             await OnUi(() =>
             {
                 _restoring.Clear();
@@ -314,6 +361,47 @@ sealed class App : ApplicationContext
     {
         if (_settingsWindow is { IsDisposed: false }) _settingsWindow.RefreshState();
         BuildTrayMenu();
+        UpdateTrayStatus();
+    }
+
+    Icon? _badgedIcon;
+    bool _badged;
+
+    /// <summary>Refreshes the tray tooltip (widget count, edit/safe mode, update) and shows the update dot while an Umbra update is ready.</summary>
+    void UpdateTrayStatus()
+    {
+        _tray.Text = Tray.Tooltip(_windows.Count, EditMode, SafeMode, Updater.Available is not null);
+        var badge = Updater.Available is not null;
+        if (badge == _badged) return;
+        _badged = badge;
+        if (badge)
+        {
+            try { _badgedIcon = Tray.WithBadge(AppIcon, SystemInformation.SmallIconSize); _tray.Icon = _badgedIcon; }
+            catch (Exception ex) { Log.Write($"Tray badge failed: {ex.Message}"); _badged = false; }
+        }
+        else
+        {
+            _tray.Icon = AppIcon;
+            _badgedIcon?.Dispose();
+            _badgedIcon = null;
+        }
+    }
+
+    /// <summary>Starts a fresh Umbra that waits for this one to exit, then exits. For settings that only apply on start (GPU, proxy).</summary>
+    public void Restart()
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppPaths.ExePath, Tray.RestartArg) { UseShellExecute = false });
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Restart failed: {ex.Message}");
+            ShowBalloon(4000, "Umbra", $"Could not restart: {ex.Message}", ToolTipIcon.Error, null, null);
+            return;
+        }
+        Log.Write("Restarting");
+        QuitSoon();
     }
 
     /// <summary>Exits shortly after the current pipe reply has been written.</summary>
@@ -325,15 +413,19 @@ sealed class App : ApplicationContext
     {
         var menu = _tray.ContextMenuStrip!;
         menu.Items.Clear();
+        _tray.Text = Updater.Progress is { } dl ? $"Umbra - downloading update {dl}%"
+            : Updater.Ready && Updater.Available is { } ready ? $"Umbra - restart to update to v{ready.Version}" : "Umbra";
         if (Updater.Available is { } up)
         {
-            menu.Items.Add($"Update to v{up.Version} available", null, async (_, _) =>
+            var label = Updater.Progress is { } pct ? $"Downloading update v{up.Version} ({pct}%)"
+                : Updater.Ready ? $"Restart to update to v{up.Version}" : $"Update to v{up.Version} available";
+            menu.Items.Add(label, null, async (_, _) =>
             {
                 try { await Updater.InstallAsync(); }
                 catch (Exception ex)
                 {
                     Log.Write($"Update failed: {ex.Message}");
-                    _tray.ShowBalloonTip(4000, "Umbra", $"Update failed: {ex.Message}", ToolTipIcon.Error);
+                    ShowTrayMessage($"Update failed: {ex.Message}", ToolTipIcon.Error);
                 }
             }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
@@ -367,7 +459,37 @@ sealed class App : ApplicationContext
             }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh all", null, (_, _) => { foreach (var w in _windows.Values) w.RefreshData(); });
+        menu.Items.Add("Open data folder", null, (_, _) =>
+        {
+            try { System.Diagnostics.Process.Start("explorer.exe", $"\"{AppPaths.DataDir}\""); }
+            catch (Exception ex) { Log.Write($"Open data folder failed: {ex.Message}"); }
+        });
+        menu.Items.Add("Restart Umbra", null, (_, _) => Restart());
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
+    }
+
+    /// <summary>A balloon from Umbra itself (not a widget), e.g. a failed update.</summary>
+    public void ShowTrayMessage(string text, ToolTipIcon icon)
+    {
+        ShowBalloon(5000, "Umbra", text, icon, null, null);
+    }
+
+    /// <summary>
+    /// The only place a tray balloon is shown: it resets what a click does first, so a later balloon without a target
+    /// never inherits the previous one's URL or action (e.g. opening About).
+    /// </summary>
+    void ShowBalloon(int ms, string title, string text, ToolTipIcon icon, string? url, Action? action)
+    {
+        _balloonUrl = url;
+        _balloonAction = action;
+        _tray.ShowBalloonTip(ms, title, text, icon);
+    }
+
+    /// <summary>Awaits a fire-and-forget task so an exception is logged instead of going unobserved.</summary>
+    static async Task ObserveAsync(Task task, string what)
+    {
+        try { await task; }
+        catch (Exception ex) { Log.Write($"{what} failed: {ex.Message}"); }
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
@@ -375,10 +497,8 @@ sealed class App : ApplicationContext
     public bool Notify(string instance, string widgetName, string title, string body, string? url)
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
-        _balloonUrl = url;
-        _balloonAction = null;
         Log.Write($"[{instance}] notify: {title}");
-        _tray.ShowBalloonTip(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None);
+        ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url, null);
         return true;
     }
 
@@ -418,6 +538,8 @@ sealed class App : ApplicationContext
         foreach (var inst in _windows.Keys.Where(k => !live.Contains(k)).ToList()) CloseWidget(inst);
         foreach (var inst in _startHidden.Where(k => !Settings.Widgets.TryGetValue(k, out var s) || !s.StartHidden).ToList()) _startHidden.Remove(inst);
         ApplyVisibility();
+        UpdateTrayStatus();
+        RefreshEditPills();
     }
 
     /// <summary>Closes one copy (an instance id), or every copy of a widget (its plain id).</summary>
@@ -425,6 +547,7 @@ sealed class App : ApplicationContext
     {
         foreach (var key in _windows.Keys.Where(k => k == id || (!id.Contains('#') && InstanceId.WidgetOf(k) == id)).ToList())
         {
+            if (EditSelection == key) EditSelection = null;
             _windows[key].Close();
             _windows.Remove(key);
         }
@@ -492,6 +615,7 @@ sealed class App : ApplicationContext
         SaveSettings();
         SyncWindows();
         BuildTrayMenu();
+        UpdateTrayStatus();
     }
 
     /// <summary>Replaces settings (positions included) and widget data from a validated backup; approvals are untouched.</summary>
@@ -503,6 +627,7 @@ sealed class App : ApplicationContext
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
         s.General.LegacyRestoreDone = true;
         s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
+        s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
         Settings = s;
         SaveSettings();
         _hotkeys.Apply(Settings.Hotkeys);
@@ -531,6 +656,7 @@ sealed class App : ApplicationContext
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
+        incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
         Settings = incoming;
         SaveSettings();
         SyncWindows();
@@ -542,9 +668,78 @@ sealed class App : ApplicationContext
     {
         if (EditMode == on) return;
         EditMode = on;
+        if (!on) ShowGuides(Array.Empty<Snap.Guide>(), 96);
+        EditSelection = null;
         Log.Write($"Edit mode {(on ? "on" : "off")}");
         foreach (var w in _windows.Values) w.PushSettings();
+        UpdateEditPills();
         SettingsChangedElsewhere();
+    }
+
+    SnapGuides? _snapGuides;
+
+    /// <summary>Draws (or, with none, hides) the alignment guides while a widget is moved in edit mode.</summary>
+    public void ShowGuides(IReadOnlyList<Snap.Guide> guides, int dpi)
+    {
+        if (guides.Count == 0 && _snapGuides is null) return;
+        _snapGuides ??= new SnapGuides();
+        _snapGuides.SetGuides(guides, Settings.General.Accent, dpi);
+    }
+
+    readonly List<EditPill> _pills = new();
+
+    /// <summary>The "Done" pills: one per monitor that shows a widget (the primary one if none does) while edit mode is on, none otherwise.</summary>
+    void UpdateEditPills()
+    {
+        if (!EditMode)
+        {
+            foreach (var p in _pills) p.Close();
+            _pills.Clear();
+            return;
+        }
+        var screens = Placement.Monitors();
+        var areas = _windows.Values.Where(w => w.IsHandleCreated && w.Visible)
+            .Select(w => Placement.Find(screens, w.Bounds)).OfType<MonitorInfo>().Select(m => m.WorkArea).Distinct().ToList();
+        if (areas.Count == 0) areas = screens.Where(s => s.Primary).Select(s => s.WorkArea).Take(1).ToList();
+        // Only touch pills that must appear or go, so a save or a drag never makes them flicker.
+        foreach (var p in _pills.Where(p => !areas.Contains(p.Area)).ToList()) { p.Close(); _pills.Remove(p); }
+        var added = false;
+        foreach (var area in areas.Where(a => _pills.All(p => p.Area != a)))
+        {
+            var pill = new EditPill(this, area);
+            _pills.Add(pill);
+            pill.Show();
+            added = true;
+        }
+        foreach (var p in _pills) p.RefreshState();
+        if (added) LowerWidgets();
+    }
+
+    /// <summary>Moves the pills to the monitors that show widgets now (a widget was dragged to another monitor, added or removed).</summary>
+    public void RefreshEditPills() { if (EditMode) UpdateEditPills(); }
+
+    /// <summary>Puts every widget back at the bottom, under the edit pills (a pill is shown at the bottom too, so the widgets go under it).</summary>
+    public void LowerWidgets()
+    {
+        if (Peeking) return;
+        foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.SendToBottom(w.Handle);
+    }
+
+    /// <summary>The pill's snap switch: flips snapping and refreshes the pills, tray and Settings.</summary>
+    public void ToggleSnap()
+    {
+        Snap.Toggle(Settings.General);
+        SaveSettings();
+        foreach (var p in _pills) p.RefreshState();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Marks one widget copy as the edit-mode selection (stronger outline, arrow keys); everyone else is deselected.</summary>
+    public void SelectForEdit(string instance)
+    {
+        if (!EditMode || EditSelection == instance) return;
+        EditSelection = instance;
+        foreach (var w in _windows.Values) w.ShowEditSelected(w.Instance == instance);
     }
 
     public void ResetPosition(string id)
@@ -553,7 +748,29 @@ sealed class App : ApplicationContext
         else if (Settings.Widgets.TryGetValue(id, out var ws)) { ws.X = ws.Y = null; SaveSettings(); }
     }
 
+    /// <summary>Remembers where the Settings window was closed (see <see cref="SettingsPlacement"/>).</summary>
+    public void SaveSettingsPlacement(SettingsPlacement p) { Settings.SettingsPanel = p; Settings.Save(); }
+
     public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.RoundCorners(w.Handle); }
+
+    /// <summary>
+    /// Windows reported new colors: re-read the accent and, when "Match Windows accent" is on, re-tint widgets and Settings at once.
+    /// Windows can fire the event just before the value is readable, so it is checked once more shortly after.
+    /// </summary>
+    void OnSystemAccentChanged(bool recheck = true)
+    {
+        var now = _windowsAccent.Read();
+        if (now != Prefs.SystemAccent)
+        {
+            Prefs.SystemAccent = now;
+            if (Prefs.IsWindowsAccent(Settings.General.Accent))
+            {
+                foreach (var w in _windows.Values) w.PushSettings();
+                SettingsChangedElsewhere();
+            }
+        }
+        if (recheck) _ = Task.Delay(500).ContinueWith(_ => _ui.Post(_ => OnSystemAccentChanged(false), null));
+    }
 
     /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
     public string ThemeCss => Theme.CssFor(Settings.General.Theme);
@@ -590,11 +807,20 @@ sealed class App : ApplicationContext
     {
         _tray.Visible = false;
         _tray.Dispose();
+        _badgedIcon?.Dispose();
         Updater.Dispose();
+        _windowsAccent.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        Microsoft.Win32.SystemEvents.TimeChanged -= OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnPreferenceChanged;
+        _timeTimer.Dispose();
+        _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        _snapGuides?.Dispose();
+        foreach (var p in _pills) p.Close();
+        Power.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();

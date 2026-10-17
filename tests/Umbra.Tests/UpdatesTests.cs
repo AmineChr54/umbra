@@ -102,6 +102,39 @@ public class UpdatesTests
         Assert.False(Updates.DigestMatches("sha1:" + hex, hex));
     }
 
+    [Theory]
+    [InlineData(0, true)]                        // valid signature
+    [InlineData(unchecked((int)0x800B0100), true)] // TRUST_E_NOSIGNATURE: unsigned release, the digest protects it
+    [InlineData(unchecked((int)0x80096010), false)] // TRUST_E_BAD_DIGEST: tampered after signing
+    [InlineData(unchecked((int)0x800B0109), false)] // CERT_E_UNTRUSTEDROOT
+    [InlineData(unchecked((int)0x800B0101), false)] // CERT_E_EXPIRED
+    [InlineData(unchecked((int)0x800B010C), false)] // CERT_E_REVOKED
+    [InlineData(unchecked((int)0x800B0004), false)] // TRUST_E_SUBJECT_NOT_TRUSTED
+    [InlineData(1, false)]
+    public void Only_valid_or_unsigned_installers_pass_the_signature_check(int status, bool ok) =>
+        Assert.Equal(ok, Updates.SignatureAcceptable(status));
+
+    [Fact]
+    public void Self_update_runs_the_installer_invisibly_with_the_update_flag()
+    {
+        var args = Updates.InstallerArguments(@"C:\Temp\UmbraUpdate.log");
+        foreach (var flag in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCANCEL", "/SP-", "/UPDATE=1" })
+            Assert.Contains(flag, args.Split(' '));
+        Assert.Contains("/LOG=\"C:\\Temp\\UmbraUpdate.log\"", args);
+        Assert.DoesNotContain("/SILENT", args.Split(' ')); // /SILENT still shows the setup window
+    }
+
+    [Theory]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0", "log": "C:\\Temp\\UmbraUpdate.log" }""", "1.5.0", Updates.UpdateOutcome.Applied)]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0" }""", "1.4.0", Updates.UpdateOutcome.Failed)]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0" }""", "1.6.0", Updates.UpdateOutcome.Applied)]
+    [InlineData("""{ "to": "latest" }""", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData("not json", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData("", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData(null, "1.4.0", Updates.UpdateOutcome.None)]
+    public void The_update_marker_tells_a_finished_update_from_a_failed_one(string? json, string current, Updates.UpdateOutcome expected) =>
+        Assert.Equal(expected, Updates.ReadPending(json, current).Outcome);
+
     [Fact]
     public void ParseRelease_keeps_the_asset_digest()
     {

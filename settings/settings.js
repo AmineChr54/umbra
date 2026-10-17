@@ -24,11 +24,13 @@ const ICONS = {
   keyboard: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10.5h.01M11 10.5h.01M15 10.5h.01M17.5 10.5h.01M8 14h8"/>',
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  copy: '<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1"/>',
 };
 function icons(root = document) {
   for (const el of $$("[data-icon]", root)) {
     const name = el.dataset.icon;
     if (!ICONS[name] || el.firstChild) continue;
+    el.setAttribute("aria-hidden", "true");
     el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
   }
 }
@@ -42,12 +44,17 @@ const busy = new Map(); // id -> "install" | "remove"
 
 // ---------- navigation ----------
 function show(page) {
-  $$(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.page === page));
+  $$(".nav button").forEach((b) => {
+    const on = b.dataset.page === page;
+    b.classList.toggle("active", on);
+    on ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current");
+  });
   $$(".page").forEach((p) => p.classList.toggle("active", p.dataset.page === page));
   $("#content").scrollTop = 0;
   if (page === "browse" && !catalog) loadCatalog();
   if (page === "themes" && !themes) loadThemes();
   if (page === "privacy") post({ type: "privacy" });
+  post({ type: "page", page }); // the host remembers the last page for the next open
 }
 $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
 
@@ -63,12 +70,15 @@ function toast(text, error = false) {
 }
 
 // ---------- saving (debounced, so typing in a field doesn't save every keystroke) ----------
-let saveTimer;
+let saveTimer = null;
 function save(immediate = false) {
   clearTimeout(saveTimer);
-  const send = () => { post({ type: "save", settings: state.settings }); toast("Saved"); };
+  saveTimer = null;
+  const send = () => { saveTimer = null; post({ type: "save", settings: state.settings }); toast("Saved"); };
   immediate ? send() : (saveTimer = setTimeout(send, 450));
 }
+// A debounced save still waiting for its timer (sent right away before the window closes).
+function flushSave() { if (saveTimer) save(true); }
 
 // ---------- links ----------
 function openLink(key) {
@@ -76,6 +86,8 @@ function openLink(key) {
   const urls = { repo, issues: `${repo}/issues`, contribute: `${repo}/blob/main/CONTRIBUTING.md` };
   post({ type: "openUrl", url: urls[key] || key });
 }
+$("#reportIssue").addEventListener("click", () => post({ type: "reportIssue" }));
+$("#copyDiagnostics").addEventListener("click", () => post({ type: "copyDiagnostics" }));
 document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-url]");
   if (b) openLink(b.dataset.url);
@@ -90,6 +102,7 @@ function renderGeneral() {
   $("#startupSub").textContent = state.portable ? "Not available in portable mode." : "Your widgets appear on the desktop when you sign in.";
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
+  $("#slowEnergySaver").checked = g.slowOnEnergySaver !== false;
   $("#hideFullscreen").checked = !!g.hideOnFullscreen;
   if (document.activeElement !== $("#peekSeconds")) $("#peekSeconds").value = g.peekSeconds || 5;
   $("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
@@ -99,7 +112,19 @@ $("#peekSeconds").addEventListener("change", (e) => {
   state.settings.general.peekSeconds = v;
   save(true);
 });
-$$("#interval button").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === g.refreshSeconds));
+syncInterval(g.refreshSeconds);
+  labelRows();
+}
+// Segmented control = radio group: the selected button is the one tab stop, arrows move and select.
+function syncInterval(seconds) {
+  const buttons = $$("#interval button");
+  const on = buttons.find((b) => Number(b.dataset.v) === seconds);
+  for (const b of buttons) {
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", b === on ? "true" : "false");
+    b.tabIndex = b === on || (!on && b === buttons[0]) ? 0 : -1;
+    b.classList.toggle("on", b === on);
+  }
 }
 $("#startup").addEventListener("change", (e) => {
   post({ type: "setStartup", value: e.target.checked });
@@ -107,6 +132,7 @@ $("#startup").addEventListener("change", (e) => {
 });
 $("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
 $("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
+$("#slowEnergySaver").addEventListener("change", (e) => { state.settings.general.slowOnEnergySaver = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);
@@ -115,17 +141,56 @@ $$("#interval button").forEach((b) =>
   })
 );
 
+// Names for controls whose text lives in the row beside them, so a screen reader says "Start with Windows, switch, on"
+// instead of an unnamed check box. Idempotent: runs after every render that can add rows.
+let rowIds = 0;
+function labelRows(root = document) {
+  for (const row of $$(".row", root)) {
+    const title = $(".row-title", row);
+    if (!title) continue;
+    const sub = $(".row-sub", row);
+    for (const el of [title, sub]) if (el && !el.id) el.id = `row-t${++rowIds}`;
+    for (const input of $$(".switch input", row)) {
+      input.setAttribute("role", "switch");
+      if (!input.hasAttribute("aria-label")) input.setAttribute("aria-labelledby", title.id);
+      if (sub) input.setAttribute("aria-describedby", sub.id);
+    }
+    for (const group of $$(".segmented", row)) group.setAttribute("aria-labelledby", title.id);
+  }
+}
+
+// Arrow keys move through a list of buttons (sidebar, segmented control). `pick` also selects the one reached.
+function arrowNav(container, pick) {
+  container.addEventListener("keydown", (e) => {
+    const items = $$("button", container).filter((b) => !b.disabled);
+    const i = items.indexOf(document.activeElement);
+    if (i < 0 || e.ctrlKey || e.altKey || e.metaKey) return;
+    const next = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: items.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const target = items[(next + items.length) % items.length];
+    target.focus();
+    if (pick) target.click();
+  });
+}
+arrowNav($("#nav"), false);
+arrowNav($("#interval"), true);
+
 // ---------- Updates (About) ----------
 function renderUpdate() {
   const u = state.update || {};
   const a = u.available;
-  $("#updateText").textContent = a ? `Umbra v${a.version} is available.`
+  $("#updateText").textContent = typeof u.error === "string" && u.error.startsWith("The update to") ? u.error
+    : a && u.progress != null ? `Downloading Umbra v${a.version}: ${u.progress} %`
+    : a && u.ready ? `Umbra v${a.version} is ready. Restart to update.`
+    : a && u.error ? u.error
+    : a ? `Umbra v${a.version} is available.`
     : u.error ? "Couldn't check for updates right now."
     : u.lastChecked ? "You're up to date."
     : u.enabled === false ? "Update checks are turned off in General." : "Checking for updates...";
   $("#update").classList.toggle("has-update", !!a);
   $("#updateInstall").hidden = !a;
-  $("#updateInstall").lastChild.textContent = u.portable ? "Download" : "Update now";
+  $("#updateInstall").lastChild.textContent = u.portable ? "Download" : u.ready ? "Restart to update" : "Update now";
   $("#aboutPortable").hidden = !state.portable;
   $("#aboutPortable").textContent = state.portable ? `Portable mode - data in ${state.dataDir}` : "";
   $("#updateInstall").disabled = false;
@@ -195,7 +260,7 @@ $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled =
 $("#updateInstall").addEventListener("click", () => {
   if (state.update && state.update.portable) { post({ type: "openUrl", url: state.update.available.url }); return; }
   $("#updateInstall").disabled = true;
-  $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
+  $("#updateText").textContent = state.update && state.update.ready ? "Restarting Umbra..." : "Downloading the update. Umbra will restart when it's done...";
   post({ type: "installUpdate" });
 });
 
@@ -210,6 +275,8 @@ function comboFromEvent(e) {
 }
 function renderHotkeys() {
   const list = $("#hotkeyList");
+  // The list is rebuilt after each change; put keyboard focus back on the same shortcut.
+  const refocus = list.contains(document.activeElement) ? document.activeElement.dataset.action : null;
   list.replaceChildren();
   for (const h of state.hotkeys || []) {
     const row = document.createElement("div");
@@ -231,6 +298,8 @@ function renderHotkeys() {
     btn.className = "btn";
     btn.dataset.action = h.action;
     btn.textContent = recording === h.action ? "Press keys..." : h.keys || "Off";
+    btn.setAttribute("aria-label", recording === h.action ? `${h.label}: press the new shortcut. Escape cancels, Backspace turns it off.`
+      : `${h.label}: ${h.keys || "off"}. Press Enter to change.`);
     btn.addEventListener("click", () => { recording = h.action; renderHotkeys(); btn.focus(); });
     btn.addEventListener("blur", () => { if (recording === h.action) { recording = null; renderHotkeys(); } });
     btn.addEventListener("keydown", (e) => {
@@ -243,6 +312,7 @@ function renderHotkeys() {
     });
     row.append(text, btn);
     list.append(row);
+    if (refocus === h.action) btn.focus();
   }
 }
 $("#hotkeyReset").addEventListener("click", () => post({ type: "resetHotkeys" }));
@@ -265,6 +335,7 @@ function field(wid, key, spec, value) {
     input = document.createElement("label");
     input.className = "switch";
     input.innerHTML = `<input type="checkbox" id="${id}"><span></span>`;
+    $("input", input).setAttribute("role", "switch");
     $("input", input).checked = !!value;
     $("input", input).addEventListener("change", (e) => set(e.target.checked));
   } else {
@@ -307,7 +378,10 @@ function renderInstalled() {
     // Look the settings up on each change: the host may have sent a newer state (a zoom on the desktop)
     // while this list wasn't rebuilt, and writing to the old `ws` would be lost.
     const cur = () => state.settings.widgets[w.id];
+    card.setAttribute("aria-label", w.name);
     const enabled = $(".enabled", card);
+    enabled.setAttribute("role", "switch");
+    enabled.setAttribute("aria-label", `${w.name} enabled`);
     enabled.checked = ws.enabled;
     card.classList.toggle("off", !ws.enabled);
     enabled.addEventListener("change", () => {
@@ -328,10 +402,13 @@ function renderInstalled() {
     const scaleVal = $(".size-val", card);
     const showScale = (pct) => {
       scaleVal.textContent = `${Math.round(pct)}%`;
+      scale.setAttribute("aria-valuetext", `${Math.round(pct)}%`);
       scale.style.setProperty("--p", `${((pct - 50) / 250) * 100}%`);
     };
     const setScale = (pct) => { cur().scale = pct / 100; scale.value = pct; showScale(pct); save(true); };
     const lockScale = (on) => { scale.disabled = scaleVal.disabled = on; };
+    scale.setAttribute("aria-label", `${w.name} size`);
+    scaleVal.setAttribute("aria-label", `Reset ${w.name} size to 100%`);
     scale.value = Math.round((ws.scale || 1) * 100);
     showScale((ws.scale || 1) * 100);
     lockScale(ws.locked);
@@ -358,21 +435,26 @@ function renderInstalled() {
     else mon.selectedIndex = Math.max(0, mons.findIndex((m) => /primary/.test(m.label)));
     mon.addEventListener("change", () => { post({ type: "setMonitor", id: w.id, monitor: mon.value }); toast("Moved to " + mon.selectedOptions[0].textContent); });
 
+    $(".reset", card).setAttribute("aria-label", `Reset position of ${w.name}`);
     $(".reset", card).addEventListener("click", () => { post({ type: "resetPosition", id: w.id }); toast("Position reset"); });
     // Copies: the first copy can add more (each with its own options, position and data), extra copies can be removed.
     const extra = w.instance > 1;
     const copy = $(".copy", card);
     const removeCopy = $(".removecopy", card);
+    copy.setAttribute("aria-label", `Add another copy of ${w.name}`);
+    removeCopy.setAttribute("aria-label", `Remove ${w.name}`);
     if (extra) copy.remove();
     else copy.addEventListener("click", () => { post({ type: "addInstance", id: w.widget }); toast(`Added another ${w.name}`); });
     if (!extra) removeCopy.remove();
     else removeCopy.addEventListener("click", () => { post({ type: "removeInstance", id: w.id }); toast(`${w.name} removed`); });
     card.dataset.instance = w.id;
     const remove = $(".remove", card);
+    remove.setAttribute("aria-label", `Remove ${w.name}`);
     if (w.source === "builtin" || extra) remove.remove();
     else remove.addEventListener("click", () => job(w.widget, "remove", remove));
 
     icons(card);
+    labelRows(card);
     list.append(card);
   }
 }
@@ -396,6 +478,7 @@ function renderCommands(root, w) {
     const btn = document.createElement("button");
     btn.className = "btn small" + (c.status === "approved" ? " danger" : " primary");
     btn.textContent = c.status === "approved" ? "Revoke" : "Approve";
+    btn.setAttribute("aria-label", `${btn.textContent} ${c.line}`);
     btn.addEventListener("click", () =>
       post({ type: c.status === "approved" ? "revokeCommand" : "approveCommand", widget: w.id, command: c.id, hash: c.hash }));
     row.append(line, desc, btn);
@@ -491,6 +574,7 @@ function renderCatalog() {
       chips.append(c);
     }
 
+    card.setAttribute("aria-label", w.name);
     const btn = $(".action", card);
     if (busy.has(w.id)) {
       btn.disabled = true;
@@ -511,6 +595,7 @@ function renderCatalog() {
       btn.innerHTML = '<span class="ico" data-icon="download"></span>Install';
       btn.addEventListener("click", () => job(w.id, "install", btn));
     }
+    btn.setAttribute("aria-label", `${btn.textContent.trim()} ${w.name}`);
     icons(card);
     grid.append(card);
   }
@@ -522,6 +607,14 @@ function applyTheme(css) {
   let el = document.getElementById("umbra-theme");
   if (!css) { el && el.remove(); return; }
   if (!el) { el = document.createElement("style"); el.id = "umbra-theme"; document.head.append(el); }
+  if (el.textContent !== css) el.textContent = css;
+}
+
+// The accent from Appearance (a picked color, or the Windows accent) is one more :root rule, applied after the theme.
+function applyAccent(css) {
+  let el = document.getElementById("umbra-accent");
+  if (!css) { el && el.remove(); return; }
+  if (!el) { el = document.createElement("style"); el.id = "umbra-accent"; document.head.append(el); }
   if (el.textContent !== css) el.textContent = css;
 }
 
@@ -557,8 +650,10 @@ function renderThemes() {
     $(".cdesc", card).textContent = t.description || "";
     card.classList.toggle("active", t.id === active);
 
+    card.setAttribute("aria-label", t.name);
     const btn = $(".action", card);
     const remove = $(".remove", card);
+    remove.setAttribute("aria-label", `Remove theme ${t.name}`);
     if (!t.installed || t.builtin || t.id === "") remove.remove();
     else remove.addEventListener("click", () => job(t.id, "removeTheme", remove));
     if (busy.has(t.id)) {
@@ -580,6 +675,7 @@ function renderThemes() {
       btn.textContent = "Use theme";
       btn.addEventListener("click", () => { post({ type: "setTheme", id: t.id }); toast(`${t.name} applied`); });
     }
+    btn.setAttribute("aria-label", `${btn.textContent.trim()} ${t.name}`);
     icons(card);
     grid.append(card);
   }
@@ -587,7 +683,7 @@ function renderThemes() {
 
 function job(id, type, btn) {
   busy.set(id, type);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Working'; }
+  if (btn) { btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.innerHTML = '<span class="spin"></span>Working'; }
   post({ type, id });
 }
 
@@ -604,7 +700,9 @@ bridge && bridge.addEventListener("message", (e) => {
       $("#ver").textContent = `Version ${m.version}`;
       $("#aboutVer").textContent = `Version ${m.version}`;
       applyTheme(m.themeCss);
+      applyAccent(m.accentCss);
       renderGeneral();
+      if (!recording) renderHotkeys();
       if (themes) renderThemes();
       renderUpdate();
       $("#editMode").checked = !!m.editMode;
@@ -664,9 +762,12 @@ function renderPrivacy(list) {
       sub(w.hosts.length ? `Can reach: ${w.hosts.join(", ")}` : "Can reach no internet hosts"),
       sub(w.commands.length ? "Commands: " + w.commands.map((c) => `${c.line} (${c.status})`).join("; ") : "Runs no commands"),
       sub(`Saved data: ${fmt(w.data.bytes)}` + (w.blocked.count ? ` \u00b7 ${w.blocked.count} blocked request(s), latest ${w.blocked.recent[w.blocked.recent.length - 1]}` : "")));
+    if (w.crashes?.stopped) text.append(sub("Stopped working: its page kept crashing, so Umbra stopped reloading it. Use Reload on the widget."));
+    else if (w.crashes?.count) text.append(sub(`Crashed ${w.crashes.count} time(s) recently (see umbra.log); Umbra reloaded it.`));
     const del = document.createElement("button");
     del.className = "btn small danger";
     del.textContent = "Delete data";
+    del.setAttribute("aria-label", `Delete saved data of ${w.widget}`);
     del.disabled = !w.data.bytes;
     del.addEventListener("click", () => post({ type: "deleteData", widget: w.widget }));
     row.append(text, del);
@@ -680,5 +781,38 @@ $("#openDataFolder").addEventListener("click", () => post({ type: "openDataFolde
 $("#openLogBtn").addEventListener("click", () => post({ type: "openLog" }));
 $("#resetAll").addEventListener("click", () => post({ type: "resetAll" }));
 
+// ---------- keyboard ----------
+// Esc closes the window, Ctrl+F or / jumps to the Browse search, Ctrl+1..7 switch pages. A hotkey being recorded
+// handles (and cancels) its own keys first; the arrow keys of the sidebar and segmented control are in arrowNav().
+const typing = (el) => !!el && (el.isContentEditable || el.matches("textarea, select, input:not([type=checkbox], [type=radio], [type=range], [type=color])"));
+function focusSearch() {
+  show("browse");
+  $("#search").focus();
+  $("#search").select();
+}
+document.addEventListener("keydown", (e) => {
+  if (e.defaultPrevented || recording) return;
+  const noMods = !e.ctrlKey && !e.altKey && !e.metaKey;
+  if (e.key === "Escape" && noMods && !e.shiftKey) {
+    const search = $("#search");
+    if (document.activeElement === search && search.value) { search.value = ""; renderCatalog(); return; }
+    e.preventDefault();
+    // Commit a field being edited and any save still waiting on its timer, then let the host close the window.
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    flushSave();
+    post({ type: "close" });
+  } else if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && e.key.toLowerCase() === "f") {
+    e.preventDefault();
+    focusSearch();
+  } else if (e.key === "/" && noMods && !typing(document.activeElement)) {
+    e.preventDefault();
+    focusSearch();
+  } else if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && /^[1-9]$/.test(e.key)) {
+    const b = $$(".nav button")[Number(e.key) - 1];
+    if (b) { e.preventDefault(); show(b.dataset.page); }
+  }
+});
+
 icons();
+labelRows();
 post({ type: "load" });

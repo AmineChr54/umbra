@@ -6,7 +6,7 @@
 
 ## Install
 
-Download `UmbraSetup-<version>.exe` from [Releases](https://github.com/AmineChr54/umbra/releases) and run it. It installs per-user with no admin prompt, and lets you choose whether Umbra starts with Windows. Umbra lives in the tray. Double-click the tray icon, or open Umbra from the Start menu, for **Settings**.
+Download `UmbraSetup-<version>.exe` from [Releases](https://github.com/AmineChr54/umbra/releases) and run it. It installs per-user with no admin prompt, and lets you choose whether Umbra starts with Windows. Umbra lives in the tray. Click the tray icon, or open Umbra from the Start menu, for **Settings**. The tray tooltip shows the widget count and edit/safe mode, a dot on the icon means an Umbra update is ready, and the tray menu can open the data folder or restart Umbra.
 
 **Portable:** download `Umbra-<version>-portable.zip`, unzip it anywhere and run `Umbra.exe`. The `portable.txt` file next to it keeps all data (settings, widgets, logs, WebView2 cache) in a `data` folder beside the exe. Portable copies don't start with Windows and don't self-update (Settings shows a download link), and they run alongside an installed copy. To make any folder portable, create an empty `portable.txt` next to `Umbra.exe`.
 
@@ -14,9 +14,9 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 
 ## Features
 
-- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
-- **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
-- **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games.
+- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent color or match the Windows accent live, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live. The window reopens where you left it (size, monitor, maximized, last page).
+- **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Click a widget to select it (stronger outline), then nudge it with the arrow keys: 1 px, or 10 px (one grid step when snapping is on) with Shift. Widgets zoom like a web page, so text stays sharp at any size. A small "Editing widgets" pill at the top of each monitor with widgets has a snap switch (hold Shift to skip snapping) and **Done**; Esc on a clicked widget also leaves edit mode. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
+- **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games. They also stop fetching while the PC is locked or the display is off (one refresh when you are back) and slow down 4x on Windows Energy Saver.
 - **Notifications and media:** with permission, a widget can show a Windows notification (`umbra.notify`) or read and control the current media session (`umbra.media`).
 - **Data and privacy:** the **Data & privacy** page shows what each widget can reach and store, and offers backup, restore, reset and a safe mode that turns community widgets off.
 - **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. The catalog is also published as a static site (`node scripts/site.mjs`). See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
@@ -32,7 +32,9 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
 | **General:** start with Windows, refresh interval, animations, appearance and advanced options. | **My widgets:** edit mode, turn widgets on or off, edit their options and size, lock them or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
-| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates (after an update, the release notes once), source code and links to report issues or build a widget. |
+| **Browse:** install, update or remove community widgets in one click. | **About:** version, updates (after an update, the release notes once), source code, **Copy diagnostics** for bug reports, and links to report an issue (pre-filled with your version) or build a widget. |
+
+Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps to the Browse search, **Ctrl+1** to **Ctrl+7** switch pages, and the arrow keys move through the sidebar and the refresh interval. Switches and buttons have names for screen readers.
 
 ## Automate Umbra (CLI, scripts and AI agents)
 
@@ -48,20 +50,21 @@ umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, 
 umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
 umbractl safe-mode on                 # community widgets off, nothing deleted (also `Umbra.exe --safe`; not saved, next normal start restores)
 umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts delete Work`, `layouts`
-umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off); hold Shift while dragging to skip snapping
+umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off; --snap-gap 12 = px kept between neighbouring widgets, 0 = touch; edges, centers and the gap show guide lines; --snap off = master switch, also on the edit-mode pill); hold Shift while dragging to skip snapping
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
-umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
+umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60; --energy-saver off stops widgets slowing down 4x on Windows Energy Saver)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)
 umbractl configure sp500 --refresh 300 --opacity 0.8   # per-widget refresh interval (or default) and opacity (or opaque)
 umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --show-on-ac on   # start hidden; show only in a time range / on AC (--show-from always clears)
 umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
-umbractl install clock                # community catalog: catalog, install, remove
+umbractl install clock                # community catalog: catalog, install, remove (an update that adds hosts, media, notifications or commands is refused until you repeat it with --accept-permissions)
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
 umbractl new my-widget                # scaffold a working widget and show it
 umbractl capture sp500 shot.png       # PNG of just that widget (or settings:browse, settings:privacy, ...)
 umbractl data todo                    # a widget's saved data (umbra.store); data <id> <key> <json> to set
+umbractl diagnostics                  # Markdown for a bug report: versions, monitors, enabled widgets, last log lines (no settings values or proxy address)
 umbractl approvals                    # local commands widgets declare and whether you approved them (read-only)
 umbractl help                         # everything else
 ```
@@ -72,7 +75,7 @@ umbractl help                         # everything else
 claude mcp add umbra -- umbractl mcp
 ```
 
-Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
+Then ask Claude, for example, "add a widget that shows the weather in Berlin under my S&P widget". The agent reads `widget_authoring_guide`, writes the widget with `create_widget`, looks at it with `capture` and fixes what it sees. Its tools are `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `capture`, `install_widget`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more. Any MCP client works: point it at `umbractl mcp` over stdio.
 
 The Settings window has a **Data & privacy** page: per widget it shows the hosts it can reach, its commands, how much it has saved and recent blocked requests (with a Delete data button), plus Export/Import backup, Open data folder / log and Reset everything. Backups never include command approvals.
 
