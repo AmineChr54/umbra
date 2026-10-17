@@ -388,6 +388,8 @@ sealed class SettingsWindow : Form
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),
             ["themeCss"] = _app.ThemeCss,
+            ["accentCss"] = Prefs.AccentCss(_app.Settings.General),
+            ["systemAccent"] = Prefs.SystemAccent?.Accent ?? "",
             ["hotkeys"] = _app.DescribeHotkeys()["hotkeys"]!.DeepClone(),
             ["monitors"] = new JsonArray(Placement.Monitors().Select((m, i) => (JsonNode?)new JsonObject { ["name"] = m.Name, ["label"] = $"Monitor {i + 1}{(m.Primary ? " (primary)" : "")} - {m.Bounds.Width}x{m.Bounds.Height}" }).ToArray()),
             ["widgets"] = widgets,

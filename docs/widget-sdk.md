@@ -160,7 +160,7 @@ See `widgets/todo` for an example.
 
 **Appearance**: the user can pick a corner radius (`--radius-s/m/l` are overridden after the theme) and calm motion, which sets `--motion-scale: 2`; multiply your durations with `calc(200ms * var(--motion-scale, 1))`. `umbra.onSettings` reports the widget's own refresh interval as `refreshSeconds` when the user set one.
 
-**More appearance options**: the user can also set an accent color (`--accent`, `--accent-strong`, `--accent-soft`, also passed as `umbra.settings.accent`, empty = theme), light text (brighter `--text*`), an interface font (`--font`, `--font-display`), a text size (`--font-scale`, applied to the base font size of `umbra.css`; use `em`/`rem` to follow it), a window border on/off and color, and "reduce transparency" (solid `--line*` and `--accent-soft`, opaque windows). Avoid translucent colors of your own if you want to honor it.
+**More appearance options**: the user can also set an accent color (`--accent`, `--accent-strong`, `--accent-soft`, also passed as `umbra.settings.accent`, empty = theme; "Match Windows accent" follows the system accent live, lightened if it is too dark for black), light text (brighter `--text*`), an interface font (`--font`, `--font-display`), a text size (`--font-scale`, applied to the base font size of `umbra.css`; use `em`/`rem` to follow it), a window border on/off and color, and "reduce transparency" (solid `--line*` and `--accent-soft`, opaque windows). Avoid translucent colors of your own if you want to honor it.
 
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.

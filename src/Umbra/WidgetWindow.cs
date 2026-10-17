@@ -680,7 +680,7 @@ sealed class WidgetWindow : Form
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
-            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
+            ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),

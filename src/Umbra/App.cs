@@ -29,6 +29,7 @@ sealed class App : ApplicationContext
     public bool WidgetsHidden { get; private set; }
 
     readonly HotkeyService _hotkeys;
+    readonly WindowsAccent _windowsAccent;
 
     /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
     public bool HiddenByFullscreen { get; private set; }
@@ -197,6 +198,8 @@ sealed class App : ApplicationContext
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
         Prefs.Configure(Settings.General);
+        _windowsAccent = new WindowsAccent(() => _ui.Post(_ => OnSystemAccentChanged(), null));
+        Prefs.SystemAccent = _windowsAccent.Read();
         WebHost.WebSettings = Settings.General;
         Manifests = WidgetManifest.DiscoverAll();
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
@@ -527,6 +530,25 @@ sealed class App : ApplicationContext
 
     public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.RoundCorners(w.Handle); }
 
+    /// <summary>
+    /// Windows reported new colors: re-read the accent and, when "Match Windows accent" is on, re-tint widgets and Settings at once.
+    /// Windows can fire the event just before the value is readable, so it is checked once more shortly after.
+    /// </summary>
+    void OnSystemAccentChanged(bool recheck = true)
+    {
+        var now = _windowsAccent.Read();
+        if (now != Prefs.SystemAccent)
+        {
+            Prefs.SystemAccent = now;
+            if (Prefs.IsWindowsAccent(Settings.General.Accent))
+            {
+                foreach (var w in _windows.Values) w.PushSettings();
+                SettingsChangedElsewhere();
+            }
+        }
+        if (recheck) _ = Task.Delay(500).ContinueWith(_ => _ui.Post(_ => OnSystemAccentChanged(false), null));
+    }
+
     /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
     public string ThemeCss => Theme.CssFor(Settings.General.Theme);
 
@@ -563,6 +585,7 @@ sealed class App : ApplicationContext
         _tray.Visible = false;
         _tray.Dispose();
         Updater.Dispose();
+        _windowsAccent.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
