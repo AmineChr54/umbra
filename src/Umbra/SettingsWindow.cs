@@ -450,6 +450,14 @@ sealed class SettingsWindow : Form
         await _view.CoreWebView2.ExecuteScriptAsync($"show('{page}')");
     }
 
+    /// <summary>Shows My widgets scrolled to one copy's card, which is highlighted for a moment (the page's own focusWidget function).</summary>
+    public async Task ShowWidgetAsync(string instance)
+    {
+        if (!InstanceId.IsValid(instance)) throw new ArgumentException($"Invalid widget id '{instance}'");
+        await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
+        await _view.CoreWebView2.ExecuteScriptAsync($"focusWidget({JsonSerializer.Serialize(instance)})");
+    }
+
     /// <summary>A pixel-exact PNG of one Settings page (only this window's web content, never the screen).</summary>
     public async Task<byte[]> CaptureAsync(string page)
     {

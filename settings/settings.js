@@ -316,6 +316,28 @@ function renderInstalled() {
     icons(card);
     list.append(card);
   }
+  applyFocus();
+}
+
+// "Options..." in a widget's right-click menu: the host asks for this copy's card. State may arrive after the
+// request (Settings was just opened), so the request lasts a moment and renderInstalled applies it again.
+let focusId = null;
+let focusUntil = 0;
+let focusScrolled = false;
+function focusWidget(id) {
+  show("widgets");
+  focusId = id;
+  focusUntil = Date.now() + 2500;
+  focusScrolled = false;
+  applyFocus();
+}
+function applyFocus() {
+  if (!focusId || Date.now() > focusUntil) { focusId = null; return; }
+  const card = $$("#installed .wcard").find((c) => c.dataset.instance === focusId);
+  if (!card) return;
+  card.classList.add("focus");
+  if (!focusScrolled) { focusScrolled = true; card.scrollIntoView({ block: "center" }); }
+  setTimeout(() => card.classList.remove("focus"), Math.max(0, focusUntil - Date.now()));
 }
 
 // Local programs a widget may run. The host re-checks everything: this only shows the exact command line and

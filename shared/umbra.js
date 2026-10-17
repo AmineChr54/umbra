@@ -171,6 +171,10 @@
   });
   window.addEventListener("pointerup", () => (down = null), true);
 
+  // Right-click opens the host's widget menu (Refresh, Options, Lock...). A page that calls preventDefault() on
+  // "contextmenu" keeps its own menu; Shift+right-click always reaches the host, so the page never sees that event.
+  window.addEventListener("contextmenu", (e) => { if (e.shiftKey) e.stopImmediatePropagation(); }, true);
+
   // Edit mode (app-wide, switched from the tray or Settings): an unlocked widget gets an outline and a corner
   // handle. The overlay covers the page, so mouse presses anywhere move the widget and its own controls don't
   // react to them (capture-phase listeners and keyboard events can still reach the page).

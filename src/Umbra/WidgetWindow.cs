@@ -173,6 +173,7 @@ sealed class WidgetWindow : Form
         {
             await WebHost.InitAsync(_view, sandbox: Manifest);
             _view.CoreWebView2.WebMessageReceived += OnMessage;
+            _view.CoreWebView2.ContextMenuRequested += OnContextMenuRequested;
             _view.CoreWebView2.Navigate(Manifest.PageUrl);
         }
         catch (Exception ex)
@@ -289,6 +290,59 @@ sealed class WidgetWindow : Form
         if (!Alive) return;
         _app.SaveSettings();
         _app.SettingsChangedElsewhere();
+    }
+
+    // ---------- host context menu ----------
+
+    ContextMenuStrip? _menu;
+
+    /// <summary>
+    /// Right-click on the page. The menu is drawn by the host, so a page can neither spoof it nor open it: the event
+    /// comes from real mouse input only. A page that calls preventDefault() on "contextmenu" never gets here and keeps its own.
+    /// </summary>
+    void OnContextMenuRequested(object? sender, CoreWebView2ContextMenuRequestedEventArgs e)
+    {
+        e.Handled = true; // the Edge menu (back, save as, print...) never shows
+        if (IsDisposed) return;
+        BeginInvoke(ShowMenu);
+    }
+
+    /// <summary>Opens the menu at the cursor. A drop-down never activates this window, which keeps WS_EX_NOACTIVATE intact.</summary>
+    void ShowMenu()
+    {
+        if (!Alive || !Ws.Enabled) return;
+        _menu?.Dispose();
+        _menu = BuildMenu();
+        _menu.Show(CursorOverThisWindow() ? Cursor.Position : new Point(Left + Width / 2, Top + Height / 2));
+    }
+
+    ContextMenuStrip BuildMenu()
+    {
+        var menu = new ContextMenuStrip();
+        var locked = Ws.Locked;
+        menu.Items.Add(new ToolStripLabel(App.InstanceLabel(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Refresh", null, (_, _) => RefreshData());
+        menu.Items.Add("Options...", null, (_, _) => _app.ShowWidgetOptions(Instance));
+        menu.Items.Add(locked ? "Unlock position" : "Lock position", null, (_, _) => _app.SetLocked(Instance, !locked));
+        menu.Items.Add(new ToolStripMenuItem("Edit mode", null, (_, _) => _app.SetEditMode(!_app.EditMode)) { Checked = _app.EditMode });
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Hide", null, (_, _) => _app.DisableWidget(Instance));
+        var copy = menu.Items.Add("Add another copy", null, (_, _) =>
+        {
+            try { _app.AddInstance(Manifest); }
+            catch (InvalidOperationException ex) { Log.Write($"Add copy of {Manifest.Id} failed: {ex.Message}"); }
+        });
+        copy.Enabled = _app.Settings.Instances(Manifest.Id).Count < InstanceId.MaxInstances;
+        // The first copy can only be hidden here: uninstalling a widget stays in Settings, where nothing can be undone by accident.
+        if (InstanceId.IsExtra(Instance))
+            menu.Items.Add("Remove copy", null, (_, _) => _app.RemoveInstanceWithUndo(Instance));
+        if (_view.CoreWebView2.Settings.AreDevToolsEnabled)
+        {
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Inspect", null, (_, _) => _view.CoreWebView2.OpenDevToolsWindow());
+        }
+        return menu;
     }
 
     // ---------- JS bridge ----------
@@ -418,6 +472,8 @@ sealed class WidgetWindow : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _closing.Cancel();
+        // Disposed later: this can run inside a click on the menu's own item (Hide, Remove copy).
+        if (_menu is { } menu) { _menu = null; SynchronizationContext.Current?.Post(_ => menu.Dispose(), null); }
         base.OnFormClosed(e);
     }
 

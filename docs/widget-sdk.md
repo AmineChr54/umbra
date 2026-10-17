@@ -269,7 +269,7 @@ Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; 
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
-- No navigation away, no new windows, no context menu or devtools. Browser zoom keys are off; only the host sets
+- No navigation away, no new windows, no browser context menu or devtools. Right-click opens the host's own menu (Refresh, Options, Lock, Edit mode, Hide, Add another copy); a widget that calls `preventDefault()` on `contextmenu` keeps its own menu, and Shift+right-click always opens the host menu. Browser zoom keys are off; only the host sets
   the zoom (the user's size setting).
 - No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.

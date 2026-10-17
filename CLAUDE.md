@@ -22,7 +22,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 |---|---|
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
-| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
+| `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); host-drawn right-click menu (`ContextMenuRequested`; `RemovedCopy.cs` backs its Undo); `CaptureAsync` |
 | `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |

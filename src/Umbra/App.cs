@@ -207,7 +207,11 @@ sealed class App : ApplicationContext
         _tray.ContextMenuStrip = new ContextMenuStrip();
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
-        _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
+        _tray.BalloonTipClicked += (_, _) =>
+        {
+            if (_balloonUndo) UndoRemove();
+            else if (_balloonUrl is { } u) WebHost.OpenExternal(u);
+        };
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
         SyncWindows();
@@ -313,6 +317,11 @@ sealed class App : ApplicationContext
             }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
         }
+        if (UndoRemoveLabel is { } undo)
+        {
+            menu.Items.Add($"Undo remove {undo}", null, (_, _) => UndoRemove());
+            menu.Items.Add(new ToolStripSeparator());
+        }
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
@@ -351,6 +360,7 @@ sealed class App : ApplicationContext
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
         _balloonUrl = url;
+        _balloonUndo = false;
         Log.Write($"[{instance}] notify: {title}");
         _tray.ShowBalloonTip(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None);
         return true;
@@ -426,11 +436,69 @@ sealed class App : ApplicationContext
     {
         if (!InstanceId.IsExtra(instance) || !Settings.Widgets.ContainsKey(instance))
             throw new InvalidOperationException($"'{instance}' is not an extra copy of a widget");
+        var m = Manifests.FirstOrDefault(x => x.Id == InstanceId.WidgetOf(instance));
+        _removed = new RemovedCopy(instance, m is null ? instance : InstanceLabel(m, instance), Settings.Widgets[instance], WidgetStore.All(instance));
         CloseWidget(instance);
         Settings.Widgets.Remove(instance);
         WidgetStore.Delete(instance);
         SaveSettings();
         SettingsChangedElsewhere();
+    }
+
+    RemovedCopy? _removed;
+    bool _balloonUndo;
+
+    /// <summary>Label of the copy that "Remove" can still bring back, or null when there is nothing to undo.</summary>
+    public string? UndoRemoveLabel =>
+        _removed is { } r && r.CanRestore(Settings) && Manifests.Any(m => m.Id == InstanceId.WidgetOf(r.Instance)) ? r.Label : null;
+
+    /// <summary>Removes an extra copy from the widget menu and says how to get it back (tray menu, or a click on the balloon).</summary>
+    public void RemoveInstanceWithUndo(string instance)
+    {
+        RemoveInstance(instance);
+        if (_removed is not { } r) return;
+        _balloonUrl = null;
+        _balloonUndo = true;
+        _tray.ShowBalloonTip(5000, "Umbra", $"{r.Label} removed. Click to undo.", ToolTipIcon.None);
+    }
+
+    /// <summary>Brings back the last removed copy with its settings, position and stored data.</summary>
+    public void UndoRemove()
+    {
+        if (UndoRemoveLabel is null || _removed is not { } r) return;
+        r.Restore(Settings);
+        if (r.Data.Count > 0) WidgetStore.Replace(r.Instance, r.Data);
+        _removed = null;
+        SaveSettings();
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Hides a widget copy (turns it off in Settings); the widget menu's "Hide".</summary>
+    public void DisableWidget(string instance)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws)) return;
+        ws.Enabled = false;
+        SaveSettings();
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Locks or unlocks a copy's position and size; the widget menu's "Lock position".</summary>
+    public void SetLocked(string instance, bool locked)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws)) return;
+        ws.Locked = locked;
+        SaveSettings();
+        Window(instance)?.PushSettings();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Opens (or focuses) Settings on My widgets, scrolled to this copy's card and highlighted.</summary>
+    public async void ShowWidgetOptions(string instance)
+    {
+        try { await ShowSettings().ShowWidgetAsync(instance); }
+        catch (Exception ex) { Log.Write($"Could not open options for {instance}: {ex.Message}"); }
     }
 
     /// <summary>Forgets all extra copies of an uninstalled widget (settings; the data files go with the widget).</summary>
