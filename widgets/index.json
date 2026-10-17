@@ -276,7 +276,7 @@
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "preview": "preview.png",
       "hosts": [
         "query1.finance.yahoo.com"

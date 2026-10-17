@@ -184,6 +184,14 @@ theme can change:
 | `--up`, `--down`, `--flat` | `#2fd58b`, `#ff5a5f`, `#9aa0aa` | Rising, falling and unchanged values |
 | `--radius-s`, `--radius-m`, `--radius-l` | `8px`, `12px`, `18px` | Corner radii |
 
+**Windows contrast themes**: when Windows has a contrast theme on, the page runs with `forced-colors: active`:
+Windows replaces colors and drops `box-shadow`s and most backgrounds. `umbra.css` then maps the tokens to system
+colors (`Canvas`, `CanvasText`, `Highlight`; `--up`, `--down` and `--flat` all become `CanvasText`) and ignores theme
+tokens. To stay readable, draw borders and separators with `border` or `outline` instead of shadows, and don't rely
+on color alone: give a rising or falling value the `trend-up` or `trend-down` class and `umbra.css` adds a ▲ or ▼ in
+front of it (only in that mode). Use `forced-color-adjust: none` only for things that must keep their own colors,
+such as a chart, and then pick system colors yourself.
+
 ## Themes
 
 A theme is a folder `themes/<id>/` with a `theme.json` (and optionally a preview image). It is data only: a map of

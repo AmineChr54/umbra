@@ -82,6 +82,9 @@ function render() {
   const trend = change > 0 ? "up" : change < 0 ? "down" : "flat";
   const sign = change > 0 ? "+" : change < 0 ? "−" : "";
   el.card.dataset.trend = trend;
+  // With a Windows contrast theme on, umbra.css turns these into an arrow so direction doesn't rely on color.
+  el.pct.classList.toggle("trend-up", trend === "up");
+  el.pct.classList.toggle("trend-down", trend === "down");
 
   umbra.tween(shownPrice, d.price, 700, (v) => (el.price.textContent = umbra.fmt(v)));
   shownPrice = d.price;
