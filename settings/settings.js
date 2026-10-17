@@ -47,6 +47,7 @@ function show(page) {
   $("#content").scrollTop = 0;
   if (page === "browse" && !catalog) loadCatalog();
   if (page === "themes" && !themes) loadThemes();
+  if (page === "privacy") post({ type: "privacy" });
 }
 $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
 
@@ -527,6 +528,12 @@ bridge && bridge.addEventListener("message", (e) => {
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
       break;
+    case "privacy":
+      renderPrivacy(m.widgets);
+      break;
+    case "notice":
+      toast(m.text);
+      break;
     case "commandError":
       toast(m.error, true);
       break;
@@ -557,5 +564,37 @@ bridge && bridge.addEventListener("message", (e) => {
 
 // About logo = the sidebar logo
 $(".about-logo").replaceWith(Object.assign($(".logo").cloneNode(true), { classList: "about-logo" }));
+function renderPrivacy(list) {
+  const root = $("#privacyList");
+  root.textContent = "";
+  const fmt = (b) => (b < 1024 ? `${b} B` : `${(b / 1024).toFixed(1)} KB`);
+  for (const w of list) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const title = Object.assign(document.createElement("div"), { className: "row-title", textContent: w.widget });
+    const sub = (t) => Object.assign(document.createElement("div"), { className: "row-sub", textContent: t });
+    text.append(
+      title,
+      sub(w.hosts.length ? `Can reach: ${w.hosts.join(", ")}` : "Can reach no internet hosts"),
+      sub(w.commands.length ? "Commands: " + w.commands.map((c) => `${c.line} (${c.status})`).join("; ") : "Runs no commands"),
+      sub(`Saved data: ${fmt(w.data.bytes)}` + (w.blocked.count ? ` \u00b7 ${w.blocked.count} blocked request(s), latest ${w.blocked.recent[w.blocked.recent.length - 1]}` : "")));
+    const del = document.createElement("button");
+    del.className = "btn small danger";
+    del.textContent = "Delete data";
+    del.disabled = !w.data.bytes;
+    del.addEventListener("click", () => post({ type: "deleteData", widget: w.widget }));
+    row.append(text, del);
+    root.append(row);
+  }
+  if (!list.length) root.append(Object.assign(document.createElement("div"), { className: "row", textContent: "No widgets installed." }));
+}
+$("#exportBackup").addEventListener("click", () => post({ type: "exportBackup" }));
+$("#importBackup").addEventListener("click", () => post({ type: "importBackup" }));
+$("#openDataFolder").addEventListener("click", () => post({ type: "openDataFolder" }));
+$("#openLogBtn").addEventListener("click", () => post({ type: "openLog" }));
+$("#resetAll").addEventListener("click", () => post({ type: "resetAll" }));
+
 icons();
 post({ type: "load" });
