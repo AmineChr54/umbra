@@ -134,7 +134,7 @@ sealed class UpdateService : IDisposable
 
     static HttpClient CreateClient()
     {
-        var c = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+        var c = new HttpClient(Prefs.CreateHandler()) { Timeout = TimeSpan.FromMinutes(5) };
         c.DefaultRequestHeaders.UserAgent.ParseAdd($"Umbra/{CurrentVersion}");
         c.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return c;

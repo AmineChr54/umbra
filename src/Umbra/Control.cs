@@ -11,7 +11,7 @@ namespace Umbra;
 /// </summary>
 sealed class Control(App app)
 {
-    sealed class CommandException(string message) : Exception(message);
+    internal sealed class CommandException(string message) : Exception(message);
 
     public async Task<string?> HandleLineAsync(string line)
     {
@@ -81,6 +81,7 @@ sealed class Control(App app)
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
                 if (a["x"] is not null || a["y"] is not null) { ws.Monitor = null; ws.RelX = ws.RelY = null; } // an absolute spot replaces the recorded monitor
                 if (a["scale"] is JsonNode sc) ws.Scale = CheckScale(sc);
+                Prefs.ApplyWidget(a, ws);
                 if (a["options"] is JsonObject opts)
                     foreach (var (key, value) in opts) ws.Options[key] = CheckOption(m, key, value);
                 else if (a["options"] is not null) throw new CommandException("\"options\" must be an object");
@@ -110,6 +111,7 @@ sealed class Control(App app)
                     if (secs is < 1 or > 60) throw new CommandException("peekSeconds must be between 1 and 60");
                     g.PeekSeconds = secs;
                 }
+                Prefs.ApplyGeneral(a, g);
                 if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
@@ -404,6 +406,8 @@ sealed class Control(App app)
             ["locked"] = ws.Locked,
             ["monitor"] = ws.Monitor,
             ["scale"] = ws.Scale,
+            ["refreshSeconds"] = ws.RefreshSeconds,
+            ["opacity"] = ws.Opacity,
             ["open"] = win is not null,
             ["bounds"] = win is null ? null : new JsonObject { ["x"] = win.Left, ["y"] = win.Top, ["width"] = win.Width, ["height"] = win.Height },
             ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),

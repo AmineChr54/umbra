@@ -153,6 +153,8 @@ widget the keyboard. Umbra checks that a mouse button is physically down over th
 focus on its own. If you create an input in code (say, rename on double-click), call `umbra.requestFocus()` first.
 See `widgets/todo` for an example.
 
+**Appearance**: the user can pick a corner radius (`--radius-s/m/l` are overridden after the theme) and calm motion, which sets `--motion-scale: 2`; multiply your durations with `calc(200ms * var(--motion-scale, 1))`. `umbra.onSettings` reports the widget's own refresh interval as `refreshSeconds` when the user set one.
+
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.
 

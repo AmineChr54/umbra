@@ -83,6 +83,7 @@ document.addEventListener("click", (e) => {
 // ---------- General ----------
 function renderGeneral() {
   const g = state.settings.general;
+  window.prefsRender && prefsRender();
   $("#startup").checked = state.startup;
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
@@ -250,6 +251,7 @@ function renderInstalled() {
     });
 
     renderCommands($(".cmds", card), w);
+    window.prefsCard && prefsCard(card, w);
 
     const fields = $(".fields", card);
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});

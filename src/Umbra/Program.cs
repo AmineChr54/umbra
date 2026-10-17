@@ -19,6 +19,9 @@ static class Program
             return;
         }
 
+        // Startup delay after sign-in (Settings > Advanced); only for the autostart launch.
+        if (background && Prefs.StartupDelay(Settings.Load().General) is > 0 and var delay) Thread.Sleep(delay * 1000);
+
         ApplicationConfiguration.Initialize();
         Application.SetColorMode(SystemColorMode.Dark);
 

@@ -568,6 +568,7 @@ sealed class WidgetWindow : Form
     public void PushSettings()
     {
         ApplyBounds();
+        Opacity = Ws.Opacity is double o ? Prefs.ClampOpacity(o) : 1.0;
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
@@ -581,8 +582,9 @@ sealed class WidgetWindow : Form
         var ws = Ws;
         return new JsonObject
         {
-            ["refreshSeconds"] = _app.Settings.General.RefreshSeconds,
-            ["animations"] = _app.Settings.General.Animations,
+            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["animations"] = Prefs.MotionOn(_app.Settings.General),
+            ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
             ["scale"] = ws.Scale,
