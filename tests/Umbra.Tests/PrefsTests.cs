@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Xunit;
 using Umbra;
@@ -180,6 +181,27 @@ public class PrefsTests
         Prefs.Configure(new GeneralSettings { BorderColor = "#010203" });
         Assert.Equal(Native.ColorRef(1, 2, 3), Prefs.BorderColorRef);
         Prefs.Configure(new GeneralSettings());
+    }
+
+    [Theory]
+    [InlineData("de-DE", "de-DE")]
+    [InlineData("fr-FR", "fr-FR")]
+    [InlineData("sr-Latn-RS", "sr-Latn-RS")]
+    [InlineData("", "en-US")]
+    public void Locale_is_the_bcp47_region_format(string culture, string expected) =>
+        Assert.Equal(expected, Prefs.LocaleOf(CultureInfo.GetCultureInfo(culture)));
+
+    [Fact]
+    public void Hour12_follows_the_short_time_pattern()
+    {
+        Assert.False(Prefs.Hour12Of(CultureInfo.GetCultureInfo("de-DE")));
+        Assert.False(Prefs.Hour12Of(CultureInfo.GetCultureInfo("fr-FR")));
+        Assert.True(Prefs.Hour12Of(CultureInfo.GetCultureInfo("en-US")));
+        var custom = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        custom.DateTimeFormat.ShortTimePattern = "HH:mm";
+        Assert.False(Prefs.Hour12Of(custom));
+        custom.DateTimeFormat.ShortTimePattern = "'at' h:mm tt";
+        Assert.True(Prefs.Hour12Of(custom));
     }
 
     [Fact]

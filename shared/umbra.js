@@ -5,7 +5,7 @@
   const bridge = window.chrome && window.chrome.webview;
   const post = (msg) => bridge && bridge.postMessage(msg);
 
-  let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, editMode: false, options: {} };
+  let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
   const handlers = { settings: [], refresh: [], store: [] };
   const pending = new Map();
@@ -244,12 +244,22 @@
     requestAnimationFrame(step);
   }
 
+  // The Windows region format (Settings > Region), sent by the host as a BCP-47 tag. A tag Intl rejects falls back to en-US.
+  function locale() {
+    const tag = settings.locale;
+    if (typeof tag === "string" && tag) {
+      try { return Intl.getCanonicalLocales(tag)[0]; } catch { /* fall through */ }
+    }
+    return "en-US";
+  }
+
   const formatters = new Map();
-  /** 7744.06 -> "7,744.06" */
+  /** 7744.06 -> "7,744.06" (or "7.744,06" etc. in the user's Windows region) */
   function fmt(n, decimals = 2) {
-    if (!formatters.has(decimals))
-      formatters.set(decimals, new Intl.NumberFormat("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
-    return formatters.get(decimals).format(n);
+    const key = locale() + "|" + decimals;
+    if (!formatters.has(key))
+      formatters.set(key, new Intl.NumberFormat(locale(), { minimumFractionDigits: decimals, maximumFractionDigits: decimals }));
+    return formatters.get(key).format(n);
   }
 
   window.umbra = {
@@ -257,6 +267,10 @@
     get settings() { return settings; },
     get options() { return settings.options || {}; },
     get widget() { return widget; },
+    /** The user's Windows region format as a BCP-47 tag, e.g. "de-DE". Pass it to Intl or toLocale*String. */
+    get locale() { return locale(); },
+    /** True when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to Intl.DateTimeFormat. */
+    get hour12() { return !!settings.hour12; },
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
     run,

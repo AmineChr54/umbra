@@ -17,7 +17,7 @@ function render() {
     const s = data && data.series[c];
     if (!s || !s.length) return `<li><span class="c">${c}</span><span></span><span class="v num">-</span><span class="d">-</span></li>`;
     const last = s[s.length - 1], pct = (last / s[0] - 1) * 100, cls = Math.abs(pct) < 0.005 ? "" : pct > 0 ? "up" : "down";
-    return `<li><span class="c">${c}</span><span class="${cls}">${spark(s)}</span><span class="v num">${umbra.fmt(last, dec)}</span><span class="d num ${cls}">${pct > 0 ? "+" : ""}${pct.toFixed(2)}%</span></li>`;
+    return `<li><span class="c">${c}</span><span class="${cls}">${spark(s)}</span><span class="v num">${umbra.fmt(last, dec)}</span><span class="d num ${cls}">${pct > 0 ? "+" : ""}${umbra.fmt(pct)}%</span></li>`;
   }).join("");
   foot.className = failed ? "err" : "";
   foot.textContent = updated ? (failed ? "Offline, showing " : "Updated ") + updated : failed ? "Offline" : "Loading...";
@@ -33,7 +33,7 @@ async function load() {
     const series = {};
     for (const c of codes) series[c] = dates.map(d => j.rates[d][c]).filter(v => v != null);
     data = { series };
-    updated = `${dates[dates.length - 1]}, checked ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    updated = `${dates[dates.length - 1]}, checked ${new Date().toLocaleTimeString(umbra.locale, { hour: "2-digit", minute: "2-digit", hour12: umbra.hour12 })}`;
     failed = false;
     await umbra.store.set("last", { data, updated });
   } catch (e) { failed = true; }

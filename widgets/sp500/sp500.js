@@ -69,7 +69,7 @@ async function load() {
 }
 
 function time(d) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(umbra.locale, { hour: "2-digit", minute: "2-digit", hour12: umbra.hour12 });
 }
 
 function render() {
@@ -152,7 +152,7 @@ el.chart.addEventListener("pointermove", (e) => {
   el.cross.setAttribute("y1", 0); el.cross.setAttribute("y2", geometry.h);
   el.hoverDot.setAttribute("cx", p.x); el.hoverDot.setAttribute("cy", p.y);
   const when = new Date(s.t * 1000);
-  const label = opts().range === "1d" ? time(when) : `${when.toLocaleDateString([], { weekday: "short" })} ${time(when)}`;
+  const label = opts().range === "1d" ? time(when) : `${when.toLocaleDateString(umbra.locale, { weekday: "short" })} ${time(when)}`;
   el.tip.innerHTML = `<b>${label}</b>${umbra.fmt(s.v)}`;
   const half = el.tip.offsetWidth / 2 + 6;
   el.tip.style.left = `${Math.min(geometry.w - half, Math.max(half, p.x))}px`;

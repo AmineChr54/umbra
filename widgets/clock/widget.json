@@ -4,7 +4,7 @@
   "name": "Clock",
   "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
   "author": "AmineChr54",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 260,
@@ -12,7 +12,10 @@
   "defaultPosition": { "x": 24, "y": 240 },
   "permissions": { "hosts": [] },
   "options": {
-    "hour12": { "label": "12-hour time", "type": "toggle", "default": false },
+    "timeFormat": {
+      "label": "Time format", "type": "select", "default": "auto",
+      "choices": [{ "value": "auto", "label": "Follow Windows" }, { "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
+    },
     "seconds": { "label": "Show seconds", "type": "toggle", "default": false }
   }
 }

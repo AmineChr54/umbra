@@ -97,7 +97,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, locale, hour12, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all", after the PC resumes from sleep, when the network comes back and after a long lock (at most once per 10 s). Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
@@ -116,7 +116,9 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.openUrl(url)` | Opens an http(s) link in the user's browser (links never navigate the widget) |
 | `umbra.rendered()` | Call once the first real frame is drawn; screenshots wait for it |
 | `umbra.tween(from, to, ms, onFrame)` | Ease-out-cubic number animation; jumps straight to `to` when motion is off or the window is hidden |
-| `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"` |
+| `umbra.locale` | The user's Windows region format as a BCP-47 tag (`"de-DE"`). Pass it to `Intl.*` and `toLocale*String` instead of `[]` or a hard-coded `"en-US"`; `"en-US"` before the host has sent settings |
+| `umbra.hour12` | `true` when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to `Intl.DateTimeFormat` or `toLocaleTimeString`, and let an option override it if you offer one |
+| `umbra.fmt(n, decimals = 2)` | `7744.06` to `"7,744.06"`, or `"7.744,06"` when Windows is set to German: it follows `umbra.locale` |
 
 Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.fetchJson` always works.
 
