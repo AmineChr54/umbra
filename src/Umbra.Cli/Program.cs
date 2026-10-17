@@ -94,6 +94,7 @@ static void PrintHelp()
           reload                         re-scan widget folders
           catalog                        community widgets on GitHub
           install|remove <id>            install/update or uninstall a community widget
+          update --all                   update every installed community widget that has a newer version (failures are listed, the rest still update)
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
           hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E

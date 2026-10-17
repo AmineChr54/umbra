@@ -260,6 +260,52 @@ public class CommunityTests
         noEntry.Remove("index.html");
         Assert.Throws<InvalidOperationException>(() => Community.WriteLocalWidget("no-entry", noEntry, false));
     }
+
+    static WidgetManifest Installed(string id, string version, WidgetSource origin = WidgetSource.Community) =>
+        new() { Id = id, Name = id, Version = version, Source = origin };
+
+    static JsonNode Entry(string id, string version) => new JsonObject { ["id"] = id, ["version"] = version };
+
+    [Fact]
+    public void Outdated_lists_only_newer_community_widgets()
+    {
+        var catalog = new JsonNode?[] { Entry("clock", "1.2.0"), Entry("weather", "1.0.0"), Entry("fresh", "3.0.0"), Entry("builtin", "9.0.0"), null };
+        var installed = new[] { Installed("clock", "1.1.0"), Installed("weather", "1.0.0"), Installed("builtin", "1.0.0", WidgetSource.BuiltIn) };
+        // "fresh" isn't installed (that is an install, not an update); equal versions and built-ins never update
+        Assert.Equal(new[] { "clock" }, Community.Outdated(catalog, installed).Select(e => e["id"]!.GetValue<string>()));
+        Assert.Empty(Community.Outdated(catalog, Array.Empty<WidgetManifest>()));
+    }
+
+    [Fact]
+    public async Task UpdateAll_keeps_going_after_a_failure_and_reports_it()
+    {
+        var entries = new[] { Entry("a", "2.0.0"), Entry("b", "2.0.0"), Entry("c", "2.1.0") };
+        var seen = new List<string>();
+        var progress = new List<(int, int, string)>();
+        var r = await Community.UpdateAllAsync(entries, e =>
+        {
+            var id = e["id"]!.GetValue<string>();
+            seen.Add(id);
+            return id == "b" ? Task.FromException(new InvalidOperationException("boom")) : Task.CompletedTask;
+        }, (i, n, id) => progress.Add((i, n, id)));
+
+        Assert.Equal(new[] { "a", "b", "c" }, seen);
+        Assert.Equal(new[] { ("a", "2.0.0"), ("c", "2.1.0") }, r.Updated);
+        Assert.Equal(new[] { ("b", "boom") }, r.Failed);
+        Assert.Equal(new[] { (1, 3, "a"), (2, 3, "b"), (3, 3, "c") }, progress);
+
+        var json = r.ToJson();
+        Assert.Equal(2, json["updated"]!.AsArray().Count);
+        Assert.Equal("boom", json["failed"]![0]!["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task UpdateAll_with_nothing_to_do_is_empty()
+    {
+        var r = await Community.UpdateAllAsync(Array.Empty<JsonNode>(), _ => throw new InvalidOperationException("must not install"));
+        Assert.Empty(r.Updated);
+        Assert.Empty(r.Failed);
+    }
 }
 
 public class WidgetStoreTests

@@ -67,6 +67,7 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         new("reload_widgets", "reload", "Re-scan widget folders after files were edited on disk, reopening changed widgets.", Schema(new())),
         new("browse_catalog", "catalog", "The community widget catalog (from the GitHub repo), with installed and updateAvailable flags.", Schema(new())),
         new("install_widget", "install", "Install or update a community widget from the catalog by id.", Schema(Obj(("id", IdProp.DeepClone())), "id")),
+        new("update_all_widgets", "update-all", "Update every installed community widget that has a newer catalog version, one after another. A failure does not stop the rest; the result lists updated {id, version} and failed {id, error}. Use browse_catalog first to see which widgets have updateAvailable.", Schema(new())),
         new("remove_widget", "remove", "Uninstall a community widget (built-in widgets can only be disabled).", Schema(Obj(("id", IdProp.DeepClone())), "id")),
         new("theme", "theme", "Read the active theme id, or switch to an installed theme by id (applies live to every widget and Settings). Ids come from list_themes; \"default\" is the built-in Umbra Black look.",
             Schema(Obj(("id", P("string", "Theme id to switch to; omit to read the active one"))))),
