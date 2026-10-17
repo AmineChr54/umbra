@@ -31,6 +31,9 @@ sealed class App : ApplicationContext
     readonly HotkeyService _hotkeys;
     readonly WindowsAccent _windowsAccent;
 
+    /// <summary>Locked / display off / Energy Saver state (#104); widgets pause and slow down from it.</summary>
+    public PowerState Power { get; }
+
     /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
     public bool HiddenByFullscreen { get; private set; }
     public bool Peeking { get; private set; }
@@ -222,6 +225,8 @@ sealed class App : ApplicationContext
         _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
+        Power = new PowerState(_ui); // before the windows: their settings payload reads it
+        Power.Changed += () => { foreach (var w in _windows.Values) w.PushPower(); };
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
@@ -601,6 +606,7 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        Power.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();
