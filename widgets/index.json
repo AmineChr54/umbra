@@ -6,7 +6,7 @@
       "name": "Claude waker",
       "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [],
       "commands": [
@@ -124,6 +124,23 @@
         "gh.js",
         "index.html",
         "preview.png",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "habits",
+      "name": "Habits",
+      "description": "Daily habits with a 52-week dot grid, current and best streak. One tap marks today; targets are daily or N times a week. Everything stays on your PC.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "habits.css",
+        "habits.js",
+        "index.html",
+        "preview.png",
+        "streaks.js",
         "widget.json"
       ]
     },

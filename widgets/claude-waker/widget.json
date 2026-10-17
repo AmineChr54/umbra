@@ -4,7 +4,7 @@
   "name": "Claude waker",
   "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
   "author": "AmineChr54",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 320,
@@ -20,6 +20,9 @@
     ]
   },
   "options": {
+    "view": { "label": "View", "type": "select", "default": "details",
+             "choices": [{ "value": "details", "label": "Details" }, { "value": "clock", "label": "Usage clock" }],
+             "hint": "Usage clock shows the time left in the 5-hour window as a ring." },
     "onLogon": { "label": "Wake when Umbra starts", "type": "toggle", "default": true,
                  "hint": "Once per Umbra start (log in), if the minimum gap has passed." },
     "onResume": { "label": "Wake after sleep", "type": "toggle", "default": true,

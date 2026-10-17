@@ -150,6 +150,16 @@ function render() {
   else if (state.ok === false) { badge.className = "badge err"; badge.textContent = "Needs attention"; }
   else { badge.className = "badge"; badge.textContent = "Not run yet"; }
 
+  // Usage clock: the ring shows the share of the 5-hour window that is left.
+  const clockView = opts().view === "clock";
+  $("clock").hidden = !clockView;
+  $("app").classList.toggle("clockview", clockView);
+  const end = state.lastOk + WINDOW, active = state.lastOk && end > now;
+  $("arc").style.strokeDashoffset = String(326.7 * (active ? 1 - (end - now) / WINDOW : 1));
+  $("arc").classList.toggle("off", !active);
+  $("left").textContent = active ? span(end - now).replace(" min", "m").replace(" h ", "h ") : "-";
+  $("leftsub").textContent = active ? "left, resets " + fmtT.format(end) : state.lastOk ? "window ended" : "No window yet";
+
   $("wake").disabled = running;
   $("wake-label").textContent = running ? "Waking Claude..." : "Wake now";
 

@@ -18,7 +18,18 @@
       <span id="wake-label">Wake now</span>
     </button>
 
-    <dl class="rows">
+    <section class="clock" id="clock" hidden>
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="track" cx="60" cy="60" r="52"/>
+        <circle class="arc" id="arc" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="center">
+        <div class="left num" id="left">-</div>
+        <div class="sub" id="leftsub">No window yet</div>
+      </div>
+    </section>
+
+    <dl class="rows" id="rows">
       <div class="row"><dt>Last wake</dt><dd id="last"><span class="num">-</span></dd></div>
       <div class="row"><dt>Window resets at</dt><dd id="reset"><span class="num">-</span></dd></div>
       <div class="row"><dt>Last result</dt><dd id="result">-</dd></div>

@@ -1,0 +1,57 @@
+html, body { height: 100%; overflow: hidden; }
+.hb { height: 100%; display: flex; flex-direction: column; padding: 16px 16px 12px; gap: 10px; }
+
+.head { display: flex; align-items: center; gap: 10px; }
+.title { margin: 0; flex: 1; min-width: 0; font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.count { font-size: 12px; color: var(--text-2); }
+.add { width: 28px; height: 28px; border: 0; border-radius: 50%; font: inherit; font-size: 18px; line-height: 1; color: var(--accent-strong); background: var(--accent-soft); cursor: pointer; }
+.add:hover { box-shadow: inset 0 0 0 1px var(--accent); }
+
+.form { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--surface-1); border-radius: var(--radius-m); }
+.form[hidden], .detail[hidden], .empty[hidden] { display: none; }
+.icons { display: flex; flex-wrap: wrap; gap: 4px; }
+.icons button { width: 28px; height: 28px; border: 1px solid transparent; border-radius: var(--radius-s); background: var(--surface-2); font-size: 15px; cursor: pointer; }
+.icons button.on { border-color: var(--accent); background: var(--accent-soft); }
+.frow { display: flex; gap: 8px; }
+.frow.end { justify-content: flex-end; }
+input, select { flex: 1; min-width: 0; height: 30px; padding: 0 8px; font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-s); }
+select { flex: none; width: 118px; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+.btn { height: 28px; padding: 0 12px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface-2); border: 0; border-radius: var(--radius-s); cursor: pointer; }
+.btn.primary { color: var(--accent-strong); background: var(--accent-soft); }
+
+.list { margin: 0; padding: 0; list-style: none; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.list::-webkit-scrollbar { width: 6px; }
+.list::-webkit-scrollbar-button { display: none; }
+.list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+.row { flex: none; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 6px 0 8px; border-radius: var(--radius-m); cursor: pointer; }
+.row:hover { background: var(--surface-1); }
+.row.sel { background: var(--surface-2); }
+.row .ic { font-size: 16px; width: 22px; text-align: center; }
+.row .nm { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .nm small { margin-left: 6px; font-size: 11px; font-weight: 500; color: var(--text-3); }
+.row .st { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.row .st.hot { color: var(--accent-strong); }
+.chk { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--text-3); background: transparent; color: #000; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.chk:hover { border-color: var(--accent); }
+.chk.done { background: var(--accent); border-color: var(--accent); }
+.chk svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.chk.done svg { opacity: 1; }
+
+.detail { flex: none; padding-top: 10px; border-top: 1px solid var(--line); }
+.stats { display: flex; align-items: flex-end; gap: 18px; }
+.stats div { display: flex; flex-direction: column; }
+.stats b { font-size: 20px; font-weight: 600; line-height: 1.1; }
+.stats span { font-size: 11px; color: var(--text-3); }
+.rm { margin-left: auto; font: inherit; font-size: 11px; color: var(--text-3); background: none; border: 0; cursor: pointer; padding: 4px 0; }
+.rm:hover, .rm.sure { color: var(--down); }
+
+.grid { margin-top: 10px; display: grid; grid-template-columns: repeat(52, 1fr); grid-template-rows: repeat(7, auto); grid-auto-flow: column; gap: 1.5px; }
+.grid i { display: block; aspect-ratio: 1; border-radius: 1.5px; background: var(--surface-3); cursor: pointer; }
+.grid i.on { background: var(--accent); }
+.grid i.today { box-shadow: 0 0 0 1px var(--text-2); }
+.grid i.future { visibility: hidden; }
+.months { position: relative; height: 14px; margin-top: 3px; font-size: 11px; color: var(--text-3); }
+.months span { position: absolute; top: 0; }
+
+.empty { margin: auto; text-align: center; font-size: 13px; line-height: 1.5; color: var(--text-3); }
