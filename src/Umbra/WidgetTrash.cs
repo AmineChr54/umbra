@@ -7,6 +7,7 @@ namespace Umbra;
 /// Settings > Remove does not delete: the widget folder, every copy's umbra.store data and the copies' settings
 /// (options, position, size) move to %APPDATA%\Umbra\trash\&lt;id&gt;-&lt;timestamp&gt;\ so Undo can put them back.
 /// Entries older than <see cref="Retention"/> are purged at startup. The trash is never read by backups.
+/// The working folders of <c>permissions.commands</c> runs (dataun) are not kept and not restored.
 /// umbractl / MCP <c>remove</c> still deletes for good (<see cref="Community.Remove"/>).
 /// </summary>
 static partial class WidgetTrash
@@ -88,6 +89,7 @@ static partial class WidgetTrash
         var folder = Path.Combine(entry, WidgetFolder);
         if (!Directory.Exists(folder)) throw new InvalidOperationException("The trash entry is damaged and cannot be restored");
 
+        Community.ValidateFolder(folder, widgetId); // the trash is user-writable: same rules as an install before it goes live
         Directory.Move(folder, target);
         WidgetStore.RestoreFrom(Path.Combine(entry, DataFolder), widgetId);
         if (meta["settings"] is JsonNode s)

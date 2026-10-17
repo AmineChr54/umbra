@@ -94,6 +94,24 @@ public class WidgetTrashTests
         Assert.True(Directory.Exists(Path.Combine(AppPaths.CommunityDir, id))); // untouched
     }
 
+    [Fact]
+    public void Undo_is_refused_when_the_trashed_folder_was_tampered_with()
+    {
+        var id = NewId();
+        Community.WriteLocalWidget(id, Files(id), overwrite: false);
+        var settings = new Settings();
+        var token = RemoveLikeSettings(settings, id);
+        var folder = Path.Combine(AppPaths.DataDir, "trash", token!, "widget");
+        File.WriteAllText(Path.Combine(folder, "evil.exe"), "x");
+
+        Assert.Throws<InvalidOperationException>(() => WidgetTrash.Restore(settings, token!));
+        Assert.False(Directory.Exists(Path.Combine(AppPaths.CommunityDir, id)));
+
+        File.Delete(Path.Combine(folder, "evil.exe"));
+        File.WriteAllText(Path.Combine(folder, "widget.json"), Files("other-id")["widget.json"]);
+        Assert.Throws<InvalidOperationException>(() => WidgetTrash.Restore(settings, token!));
+    }
+
     [Theory]
     [InlineData("../x")]
     [InlineData("..\\x")]
