@@ -58,6 +58,10 @@
         updateStatus(); // the stale threshold follows the refresh interval
         handlers.settings.forEach((fn) => fn(settings));
         break;
+      case "editSelected": // the last widget pressed in edit mode gets a stronger outline (arrow keys nudge it)
+        settings.editSelected = !!m.selected;
+        applyEdit();
+        break;
       case "editScale": // live scale while the corner handle is dragged; keeps the overlay's outline size steady
         if (overlay && typeof m.scale === "number" && m.scale > 0) overlay.style.setProperty("--k", String(1 / m.scale));
         break;
@@ -259,8 +263,8 @@
       return;
     }
     const editable = e.target.closest(EDITABLE);
-    // In edit mode a press also asks for the keyboard, so Esc (handled by the host) can end edit mode.
-    post({ type: editable || settings.editMode ? "focus" : "pointer" });
+    // In edit mode a press also selects the widget and takes the keyboard, so the arrow keys can nudge it.
+    post({ type: editable || editing() ? "focus" : "pointer" });
     if (e.button !== 0 || editable || e.target.closest("[data-no-drag]")) return;
     down = { x: e.screenX, y: e.screenY };
   }, true);
@@ -277,8 +281,10 @@
   // handle. The overlay covers the page, so mouse presses anywhere move the widget and its own controls don't
   // react to them (capture-phase listeners and keyboard events can still reach the page).
   // Ctrl+wheel zooms in 10 % steps. The host checks edit mode, the lock and the physical mouse/keyboard state.
+  // The widget last pressed gets a stronger outline, and its arrow keys nudge it (1 px, Shift 10 px or a grid step).
   let overlay = null;
   let grip = null;
+  let frame = null;
   const editing = () => !!(settings.editMode && !settings.locked);
   function applyEdit() {
     if (!editing()) {
@@ -294,6 +300,7 @@
       root.innerHTML = `<style>
         .frame { position: absolute; inset: 0; pointer-events: none; border-radius: calc(8px * var(--k));
                  background: rgba(139, 147, 255, 0.05); box-shadow: inset 0 0 0 calc(1.5px * var(--k)) rgba(139, 147, 255, 0.75); }
+        .frame.sel { background: rgba(139, 147, 255, 0.1); box-shadow: inset 0 0 0 calc(3px * var(--k)) rgba(170, 176, 255, 1); }
         .grip { position: absolute; right: 0; bottom: 0; width: calc(24px * var(--k)); height: calc(24px * var(--k)); cursor: nwse-resize; }
         .grip svg { position: absolute; right: calc(5px * var(--k)); bottom: calc(5px * var(--k)); width: calc(11px * var(--k)); height: calc(11px * var(--k)); }
         /* Windows contrast themes drop box-shadows and backgrounds, so draw the frame as a real border. */
@@ -305,13 +312,23 @@
       </style><div class="frame"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
         stroke="#aab0ff" stroke-width="1.6" stroke-linecap="round"><path d="M10 2 2 10M10 6.5 6.5 10"/></svg></div>`;
       grip = root.querySelector(".grip");
+      frame = root.querySelector(".frame");
       // Clicks on the overlay are Umbra's, not the widget's.
       for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "contextmenu"])
         overlay.addEventListener(type, (e) => e.stopPropagation());
     }
     overlay.style.setProperty("--k", String(1 / (settings.scale || 1)));
+    if (frame) frame.classList.toggle("sel", !!settings.editSelected);
     if (!overlay.isConnected) document.documentElement.append(overlay);
   }
+
+  const ARROWS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+  window.addEventListener("keydown", (e) => {
+    const dir = ARROWS[e.key];
+    if (!dir || !editing() || !settings.editSelected || e.ctrlKey || e.altKey || e.metaKey) return;
+    e.preventDefault();
+    post({ type: "nudge", dir });
+  }, true);
 
   // Esc ends edit mode. The host also hears the key itself; this covers the cases where the page swallows it.
   window.addEventListener("keydown", (e) => {
