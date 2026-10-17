@@ -100,5 +100,8 @@ public class LayoutSafeModeTests
         Assert.Equal(("safe-mode", """{"on":true}"""), (c1, a1.ToJsonString()));
         var (c2, a2) = await CommandLine.TranslateAsync(new[] { "layouts", "save", "My", "Work" }, none);
         Assert.Equal(("layouts", """{"op":"save","name":"My Work"}"""), (c2, a2.ToJsonString()));
+        var (c3, a3) = await CommandLine.TranslateAsync(new[] { "layouts", "rename", "Layout 1", "Docked" }, none);
+        Assert.Equal(("layouts", """{"op":"rename","name":"Layout 1","to":"Docked"}"""), (c3, a3.ToJsonString()));
+        await Assert.ThrowsAsync<ArgumentException>(() => CommandLine.TranslateAsync(new[] { "layouts", "rename", "Layout 1" }, none));
     }
 }

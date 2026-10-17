@@ -80,7 +80,7 @@ static void PrintHelp()
                                          change several widget settings at once (scale = size and zoom)
           peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
           safe-mode [on|off]             community widgets off (not saved); no argument = show the state
-          layouts [list|save|apply|delete <name>]  saved arrangements of positions, sizes and enabled widgets
+          layouts [list|save|apply|delete <name>|rename <name> <new>]  saved arrangements of positions, sizes and enabled widgets
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
           general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]
@@ -105,7 +105,7 @@ static void PrintHelp()
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
           create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
-                                         PNG of a widget or Settings page (general|widgets|browse|themes|hotkeys|privacy|about)
+                                         PNG of a widget or Settings page (general|widgets|layouts|browse|themes|hotkeys|privacy|about)
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window

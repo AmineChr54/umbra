@@ -65,6 +65,8 @@ public sealed class GeneralSettings
     public int SnapGap { get; set; } = 12;
     /// <summary>Master switch for snapping (the edit-mode pill toggles it); the grid and edge settings above are kept while it is off.</summary>
     public bool SnapEnabled { get; set; } = true;
+    /// <summary>When the monitor setup changes (dock/undock), apply the layout pinned to the new setup after a short pause. Off by default.</summary>
+    public bool AutoSwitchLayouts { get; set; }
 }
 
 /// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>
