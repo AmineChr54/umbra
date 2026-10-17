@@ -102,6 +102,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all", after the PC resumes from sleep, when the network comes back and after a long lock (at most once per 10 s). Errors are caught and logged. Does not run while `umbra.settings.paused` and runs once when the PC is unlocked or the display is back on |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
+| `umbra.onTimeChanged(fn)` | `fn()` runs when the system clock or time zone changes (travel, clock correction after resume). Widgets with no listener get their `umbra.every` callbacks run instead. See [Time changes](#time-changes) |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
 | `umbra.system()` | Resolves machine totals for the kinds declared in `permissions.system`: `cpu.percent`, `memory.{totalBytes,usedBytes,percent}`, `network.{downBytesPerSec,upBytesPerSec}`. Read-only numbers; no process or adapter names. Rejects without `permissions.system`; call it from `umbra.every` (shared sample, at most 2 per second) |
 | `umbra.notify({ title, body?, url? })` | Shows a Windows notification titled with the widget's name; clicking it opens `url` (http/https) in the browser. Rejects without `permissions.notifications`, when the user's switch is off, or past 5 per 10 minutes per widget. Logged in `umbra.log` |
@@ -127,6 +128,24 @@ Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.
 example two stock tickers. Each copy is a separate window with its own options, position, size and `umbra.store` data, so a widget
 needs no extra code: read `umbra.options` and `umbra.store` as usual. Don't use `localStorage` for per-widget state, since
 copies share it. Use `umbra.widget.instance` only if you need to tell copies apart.
+
+**Time changes.** Windows tells Umbra when the clock is set or the time zone changes, and Umbra tells every widget
+(within about half a second). `new Date()` already returns the new time, but anything you computed earlier
+("today", a countdown target, a timer set for midnight) is stale until you recompute it, so do that in
+`umbra.onTimeChanged`. Don't poll for the next day either; schedule one timer for the next local midnight and
+set it up again on every time change:
+
+```js
+let midnight;
+function scheduleMidnight() {
+  clearTimeout(midnight);
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1); // local midnight
+  midnight = setTimeout(() => { render(); scheduleMidnight(); }, next - now + 50);
+}
+umbra.onTimeChanged(() => { render(); scheduleMidnight(); });
+scheduleMidnight();
+```
 
 **Saving data.** Options are for settings the user picks in **My widgets**. Anything the widget itself creates
 (a task list, events, "already seen" ids) goes in `umbra.store`. It is private to the widget, survives restarts

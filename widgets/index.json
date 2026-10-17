@@ -24,7 +24,7 @@
       "name": "Calendar glance",
       "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
       "hosts": [
         "calendar.google.com",
@@ -71,7 +71,7 @@
       "name": "Clock",
       "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
       "hosts": [],
       "files": [
@@ -174,7 +174,7 @@
       "name": "Habits",
       "description": "Daily habits with a 52-week dot grid, current and best streak. One tap marks today; targets are daily or N times a week. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [],
       "files": [
@@ -351,7 +351,7 @@
       "name": "To Do",
       "description": "Today's tasks with daily, weekday, weekly and every-N-days repeats, streaks and a calm progress bar. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [],
       "files": [
