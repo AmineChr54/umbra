@@ -119,13 +119,16 @@ $$("#interval button").forEach((b) =>
 function renderUpdate() {
   const u = state.update || {};
   const a = u.available;
-  $("#updateText").textContent = a ? `Umbra v${a.version} is available.`
+  $("#updateText").textContent = a && u.progress != null ? `Downloading Umbra v${a.version}: ${u.progress} %`
+    : a && u.ready ? `Umbra v${a.version} is ready. Restart to update.`
+    : a && u.error ? u.error
+    : a ? `Umbra v${a.version} is available.`
     : u.error ? "Couldn't check for updates right now."
     : u.lastChecked ? "You're up to date."
     : u.enabled === false ? "Update checks are turned off in General." : "Checking for updates...";
   $("#update").classList.toggle("has-update", !!a);
   $("#updateInstall").hidden = !a;
-  $("#updateInstall").lastChild.textContent = u.portable ? "Download" : "Update now";
+  $("#updateInstall").lastChild.textContent = u.portable ? "Download" : u.ready ? "Restart to update" : "Update now";
   $("#aboutPortable").hidden = !state.portable;
   $("#aboutPortable").textContent = state.portable ? `Portable mode - data in ${state.dataDir}` : "";
   $("#updateInstall").disabled = false;
@@ -136,7 +139,7 @@ $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled =
 $("#updateInstall").addEventListener("click", () => {
   if (state.update && state.update.portable) { post({ type: "openUrl", url: state.update.available.url }); return; }
   $("#updateInstall").disabled = true;
-  $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
+  $("#updateText").textContent = state.update && state.update.ready ? "Restarting Umbra..." : "Downloading the update. Umbra will restart when it's done...";
   post({ type: "installUpdate" });
 });
 

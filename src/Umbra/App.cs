@@ -300,9 +300,13 @@ sealed class App : ApplicationContext
     {
         var menu = _tray.ContextMenuStrip!;
         menu.Items.Clear();
+        _tray.Text = Updater.Progress is { } dl ? $"Umbra - downloading update {dl}%"
+            : Updater.Ready && Updater.Available is { } ready ? $"Umbra - restart to update to v{ready.Version}" : "Umbra";
         if (Updater.Available is { } up)
         {
-            menu.Items.Add($"Update to v{up.Version} available", null, async (_, _) =>
+            var label = Updater.Progress is { } pct ? $"Downloading update v{up.Version} ({pct}%)"
+                : Updater.Ready ? $"Restart to update to v{up.Version}" : $"Update to v{up.Version} available";
+            menu.Items.Add(label, null, async (_, _) =>
             {
                 try { await Updater.InstallAsync(); }
                 catch (Exception ex)
@@ -343,6 +347,13 @@ sealed class App : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh all", null, (_, _) => { foreach (var w in _windows.Values) w.RefreshData(); });
         menu.Items.Add("Exit", null, (_, _) => ExitThread());
+    }
+
+    /// <summary>A balloon from Umbra itself (not a widget), e.g. a failed update.</summary>
+    public void ShowTrayMessage(string text, ToolTipIcon icon)
+    {
+        _balloonUrl = null;
+        _tray.ShowBalloonTip(5000, "Umbra", text, icon);
     }
 
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
