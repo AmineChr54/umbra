@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Habits</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="habits.css">
+</head>
+<body>
+  <main class="hb" id="app">
+    <header class="head">
+      <h1 class="title" id="title">Habits</h1>
+      <span class="count num" id="count"></span>
+      <button class="add" id="add" data-no-drag aria-label="Add habit">+</button>
+    </header>
+    <form class="form" id="form" data-no-drag hidden>
+      <div class="icons" id="icons"></div>
+      <div class="frow">
+        <input id="name" type="text" maxlength="40" placeholder="New habit" autocomplete="off">
+        <select id="target" aria-label="Target"></select>
+      </div>
+      <div class="frow end"><button type="button" class="btn" id="cancel">Cancel</button><button type="submit" class="btn primary">Add</button></div>
+    </form>
+    <ul class="list" id="list" data-no-drag></ul>
+    <section class="detail" id="detail" hidden>
+      <div class="stats">
+        <div><b class="num" id="cur">0</b><span id="curl">current</span></div>
+        <div><b class="num" id="best">0</b><span id="bestl">best</span></div>
+        <div><b class="num" id="total">0</b><span>total days</span></div>
+        <button class="rm" id="rm" data-no-drag>Remove</button>
+      </div>
+      <div class="grid" id="grid" data-no-drag aria-label="Last 52 weeks"></div>
+      <div class="months" id="months"></div>
+    </section>
+    <p class="empty" id="empty" hidden>No habits yet.<br>Press + to add one.</p>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="streaks.js"></script>
+  <script src="habits.js"></script>
+</body>
+</html>

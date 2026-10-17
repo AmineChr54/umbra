@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "habits",
+  "name": "Habits",
+  "description": "Daily habits with a 52-week dot grid, current and best streak. One tap marks today; targets are daily or N times a week. Everything stays on your PC.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 360,
+  "height": 440,
+  "defaultPosition": { "x": 400, "y": 400 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "Habits" },
+    "dayStart": { "label": "New day starts at (hour)", "type": "number", "default": 0, "min": 0, "max": 6, "step": 1,
+                  "hint": "Night owl? Set 4 and a habit ticked at 1 am still counts for the day before." }
+  }
+}
