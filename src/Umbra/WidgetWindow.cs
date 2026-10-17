@@ -284,7 +284,12 @@ sealed class WidgetWindow : Form
         _app.NoteHandScale(Instance);
         RememberPosition();
         PushSettings();
-        // A wheel notch can fire many times a second: write settings.json and refresh the tray/Settings once it settles.
+        SaveSoon();
+    }
+
+    /// <summary>A wheel notch or a held arrow key can fire many times a second: write settings.json and refresh the tray/Settings once it settles.</summary>
+    void SaveSoon()
+    {
         _saveTimer ??= new System.Windows.Forms.Timer { Interval = 300 };
         _saveTimer.Tick -= FlushScale;
         _saveTimer.Tick += FlushScale;
@@ -333,6 +338,7 @@ sealed class WidgetWindow : Form
                 // The edit-mode corner handle. Only a real press on this window starts the native size loop.
                 // Messages still arrive during the modal size loop, so a second "resize" must not nest.
                 if (_resizing || !CanArrange || !PressedOnThisWindow()) return;
+                SelectForEdit();
                 var before = Size;
                 _resizing = true;
                 try
@@ -357,6 +363,10 @@ sealed class WidgetWindow : Form
                 if (steps == 0 || now - _lastZoomAt < 50) return;
                 _lastZoomAt = now;
                 SetScaleByHand(Ws.Scale + 0.1 * steps);
+                break;
+
+            case "nudge":
+                Nudge(msg?["dir"]?.GetValue<string>());
                 break;
 
             case "rendered":
@@ -401,14 +411,59 @@ sealed class WidgetWindow : Form
                 break;
 
             case "pointer":
-                if (PressedOnThisWindow()) MarkPressed();
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 break;
 
             case "focus":
-                if (PressedOnThisWindow()) MarkPressed();
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 TakeKeyboardFocus();
                 break;
         }
+    }
+
+    /// <summary>A physical press on this widget in edit mode makes it the one the arrow keys move.</summary>
+    void SelectForEdit()
+    {
+        if (CanArrange) _app.SelectForEdit(Instance);
+    }
+
+    /// <summary>Redraws the stronger outline when this widget becomes (or stops being) the selected one.</summary>
+    public void ShowEditSelected(bool selected)
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "editSelected", ["selected"] = selected });
+    }
+
+    /// <summary>
+    /// Arrow-key nudge in edit mode: 1 px, Shift 10 px (one grid step when snapping is on). The page only reports which
+    /// arrow it saw; the host moves the window only for the selected, unlocked widget while it holds the foreground
+    /// (which a widget gets only after a physical click) and that arrow key is physically down. The widget can't leave
+    /// its work area completely, and the new spot is saved like after a drag.
+    /// </summary>
+    void Nudge(string? dir)
+    {
+        var (sx, sy, vk) = dir switch
+        {
+            "left" => (-1, 0, Native.VK_LEFT),
+            "right" => (1, 0, Native.VK_RIGHT),
+            "up" => (0, -1, Native.VK_UP),
+            "down" => (0, 1, Native.VK_DOWN),
+            _ => (0, 0, 0),
+        };
+        if (vk == 0 || _resizing || !CanArrange || !Alive || _app.EditSelection != Instance) return;
+        if (Native.GetForegroundWindow() != Handle || !IsKeyDown(vk)) return;
+
+        var general = _app.Settings.General;
+        var grid = Snap.IsActive(general) ? general.SnapGrid : 0;
+        bool big = IsKeyDown(Native.VK_SHIFT);
+        var to = new Point(
+            sx == 0 ? Left : WidgetGeometry.NudgeTo(Left, sx, big, grid),
+            sy == 0 ? Top : WidgetGeometry.NudgeTo(Top, sy, big, grid));
+        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        if (!WidgetGeometry.NudgeAllowed(Bounds, new Rectangle(to, Size), areas, (int)(WidgetGeometry.NudgeKeepVisible * DeviceDpi / 96.0))) return;
+
+        Location = to;
+        RememberPosition();
+        SaveSoon();
     }
 
     /// <summary>Remembers a real press on this window, and which window was in front at that moment.</summary>
@@ -716,6 +771,7 @@ sealed class WidgetWindow : Form
             ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
             ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
+            ["editSelected"] = _app.EditMode && _app.EditSelection == Instance,
             ["options"] = ws.Options.DeepClone(),
         };
     }
