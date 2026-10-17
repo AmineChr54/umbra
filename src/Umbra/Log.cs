@@ -80,20 +80,22 @@ static class AppPaths
         }
     }
 
-    /// <summary>%APPDATA%\Umbra, or UMBRA_DATA_DIR when set (tests and throwaway dev profiles).</summary>
+    /// <summary>True when portable.txt sits next to Umbra.exe: data lives in &lt;AppDir&gt;\data (UMBRA_DATA_DIR still wins).</summary>
+    public static bool IsPortable => PortableMode.IsPortable(AppDir);
+
+    /// <summary>%APPDATA%\Umbra, &lt;AppDir&gt;\data in portable mode, or UMBRA_DATA_DIR when set (tests and throwaway dev profiles).</summary>
     public static string DataDir
     {
         get
         {
-            var d = Environment.GetEnvironmentVariable("UMBRA_DATA_DIR") is { Length: > 0 } custom
-                ? custom
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Umbra");
+            var d = PortableMode.DataDir(AppDir);
             Directory.CreateDirectory(d);
             return d;
         }
     }
 
-    /// <summary>WebView2 user data (cache, cookies) lives under LocalAppData, not next to the exe.</summary>
-    public static string WebViewDataDir =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Umbra", "WebView2");
+    /// <summary>WebView2 user data (cache, cookies): under LocalAppData, or inside the data folder in portable mode.</summary>
+    public static string WebViewDataDir => IsPortable
+        ? Path.Combine(DataDir, "WebView2")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Umbra", "WebView2");
 }

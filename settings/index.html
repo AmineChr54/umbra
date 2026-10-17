@@ -62,7 +62,7 @@
           <div class="row">
             <div class="row-text">
               <div class="row-title">Start with Windows</div>
-              <div class="row-sub">Your widgets appear on the desktop when you sign in.</div>
+              <div class="row-sub" id="startupSub">Your widgets appear on the desktop when you sign in.</div>
             </div>
             <label class="switch"><input type="checkbox" id="startup"><span></span></label>
           </div>
@@ -203,6 +203,7 @@
           <h1>Umbra</h1>
           <p class="about-tag">Desktop widgets that live on your wallpaper.</p>
           <p class="about-ver" id="aboutVer"></p>
+          <p class="about-ver" id="aboutPortable" hidden></p>
           <div class="update" id="update">
             <div class="update-text" id="updateText"></div>
             <button class="btn primary small" id="updateInstall" hidden><span class="ico" data-icon="download"></span>Update now</button>

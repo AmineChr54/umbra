@@ -13,7 +13,11 @@ namespace Umbra;
 /// </summary>
 public static class Protocol
 {
-    public static string PipeName => $"Umbra-{Environment.UserName}";
+    /// <summary>Per-user pipe/mutex name; portable copies add a hash of their data folder so they never collide with an installed copy or each other.</summary>
+    public static string PipeName =>
+        PortableMode.IsPortable(AppContext.BaseDirectory)
+            ? $"Umbra-{Environment.UserName}-{PortableMode.Hash(PortableMode.DataDir(AppContext.BaseDirectory))}"
+            : $"Umbra-{Environment.UserName}";
 
     /// <summary>Every command the host understands, with a one-line description (also used by umbractl help).</summary>
     public static readonly (string Cmd, string Help)[] Commands =
@@ -70,5 +74,35 @@ public static class Protocol
         await writer.WriteLineAsync(request.ToJsonString().AsMemory(), ct);
         var line = await reader.ReadLineAsync(ct) ?? throw new IOException("Umbra closed the connection without replying");
         return JsonNode.Parse(line) as JsonObject ?? throw new IOException("Umbra sent an invalid reply");
+    }
+}
+
+/// <summary>
+/// Portable mode: an empty portable.txt next to Umbra.exe keeps all data in &lt;AppDir&gt;\data.
+/// UMBRA_DATA_DIR still wins over the marker. Shared source (Umbra.exe and umbractl.exe, which sits next to it).
+/// </summary>
+public static class PortableMode
+{
+    public const string Marker = "portable.txt";
+
+    public static bool IsPortable(string appDir) => File.Exists(Path.Combine(appDir, Marker));
+
+    /// <summary>The data folder (not created): UMBRA_DATA_DIR, else &lt;appDir&gt;\data when portable, else %APPDATA%\Umbra.</summary>
+    public static string DataDir(string appDir) => DataDir(appDir, Environment.GetEnvironmentVariable("UMBRA_DATA_DIR"));
+
+    /// <summary>Same as <see cref="DataDir(string)"/> with the UMBRA_DATA_DIR value passed in (testable).</summary>
+    public static string DataDir(string appDir, string? envOverride)
+    {
+        if (envOverride is { Length: > 0 } custom) return custom;
+        return IsPortable(appDir)
+            ? Path.Combine(appDir, "data")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Umbra");
+    }
+
+    /// <summary>Short stable hash of a folder path (case-insensitive) for pipe and mutex names. Not a secret.</summary>
+    public static string Hash(string dir)
+    {
+        var full = Path.GetFullPath(dir).TrimEnd('\\', '/').ToLowerInvariant();
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(full)), 0, 4).ToLowerInvariant();
     }
 }

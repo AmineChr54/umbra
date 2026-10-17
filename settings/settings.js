@@ -86,6 +86,8 @@ function renderGeneral() {
   const g = state.settings.general;
   window.prefsRender && prefsRender();
   $("#startup").checked = state.startup;
+  $("#startup").disabled = !!state.portable;
+  $("#startupSub").textContent = state.portable ? "Not available in portable mode." : "Your widgets appear on the desktop when you sign in.";
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
   $("#hideFullscreen").checked = !!g.hideOnFullscreen;
@@ -123,12 +125,16 @@ function renderUpdate() {
     : u.enabled === false ? "Update checks are turned off in General." : "Checking for updates...";
   $("#update").classList.toggle("has-update", !!a);
   $("#updateInstall").hidden = !a;
+  $("#updateInstall").lastChild.textContent = u.portable ? "Download" : "Update now";
+  $("#aboutPortable").hidden = !state.portable;
+  $("#aboutPortable").textContent = state.portable ? `Portable mode - data in ${state.dataDir}` : "";
   $("#updateInstall").disabled = false;
   $("#updateCheck").disabled = false;
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
 }
 $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
 $("#updateInstall").addEventListener("click", () => {
+  if (state.update && state.update.portable) { post({ type: "openUrl", url: state.update.available.url }); return; }
   $("#updateInstall").disabled = true;
   $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
   post({ type: "installUpdate" });
