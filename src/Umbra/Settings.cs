@@ -57,6 +57,8 @@ public sealed class GeneralSettings
     public int SnapGrid { get; set; }
     /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
     public bool SnapEdges { get; set; } = true;
+    /// <summary>Gap in logical pixels (96 DPI) that widgets keep from a neighbour when snapping next to it; 0 = touch edge to edge.</summary>
+    public int SnapGap { get; set; } = 12;
 }
 
 /// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>

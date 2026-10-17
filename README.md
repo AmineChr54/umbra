@@ -48,7 +48,7 @@ umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, 
 umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
 umbractl safe-mode on                 # community widgets off, nothing deleted (also `Umbra.exe --safe`; not saved, next normal start restores)
 umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts delete Work`, `layouts`
-umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off); hold Shift while dragging to skip snapping
+umbractl general --snap-grid 20       # edit-mode snapping: grid in px (0 = off), --snap-edges off, --snap-gap 12 (px kept between neighbouring widgets, 0 = touch); edges, centers and the gap show guide lines; hold Shift while dragging to skip snapping
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)

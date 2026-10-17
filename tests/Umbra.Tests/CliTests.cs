@@ -301,6 +301,7 @@ public class CommandLineTests
         Assert.Equal(("peek", "{}"), await T("peek"));
         Assert.Equal(("peek", """{"seconds":8}"""), await T("peek", "8"));
         Assert.Equal(("set-general", """{"hideOnFullscreen":true,"peekSeconds":3}"""), await T("general", "--hide-fullscreen", "on", "--peek-seconds", "3"));
+        Assert.Equal(("set-general", """{"snapGap":16}"""), await T("general", "--snap-gap", "16"));
     }
 
     [Fact]

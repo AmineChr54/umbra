@@ -20,6 +20,8 @@ static partial class Native
     public const int WM_GETMINMAXINFO = 0x0024;
     public const int WM_SIZING = 0x0214;
     public const int WM_MOVING = 0x0216;
+    public const int WM_EXITSIZEMOVE = 0x0232;
+    public const int WS_EX_LAYERED = 0x00080000, WS_EX_TRANSPARENT = 0x00000020;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT { public int Left, Top, Right, Bottom; }
@@ -27,7 +29,7 @@ static partial class Native
     [StructLayout(LayoutKind.Sequential)]
     public struct MINMAXINFO { public POINT Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize; }
 
-    public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040;
     public static readonly IntPtr HWND_BOTTOM = new(1);
     public static readonly IntPtr HWND_TOPMOST = new(-1), HWND_NOTOPMOST = new(-2);
 

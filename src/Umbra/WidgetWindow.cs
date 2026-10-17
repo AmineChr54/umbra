@@ -107,6 +107,9 @@ sealed class WidgetWindow : Form
                 SnapMove(m.LParam);
                 m.Result = 1;
                 return;
+            case Native.WM_EXITSIZEMOVE:
+                _app.ShowGuides(Array.Empty<Snap.Guide>(), DeviceDpi); // the move or resize ended: guides go away
+                break;
             case Native.WM_SIZING when _resizing:
                 KeepAspect(m.LParam);
                 m.Result = 1;
@@ -115,17 +118,24 @@ sealed class WidgetWindow : Form
         base.WndProc(ref m);
     }
 
-    /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
+    /// <summary>WM_MOVING in edit mode: snap to the grid, edges, centers and an even gap to neighbours unless Shift is held, and draw guides for what it snapped to.</summary>
     unsafe void SnapMove(IntPtr lParam)
     {
-        if ((ModifierKeys & Keys.Shift) != 0) return;
+        if ((ModifierKeys & Keys.Shift) != 0)
+        {
+            _app.ShowGuides(Array.Empty<Snap.Guide>(), DeviceDpi);
+            return;
+        }
         var r = (Native.RECT*)lParam;
         var g = _app.Settings.General;
         var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
         var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
         var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
-        var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
+        var gap = (int)Math.Round(Math.Clamp(g.SnapGap, 0, Snap.MaxGap) * DeviceDpi / 96.0);
+        var snapped = Snap.Compute(rect, g.SnapGrid, g.SnapEdges, gap, areas, others, (int)(10 * DeviceDpi / 96.0));
+        var s2 = snapped.Rect;
         r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
+        _app.ShowGuides(snapped.Guides, DeviceDpi);
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
@@ -313,6 +323,7 @@ sealed class WidgetWindow : Form
                 Native.ReleaseCapture();
                 Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTCAPTION, IntPtr.Zero);
                 // SendMessage returns when the move loop ends: persist the new spot.
+                _app.ShowGuides(Array.Empty<Snap.Guide>(), DeviceDpi);
                 RememberPosition();
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
