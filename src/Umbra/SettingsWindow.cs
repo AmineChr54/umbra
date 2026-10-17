@@ -287,24 +287,40 @@ sealed class SettingsWindow : Form
                 break;
 
             case "remove":
+            {
+                string? undo = null;
                 await RunJob(id, () =>
                 {
                     _app.CloseWidget(id); // every copy
-                    Community.Remove(id); // folder and the data of every copy
+                    undo = WidgetTrash.Move(_app.Settings, id); // folder, data and settings of every copy, kept for Undo
+                    Community.Remove(id);
                     _app.ForgetInstances(id);
                     return Task.CompletedTask;
-                });
+                }, () => undo);
                 break;
+            }
+
+            case "undoRemove":
+            {
+                string? error = null;
+                string? name = null;
+                try { name = _app.RestoreWidget(id)?.Name; } // here id is the undo token from jobDone
+                catch (InvalidOperationException ex) { error = ex.Message; Log.Write($"Undo remove failed: {ex.Message}"); }
+                Post(new JsonObject { ["type"] = "undoDone", ["name"] = name, ["error"] = error });
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
         }
     }
 
-    async Task RunJob(string id, Func<Task> job)
+    async Task RunJob(string id, Func<Task> job, Func<string?>? undo = null)
     {
         string? error = null;
         try { await job(); }
         catch (Exception ex) { error = ex.Message; Log.Write($"Widget job {id} failed: {ex}"); }
         _app.ReloadWidgets();
-        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error });
+        Post(new JsonObject { ["type"] = "jobDone", ["id"] = id, ["error"] = error, ["undo"] = undo?.Invoke() });
         SendState();
         await SendCatalog(refetch: false);
     }

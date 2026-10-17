@@ -110,14 +110,39 @@ static class WidgetStore
         if (!WidgetManifest.IdPattern().IsMatch(widgetId)) return;
         lock (Gate)
         {
-            foreach (var file in Directory.GetFiles(DataDir, $"{widgetId}*.json"))
+            foreach (var file in DataFilesOf(widgetId).ToList())
+                File.Delete(file);
+        }
+    }
+
+    /// <summary>Copies the data files of a widget and all its extra copies into <paramref name="dir"/> (for the trash).</summary>
+    public static void CopyAllTo(string widgetId, string dir)
+    {
+        Directory.CreateDirectory(dir);
+        lock (Gate)
+            foreach (var file in DataFilesOf(widgetId))
+                File.Copy(file, Path.Combine(dir, Path.GetFileName(file)), overwrite: true);
+    }
+
+    /// <summary>Moves data files saved by <see cref="CopyAllTo"/> back, replacing any current data of the same copy.</summary>
+    public static void RestoreFrom(string dir, string widgetId)
+    {
+        if (!WidgetManifest.IdPattern().IsMatch(widgetId) || !Directory.Exists(dir)) return;
+        lock (Gate)
+            foreach (var file in Directory.GetFiles(dir, "*.json"))
             {
                 var name = Path.GetFileNameWithoutExtension(file);
                 if (name == widgetId || IsCopyOf(name, widgetId))
-                    File.Delete(file);
+                    File.Move(file, Path.Combine(DataDir, Path.GetFileName(file)), overwrite: true);
             }
-        }
     }
+
+    static IEnumerable<string> DataFilesOf(string widgetId) =>
+        Directory.GetFiles(DataDir, $"{widgetId}*.json").Where(f =>
+        {
+            var name = Path.GetFileNameWithoutExtension(f);
+            return name == widgetId || IsCopyOf(name, widgetId);
+        });
 
     static JsonObject Load(string id)
     {

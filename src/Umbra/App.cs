@@ -196,6 +196,7 @@ sealed class App : ApplicationContext
         SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
+        try { WidgetTrash.Purge(); } catch (Exception ex) { Log.Write($"Trash purge failed: {ex.Message}"); }
         Prefs.Configure(Settings.General);
         WebHost.WebSettings = Settings.General;
         Manifests = WidgetManifest.DiscoverAll();
@@ -438,6 +439,16 @@ sealed class App : ApplicationContext
     {
         Settings.RemoveExtraInstances(widgetId);
         SaveSettings();
+    }
+
+    /// <summary>Undo of Settings > Remove: brings back the trashed widget with its data, options and position. Returns its manifest.</summary>
+    public WidgetManifest? RestoreWidget(string token)
+    {
+        var id = WidgetTrash.Restore(Settings, token);
+        SaveSettings();
+        ReloadWidgets();
+        SettingsChangedElsewhere();
+        return Manifests.FirstOrDefault(m => m.Id == id);
     }
 
     /// <summary>

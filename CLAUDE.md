@@ -30,7 +30,8 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/Themes.cs` | `Theme`: theme.json model, token allow-list and value validation, generated `:root` CSS (applied by `shared/umbra.js`); installed in `%APPDATA%\Umbra\themes\<id>`, catalog in `themes/` |
 | `src/Umbra/Protocol.cs` (`PortableMode`), `Log.cs` (`AppPaths`) | Portable mode: `portable.txt` next to `Umbra.exe` puts data (and the WebView2 cache) in `<AppDir>\data`; no autostart, no self-install; pipe/mutex name carries a data-dir hash. `UMBRA_DATA_DIR` still wins |
 | `src/Umbra/Updates.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`), and `UpdateService` (daily GitHub check, download + run installer) |
-| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on remove) |
+| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
+| `src/Umbra/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
 | `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
 | `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |

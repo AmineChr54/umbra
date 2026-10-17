@@ -53,13 +53,23 @@ $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.datase
 
 // ---------- toast ----------
 let toastTimer;
-function toast(text, error = false) {
+// With an action ({ label, run }) the toast stays longer and shows a button (Undo).
+function toast(text, error = false, action = null) {
   const t = $("#toast");
   t.textContent = text;
   t.classList.toggle("error", error);
+  t.classList.toggle("has-action", !!action);
+  if (action) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "toast-action";
+    b.textContent = action.label;
+    b.addEventListener("click", () => { t.classList.remove("show"); action.run(); });
+    t.append(b);
+  }
   t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), error ? 4200 : 1600);
+  toastTimer = setTimeout(() => t.classList.remove("show"), action ? 8000 : error ? 4200 : 1600);
 }
 
 // ---------- saving (debounced, so typing in a field doesn't save every keystroke) ----------
@@ -581,9 +591,14 @@ bridge && bridge.addEventListener("message", (e) => {
       busy.delete(m.id);
       const isTheme = kind === "installTheme" || kind === "removeTheme";
       const name = ((isTheme ? themes : catalog) || []).find((w) => w.id === m.id)?.name || m.id;
-      m.error ? toast(`${name}: ${m.error}`, true) : toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
+      if (m.error) toast(`${name}: ${m.error}`, true);
+      else if (kind === "remove" && m.undo) toast(`${name} removed`, false, { label: "Undo", run: () => post({ type: "undoRemove", id: m.undo }) });
+      else toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
       break;
     }
+    case "undoDone":
+      m.error ? toast(m.error, true) : toast(`${m.name || "Widget"} restored`);
+      break;
   }
 });
 
