@@ -176,7 +176,8 @@ arrowNav($("#interval"), true);
 function renderUpdate() {
   const u = state.update || {};
   const a = u.available;
-  $("#updateText").textContent = a && u.progress != null ? `Downloading Umbra v${a.version}: ${u.progress} %`
+  $("#updateText").textContent = typeof u.error === "string" && u.error.startsWith("The update to") ? u.error
+    : a && u.progress != null ? `Downloading Umbra v${a.version}: ${u.progress} %`
     : a && u.ready ? `Umbra v${a.version} is ready. Restart to update.`
     : a && u.error ? u.error
     : a ? `Umbra v${a.version} is available.`

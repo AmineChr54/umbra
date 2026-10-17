@@ -355,7 +355,7 @@ sealed class App : ApplicationContext
                 catch (Exception ex)
                 {
                     Log.Write($"Update failed: {ex.Message}");
-                    _tray.ShowBalloonTip(4000, "Umbra", $"Update failed: {ex.Message}", ToolTipIcon.Error);
+                    ShowTrayMessage($"Update failed: {ex.Message}", ToolTipIcon.Error);
                 }
             }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());

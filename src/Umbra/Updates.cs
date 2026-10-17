@@ -212,6 +212,7 @@ sealed class UpdateService : IDisposable
     {
         try { await StageAsync(); }
         catch (Exception ex) { Log.Write($"Background update download failed: {ex.Message}"); }
+        _app.SettingsChangedElsewhere(); // About shows "Restart to update" (or the failure)
     }
 
     ReleaseInfo CheckInstallable()
@@ -234,8 +235,15 @@ sealed class UpdateService : IDisposable
         return _staging = DownloadAsync(rel);
     }
 
-    void DiscardStaged()
+    /// <summary>Drops the staged download. With <paramref name="failedDir"/> (a download that just failed) it only resets the state
+    /// when that is still the current download, so a newer download is never wiped by an older one failing.</summary>
+    void DiscardStaged(string? failedDir = null)
     {
+        if (failedDir is not null && _stagingDir != failedDir)
+        {
+            try { Directory.Delete(failedDir, true); } catch { /* best effort */ }
+            return;
+        }
         _staging = null;
         _stagingVersion = null;
         if (_stagingDir is { } d) try { Directory.Delete(d, true); } catch { /* best effort */ }
@@ -281,7 +289,7 @@ sealed class UpdateService : IDisposable
         }
         catch
         {
-            DiscardStaged();
+            DiscardStaged(dir);
             throw;
         }
         finally
