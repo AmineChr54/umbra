@@ -47,6 +47,8 @@ public sealed class Settings
 {
     public GeneralSettings General { get; set; } = new();
     public Dictionary<string, WidgetSettings> Widgets { get; set; } = new();
+    /// <summary>Global hotkeys by action id (see <see cref="Hotkey.Actions"/>), e.g. "edit-mode": "Ctrl+Alt+E". No entry = off.</summary>
+    public Dictionary<string, string> Hotkeys { get; set; } = new();
 
     static string FilePath => Path.Combine(AppPaths.DataDir, "settings.json");
 

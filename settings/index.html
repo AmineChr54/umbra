@@ -37,6 +37,7 @@
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse</button>
         <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
+        <button data-page="hotkeys"><span class="ico" data-icon="keyboard"></span>Hotkeys</button>
         <button data-page="about"><span class="ico" data-icon="info"></span>About</button>
       </nav>
 
@@ -148,6 +149,16 @@
           <span class="hint-grow">Made a theme? Add themes/&lt;id&gt;/theme.json in a pull request and it shows up here for everyone.</span>
           <button class="btn small ghost" id="reloadThemes"><span class="ico" data-icon="refresh"></span>Refresh</button>
         </div>
+      </section>
+
+      <!-- Hotkeys -->
+      <section class="page" data-page="hotkeys">
+        <header class="page-head">
+          <h1>Hotkeys</h1>
+          <p>System-wide shortcuts that work while any app has focus. Click a shortcut, then press the keys (at least one of Ctrl, Alt or Win). Esc cancels, Backspace turns it off.</p>
+        </header>
+        <div class="group" id="hotkeyList"></div>
+        <p><button class="btn" id="hotkeyReset">Reset all</button></p>
       </section>
 
       <!-- About -->

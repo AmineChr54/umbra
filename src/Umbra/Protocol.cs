@@ -29,6 +29,7 @@ public static class Protocol
         ("install-theme", "Install or update a community theme from the catalog: {id}"),
         ("remove-theme", "Uninstall a community theme: {id} (the default theme is used if it was active)"),
         ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?, checkForUpdates?}"),
+        ("hotkeys", "Global hotkeys (edit-mode, refresh-all, toggle-widgets, open-settings) with status: {action?, keys?, reset?}; action+keys sets one (empty keys = off), reset clears all; no args = read"),
         ("check-update", "Look for a newer Umbra release on GitHub now and report whether one is available (installing is left to the user: tray menu or Settings > About)"),
         ("reset-position", "Move a widget back to its default spot: {id}"),
         ("refresh", "Make widgets fetch fresh data now: {id?}"),

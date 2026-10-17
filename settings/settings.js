@@ -21,6 +21,7 @@ const ICONS = {
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   alert: '<path d="M12 4 3 19.5h18zM12 10v4.5M12 17.2h.01"/>',
+  keyboard: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10.5h.01M11 10.5h.01M15 10.5h.01M17.5 10.5h.01M8 14h8"/>',
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
 };
@@ -121,6 +122,54 @@ $("#updateInstall").addEventListener("click", () => {
   $("#updateText").textContent = "Downloading the installer. Umbra will restart when it's done...";
   post({ type: "installUpdate" });
 });
+
+// ---------- Hotkeys ----------
+const MODKEYS = new Set(["Control", "Alt", "Shift", "Meta", "AltGraph"]);
+let recording = null;
+function comboFromEvent(e) {
+  const k = e.key;
+  const main = k.length === 1 ? (k === " " ? "Space" : k.toUpperCase())
+    : /^Fd{1,2}$/.test(k) ? k : { ArrowLeft: "Left", ArrowRight: "Right", ArrowUp: "Up", ArrowDown: "Down", " ": "Space" }[k] || k;
+  return [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Win", main].filter(Boolean).join("+");
+}
+function renderHotkeys() {
+  const list = $("#hotkeyList");
+  list.replaceChildren();
+  for (const h of state.hotkeys || []) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const title = document.createElement("div");
+    title.className = "row-title";
+    title.textContent = h.label;
+    text.append(title);
+    if (h.error) {
+      const sub = document.createElement("div");
+      sub.className = "row-sub";
+      sub.style.color = "#ff6b6b";
+      sub.textContent = "Not active: " + h.error;
+      text.append(sub);
+    }
+    const btn = document.createElement("button");
+    btn.className = "btn";
+    btn.dataset.action = h.action;
+    btn.textContent = recording === h.action ? "Press keys..." : h.keys || "Off";
+    btn.addEventListener("click", () => { recording = h.action; renderHotkeys(); btn.focus(); });
+    btn.addEventListener("blur", () => { if (recording === h.action) { recording = null; renderHotkeys(); } });
+    btn.addEventListener("keydown", (e) => {
+      if (recording !== h.action) return;
+      e.preventDefault();
+      if (MODKEYS.has(e.key)) return;
+      recording = null;
+      if (e.key === "Escape") return renderHotkeys();
+      post({ type: "setHotkey", action: h.action, keys: e.key === "Backspace" && !(e.ctrlKey || e.altKey || e.metaKey) ? "" : comboFromEvent(e) });
+    });
+    row.append(text, btn);
+    list.append(row);
+  }
+}
+$("#hotkeyReset").addEventListener("click", () => post({ type: "resetHotkeys" }));
 
 // ---------- My widgets ----------
 function field(wid, key, spec, value) {

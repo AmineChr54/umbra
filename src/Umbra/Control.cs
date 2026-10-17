@@ -136,6 +136,15 @@ sealed class Control(App app)
                 await app.Updater.CheckAsync(manual: false);
                 return app.Updater.ToJson();
 
+            case "hotkeys":
+                if (a["reset"] is JsonNode rs && Bool(rs, "reset")) app.ResetHotkeys();
+                else if (a["action"] is not null)
+                {
+                    try { app.SetHotkey(Str(a, "action"), a["keys"]?.GetValue<string>() ?? ""); }
+                    catch (ArgumentException ex) { throw new CommandException(ex.Message); }
+                }
+                return app.DescribeHotkeys();
+
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
                 return new JsonObject { ["editMode"] = app.EditMode };

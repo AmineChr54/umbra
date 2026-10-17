@@ -39,6 +39,7 @@ umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
 umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
 umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y
 umbractl add-instance sp500           # a second copy (sp500#2) with its own options, position and data; remove-instance sp500#2
+umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, toggle-widgets, open-settings); off to clear
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check)
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
