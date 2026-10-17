@@ -53,6 +53,7 @@ public static class Protocol
         ("capture","PNG of a widget or a Settings page: {target: <id or instance id>|settings:<general|widgets|browse|themes|hotkeys|privacy|about>, path?}"),
         ("open-settings", "Open the Settings window: {page?}"),
         ("logs", "Last lines of umbra.log: {lines?}"),
+        ("diagnostics", "Read-only Markdown block for bug reports: version, Windows build, WebView2, monitors, GPU/proxy on or off, enabled widgets and the last 30 log lines with user paths hidden (no option values, proxy address or widget data)"),
         ("quit", "Exit Umbra"),
     };
 

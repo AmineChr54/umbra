@@ -55,7 +55,7 @@
         },
         "notifications": {
           "type": "boolean",
-          "description": "Lets the widget call umbra.notify (Windows notification, 5 per 10 minutes). The user must also switch it on for the widget in Settings."
+          "description": "Lets the widget call umbra.notify (Windows toast with up to 2 buttons, 5 per 10 minutes). The user must also switch it on for the widget in Settings."
         },
         "media": {
           "type": "array",
