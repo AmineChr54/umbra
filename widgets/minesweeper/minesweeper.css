@@ -1,0 +1,68 @@
+html, body { height: 100%; overflow: hidden; background: #000; }
+[hidden] { display: none !important; }
+
+.ms { height: 100%; display: flex; flex-direction: column; padding: 10px 10px 8px; gap: 8px; }
+
+.top { display: flex; align-items: baseline; justify-content: space-between; height: 18px; padding: 0 2px; }
+.title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.level { font-size: 11px; color: var(--text-3); }
+.level.won { color: var(--up); }
+.level.lost { color: var(--down); }
+
+.panel { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 2px; }
+.lcd {
+  min-width: 62px; height: 34px; padding: 0 8px; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: 0.04em; line-height: 1;
+  color: var(--down); background: #000; border: 1px solid var(--line-strong); border-radius: 6px;
+}
+.face-wrap { padding: 0 6px; }
+.face { width: 38px; height: 38px; padding: 0; display: block; background: none; border: 0; border-radius: 50%; cursor: pointer; }
+.face:hover { filter: brightness(1.12); }
+.face:active { transform: scale(0.94); }
+.face svg { width: 100%; height: 100%; display: block; }
+.face .skin { fill: var(--accent); }
+.face .f { display: none; fill: #000; stroke: none; }
+.face .ln { fill: none; stroke: #000; stroke-width: 1.7; stroke-linecap: round; }
+.ms[data-face="smile"] .f-smile, .ms[data-face="oh"] .f-oh, .ms[data-face="won"] .f-won, .ms[data-face="lost"] .f-lost { display: inline; }
+.ms[data-face="won"] .skin { fill: var(--up); }
+.ms[data-face="lost"] .skin { fill: var(--down); }
+
+.field { flex: 1; min-height: 0; display: grid; place-content: center; }
+.board { display: grid; gap: 0; background: var(--bg); box-shadow: 0 0 0 1px var(--line-strong); }
+
+.c {
+  position: relative; width: var(--cell); height: var(--cell); display: grid; place-items: center;
+  font-family: var(--font-display); font-size: var(--fs); font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums; cursor: default; overflow: visible;
+}
+.c.hidden, .c.flag, .c.mark {
+  background: var(--surface-3);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.2), inset -1px -1px 0 rgba(0, 0, 0, 0.6);
+}
+.c.hidden:hover, .c.mark:hover { background: #22222a; }
+.c[class*=" n"], .c.mine, .c.boom, .c.wrong { background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
+.c.boom { background: var(--down); }
+.c.mark { color: var(--accent-strong); }
+
+.n1 { color: #6aa8ff; }
+.n2 { color: var(--up); }
+.n3 { color: var(--down); }
+.n4 { color: var(--accent-strong); }
+.n5 { color: #ff9f43; }
+.n6 { color: #3fd6d0; }
+.n7 { color: var(--text); }
+.n8 { color: var(--text-2); }
+
+.c svg { width: 72%; height: 72%; display: block; overflow: visible; }
+.c .pole { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; }
+.c .cloth { fill: var(--down); }
+.c .bomb { fill: var(--text); }
+.c .spike { stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; }
+.c .shine { fill: #000; }
+.c.boom .bomb { fill: #000; }
+.c.boom .spike { stroke: #000; }
+.c.boom .shine { fill: var(--down); }
+.c .cross { stroke: var(--down); stroke-width: 2; stroke-linecap: round; }
+
+.foot { display: flex; justify-content: space-between; height: 16px; padding: 0 2px; font-size: 11px; color: var(--text-3); }
+.foot span { font-variant-numeric: tabular-nums; }

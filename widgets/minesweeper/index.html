@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Minesweeper</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="minesweeper.css">
+</head>
+<body>
+  <main class="ms" id="app" data-face="smile">
+    <header class="top">
+      <span class="title">Minesweeper</span>
+      <span class="level" id="level"></span>
+    </header>
+    <section class="panel">
+      <div class="lcd num" id="mines" aria-label="Mines left">010</div>
+      <div class="face-wrap" data-no-drag>
+        <button class="face" id="reset" title="New game" aria-label="New game">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="skin" cx="12" cy="12" r="10.5"/>
+            <g class="f f-smile"><circle cx="8.5" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/><path class="ln" d="M7.2 14.2Q12 19.6 16.8 14.2"/></g>
+            <g class="f f-oh"><circle cx="8.5" cy="9.6" r="1.7"/><circle cx="15.5" cy="9.6" r="1.7"/><ellipse cx="12" cy="16.4" rx="2.2" ry="2.7"/></g>
+            <g class="f f-won"><rect x="4.8" y="8" width="6.4" height="4.4" rx="1.6"/><rect x="12.8" y="8" width="6.4" height="4.4" rx="1.6"/><path class="ln" d="M11.2 9.4h1.6"/><path class="ln" d="M7.2 14.8Q12 19.6 16.8 14.8"/></g>
+            <g class="f f-lost"><path class="ln" d="M6.6 7.8l3.6 3.6M10.2 7.8l-3.6 3.6M13.8 7.8l3.6 3.6M17.4 7.8l-3.6 3.6"/><path class="ln" d="M7.6 17.2Q12 13 16.4 17.2"/></g>
+          </svg>
+        </button>
+      </div>
+      <div class="lcd num" id="clock" aria-label="Seconds">000</div>
+    </section>
+    <section class="field" id="field">
+      <div class="board" id="board" data-no-drag></div>
+    </section>
+    <footer class="foot">
+      <span id="best">Best --</span>
+      <span id="record">Won 0 of 0</span>
+    </footer>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="engine.js"></script>
+  <script src="minesweeper.js"></script>
+</body>
+</html>
