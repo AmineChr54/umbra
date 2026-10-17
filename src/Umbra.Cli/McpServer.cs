@@ -380,4 +380,6 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
     public static IEnumerable<string> PromptNames => Prompts.Select(p => p.Name);
 
     public static IEnumerable<string> ToolNames => Tools.Select(t => t.Name);
+
+    public static IEnumerable<string> ToolCommands => Tools.Select(t => t.Command);
 }

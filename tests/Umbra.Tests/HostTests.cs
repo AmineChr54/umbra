@@ -492,7 +492,39 @@ public class ProtocolTests
     [Fact]
     public void Edit_mode_and_scale_are_part_of_the_protocol()
     {
-        Assert.Contains(Protocol.Commands, c => c.Cmd == "edit-mode");
-        Assert.Contains("scale?", Protocol.Commands.Single(c => c.Cmd == "configure").Help);
+        var edit = Protocol.Commands.Single(c => c.Cmd == "edit-mode");
+        Assert.Contains("{on?}", edit.Help);
+        Assert.Contains("scale? (0.5-3)", Protocol.Commands.Single(c => c.Cmd == "configure").Help);
     }
+
+    [Theory]
+    [InlineData(320, 200, 96, 1.0, 320, 200)]
+    [InlineData(320, 200, 144, 1.0, 480, 300)]
+    [InlineData(320, 200, 96, 1.5, 480, 300)]
+    public void Scaled_size_follows_dpi_and_scale(int w, int h, int dpi, double scale, int ew, int eh) =>
+        Assert.Equal(new System.Drawing.Size(ew, eh), WidgetGeometry.ScaledSize(w, h, dpi, scale));
+
+    [Fact]
+    public void Scale_for_width_inverts_scaled_size()
+    {
+        var size = WidgetGeometry.ScaledSize(320, 200, 120, 1.25);
+        Assert.Equal(1.25, WidgetGeometry.ScaleForWidth(320, 120, size.Width), 3);
+    }
+
+    [Fact]
+    public void Keep_aspect_keeps_ratio_takes_the_larger_stretch_and_clamps()
+    {
+        Assert.Equal(new System.Drawing.Size(640, 400), WidgetGeometry.KeepAspect(320, 200, 96, 640, 100));
+        Assert.Equal(new System.Drawing.Size(640, 400), WidgetGeometry.KeepAspect(320, 200, 96, 100, 400));
+        Assert.Equal(WidgetGeometry.ScaledSize(320, 200, 96, WidgetSettings.MinScale), WidgetGeometry.KeepAspect(320, 200, 96, 10, 10));
+        Assert.Equal(WidgetGeometry.ScaledSize(320, 200, 96, WidgetSettings.MaxScale), WidgetGeometry.KeepAspect(320, 200, 96, 9000, 9000));
+    }
+
+    [Theory]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, false)]
+    [InlineData(false, true, false)]
+    public void Arranging_needs_edit_mode_and_an_unlocked_widget(bool edit, bool locked, bool expected) =>
+        Assert.Equal(expected, WidgetGeometry.CanArrange(edit, locked));
 }
