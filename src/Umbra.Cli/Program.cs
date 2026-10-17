@@ -101,7 +101,7 @@ static void PrintHelp()
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
           create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
-                                         PNG of a widget or Settings page (general|widgets|browse|themes|hotkeys|about)
+                                         PNG of a widget or Settings page (general|widgets|browse|themes|hotkeys|privacy|about)
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
