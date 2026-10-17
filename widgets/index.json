@@ -206,6 +206,23 @@
       ]
     },
     {
+      "id": "minesweeper",
+      "name": "Minesweeper",
+      "description": "Classic Minesweeper on your desktop: left click to reveal, right click to flag, double-click a number to chord. Three board sizes, best times and win counts per size, and the game in progress survives restarts.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "engine.js",
+        "index.html",
+        "minesweeper.css",
+        "minesweeper.js",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "now-playing",
       "name": "Now Playing",
       "description": "Shows what is playing in any Windows media app (Spotify, browsers, VLC...) with album art and play, pause, next and previous controls.",
