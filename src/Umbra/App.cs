@@ -626,11 +626,22 @@ sealed class App : ApplicationContext
     {
         if (EditMode == on) return;
         EditMode = on;
+        if (!on) ShowGuides(Array.Empty<Snap.Guide>(), 96);
         EditSelection = null;
         Log.Write($"Edit mode {(on ? "on" : "off")}");
         foreach (var w in _windows.Values) w.PushSettings();
         UpdateEditPills();
         SettingsChangedElsewhere();
+    }
+
+    SnapGuides? _snapGuides;
+
+    /// <summary>Draws (or, with none, hides) the alignment guides while a widget is moved in edit mode.</summary>
+    public void ShowGuides(IReadOnlyList<Snap.Guide> guides, int dpi)
+    {
+        if (guides.Count == 0 && _snapGuides is null) return;
+        _snapGuides ??= new SnapGuides();
+        _snapGuides.SetGuides(guides, Settings.General.Accent, dpi);
     }
 
     readonly List<EditPill> _pills = new();
@@ -765,6 +776,7 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        _snapGuides?.Dispose();
         foreach (var p in _pills) p.Close();
         Power.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
