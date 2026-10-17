@@ -194,6 +194,12 @@
                  background: rgba(139, 147, 255, 0.05); box-shadow: inset 0 0 0 calc(1.5px * var(--k)) rgba(139, 147, 255, 0.75); }
         .grip { position: absolute; right: 0; bottom: 0; width: calc(24px * var(--k)); height: calc(24px * var(--k)); cursor: nwse-resize; }
         .grip svg { position: absolute; right: calc(5px * var(--k)); bottom: calc(5px * var(--k)); width: calc(11px * var(--k)); height: calc(11px * var(--k)); }
+        /* Windows contrast themes drop box-shadows and backgrounds, so draw the frame as a real border. */
+        @media (forced-colors: active) {
+          .frame { background: none; box-shadow: none; border: calc(2px * var(--k)) solid Highlight; }
+          .grip { background: Highlight; }
+          .grip svg { stroke: HighlightText; }
+        }
       </style><div class="frame"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
         stroke="#aab0ff" stroke-width="1.6" stroke-linecap="round"><path d="M10 2 2 10M10 6.5 6.5 10"/></svg></div>`;
       grip = root.querySelector(".grip");
