@@ -188,6 +188,24 @@
       ]
     },
     {
+      "id": "now-playing",
+      "name": "Now Playing",
+      "description": "Shows what is playing in any Windows media app (Spotify, browsers, VLC...) with album art and play, pause, next and previous controls.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "media": [
+        "read",
+        "control"
+      ],
+      "files": [
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "pomodoro",
       "name": "Pomodoro",
       "description": "A focus timer with a progress ring: Pomodoro with breaks or a plain countdown, times editable right in the widget, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
