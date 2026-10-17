@@ -96,6 +96,10 @@ Use `umbractl capture <widget-id|settings:<page>> out.png`, then look at the PNG
 - Labels: `type: bug|feature|docs|widget|chore`, `area: host|widgets|settings|sdk|ai|installer|ci|docs`,
   `priority: p0|p1|p2`, plus `good first issue` and `help wanted`.
 - One issue per PR when possible, with `Closes #N` in the body. CI (`.github/workflows/ci.yml`) must pass.
+- Before starting an issue, skip it if it has an assignee; otherwise comment "I'm taking this" so work isn't duplicated.
+- Contributors without write access work from a fork (`gh repo fork AmineChr54/umbra --clone`, then
+  `gh pr create --repo AmineChr54/umbra`). They can't set labels, assignees or the board, and never merge; the
+  maintainer does that. A first-time contributor's CI waits for the maintainer to approve the run.
 - Releases: bump the version, tag `vX.Y.Z` and push. `release.yml` builds and attaches the installer
   (see `.claude/skills/release`).
 

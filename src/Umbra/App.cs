@@ -101,6 +101,15 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
     }
 
+    WakeRefresh? _wakeRefresh;
+
+    /// <summary>Resume / network back / unlock (#102): widgets fetch now instead of waiting for their next tick.</summary>
+    void RefreshAfterWake(string trigger)
+    {
+        Log.Verbose($"Refreshing widgets after {trigger}");
+        foreach (var w in _windows.Values) w.RefreshData();
+    }
+
     void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
@@ -223,6 +232,8 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        _wakeRefresh = new WakeRefresh(_ui, RefreshAfterWake, () => Settings.General.RefreshSeconds);
+
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
         if (restore.Count > 0)
@@ -568,6 +579,7 @@ sealed class App : ApplicationContext
         _tray.Dispose();
         Updater.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
