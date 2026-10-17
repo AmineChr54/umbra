@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Web.WebView2.Core;
@@ -682,6 +683,8 @@ sealed class WidgetWindow : Form
             ["locked"] = ws.Locked,
             ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
             ["scale"] = ws.Scale,
+            ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
+            ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),
         };

@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace Umbra;
 
@@ -149,6 +151,33 @@ static class Prefs
     public static bool MotionOn(GeneralSettings g) => g.Animations && Pick(g.AnimationSpeed, AnimationSpeeds, "normal") != "off";
 
     public static int StartupDelay(GeneralSettings g) => Math.Clamp(g.StartupDelaySeconds, 0, MaxStartupDelay);
+
+    static readonly Regex LocaleTag = new("^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The user's Windows region format as a BCP-47 tag for <c>Intl</c> ("de-DE"); en-US for the invariant culture or a
+    /// name that isn't a plain tag (sort-order suffixes like "_tradnl" are dropped). Sent to widgets as <c>settings.locale</c>.
+    /// </summary>
+    public static string LocaleOf(CultureInfo culture)
+    {
+        var name = culture.Name;
+        var cut = name.IndexOf('_');
+        if (cut >= 0) name = name[..cut];
+        return LocaleTag.IsMatch(name) ? name : "en-US";
+    }
+
+    /// <summary>True when the culture's short time pattern is a 12-hour clock ("h:mm tt"); that pattern follows Region > Time format.</summary>
+    public static bool Hour12Of(CultureInfo culture)
+    {
+        var inLiteral = false;
+        foreach (var c in culture.DateTimeFormat.ShortTimePattern)
+        {
+            if (c == '\'' || c == '"') inLiteral = !inLiteral;
+            else if (!inLiteral && c == 'h') return true;
+            else if (!inLiteral && c == 'H') return false;
+        }
+        return false;
+    }
 
     public static int EffectiveRefresh(WidgetSettings ws, GeneralSettings g) => ws.RefreshSeconds ?? g.RefreshSeconds;
 
