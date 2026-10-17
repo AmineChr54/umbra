@@ -60,11 +60,11 @@ async function load() {
       deltaLabel: RANGES[o.range].delta,
       fetchedAt: new Date(),
     };
-    el.card.classList.remove("stale");
     render();
   } catch (err) {
-    el.card.classList.add("stale");
-    el.updated.textContent = current ? `Offline, retrying  ·  last ${time(current.fetchedAt)}` : `Can't load ${o.symbol}: ${err.message}`;
+    umbra.status?.failed(err); // also covers a response with no usable data
+    // With data on screen the <umbra-status> dot says it's old; without any, say why.
+    el.updated.textContent = current ? "" : `Can't load ${o.symbol}: ${err.message}`;
   }
 }
 
@@ -93,7 +93,7 @@ function render() {
 
   el.market.classList.toggle("open", d.open);
   el.market.querySelector("span").textContent = d.open ? "Market open" : "Closed";
-  el.updated.textContent = `Updated ${time(d.fetchedAt)}`;
+  el.updated.textContent = "";
 
   drawChart();
   window.chrome?.webview?.postMessage({ type: "rendered" });
