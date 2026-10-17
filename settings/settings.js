@@ -90,6 +90,7 @@ function renderGeneral() {
   $("#startupSub").textContent = state.portable ? "Not available in portable mode." : "Your widgets appear on the desktop when you sign in.";
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
+  $("#slowEnergySaver").checked = g.slowOnEnergySaver !== false;
   $("#hideFullscreen").checked = !!g.hideOnFullscreen;
   if (document.activeElement !== $("#peekSeconds")) $("#peekSeconds").value = g.peekSeconds || 5;
   $("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
@@ -107,6 +108,7 @@ $("#startup").addEventListener("change", (e) => {
 });
 $("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
 $("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
+$("#slowEnergySaver").addEventListener("change", (e) => { state.settings.general.slowOnEnergySaver = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);

@@ -127,20 +127,31 @@
     onChange: (fn) => handlers.store.push(fn),
   };
 
-  /** Run fn now and then every refreshSeconds (re-scheduled when the user changes the interval). */
+  /**
+   * Run fn now and then every refreshSeconds (re-scheduled when the user changes the interval).
+   * While the PC is locked or the display is off (settings.paused) nothing runs; fn runs once when it resumes.
+   */
   function every(fn) {
     let timer;
+    let wasPaused = false;
     const schedule = () => {
       clearTimeout(timer);
+      if (settings.paused) return;
       timer = setTimeout(async () => { await run(); }, settings.refreshSeconds * 1000);
     };
     const run = async () => {
+      if (settings.paused) return;
       try { await fn(); } catch (err) { console.error(err); }
       schedule();
     };
     handlers.refresh.push(run);
-    handlers.settings.push(schedule);
-    ready.then(run);
+    handlers.settings.push(() => {
+      const resumed = wasPaused && !settings.paused;
+      wasPaused = !!settings.paused;
+      if (resumed) run(); // one refresh on resume, then the normal interval
+      else schedule();
+    });
+    ready.then(() => { wasPaused = !!settings.paused; run(); });
   }
 
   // Drag anywhere to move the widget: once the pointer travels a few pixels with the

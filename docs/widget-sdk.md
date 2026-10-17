@@ -97,9 +97,9 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, editMode, paused, energySaver, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets. `paused` is true while the PC is locked or the display is off; `energySaver` is true while Windows Energy Saver is on and the user allows slowing down, in which case `refreshSeconds` is already 4x longer. Both arrive through `umbra.onSettings` |
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
-| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
+| `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged. Does not run while `umbra.settings.paused` and runs once when the PC is unlocked or the display is back on |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
 | `umbra.system()` | Resolves machine totals for the kinds declared in `permissions.system`: `cpu.percent`, `memory.{totalBytes,usedBytes,percent}`, `network.{downBytesPerSec,upBytesPerSec}`. Read-only numbers; no process or adapter names. Rejects without `permissions.system`; call it from `umbra.every` (shared sample, at most 2 per second) |
@@ -215,7 +215,9 @@ tokens follows the theme live when the user switches. Widgets that set `"themeab
 - **True black background (`#000`)**, no transparency. Umbra is built for OLED, where black pixels are off,
   and the window has DWM rounded corners and a hairline border.
 - Text 11 px or larger; tabular numbers for values that change.
-- Calm by default: no constant animation, no network calls faster than `umbra.every`.
+- Calm by default: no constant animation, no network calls faster than `umbra.every`. If you run your own timers or
+  fetch loops, stop them while `umbra.settings.paused` is true, start again (with one refresh) when it turns false, and
+  use `umbra.settings.refreshSeconds` as the interval so Energy Saver slows you down too.
 - Fit the declared `width` x `height` exactly; the window does not scroll or reflow. When the user resizes it,
   Umbra zooms the whole page instead.
 

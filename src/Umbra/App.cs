@@ -30,6 +30,9 @@ sealed class App : ApplicationContext
 
     readonly HotkeyService _hotkeys;
 
+    /// <summary>Locked / display off / Energy Saver state (#104); widgets pause and slow down from it.</summary>
+    public PowerState Power { get; }
+
     /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
     public bool HiddenByFullscreen { get; private set; }
     public bool Peeking { get; private set; }
@@ -210,6 +213,8 @@ sealed class App : ApplicationContext
         _tray.BalloonTipClicked += (_, _) => { if (_balloonUrl is { } u) WebHost.OpenExternal(u); };
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
+        Power = new PowerState(_ui); // before the windows: their settings payload reads it
+        Power.Changed += () => { foreach (var w in _windows.Values) w.PushPower(); };
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
@@ -218,7 +223,6 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
-
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
         if (restore.Count > 0)
@@ -567,6 +571,7 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
+        Power.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();
         base.ExitThreadCore();
