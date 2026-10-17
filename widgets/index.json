@@ -2,6 +2,30 @@
   "schema": 1,
   "widgets": [
     {
+      "id": "calendar-glance",
+      "name": "Calendar glance",
+      "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "calendar.google.com",
+        "outlook.office365.com",
+        "outlook.live.com",
+        "calendar.zoho.com",
+        "calendar.proton.me",
+        "raw.githubusercontent.com"
+      ],
+      "files": [
+        "calendar.css",
+        "calendar.js",
+        "ical.js",
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "claude-waker",
       "name": "Claude waker",
       "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
@@ -265,6 +289,24 @@
         "preview.png",
         "tracker.css",
         "tracker.js",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "transit-departures",
+      "name": "Transit departures",
+      "description": "Live departures for one Berlin stop (BVG and VBB) with delays. Uses the free v6.bvg.transport.rest API, no key.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [
+        "v6.bvg.transport.rest"
+      ],
+      "files": [
+        "index.html",
+        "preview.png",
+        "transit.css",
+        "transit.js",
         "widget.json"
       ]
     },

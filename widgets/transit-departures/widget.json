@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "transit-departures",
+  "name": "Transit departures",
+  "description": "Live departures for one Berlin stop (BVG and VBB) with delays. Uses the free v6.bvg.transport.rest API, no key.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 330,
+  "defaultPosition": { "x": 360, "y": 24 },
+  "permissions": { "hosts": ["v6.bvg.transport.rest"] },
+  "options": {
+    "stop": { "label": "Stop", "type": "text", "default": "Alexanderplatz", "hint": "Stop name (e.g. Hermannplatz) or a numeric stop id (e.g. 900100003)" },
+    "lines": { "label": "Lines", "type": "text", "default": "", "hint": "Only these lines, comma separated (e.g. U2, M4, 142). Empty shows all" },
+    "rows": { "label": "Rows", "type": "number", "default": 7, "min": 1, "max": 10, "step": 1 },
+    "walk": { "label": "Walking time (min)", "type": "number", "default": 0, "min": 0, "max": 30, "step": 1, "hint": "Departures you can no longer reach are dimmed" }
+  }
+}

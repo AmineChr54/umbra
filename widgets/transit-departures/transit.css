@@ -1,0 +1,23 @@
+html, body { height: 100%; overflow: hidden; }
+.tr { height: 100%; padding: 16px 18px 12px; display: flex; flex-direction: column; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex: none; }
+.stop { font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stale { font-size: 11px; color: var(--text-3); flex: none; }
+.stale[hidden] { display: none; }
+.list { flex: 1; min-height: 0; overflow: hidden; margin-top: 8px; }
+.dep { display: flex; align-items: center; gap: 10px; height: 36px; }
+.line { flex: none; min-width: 42px; padding: 3px 6px; border-radius: 6px; text-align: center; font-size: 12px; font-weight: 700; color: #fff; background: #5b6070; }
+.line.subway { background: #1c5fb8; }
+.line.suburban { background: #18803f; }
+.line.tram { background: #c4262e; }
+.line.bus { background: #8a2a7d; }
+.line.regional, .line.express { background: #6b1d1d; }
+.line.ferry { background: #0f7c97; }
+.dir { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.min { flex: none; text-align: right; font-size: 14px; font-weight: 600; min-width: 64px; }
+.min small { font-size: 11px; font-weight: 600; margin-left: 4px; color: var(--down); }
+.dep.late .min { color: var(--down); }
+.dep.cancelled .dir { text-decoration: line-through; color: var(--text-3); }
+.dep.cancelled .min { color: var(--down); font-size: 12px; }
+.dep.gone { opacity: 0.4; }
+.msg { height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 12px; font-size: 13px; color: var(--text-2); }

@@ -29,7 +29,7 @@ jobs:
       - name: Unit tests
         run: dotnet test Umbra.slnx -c Release --no-build --logger "console;verbosity=normal"
       - name: Widget parser tests
-        run: node --test tests/widgets/internships.test.mjs
+        run: node --test tests/widgets/*.test.mjs
       - name: Validate widgets
         # Validation only: widgets/index.json is regenerated on merge by widgets.yml, so PRs need not touch it.
         run: node scripts/catalog.mjs

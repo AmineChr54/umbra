@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "calendar-glance",
+  "name": "Calendar glance",
+  "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 320,
+  "height": 340,
+  "defaultPosition": { "x": 24, "y": 24 },
+  "permissions": {
+    "hosts": [
+      "calendar.google.com",
+      "outlook.office365.com",
+      "outlook.live.com",
+      "calendar.zoho.com",
+      "calendar.proton.me",
+      "raw.githubusercontent.com"
+    ]
+  },
+  "options": {
+    "url": {
+      "label": "iCal address",
+      "type": "text",
+      "default": "demo",
+      "hint": "Secret .ics link (webcal:// is fine) on calendar.google.com, outlook.office365.com, outlook.live.com, calendar.zoho.com, calendar.proton.me or raw.githubusercontent.com. Type demo to see sample events."
+    },
+    "showTomorrow": { "label": "Show tomorrow", "type": "toggle", "default": true },
+    "maxRows": { "label": "Max rows", "type": "number", "default": 8, "min": 3, "max": 12, "step": 1 },
+    "showLocation": { "label": "Show location", "type": "toggle", "default": true },
+    "clock": {
+      "label": "Time format", "type": "select", "default": "24",
+      "choices": [{ "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
+    }
+  }
+}
