@@ -144,6 +144,7 @@ $("rm").addEventListener("click", () => {
 });
 
 umbra.onSettings(render);
+umbra.onTimeChanged?.(render); // time zone or clock changed: today may be a different day
 umbra.store.onChange(async () => { habits = await umbra.store.get("habits", []); render(); });
 // Roll over to the new day without a restart.
 setInterval(() => { if (today() !== stamp) render(); }, 30e3);

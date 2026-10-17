@@ -26,6 +26,15 @@ sealed class SnapGuides : Form
 
     protected override bool ShowWithoutActivation => true;
 
+    const int WM_DPICHANGED = 0x02E0;
+
+    /// <summary>The overlay spans monitors of different DPI and is positioned with SetWindowPos; never let WinForms rescale it.</summary>
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_DPICHANGED) return;
+        base.WndProc(ref m);
+    }
+
     protected override CreateParams CreateParams
     {
         get

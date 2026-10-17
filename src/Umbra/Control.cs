@@ -107,6 +107,7 @@ sealed class Control(App app)
                 if (a["animations"] is JsonNode an) g.Animations = Bool(an, "animations");
                 if (a["checkForUpdates"] is JsonNode cu) g.CheckForUpdates = Bool(cu, "checkForUpdates");
                 if (a["hideOnFullscreen"] is JsonNode hf) g.HideOnFullscreen = Bool(hf, "hideOnFullscreen");
+                if (a["slowOnEnergySaver"] is JsonNode es) g.SlowOnEnergySaver = Bool(es, "slowOnEnergySaver");
                 if (a["peekSeconds"] is JsonNode ps)
                 {
                     var secs = Int(ps, "peekSeconds");
@@ -121,6 +122,7 @@ sealed class Control(App app)
                     if (gap is < 0 or > Snap.MaxGap) throw new CommandException($"snapGap must be between 0 (touch) and {Snap.MaxGap}");
                     g.SnapGap = gap;
                 }
+                if (a["snap"] is JsonNode sn) g.SnapEnabled = Bool(sn, "snap");
                 if (a["snapGrid"] is JsonNode sg)
                 {
                     var grid = Int(sg, "snapGrid");
@@ -131,6 +133,7 @@ sealed class Control(App app)
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
                 app.SettingsChangedElsewhere();
+                app.RefreshEditPills(); // the pill's snap label follows --snap / --snap-grid
                 return new JsonObject
                 {
                     ["general"] = JsonSerializer.SerializeToNode(g, Web),
@@ -281,8 +284,17 @@ sealed class Control(App app)
                     throw new CommandException($"'{id}' is built in and always installed");
                 var entry = (await Community.FetchCatalogAsync()).FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                             ?? throw new CommandException($"'{id}' is not in the community catalog");
+                // Nothing is written until the user accepted any access the update adds. Passing acceptPermissions is
+                // the CLI user saying so (--accept-permissions); the MCP server never forwards it. Commands stay
+                // approved by hash, so an accepted command still needs its own approval before it runs.
+                using var pending = await Community.PrepareAsync(entry);
+                try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
+                catch (PermissionsChangedException ex)
+                {
+                    throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install {id} --accept-permissions (or update it in Settings > Browse).");
+                }
                 app.CloseWidget(id);
-                await Community.InstallAsync(entry);
+                pending.Commit();
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
                 return Describe(app.Manifests.First(m => m.Id == id), id);

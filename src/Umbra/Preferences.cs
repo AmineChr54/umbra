@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace Umbra;
 
@@ -115,8 +117,77 @@ static class Prefs
         return args.Count == 0 ? null : string.Join(' ', args);
     }
 
+    /// <summary>Accent value that follows the Windows accent color (stored in <see cref="GeneralSettings.Accent"/>).</summary>
+    public const string WindowsAccentValue = "windows";
+    /// <summary>Lowest relative luminance an accent may have on true black (about 4.5:1 contrast).</summary>
+    const double MinAccentLuminance = 0.18;
+
+    /// <summary>"#rrggbb" accent and its stronger variant.</summary>
+    public readonly record struct AccentPair(string Accent, string Strong);
+
+    /// <summary>The current Windows accent, kept up to date by <see cref="App"/>; null when unavailable.</summary>
+    public static AccentPair? SystemAccent { get; set; }
+
+    public static bool IsWindowsAccent(string? value) => string.Equals(value?.Trim(), WindowsAccentValue, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Lightens the Windows accent (and AccentLight2 as the strong variant) until it is readable on black.</summary>
+    public static AccentPair FromWindows((byte r, byte g, byte b) accent, (byte r, byte g, byte b) light2)
+    {
+        var a = Readable(accent);
+        var s = Readable(light2);
+        if (Luminance(s) <= Luminance(a)) s = Mix(a, 0.25);
+        return new AccentPair(Hex(a), Hex(s));
+    }
+
+    static (byte r, byte g, byte b) Readable((byte r, byte g, byte b) c)
+    {
+        for (var i = 0; i < 20 && Luminance(c) < MinAccentLuminance; i++) c = Mix(c, 0.1);
+        return c;
+    }
+
+    /// <summary>Blends a color toward white by <paramref name="t"/> (0-1).</summary>
+    static (byte r, byte g, byte b) Mix((byte r, byte g, byte b) c, double t) =>
+        ((byte)Math.Round(c.r + (255 - c.r) * t), (byte)Math.Round(c.g + (255 - c.g) * t), (byte)Math.Round(c.b + (255 - c.b) * t));
+
+    static string Hex((byte r, byte g, byte b) c) => $"#{c.r:x2}{c.g:x2}{c.b:x2}";
+
+    /// <summary>WCAG relative luminance, 0 (black) to 1 (white).</summary>
+    static double Luminance((byte r, byte g, byte b) c)
+    {
+        static double Lin(byte v) { var x = v / 255.0; return x <= 0.03928 ? x / 12.92 : Math.Pow((x + 0.055) / 1.055, 2.4); }
+        return 0.2126 * Lin(c.r) + 0.7152 * Lin(c.g) + 0.0722 * Lin(c.b);
+    }
+
+    /// <summary>The accent in effect as "#rrggbb" ("" = follow the theme): the picked color, or the Windows one in that mode.</summary>
+    public static string ResolveAccent(GeneralSettings g, AccentPair? system) =>
+        TryResolveAccent(g, system, out var accent, out _) ? accent : "";
+
+    static bool TryResolveAccent(GeneralSettings g, AccentPair? system, out string accent, out string strong)
+    {
+        accent = strong = "";
+        if (IsWindowsAccent(g.Accent))
+        {
+            if (system is not { } s) return false;
+            (accent, strong) = (s.Accent, s.Strong);
+            return true;
+        }
+        if (!TryColor(g.Accent, out var c) || c.Length == 0 || !TryHex(c, out var rgb)) return false;
+        accent = c;
+        strong = Hex(Mix(rgb, 0.25));
+        return true;
+    }
+
+    /// <summary>Only the accent tokens of <see cref="AppearanceCss(GeneralSettings)"/>, for the Settings window (empty = follow the theme).</summary>
+    public static string AccentCss(GeneralSettings g)
+    {
+        if (!TryResolveAccent(g, SystemAccent, out var accent, out var strong) || !TryHex(accent, out var rgb)) return "";
+        return $":root{{--accent:{accent};--accent-strong:{strong};--accent-soft:rgba({rgb.r},{rgb.g},{rgb.b},0.14);}}";
+    }
+
     /// <summary>The :root rule for the Appearance options (empty when all are default); applied after the theme.</summary>
-    public static string AppearanceCss(GeneralSettings g)
+    public static string AppearanceCss(GeneralSettings g) => AppearanceCss(g, SystemAccent);
+
+    public static string AppearanceCss(GeneralSettings g, AccentPair? system)
     {
         var parts = new List<string>();
         switch (Pick(g.CornerRadius, CornerRadii, "default"))
@@ -131,9 +202,8 @@ static class Prefs
             parts.Add("--font-scale:" + Math.Clamp(g.FontScale, MinFontScale, MaxFontScale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + ";");
         if (g.LightText) parts.Add("--text:#ffffff;--text-2:#d6d9e0;--text-3:#a3a8b4;");
         var rgb = (r: (byte)139, g: (byte)147, b: (byte)255);
-        if (TryColor(g.Accent, out var accent) && accent.Length > 0 && TryHex(accent, out rgb))
+        if (TryResolveAccent(g, system, out var accent, out var strong) && TryHex(accent, out rgb))
         {
-            var strong = "#" + string.Concat(new[] { rgb.r, rgb.g, rgb.b }.Select(c => ((int)Math.Round(c + (255 - c) * 0.25)).ToString("x2")));
             parts.Add($"--accent:{accent};--accent-strong:{strong};");
             if (!g.ReduceTransparency) parts.Add($"--accent-soft:rgba({rgb.r},{rgb.g},{rgb.b},0.14);");
         }
@@ -150,6 +220,33 @@ static class Prefs
 
     public static int StartupDelay(GeneralSettings g) => Math.Clamp(g.StartupDelaySeconds, 0, MaxStartupDelay);
 
+    static readonly Regex LocaleTag = new("^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The user's Windows region format as a BCP-47 tag for <c>Intl</c> ("de-DE"); en-US for the invariant culture or a
+    /// name that isn't a plain tag (sort-order suffixes like "_tradnl" are dropped). Sent to widgets as <c>settings.locale</c>.
+    /// </summary>
+    public static string LocaleOf(CultureInfo culture)
+    {
+        var name = culture.Name;
+        var cut = name.IndexOf('_');
+        if (cut >= 0) name = name[..cut];
+        return LocaleTag.IsMatch(name) ? name : "en-US";
+    }
+
+    /// <summary>True when the culture's short time pattern is a 12-hour clock ("h:mm tt"); that pattern follows Region > Time format.</summary>
+    public static bool Hour12Of(CultureInfo culture)
+    {
+        var inLiteral = false;
+        foreach (var c in culture.DateTimeFormat.ShortTimePattern)
+        {
+            if (c == '\'' || c == '"') inLiteral = !inLiteral;
+            else if (!inLiteral && c == 'h') return true;
+            else if (!inLiteral && c == 'H') return false;
+        }
+        return false;
+    }
+
     public static int EffectiveRefresh(WidgetSettings ws, GeneralSettings g) => ws.RefreshSeconds ?? g.RefreshSeconds;
 
     public static double ClampOpacity(double v, bool reduceTransparency = false) => reduceTransparency ? 1.0 : double.IsFinite(v) ? Math.Round(Math.Clamp(v, MinOpacity, 1.0), 2) : 1.0;
@@ -163,7 +260,7 @@ static class Prefs
         if (a["logLevel"] is JsonNode ll) g.LogLevel = OneOf(ll, "logLevel", LogLevels);
         if (a["borderEnabled"] is JsonNode be) g.BorderEnabled = Flag(be, "borderEnabled");
         if (a["borderColor"] is JsonNode bc) g.BorderColor = Color(bc, "borderColor");
-        if (a["accent"] is JsonNode ac) g.Accent = Color(ac, "accent");
+        if (a["accent"] is JsonNode ac) g.Accent = Accent(ac);
         if (a["lightText"] is JsonNode lt) g.LightText = Flag(lt, "lightText");
         if (a["reduceTransparency"] is JsonNode rt) g.ReduceTransparency = Flag(rt, "reduceTransparency");
         if (a["uiFont"] is JsonNode uf)
@@ -241,6 +338,18 @@ static class Prefs
 
     static string Color(JsonNode n, string name) =>
         n.GetValueKind() == JsonValueKind.String && TryColor(n.GetValue<string>(), out var c) ? c : throw new Control.CommandException($"\"{name}\" must be a color like #8b93ff (empty = default)");
+
+    /// <summary>A "#rrggbb" color, "" (follow the theme) or "windows" (follow the Windows accent color).</summary>
+    static string Accent(JsonNode n)
+    {
+        if (n.GetValueKind() == JsonValueKind.String)
+        {
+            var s = n.GetValue<string>();
+            if (IsWindowsAccent(s)) return WindowsAccentValue;
+            if (TryColor(s, out var c)) return c;
+        }
+        throw new Control.CommandException("\"accent\" must be a color like #8b93ff, \"windows\" (follow the Windows accent) or empty (follow the theme)");
+    }
 
     static string? Clock(JsonNode n, string name)
     {
