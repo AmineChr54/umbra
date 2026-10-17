@@ -121,6 +121,10 @@ for (const id of readdirSync(widgetsDir).sort()) {
   if (!Array.isArray(hosts)) fail(id, `"permissions.hosts" must be an array`);
   else for (const h of hosts) if (typeof h !== "string" || !HOST.test(h)) fail(id, `invalid host "${h}" (hostnames only, no scheme or path)`);
 
+  const system = m.permissions?.system ?? [];
+  if (!Array.isArray(system)) fail(id, `"permissions.system" must be an array`);
+  else for (const s of system) if (!["cpu", "memory", "network"].includes(s)) fail(id, `unknown system metric "${s}" (cpu, memory, network)`);
+
   const commands = validateCommands(id, m.permissions?.commands);
 
   for (const [key, spec] of Object.entries(m.options ?? {})) {
@@ -144,6 +148,7 @@ for (const id of readdirSync(widgetsDir).sort()) {
     version: m.version,
     preview: m.preview ?? null,
     hosts,
+    ...(system.length ? { system } : {}),
     // Only present for widgets that can start programs; Browse flags them so users see it before installing.
     ...(commands.length ? { commands } : {}),
     files,

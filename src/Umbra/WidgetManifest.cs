@@ -34,6 +34,8 @@ public sealed partial class WidgetManifest
     public sealed class PermissionSpec
     {
         public List<string> Hosts { get; set; } = new();
+        /// <summary>Read-only machine totals the widget may read with <c>umbra.system()</c>: any of cpu, memory, network.</summary>
+        public List<string> System { get; set; } = new();
         /// <summary>Local programs the widget may ask to run; each needs the user's approval (see <see cref="CommandSpec"/>).</summary>
         public List<CommandSpec> Commands { get; set; } = new();
     }
@@ -72,6 +74,7 @@ public sealed partial class WidgetManifest
                 CommandSpec.CheckKeys(cmds);
         }
         CommandSpec.ValidateAll(m.Permissions.Commands);
+        SystemMetrics.Validate(m.Permissions.System);
         return m;
     }
 

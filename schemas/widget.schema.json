@@ -41,6 +41,12 @@
           "items": { "type": "string", "pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" },
           "uniqueItems": true
         },
+        "system": {
+          "type": "array",
+          "description": "Read-only machine totals the widget may read with umbra.system(): cpu (load percent), memory (total/used bytes), network (total down/up bytes per second). Numbers only, no process or adapter names. Browse shows these.",
+          "items": { "enum": ["cpu", "memory", "network"] },
+          "uniqueItems": true
+        },
         "commands": {
           "type": "array",
           "maxItems": 16,

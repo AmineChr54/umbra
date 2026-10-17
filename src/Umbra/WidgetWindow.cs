@@ -335,6 +335,10 @@ sealed class WidgetWindow : Form
                 HandleStore(msg!);
                 break;
 
+            case "system":
+                HandleSystem(msg!);
+                break;
+
             case "run":
                 await HandleRun(msg!);
                 break;
@@ -453,6 +457,23 @@ sealed class WidgetWindow : Form
     /// umbra.run: asks the host to run one of this widget's declared commands (permissions.commands). The page sends
     /// only a command id and string parameters; <see cref="CommandService"/> does the checking and the approval.
     /// </summary>
+    /// <summary>Answers umbra.system() with only the metric kinds the manifest declared (none declared: rejected).</summary>
+    void HandleSystem(JsonNode msg)
+    {
+        var reply = new JsonObject { ["type"] = "systemResult", ["id"] = msg["id"]?.DeepClone() };
+        if (Manifest.Permissions.System.Count == 0 || !(Alive && Ws.Enabled))
+        {
+            reply["ok"] = false;
+            reply["error"] = "This widget has no permissions.system";
+        }
+        else
+        {
+            reply["ok"] = true;
+            reply["data"] = SystemMetrics.Read(Manifest.Permissions.System);
+        }
+        Post(reply);
+    }
+
     async Task HandleRun(JsonNode msg)
     {
         var reply = new JsonObject { ["type"] = "runResult", ["id"] = msg["id"]?.DeepClone() };

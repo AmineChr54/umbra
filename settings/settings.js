@@ -386,6 +386,13 @@ function renderCatalog() {
       c.append(h);
       chips.append(c);
     }
+    for (const s of w.system || []) {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
+      c.append(`Reads ${s} usage`);
+      chips.append(c);
+    }
     // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).
     for (const cmd of w.commands || []) {
       const c = document.createElement("span");

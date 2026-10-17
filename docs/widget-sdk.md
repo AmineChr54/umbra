@@ -53,6 +53,7 @@ Nothing ships inside the app; every widget, including S&P 500, is installed from
 | `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
 | `themeable` | Default `true`. `false` keeps your own look: the user's [theme](#themes) is not applied to the widget |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
+| `permissions.system` | Optional: any of `"cpu"`, `"memory"`, `"network"`. Needed for `umbra.system()`; Browse shows them as "Reads cpu usage" etc. |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
 | `permissions.commands` | Local programs the widget may start with `umbra.run`. Empty by default. See [Running local commands](#running-local-commands) |
 | `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle` |
@@ -99,6 +100,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all". Errors are caught and logged |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
 | `umbra.fetchJson(url)` | `GET` JSON through the host: no CORS issues, 25 s timeout. Rejects unless the URL is HTTPS and its host is in `permissions.hosts` |
+| `umbra.system()` | Resolves machine totals for the kinds declared in `permissions.system`: `cpu.percent`, `memory.{totalBytes,usedBytes,percent}`, `network.{downBytesPerSec,upBytesPerSec}`. Read-only numbers; no process or adapter names. Rejects without `permissions.system`; call it from `umbra.every` (shared sample, at most 2 per second) |
 | `umbra.run(commandId, params?)` | Runs a command declared in `permissions.commands` and resolves `{ exitCode, stdout, stderr, timedOut, truncated, durationMs }`. Rejects when the command isn't declared, isn't approved yet, or `params` are invalid. See below |
 | `umbra.fetchText(url)` | Like `fetchJson`, but resolves with the response body as a string (up to 2 MB), for Markdown, CSV or HTML |
 | `umbra.store.get(key, fallback?)` | Promise of this widget's saved value for `key` (any JSON), or `fallback` when it was never set |
