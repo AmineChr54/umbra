@@ -67,6 +67,22 @@ public class DiagnosticsTests
     }
 
     [Fact]
+    public void Url_queries_and_fragments_are_stripped_and_user_and_machine_names_hidden()
+    {
+        var scrubbed = Diagnostics.ScrubLog(new[]
+        {
+            "10:00  GET https://api.example.com/v1/quote?symbol=X&key=SECRET#frag failed",
+            "10:01  (http://host:8080/a/b?token=SECRET) and \"https://x.test/p?k=SECRET\"",
+            "10:02  host DESKTOP-ABC123 user carol",
+        }, Array.Empty<(string, string)>(), new[] { ("carol", "<user>"), ("DESKTOP-ABC123", "<machine>") });
+
+        Assert.Equal("10:00  GET https://api.example.com/v1/quote failed", scrubbed[0]);
+        Assert.Equal("10:01  (http://host:8080/a/b) and \"https://x.test/p\"", scrubbed[1]);
+        Assert.Equal("10:02  host <machine> user <user>", scrubbed[2]);
+        Assert.All(scrubbed, l => Assert.DoesNotContain("SECRET", l));
+    }
+
+    [Fact]
     public void Very_long_log_lines_are_cut()
     {
         var line = Diagnostics.ScrubLog(new[] { new string('x', 5000) }, Array.Empty<(string, string)>()).Single();

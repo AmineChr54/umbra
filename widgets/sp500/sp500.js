@@ -60,16 +60,16 @@ async function load() {
       deltaLabel: RANGES[o.range].delta,
       fetchedAt: new Date(),
     };
-    el.card.classList.remove("stale");
     render();
   } catch (err) {
-    el.card.classList.add("stale");
-    el.updated.textContent = current ? `Offline, retrying  ·  last ${time(current.fetchedAt)}` : `Can't load ${o.symbol}: ${err.message}`;
+    umbra.status?.failed(err); // also covers a response with no usable data
+    // With data on screen the <umbra-status> dot says it's old; without any, say why.
+    el.updated.textContent = current ? "" : `Can't load ${o.symbol}: ${err.message}`;
   }
 }
 
 function time(d) {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(umbra.locale, { hour: "2-digit", minute: "2-digit", hour12: umbra.hour12 });
 }
 
 function render() {
@@ -82,6 +82,9 @@ function render() {
   const trend = change > 0 ? "up" : change < 0 ? "down" : "flat";
   const sign = change > 0 ? "+" : change < 0 ? "−" : "";
   el.card.dataset.trend = trend;
+  // With a Windows contrast theme on, umbra.css turns these into an arrow so direction doesn't rely on color.
+  el.pct.classList.toggle("trend-up", trend === "up");
+  el.pct.classList.toggle("trend-down", trend === "down");
 
   umbra.tween(shownPrice, d.price, 700, (v) => (el.price.textContent = umbra.fmt(v)));
   shownPrice = d.price;
@@ -90,7 +93,7 @@ function render() {
 
   el.market.classList.toggle("open", d.open);
   el.market.querySelector("span").textContent = d.open ? "Market open" : "Closed";
-  el.updated.textContent = `Updated ${time(d.fetchedAt)}`;
+  el.updated.textContent = "";
 
   drawChart();
   window.chrome?.webview?.postMessage({ type: "rendered" });
@@ -149,7 +152,7 @@ el.chart.addEventListener("pointermove", (e) => {
   el.cross.setAttribute("y1", 0); el.cross.setAttribute("y2", geometry.h);
   el.hoverDot.setAttribute("cx", p.x); el.hoverDot.setAttribute("cy", p.y);
   const when = new Date(s.t * 1000);
-  const label = opts().range === "1d" ? time(when) : `${when.toLocaleDateString([], { weekday: "short" })} ${time(when)}`;
+  const label = opts().range === "1d" ? time(when) : `${when.toLocaleDateString(umbra.locale, { weekday: "short" })} ${time(when)}`;
   el.tip.innerHTML = `<b>${label}</b>${umbra.fmt(s.v)}`;
   const half = el.tip.offsetWidth / 2 + 6;
   el.tip.style.left = `${Math.min(geometry.w - half, Math.max(half, p.x))}px`;

@@ -35,7 +35,7 @@ static class Diagnostics
         return new Snapshot(
             Application.ProductVersion.Split('+')[0], AppPaths.IsPortable, app.SafeMode,
             WindowsText(), WebView2Version(), Monitors(), g.HardwareAcceleration, ProxyKind(g.Proxy),
-            widgets, ScrubLog(Log.Tail(LogLines), Roots(g.Proxy)));
+            widgets, ScrubLog(Log.Tail(LogLines), Roots(g.Proxy), Names()));
     }
 
     /// <summary>"set" only says whether a proxy is configured, never where it points.</summary>
@@ -104,19 +104,9 @@ static class Diagnostics
     static List<MonitorLine> Monitors() =>
         Placement.Monitors().Select(m => new MonitorLine(m.Bounds.Width, m.Bounds.Height, MonitorDpi(m.Bounds), m.Primary)).ToList();
 
-    [DllImport("user32.dll")] static extern IntPtr MonitorFromPoint(Point pt, uint flags);
-    [DllImport("shcore.dll")] static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
-
     /// <summary>Effective DPI of the monitor containing the rectangle's centre (96 when Windows can't say).</summary>
-    static int MonitorDpi(Rectangle bounds)
-    {
-        try
-        {
-            var h = MonitorFromPoint(new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2), 2 /* MONITOR_DEFAULTTONEAREST */);
-            return h != IntPtr.Zero && GetDpiForMonitor(h, 0 /* MDT_EFFECTIVE_DPI */, out var x, out _) == 0 && x > 0 ? (int)x : 96;
-        }
-        catch { return 96; }
-    }
+    static int MonitorDpi(Rectangle bounds) =>
+        (int)Math.Round(Native.MonitorScale(new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2)) * 96);
 
     /// <summary>Folders to hide in the log, longest first so the most specific one wins.</summary>
     static List<(string Path, string Token)> Roots(string? proxy)
@@ -135,15 +125,24 @@ static class Diagnostics
         return roots;
     }
 
+    /// <summary>The Windows user and machine names, replaced wherever they appear in a log line.</summary>
+    static List<(string Name, string Token)> Names() =>
+        new() { (Environment.UserName, "<user>"), (Environment.MachineName, "<machine>") };
+
     /// <summary>
     /// Replaces known folders (and any other <c>X:\Users\name</c>) with environment-variable style names, hides a configured
-    /// proxy address, and caps each line's length, so a pasted log doesn't reveal the Windows user name.
+    /// proxy address, strips the query and fragment from every http(s) URL (they can carry keys and tokens), replaces the
+    /// given user and machine names, and caps each line's length, so a pasted log doesn't reveal the Windows user name.
     /// </summary>
-    internal static List<string> ScrubLog(IEnumerable<string> lines, IEnumerable<(string Path, string Token)> roots)
+    internal static List<string> ScrubLog(IEnumerable<string> lines, IEnumerable<(string Path, string Token)> roots, IEnumerable<(string Name, string Token)>? names = null)
     {
         var ordered = roots.Where(r => r.Path.Trim('\\', '/').Length > 0)
             .Select(r => (Path: r.Path.TrimEnd('\\', '/'), r.Token)).OrderByDescending(r => r.Path.Length).ToList();
         var userDir = new System.Text.RegularExpressions.Regex(@"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s""']+", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var nameRx = (names ?? Array.Empty<(string, string)>())
+            .Where(n => n.Name is { Length: >= 3 })
+            .Select(n => (Rx: new System.Text.RegularExpressions.Regex(@"(?<![A-Za-z0-9])" + System.Text.RegularExpressions.Regex.Escape(n.Name) + @"(?![A-Za-z0-9])",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase), n.Token)).ToList();
         return lines.Select(line =>
         {
             foreach (var (path, token) in ordered)
@@ -152,9 +151,15 @@ static class Diagnostics
                 line = line.Replace(path.Replace('\\', '/'), token, StringComparison.OrdinalIgnoreCase);
             }
             line = userDir.Replace(line, "%USERPROFILE%");
+            line = UrlSecrets.Replace(line, "");
+            foreach (var (rx, token) in nameRx) line = rx.Replace(line, token);
             return line.Length > MaxLogLineLength ? line[..MaxLogLineLength] + "..." : line;
         }).ToList();
     }
+
+    /// <summary>The query and fragment of an http(s) URL (up to whitespace, a quote or a bracket), which can carry API keys.</summary>
+    static readonly System.Text.RegularExpressions.Regex UrlSecrets = new(
+        @"(?<=https?://[^\s?#""'<>()\[\]]*)[?#][^\s""'<>()\[\]]*", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>The bug template with the version and Windows build filled in (issue-form fields are prefilled by id in the query).</summary>
     internal static string IssueUrl(string repo, string version, string windows) =>
