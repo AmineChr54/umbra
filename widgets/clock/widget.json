@@ -4,7 +4,7 @@
   "name": "Clock",
   "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
   "author": "AmineChr54",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 260,

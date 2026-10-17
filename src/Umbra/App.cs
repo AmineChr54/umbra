@@ -113,6 +113,27 @@ sealed class App : ApplicationContext
 
     void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
 
+    // SystemEvents raises these on its own thread, and a clock change often sends several in a row: coalesce them on the UI thread.
+    readonly System.Windows.Forms.Timer _timeTimer = new() { Interval = 300 };
+    string? _timeSignature;
+
+    void OnTimeChanged(object? s, EventArgs e) => _ui.Post(_ => { _timeTimer.Stop(); _timeTimer.Start(); }, null);
+
+    /// <summary>Settings broadcasts (WM_SETTINGCHANGE) are frequent; only a different time zone counts.</summary>
+    void OnPreferenceChanged(object? s, Microsoft.Win32.UserPreferenceChangedEventArgs e) => _ui.Post(_ =>
+    {
+        if (!TimeChange.ZoneChanged(_timeSignature, TimeChange.Signature())) return;
+        _timeTimer.Stop();
+        _timeTimer.Start();
+    }, null);
+
+    void TimeTimerTick(object? s, EventArgs e)
+    {
+        _timeTimer.Stop();
+        _timeSignature = TimeChange.Signature();
+        foreach (var w in _windows.Values) w.NotifyTimeChanged();
+    }
+
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
     {
@@ -235,6 +256,10 @@ sealed class App : ApplicationContext
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
+        _timeSignature = TimeChange.Signature();
+        _timeTimer.Tick += TimeTimerTick;
+        Microsoft.Win32.SystemEvents.TimeChanged += OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
         _wakeRefresh = new WakeRefresh(_ui, RefreshAfterWake, () => Settings.General.RefreshSeconds);
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
@@ -602,6 +627,9 @@ sealed class App : ApplicationContext
         Updater.Dispose();
         _windowsAccent.Dispose();
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        Microsoft.Win32.SystemEvents.TimeChanged -= OnTimeChanged;
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnPreferenceChanged;
+        _timeTimer.Dispose();
         _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
         _peekTimer?.Dispose();
