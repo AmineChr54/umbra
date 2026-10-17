@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "buddy",
+  "name": "Buddy",
+  "description": "Pair with a friend using a one-time code and see a green dot when they are online. Needs the small relay in tools/buddy-relay.",
+  "author": "AmineChr54",
+  "version": "1.0.1",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 260,
+  "height": 172,
+  "defaultPosition": { "x": 24, "y": 24 },
+  "permissions": {
+    "hosts": ["umbra-buddy-relay.umbra-server.workers.dev"]
+  },
+  "options": {
+    "you": { "label": "Your name", "type": "text", "default": "You", "hint": "Only shown on your own widget" },
+    "friend": { "label": "Friend's name", "type": "text", "default": "Friend", "hint": "Only shown on your own widget" }
+  }
+}

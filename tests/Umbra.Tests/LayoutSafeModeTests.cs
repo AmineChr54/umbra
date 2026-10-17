@@ -40,6 +40,28 @@ public class LayoutSafeModeTests
     }
 
     [Fact]
+    public void Snap_toggle_flips_the_master_switch_and_keeps_the_grid()
+    {
+        var g = new GeneralSettings { SnapGrid = 20, SnapEdges = false };
+        Assert.True(Snap.IsActive(g));
+        Assert.False(Snap.Toggle(g));
+        Assert.False(Snap.IsActive(g));
+        Assert.Equal(20, g.SnapGrid);
+        Assert.True(Snap.Toggle(g));
+        Assert.True(Snap.IsActive(g));
+    }
+
+    [Fact]
+    public void Snap_toggle_on_with_nothing_configured_turns_edge_snapping_on()
+    {
+        var g = new GeneralSettings { SnapGrid = 0, SnapEdges = false };
+        Assert.False(Snap.IsActive(g));
+        Assert.True(Snap.Toggle(g));
+        Assert.True(g.SnapEdges);
+        Assert.True(Snap.IsActive(g));
+    }
+
+    [Fact]
     public void Layout_captures_and_applies_placement_without_touching_options()
     {
         var settings = new Settings();
