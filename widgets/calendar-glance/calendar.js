@@ -147,6 +147,7 @@
     if (umbra.options.url !== lastUrl) { lastUrl = umbra.options.url; icsText = null; await load(); }
     render();
   });
+  umbra.onTimeChanged?.(() => { if (icsText != null) render(); }); // time zone or clock changed: re-lay out the day
   // Keep "now" fresh between refreshes.
   setInterval(() => { if (icsText != null) render(); }, 60000);
 })();

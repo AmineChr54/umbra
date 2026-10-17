@@ -466,6 +466,7 @@ umbra.ready.then(async () => {
 });
 
 umbra.onSettings(() => { if (!first) render(); });
+umbra.onTimeChanged?.(() => { if (!first) render(); }); // time zone or clock changed: remaining times and "today" move
 umbra.store?.onChange(async () => {
   await load();
   if (draft?.id && !events.some((x) => x.id === draft.id)) closeSheet();

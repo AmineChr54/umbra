@@ -7,7 +7,7 @@
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
-  const handlers = { settings: [], refresh: [], store: [] };
+  const handlers = { settings: [], refresh: [], store: [], time: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -62,6 +62,9 @@
         break;
       case "refresh":
         handlers.refresh.forEach((fn) => fn());
+        break;
+      case "timeChanged": // system clock or time zone changed; widgets that don't listen get a refresh
+        (handlers.time.length ? handlers.time : handlers.refresh).forEach((fn) => fn());
         break;
       case "fetchResult":
       case "runResult":
@@ -289,6 +292,8 @@
     /** True when Windows (Region > Time format) uses a 12-hour clock. Pass it as `hour12` to Intl.DateTimeFormat. */
     get hour12() { return !!settings.hour12; },
     onSettings: (fn) => handlers.settings.push(fn),
+    /** fn() runs when the system clock or time zone changed (travel, clock correction). Date already reflects the new zone; re-render and re-schedule anything tied to "today" or midnight. Without a listener, umbra.every callbacks run instead. */
+    onTimeChanged: (fn) => handlers.time.push(fn),
     fetchJson,
     run,
     system,
