@@ -18,6 +18,30 @@ public sealed class GeneralSettings
     public bool HideOnFullscreen { get; set; }
     /// <summary>How long Peek (hotkey or "peek" command) keeps the widgets above other windows, 1-60 s.</summary>
     public int PeekSeconds { get; set; } = 5;
+
+    // Appearance (#61): see Prefs.AppearanceCss
+    /// <summary>"default", "sharp" or "round": overrides the --radius-* tokens after the theme.</summary>
+    public string CornerRadius { get; set; } = "default";
+    /// <summary>"normal", "calm" (--motion-scale 2) or "off".</summary>
+    public string AnimationSpeed { get; set; } = "normal";
+    /// <summary>Scale given to widgets the first time they are set up (50-300 %).</summary>
+    public double DefaultScale { get; set; } = 1.0;
+
+    // Advanced (#65): see Prefs
+    /// <summary>"errors", "normal" or "verbose".</summary>
+    public string LogLevel { get; set; } = "normal";
+    /// <summary>Devtools and a context menu in widget windows.</summary>
+    public bool DeveloperMode { get; set; }
+    /// <summary>GPU acceleration for WebView2; off passes --disable-gpu (restart needed).</summary>
+    public bool HardwareAcceleration { get; set; } = true;
+    /// <summary>Seconds to wait after sign-in before starting (only with --background), 0-300.</summary>
+    public int StartupDelaySeconds { get; set; }
+    /// <summary>"system", "none" or "https://host:port" (restart needed).</summary>
+    public string Proxy { get; set; } = "system";
+    /// <summary>Grid in physical pixels that widgets snap to while moved in edit mode; 0 = no grid.</summary>
+    public int SnapGrid { get; set; }
+    /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
+    public bool SnapEdges { get; set; } = true;
 }
 
 public sealed class WidgetSettings
@@ -45,6 +69,11 @@ public sealed class WidgetSettings
         get => _scale;
         set => _scale = ClampScale(value);
     }
+
+    /// <summary>Own refresh interval in seconds (30-600) overriding the global one; null = global.</summary>
+    public int? RefreshSeconds { get; set; }
+    /// <summary>Window opacity 0.2-1; null = fully opaque (the default keeps true black and ClearType).</summary>
+    public double? Opacity { get; set; }
 
     public JsonObject Options { get; set; } = new();
 
@@ -108,7 +137,7 @@ public sealed class Settings
         instance ??= m.Id;
         if (InstanceId.WidgetOf(instance) != m.Id) throw new ArgumentException($"'{instance}' is not a copy of '{m.Id}'");
         if (!Widgets.TryGetValue(instance, out var ws))
-            Widgets[instance] = ws = new WidgetSettings();
+            Widgets[instance] = ws = new WidgetSettings { Scale = General.DefaultScale };
         foreach (var (key, value) in m.DefaultOptions())
             if (!ws.Options.ContainsKey(key)) ws.Options[key] = value?.DeepClone();
         General.RefreshSeconds = Math.Clamp(General.RefreshSeconds, 30, 600);

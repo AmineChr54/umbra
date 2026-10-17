@@ -17,7 +17,7 @@ static class Community
         Environment.GetEnvironmentVariable("UMBRA_CATALOG_BASE")?.TrimEnd('/')
         ?? $"https://raw.githubusercontent.com/{Repo}/{Branch}/widgets";
 
-    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+    static readonly HttpClient Http = new(Prefs.CreateHandler()) { Timeout = TimeSpan.FromSeconds(20) };
 
     static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

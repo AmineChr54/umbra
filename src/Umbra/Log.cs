@@ -23,8 +23,24 @@ static class Log
         File.WriteAllBytes(path, tail[start..]);
     }
 
-    public static void Write(string message)
+    /// <summary>"errors", "normal" or "verbose" (see <see cref="Prefs"/>).</summary>
+    public static string Level { get; set; } = "normal";
+
+    static readonly string[] ErrorWords = { "fail", "error", "exception", "could not", "unreadable", "fatal", "blocked" };
+
+    /// <summary>At "errors" only lines that look like problems are kept; "verbose" lines are dropped below "verbose".</summary>
+    internal static bool ShouldWrite(string level, string message, bool verbose) =>
+        verbose ? level == "verbose"
+        : level != "errors" || ErrorWords.Any(w => message.Contains(w, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Extra detail, written only at the "verbose" level.</summary>
+    public static void Verbose(string message) => WriteCore(message, true);
+
+    public static void Write(string message) => WriteCore(message, false);
+
+    static void WriteCore(string message, bool verbose)
     {
+        if (!ShouldWrite(Level, message, verbose)) return;
         try
         {
             lock (Gate)

@@ -83,6 +83,7 @@ document.addEventListener("click", (e) => {
 // ---------- General ----------
 function renderGeneral() {
   const g = state.settings.general;
+  window.prefsRender && prefsRender();
   $("#startup").checked = state.startup;
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
@@ -250,6 +251,7 @@ function renderInstalled() {
     });
 
     renderCommands($(".cmds", card), w);
+    window.prefsCard && prefsCard(card, w);
 
     const fields = $(".fields", card);
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});
@@ -336,6 +338,7 @@ function renderCommands(root, w) {
 }
 
 // Edit mode is app-wide and lives in the host (not in settings.json), so it has its own message.
+$("#safeOff").addEventListener("click", () => post({ type: "setSafeMode", value: false }));
 $("#editMode").addEventListener("change", (e) => {
   post({ type: "setEditMode", value: e.target.checked });
   toast(e.target.checked ? "Edit mode on: drag to move, drag the corner or Ctrl+scroll to resize" : "Edit mode off");
@@ -539,6 +542,7 @@ bridge && bridge.addEventListener("message", (e) => {
       if (themes) renderThemes();
       renderUpdate();
       $("#editMode").checked = !!m.editMode;
+      $("#safeBanner").hidden = !m.safeMode;
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
       break;

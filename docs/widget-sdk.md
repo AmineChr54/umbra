@@ -149,7 +149,7 @@ page by the same factor (like browser zoom), so your page always lays out at the
   redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
 - In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by
   Umbra's overlay with an outline and a corner handle: presses move the widget, the handle resizes it and Ctrl+wheel
-  zooms it. Your page gets no clicks then, so don't rely on interaction. Locked widgets are left alone. A page can't
+  zooms it. Mouse presses on your page are taken by the overlay then, so don't rely on interaction (capture-phase listeners and keyboard events can still reach it). Locked widgets are left alone. A page can't
   resize or zoom itself: in edit mode, the host resizes only during a real mouse press on the handle and zooms only
   while Ctrl is physically held over the widget.
 
@@ -157,6 +157,8 @@ page by the same factor (like browser zoom), so your page always lays out at the
 widget the keyboard. Umbra checks that a mouse button is physically down over the widget, so a widget can't take
 focus on its own. If you create an input in code (say, rename on double-click), call `umbra.requestFocus()` first.
 See `widgets/todo` for an example.
+
+**Appearance**: the user can pick a corner radius (`--radius-s/m/l` are overridden after the theme) and calm motion, which sets `--motion-scale: 2`; multiply your durations with `calc(200ms * var(--motion-scale, 1))`. `umbra.onSettings` reports the widget's own refresh interval as `refreshSeconds` when the user set one.
 
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.

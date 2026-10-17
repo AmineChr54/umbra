@@ -36,15 +36,13 @@ sealed class WidgetWindow : Form
     bool Alive => !IsDisposed && _app.Settings.Widgets.ContainsKey(Instance);
 
     /// <summary>Changing the widget by hand (corner handle, Ctrl+wheel) needs edit mode and an unlocked widget.</summary>
-    bool CanArrange => _app.EditMode && !Ws.Locked;
+    bool CanArrange => WidgetGeometry.CanArrange(_app.EditMode, Ws.Locked);
 
     /// <summary>The window size for a scale: manifest size (logical pixels) x monitor DPI x scale.</summary>
-    Size ScaledSize(double scale) => new(
-        (int)Math.Round(Manifest.Width * DeviceDpi / 96.0 * scale),
-        (int)Math.Round(Manifest.Height * DeviceDpi / 96.0 * scale));
+    Size ScaledSize(double scale) => WidgetGeometry.ScaledSize(Manifest.Width, Manifest.Height, DeviceDpi, scale);
 
     /// <summary>The scale a window width stands for at the current DPI.</summary>
-    double ScaleForWidth(int width) => width / (Manifest.Width * DeviceDpi / 96.0);
+    double ScaleForWidth(int width) => WidgetGeometry.ScaleForWidth(Manifest.Width, DeviceDpi, width);
 
     public WidgetWindow(App app, WidgetManifest manifest, string instance)
     {
@@ -105,12 +103,29 @@ sealed class WidgetWindow : Form
                 base.WndProc(ref m);
                 LimitTrackSize(m.LParam);
                 return;
+            case Native.WM_MOVING when _app.EditMode && !Ws.Locked && !_resizing:
+                SnapMove(m.LParam);
+                m.Result = 1;
+                return;
             case Native.WM_SIZING when _resizing:
                 KeepAspect(m.LParam);
                 m.Result = 1;
                 return;
         }
         base.WndProc(ref m);
+    }
+
+    /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
+    unsafe void SnapMove(IntPtr lParam)
+    {
+        if ((ModifierKeys & Keys.Shift) != 0) return;
+        var r = (Native.RECT*)lParam;
+        var g = _app.Settings.General;
+        var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
+        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
+        var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
+        r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
@@ -129,9 +144,7 @@ sealed class WidgetWindow : Form
     unsafe void KeepAspect(IntPtr lParam)
     {
         var r = (Native.RECT*)lParam;
-        var one = ScaledSize(1);
-        var s = Math.Max((r->Right - r->Left) / (double)one.Width, (r->Bottom - r->Top) / (double)one.Height);
-        var size = ScaledSize(Math.Clamp(s, WidgetSettings.MinScale, WidgetSettings.MaxScale));
+        var size = WidgetGeometry.KeepAspect(Manifest.Width, Manifest.Height, DeviceDpi, r->Right - r->Left, r->Bottom - r->Top);
         r->Right = r->Left + size.Width;
         r->Bottom = r->Top + size.Height;
     }
@@ -140,7 +153,12 @@ sealed class WidgetWindow : Form
     {
         base.OnSizeChanged(e);
         // While the corner handle is dragged, zoom the page along with the window.
-        if (_resizing) ApplyZoom(ScaleForWidth(Width));
+        if (_resizing)
+        {
+            var scale = ScaleForWidth(Width);
+            ApplyZoom(scale);
+            if (_ready) Post(new JsonObject { ["type"] = "editScale", ["scale"] = scale }); // keeps the overlay outline steady
+        }
     }
 
     void ApplyZoom(double zoom)
@@ -168,6 +186,7 @@ sealed class WidgetWindow : Form
         base.OnDpiChanged(e);
         // Keep the spot Windows picked (the window may be mid-drag onto another monitor); only the size follows the new DPI.
         ApplyBounds(e.SuggestedRectangle.Location);
+        if (Alive) { RememberPosition(); _app.SaveSettings(); } // else the next PushSettings snaps back to the old spot
     }
 
     /// <summary>
@@ -252,9 +271,23 @@ sealed class WidgetWindow : Form
     {
         var ws = Ws;
         ws.Scale = scale;
+        _app.NoteHandScale(Instance);
         RememberPosition();
-        _app.SaveSettings();
         PushSettings();
+        // A wheel notch can fire many times a second: write settings.json and refresh the tray/Settings once it settles.
+        _saveTimer ??= new System.Windows.Forms.Timer { Interval = 300 };
+        _saveTimer.Tick -= FlushScale;
+        _saveTimer.Tick += FlushScale;
+        _saveTimer.Stop(); _saveTimer.Start();
+    }
+
+    System.Windows.Forms.Timer? _saveTimer;
+
+    void FlushScale(object? sender, EventArgs e)
+    {
+        _saveTimer?.Stop();
+        if (!Alive) return;
+        _app.SaveSettings();
         _app.SettingsChangedElsewhere();
     }
 
@@ -628,6 +661,7 @@ sealed class WidgetWindow : Form
     public void PushSettings()
     {
         ApplyBounds();
+        Opacity = Ws.Opacity is double o ? Prefs.ClampOpacity(o) : 1.0;
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
@@ -641,8 +675,9 @@ sealed class WidgetWindow : Form
         var ws = Ws;
         return new JsonObject
         {
-            ["refreshSeconds"] = _app.Settings.General.RefreshSeconds,
-            ["animations"] = _app.Settings.General.Animations,
+            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["animations"] = Prefs.MotionOn(_app.Settings.General),
+            ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
             ["scale"] = ws.Scale,

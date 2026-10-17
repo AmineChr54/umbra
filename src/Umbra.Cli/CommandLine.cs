@@ -28,6 +28,8 @@ static class CommandLine
                 if (Flag(a, "--scale") is string sc) o["scale"] = Scale(sc);
                 if (Flag(a, "--enabled") is string en) o["enabled"] = OnOff(en);
                 if (Flag(a, "--locked") is string lk) o["locked"] = OnOff(lk);
+                if (Flag(a, "--refresh") is string wr) o["refreshSeconds"] = wr == "default" ? null : int.Parse(wr, CultureInfo.InvariantCulture);
+                if (Flag(a, "--opacity") is string op) o["opacity"] = op == "opaque" ? null : double.Parse(op, CultureInfo.InvariantCulture);
                 if (Flag(a, "--x") is string x) o["x"] = int.Parse(x, CultureInfo.InvariantCulture);
                 if (Flag(a, "--y") is string y) o["y"] = int.Parse(y, CultureInfo.InvariantCulture);
                 if (Flag(a, "--monitor") is string mon) o["monitor"] = mon;
@@ -39,6 +41,12 @@ static class CommandLine
                 return ("theme", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "check-update" or "update":
                 return ("check-update", new JsonObject());
+            case "safe-mode":
+                return ("safe-mode", a.Length > 1 ? O(("on", OnOff(a[1]))) : new JsonObject());
+            case "layouts" or "layout":
+                if (a.Length < 2 || a[1] == "list") return ("layouts", new JsonObject());
+                if (a[1] is "save" or "apply" or "delete") return ("layouts", O(("op", a[1]), ("name", string.Join(' ', a.Skip(2)))));
+                throw new ArgumentException("Usage: layouts [list | save <name> | apply <name> | delete <name>]");
             case "edit-mode":
                 return ("edit-mode", a.Length > 1 ? O(("on", OnOff(a[1]))) : new JsonObject());
             case "set":
@@ -56,7 +64,17 @@ static class CommandLine
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
                 if (Flag(a, "--hide-fullscreen") is string hf) o["hideOnFullscreen"] = OnOff(hf);
+                if (Flag(a, "--snap-grid") is string sgr) o["snapGrid"] = int.Parse(sgr, CultureInfo.InvariantCulture);
+                if (Flag(a, "--snap-edges") is string sed) o["snapEdges"] = OnOff(sed);
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
+                if (Flag(a, "--corner-radius") is string cr) o["cornerRadius"] = cr;
+                if (Flag(a, "--animation-speed") is string asp) o["animationSpeed"] = asp;
+                if (Flag(a, "--default-scale") is string ds) o["defaultScale"] = Scale(ds);
+                if (Flag(a, "--log-level") is string ll) o["logLevel"] = ll;
+                if (Flag(a, "--developer-mode") is string dm) o["developerMode"] = OnOff(dm);
+                if (Flag(a, "--hardware-acceleration") is string ha) o["hardwareAcceleration"] = OnOff(ha);
+                if (Flag(a, "--startup-delay") is string sd) o["startupDelaySeconds"] = int.Parse(sd, CultureInfo.InvariantCulture);
+                if (Flag(a, "--proxy") is string px) o["proxy"] = px;
                 return ("set-general", o);
             }
             case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":

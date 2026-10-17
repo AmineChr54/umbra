@@ -17,7 +17,11 @@ static class WebHost
     static Task<CoreWebView2Environment>? _env;
 
     public static Task<CoreWebView2Environment> Environment() =>
-        _env ??= CoreWebView2Environment.CreateAsync(null, AppPaths.WebViewDataDir);
+        _env ??= CoreWebView2Environment.CreateAsync(null, AppPaths.WebViewDataDir,
+            new CoreWebView2EnvironmentOptions { AdditionalBrowserArguments = Prefs.WebViewArguments(WebSettings) });
+
+    /// <summary>Set by App before the first WebView2 is created (hardware acceleration and proxy are read once).</summary>
+    public static GeneralSettings WebSettings { get; set; } = new();
 
     public static bool RuntimeInstalled()
     {
@@ -38,8 +42,8 @@ static class WebHost
         await view.EnsureCoreWebView2Async(await Environment());
         var core = view.CoreWebView2;
         var s = core.Settings;
-        s.AreDevToolsEnabled = System.Diagnostics.Debugger.IsAttached;
-        s.AreDefaultContextMenusEnabled = false;
+        s.AreDevToolsEnabled = System.Diagnostics.Debugger.IsAttached || (sandbox is not null && Prefs.DeveloperMode);
+        s.AreDefaultContextMenusEnabled = sandbox is not null && Prefs.DeveloperMode;
         s.IsZoomControlEnabled = false;
         s.IsPinchZoomEnabled = false;
         s.IsStatusBarEnabled = false;
