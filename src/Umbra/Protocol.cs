@@ -20,7 +20,7 @@ public static class Protocol
     {
         ("status", "Version, paths, open widgets and general settings"),
         ("list", "Every installed widget copy (id \"sp500\", extra copies \"sp500#2\") with its settings, option schema and window bounds"),
-        ("configure", "Change one widget copy: {id (or instance id), enabled?, locked?, x?, y?, monitor? (number or name from status.monitors, or primary), scale? (0.5-3), options?{key:value}}"),
+        ("configure", "Change one widget copy: {id (or instance id), enabled?, locked?, x?, y?, monitor? (number or name from status.monitors, or primary), scale? (0.5-3), refreshSeconds? (30-600, null = global), opacity? (0.2-1, null = opaque), options?{key:value}}"),
         ("add-instance", "Run another copy of a widget with its own options, position and data: {id}; returns the new copy (id like \"sp500#2\")"),
         ("remove-instance", "Remove an extra copy and its data: {id: \"sp500#2\"}; the first copy can only be disabled"),
         ("edit-mode", "Turn edit mode on or off, or read it: {on?}. In edit mode unlocked widgets can be moved, resized and zoomed by hand"),
@@ -30,7 +30,7 @@ public static class Protocol
         ("themes", "Installed themes plus the community theme catalog, with installed/updateAvailable flags and the active id"),
         ("install-theme", "Install or update a community theme from the catalog: {id}"),
         ("remove-theme", "Uninstall a community theme: {id} (the default theme is used if it was active)"),
-        ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?, checkForUpdates?, hideOnFullscreen?, peekSeconds? (1-60), snapGrid? (0-200 px, 0 = off), snapEdges?}"),
+        ("set-general", "Change general settings: {refreshSeconds?, animations?, startup?, checkForUpdates?, hideOnFullscreen?, peekSeconds? (1-60), cornerRadius? (default|sharp|round), animationSpeed? (normal|calm|off), defaultScale?, logLevel? (errors|normal|verbose), developerMode?, hardwareAcceleration? (restart), startupDelaySeconds? (0-300), proxy? (system|none|https://host:port, restart), snapGrid? (0-200 px, 0 = off), snapEdges?}"),
         ("peek", "Raise all widgets above other windows for a few seconds without activating them, then return them to the bottom: {seconds?} (also sets the default)"),
         ("hotkeys", "Global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings) with status: {action?, keys?, reset?}; action+keys sets one (empty keys = off), reset clears all; no args = read"),
         ("check-update", "Look for a newer Umbra release on GitHub now and report whether one is available (installing is left to the user: tray menu or Settings > About)"),

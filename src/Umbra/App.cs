@@ -175,6 +175,8 @@ sealed class App : ApplicationContext
         SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
+        Prefs.Configure(Settings.General);
+        WebHost.WebSettings = Settings.General;
         Manifests = WidgetManifest.DiscoverAll();
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
 
@@ -486,7 +488,7 @@ sealed class App : ApplicationContext
         else if (Settings.Widgets.TryGetValue(id, out var ws)) { ws.X = ws.Y = null; SaveSettings(); }
     }
 
-    public void SaveSettings() => Settings.Save();
+    public void SaveSettings() { Prefs.Configure(Settings.General); Settings.Save(); }
 
     /// <summary>Generated :root override of the active theme (empty for the default look).</summary>
     public string ThemeCss => Theme.CssFor(Settings.General.Theme);

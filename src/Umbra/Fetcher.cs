@@ -13,7 +13,7 @@ static class Fetcher
 
     static HttpClient CreateClient()
     {
-        var c = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        var c = new HttpClient(Prefs.CreateHandler()) { Timeout = TimeSpan.FromSeconds(15) };
         c.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Umbra/1.0");
         c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return c;

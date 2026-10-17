@@ -180,6 +180,11 @@ sealed class SettingsWindow : Form
                 WebHost.OpenExternal(msg["url"]?.GetValue<string>() ?? "");
                 break;
 
+            case "openLog":
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(AppPaths.DataDir, "umbra.log")) { UseShellExecute = true }); }
+                catch (Exception ex) { Log.Write($"Open log failed: {ex.Message}"); }
+                break;
+
             case "openFolder":
                 System.Diagnostics.Process.Start("explorer.exe", AppPaths.CommunityDir);
                 break;

@@ -30,6 +30,15 @@
     if (el.textContent !== css) el.textContent = css;
   }
 
+  // Appearance options from Settings (corner radius, calm motion) arrive as one more :root rule, applied after the theme.
+  function applyAppearance() {
+    const css = settings.appearanceCss && THEME_CSS.test(settings.appearanceCss) ? settings.appearanceCss : "";
+    let el = document.getElementById("umbra-appearance");
+    if (!css) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement("style"); el.id = "umbra-appearance"; document.head.append(el); }
+    if (el.textContent !== css) el.textContent = css;
+  }
+
   bridge && bridge.addEventListener("message", (e) => {
     const m = e.data;
     switch (m.type) {
@@ -38,14 +47,14 @@
         settings = m.settings;
         applyMotion();
         applyEdit();
-        applyTheme();
+        applyTheme(); applyAppearance();
         resolveReady();
         break;
       case "settings":
         settings = m.settings;
         applyMotion();
         applyEdit();
-        applyTheme();
+        applyTheme(); applyAppearance();
         handlers.settings.forEach((fn) => fn(settings));
         break;
       case "editScale": // live scale while the corner handle is dragged; keeps the overlay's outline size steady
