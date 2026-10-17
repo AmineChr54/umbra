@@ -107,6 +107,7 @@ sealed class Control(App app)
                 if (a["animations"] is JsonNode an) g.Animations = Bool(an, "animations");
                 if (a["checkForUpdates"] is JsonNode cu) g.CheckForUpdates = Bool(cu, "checkForUpdates");
                 if (a["hideOnFullscreen"] is JsonNode hf) g.HideOnFullscreen = Bool(hf, "hideOnFullscreen");
+                if (a["slowOnEnergySaver"] is JsonNode es) g.SlowOnEnergySaver = Bool(es, "slowOnEnergySaver");
                 if (a["peekSeconds"] is JsonNode ps)
                 {
                     var secs = Int(ps, "peekSeconds");
@@ -115,6 +116,13 @@ sealed class Control(App app)
                 }
                 Prefs.ApplyGeneral(a, g);
                 if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
+                if (a["snapGap"] is JsonNode sgp)
+                {
+                    var gap = Int(sgp, "snapGap");
+                    if (gap is < 0 or > Snap.MaxGap) throw new CommandException($"snapGap must be between 0 (touch) and {Snap.MaxGap}");
+                    g.SnapGap = gap;
+                }
+                if (a["snap"] is JsonNode sn) g.SnapEnabled = Bool(sn, "snap");
                 if (a["snapGrid"] is JsonNode sg)
                 {
                     var grid = Int(sg, "snapGrid");
@@ -125,6 +133,7 @@ sealed class Control(App app)
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
                 app.SettingsChangedElsewhere();
+                app.RefreshEditPills(); // the pill's snap label follows --snap / --snap-grid
                 return new JsonObject
                 {
                     ["general"] = JsonSerializer.SerializeToNode(g, Web),
@@ -197,15 +206,16 @@ sealed class Control(App app)
                     {
                         case "list": break;
                         case "save": app.SaveLayout(Str(a, "name")); break;
-                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.Layouts.ToJson() };
+                        case "apply": return new JsonObject { ["applied"] = app.ApplyLayout(Str(a, "name")), ["layouts"] = app.LayoutsJson() };
+                        case "rename": app.RenameLayout(Str(a, "name"), Str(a, "to")); break;
                         case "delete":
                             if (!app.DeleteLayout(Str(a, "name"))) throw new CommandException($"No layout '{Str(a, "name")}'");
                             break;
-                        default: throw new CommandException("op must be list, save, apply or delete");
+                        default: throw new CommandException("op must be list, save, apply, rename or delete");
                     }
                 }
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }
-                return new JsonObject { ["layouts"] = app.Layouts.ToJson() };
+                return new JsonObject { ["layouts"] = app.LayoutsJson() };
             }
 
             case "edit-mode":
@@ -275,8 +285,17 @@ sealed class Control(App app)
                     throw new CommandException($"'{id}' is built in and always installed");
                 var entry = (await Community.FetchCatalogAsync()).FirstOrDefault(w => w?["id"]?.GetValue<string>() == id)
                             ?? throw new CommandException($"'{id}' is not in the community catalog");
+                // Nothing is written until the user accepted any access the update adds. Passing acceptPermissions is
+                // the CLI user saying so (--accept-permissions); the MCP server never forwards it. Commands stay
+                // approved by hash, so an accepted command still needs its own approval before it runs.
+                using var pending = await Community.PrepareAsync(entry);
+                try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
+                catch (PermissionsChangedException ex)
+                {
+                    throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install {id} --accept-permissions (or update it in Settings > Browse).");
+                }
                 app.CloseWidget(id);
-                await Community.InstallAsync(entry);
+                pending.Commit();
                 app.ReloadWidgets();
                 app.SettingsChangedElsewhere();
                 return Describe(app.Manifests.First(m => m.Id == id), id);
@@ -353,6 +372,9 @@ sealed class Control(App app)
 
             case "logs":
                 return new JsonArray(Log.Tail(a["lines"] is JsonNode n ? Int(n, "lines") : 50).Select(l => (JsonNode?)l).ToArray());
+
+            case "diagnostics":
+                return Diagnostics.Format(Diagnostics.Collect(app));
 
             case "quit":
                 app.QuitSoon();

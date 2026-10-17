@@ -102,7 +102,7 @@ static class Backup
 
     /// <summary>
     /// Read-only privacy overview per installed widget: reachable hosts, declared commands and approval status,
-    /// saved data size, and blocked requests found in the log.
+    /// saved data size, blocked requests and crashed-process events found in the log, and whether it gave up restarting.
     /// </summary>
     public static JsonArray Privacy(App app, string? onlyWidget = null)
     {
@@ -114,6 +114,14 @@ static class Backup
             var w = InstanceId.IsValid(m.Groups[1].Value) ? InstanceId.WidgetOf(m.Groups[1].Value) : m.Groups[1].Value;
             if (!blocked.TryGetValue(w, out var l)) blocked[w] = l = new();
             l.Add(m.Groups[2].Value.Trim());
+        }
+        var crashes = new Dictionary<string, int>();
+        foreach (var line in Log.Tail(2000))
+        {
+            var m = CrashRecovery.LogLine.Match(line);
+            if (!m.Success) continue;
+            var w = InstanceId.IsValid(m.Groups[1].Value) ? InstanceId.WidgetOf(m.Groups[1].Value) : m.Groups[1].Value;
+            crashes[w] = crashes.GetValueOrDefault(w) + 1;
         }
         var result = new JsonArray();
         foreach (var m in app.Manifests.Where(m => onlyWidget is null || m.Id == onlyWidget))
@@ -139,6 +147,7 @@ static class Backup
                     ["count"] = b.Count,
                     ["recent"] = new JsonArray(b.TakeLast(10).Select(u => (JsonNode?)u).ToArray()),
                 },
+                ["crashes"] = new JsonObject { ["count"] = crashes.GetValueOrDefault(m.Id), ["stopped"] = CrashRecovery.IsStopped(m.Id) },
             });
         }
         return result;

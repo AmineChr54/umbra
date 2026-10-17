@@ -102,11 +102,93 @@ public class UpdatesTests
         Assert.False(Updates.DigestMatches("sha1:" + hex, hex));
     }
 
+    [Theory]
+    [InlineData(0, true)]                        // valid signature
+    [InlineData(unchecked((int)0x800B0100), true)] // TRUST_E_NOSIGNATURE: unsigned release, the digest protects it
+    [InlineData(unchecked((int)0x80096010), false)] // TRUST_E_BAD_DIGEST: tampered after signing
+    [InlineData(unchecked((int)0x800B0109), false)] // CERT_E_UNTRUSTEDROOT
+    [InlineData(unchecked((int)0x800B0101), false)] // CERT_E_EXPIRED
+    [InlineData(unchecked((int)0x800B010C), false)] // CERT_E_REVOKED
+    [InlineData(unchecked((int)0x800B0004), false)] // TRUST_E_SUBJECT_NOT_TRUSTED
+    [InlineData(1, false)]
+    public void Only_valid_or_unsigned_installers_pass_the_signature_check(int status, bool ok) =>
+        Assert.Equal(ok, Updates.SignatureAcceptable(status));
+
+    [Fact]
+    public void Self_update_runs_the_installer_invisibly_with_the_update_flag()
+    {
+        var args = Updates.InstallerArguments(@"C:\Temp\UmbraUpdate.log");
+        foreach (var flag in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCANCEL", "/SP-", "/UPDATE=1" })
+            Assert.Contains(flag, args.Split(' '));
+        Assert.Contains("/LOG=\"C:\\Temp\\UmbraUpdate.log\"", args);
+        Assert.DoesNotContain("/SILENT", args.Split(' ')); // /SILENT still shows the setup window
+    }
+
+    [Theory]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0", "log": "C:\\Temp\\UmbraUpdate.log" }""", "1.5.0", Updates.UpdateOutcome.Applied)]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0" }""", "1.4.0", Updates.UpdateOutcome.Failed)]
+    [InlineData("""{ "from": "1.4.0", "to": "1.5.0" }""", "1.6.0", Updates.UpdateOutcome.Applied)]
+    [InlineData("""{ "to": "latest" }""", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData("not json", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData("", "1.4.0", Updates.UpdateOutcome.None)]
+    [InlineData(null, "1.4.0", Updates.UpdateOutcome.None)]
+    public void The_update_marker_tells_a_finished_update_from_a_failed_one(string? json, string current, Updates.UpdateOutcome expected) =>
+        Assert.Equal(expected, Updates.ReadPending(json, current).Outcome);
+
     [Fact]
     public void ParseRelease_keeps_the_asset_digest()
     {
         var json = Release().Replace("\"name\": \"UmbraSetup-1.3.0.exe\"", "\"name\": \"UmbraSetup-1.3.0.exe\", \"digest\": \"sha256:" + new string('c', 64) + "\"");
         Assert.Equal("sha256:" + new string('c', 64), Updates.ParseRelease(json)!.Digest);
         Assert.Null(Updates.ParseRelease(Release())!.Digest);
+    }
+
+    [Theory]
+    [InlineData("1.4.0", "1.5.0", true)]
+    [InlineData("1.9.9", "1.10.0", true)]
+    [InlineData("1.5.0", "1.5.0", false)]
+    [InlineData("1.5.0", "1.4.0", false)]
+    [InlineData("", "1.5.0", false)]   // first install: nothing to announce
+    [InlineData(null, "1.5.0", false)]
+    [InlineData("garbage", "1.5.0", false)]
+    public void ShouldAnnounce_only_after_a_real_update(string? lastSeen, string current, bool expected) =>
+        Assert.Equal(expected, Updates.ShouldAnnounce(lastSeen, current));
+
+    [Theory]
+    [InlineData("", "1.5.0", "1.5.0")]      // first install records the running version
+    [InlineData("1.4.0", "1.5.0", "1.5.0")] // update
+    [InlineData("1.5.0", "1.5.0", "1.5.0")]
+    [InlineData("1.5.0", "1.4.0", "1.5.0")] // a downgrade must not make the next upgrade announce again
+    [InlineData("garbage", "1.5.0", "1.5.0")]
+    public void NextLastSeen_never_goes_backwards(string lastSeen, string current, string expected) =>
+        Assert.Equal(expected, Updates.NextLastSeen(lastSeen, current));
+
+    [Fact]
+    public void Announcing_happens_once_per_version()
+    {
+        var seen = "1.4.0";
+        var shown = 0;
+        foreach (var run in new[] { "1.5.0", "1.5.0", "1.5.0", "1.6.0", "1.6.0" })
+        {
+            if (Updates.ShouldAnnounce(seen, run)) shown++;
+            seen = Updates.NextLastSeen(seen, run);
+        }
+        Assert.Equal(2, shown);
+    }
+
+    [Fact]
+    public void Release_notes_urls_are_fixed_github_addresses()
+    {
+        Assert.Equal("https://api.github.com/repos/AmineChr54/umbra/releases/tags/v1.5.0", Updates.ReleaseByTagApi("1.5.0"));
+        Assert.Equal("https://github.com/AmineChr54/umbra/releases/tag/v1.5.0", Updates.ReleasePageUrl("1.5.0"));
+    }
+
+    [Fact]
+    public void Settings_keep_the_last_seen_version_in_the_file()
+    {
+        var s = new Settings();
+        Assert.Equal("", s.General.LastSeenVersion);
+        s.General.LastSeenVersion = "1.5.0";
+        Assert.Equal("1.5.0", Settings.FromJson(s.ToJson()).General.LastSeenVersion);
     }
 }
