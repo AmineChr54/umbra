@@ -589,6 +589,7 @@ sealed class App : ApplicationContext
         if (guides.Count == 0 && _snapGuides is null) return;
         _snapGuides ??= new SnapGuides();
         _snapGuides.SetGuides(guides, Settings.General.Accent, dpi);
+    }
 
     readonly List<EditPill> _pills = new();
 
