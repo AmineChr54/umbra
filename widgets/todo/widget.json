@@ -4,7 +4,7 @@
   "name": "To Do",
   "description": "Today's tasks with daily, weekday, weekly and every-N-days repeats, streaks and a calm progress bar. Everything stays on your PC.",
   "author": "AmineChr54",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 340,

@@ -4,7 +4,7 @@
   "name": "Calendar glance",
   "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
   "author": "AmineChr54",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 320,
