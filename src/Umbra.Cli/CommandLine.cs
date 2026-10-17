@@ -30,6 +30,18 @@ static class CommandLine
                 if (Flag(a, "--locked") is string lk) o["locked"] = OnOff(lk);
                 if (Flag(a, "--refresh") is string wr) o["refreshSeconds"] = wr == "default" ? null : int.Parse(wr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--opacity") is string op) o["opacity"] = op == "opaque" ? null : double.Parse(op, CultureInfo.InvariantCulture);
+                if (Flag(a, "--start-hidden") is string sh) o["startHidden"] = OnOff(sh);
+                var (from, to, ac, sm) = (Flag(a, "--show-from"), Flag(a, "--show-to"), Flag(a, "--show-on-ac"), Flag(a, "--show-monitor"));
+                if (from == "always") o["showWhen"] = null;
+                else if (from is not null || to is not null || ac is not null || sm is not null)
+                {
+                    var r = new JsonObject();
+                    if (from is not null) r["from"] = from;
+                    if (to is not null) r["to"] = to;
+                    if (ac is not null && ac != "any") r["onAc"] = OnOff(ac);
+                    if (sm is not null) r["monitor"] = sm;
+                    o["showWhen"] = r;
+                }
                 if (Flag(a, "--x") is string x) o["x"] = int.Parse(x, CultureInfo.InvariantCulture);
                 if (Flag(a, "--y") is string y) o["y"] = int.Parse(y, CultureInfo.InvariantCulture);
                 if (Flag(a, "--monitor") is string mon) o["monitor"] = mon;
@@ -75,6 +87,13 @@ static class CommandLine
                 if (Flag(a, "--hardware-acceleration") is string ha) o["hardwareAcceleration"] = OnOff(ha);
                 if (Flag(a, "--startup-delay") is string sd) o["startupDelaySeconds"] = int.Parse(sd, CultureInfo.InvariantCulture);
                 if (Flag(a, "--proxy") is string px) o["proxy"] = px;
+                if (Flag(a, "--border") is string bd) o["borderEnabled"] = OnOff(bd);
+                if (Flag(a, "--border-color") is string bcl) o["borderColor"] = bcl == "default" ? "" : bcl;
+                if (Flag(a, "--accent") is string acc) o["accent"] = acc == "default" ? "" : acc;
+                if (Flag(a, "--light-text") is string lt) o["lightText"] = OnOff(lt);
+                if (Flag(a, "--ui-font") is string uf) o["uiFont"] = uf;
+                if (Flag(a, "--font-scale") is string fsc) o["fontScale"] = double.Parse(fsc, CultureInfo.InvariantCulture);
+                if (Flag(a, "--reduce-transparency") is string rt) o["reduceTransparency"] = OnOff(rt);
                 return ("set-general", o);
             }
             case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":

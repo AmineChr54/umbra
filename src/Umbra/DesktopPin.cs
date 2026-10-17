@@ -58,6 +58,6 @@ static class DesktopPin
     {
         Native.SetDwm(hwnd, Native.DWMWA_USE_IMMERSIVE_DARK_MODE, 1);
         Native.SetDwm(hwnd, Native.DWMWA_WINDOW_CORNER_PREFERENCE, Native.DWMWCP_ROUND);
-        Native.SetDwm(hwnd, Native.DWMWA_BORDER_COLOR, Native.ColorRef(38, 40, 46));
+        Native.SetDwm(hwnd, Native.DWMWA_BORDER_COLOR, Prefs.BorderColorRef);
     }
 }

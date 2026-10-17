@@ -27,6 +27,21 @@ public sealed class GeneralSettings
     /// <summary>Scale given to widgets the first time they are set up (50-300 %).</summary>
     public double DefaultScale { get; set; } = 1.0;
 
+    /// <summary>Draw the hairline border around widget windows (#61).</summary>
+    public bool BorderEnabled { get; set; } = true;
+    /// <summary>"#rrggbb" border color, or "" for the default.</summary>
+    public string BorderColor { get; set; } = "";
+    /// <summary>Interface font from <see cref="Prefs.Fonts"/> ("default" = Segoe UI Variable).</summary>
+    public string UiFont { get; set; } = "default";
+    /// <summary>Interface text size multiplier, 0.8-1.4.</summary>
+    public double FontScale { get; set; } = 1.0;
+    /// <summary>Solid instead of translucent lines and tints, and fully opaque windows.</summary>
+    public bool ReduceTransparency { get; set; }
+    /// <summary>"#rrggbb" accent overriding the theme's accent (#13), or "" to follow the theme.</summary>
+    public string Accent { get; set; } = "";
+    /// <summary>Brighter text tokens for readability on bright wallpapers.</summary>
+    public bool LightText { get; set; }
+
     // Advanced (#65): see Prefs
     /// <summary>"errors", "normal" or "verbose".</summary>
     public string LogLevel { get; set; } = "normal";
@@ -42,6 +57,18 @@ public sealed class GeneralSettings
     public int SnapGrid { get; set; }
     /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
     public bool SnapEdges { get; set; } = true;
+}
+
+/// <summary>"Show only when" conditions of a widget; every set field must hold.</summary>
+public sealed class ShowRules
+{
+    /// <summary>"HH:mm" start of the daily window (with <see cref="To"/>; wraps past midnight).</summary>
+    public string? From { get; set; }
+    public string? To { get; set; }
+    /// <summary>true = only on AC power, false = only on battery.</summary>
+    public bool? OnAc { get; set; }
+    /// <summary>Only while this monitor (device name) is connected.</summary>
+    public string? Monitor { get; set; }
 }
 
 public sealed class WidgetSettings
@@ -72,6 +99,10 @@ public sealed class WidgetSettings
     public int? RefreshSeconds { get; set; }
     /// <summary>Window opacity 0.2-1; null = fully opaque (the default keeps true black and ClearType).</summary>
     public double? Opacity { get; set; }
+    /// <summary>Not shown at launch; revealed with the toggle-widgets hotkey or by configure startHidden=false (#66).</summary>
+    public bool StartHidden { get; set; }
+    /// <summary>Show only while these conditions hold (#66); null = always.</summary>
+    public ShowRules? ShowWhen { get; set; }
 
     public JsonObject Options { get; set; } = new();
 

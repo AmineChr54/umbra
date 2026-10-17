@@ -83,4 +83,79 @@ public class PrefsTests
         Assert.ThrowsAny<Exception>(() => Prefs.ApplyWidget(JsonNode.Parse("""{"opacity":0.05}""")!.AsObject(), ws));
         Assert.ThrowsAny<Exception>(() => Prefs.ApplyWidget(JsonNode.Parse("""{"refreshSeconds":5}""")!.AsObject(), ws));
     }
+
+    [Theory]
+    [InlineData("#8B93FF", "#8b93ff")]
+    [InlineData("abc", "#aabbcc")]
+    [InlineData("", "")]
+    public void Color_normalises(string input, string expected)
+    {
+        Assert.True(Prefs.TryColor(input, out var n));
+        Assert.Equal(expected, n);
+    }
+
+    [Theory]
+    [InlineData("red")]
+    [InlineData("#12345")]
+    [InlineData("#gggggg")]
+    [InlineData("url(x)")]
+    [InlineData("#fff;}body{display:none")]
+    public void Color_rejects(string input) => Assert.False(Prefs.TryColor(input, out _));
+
+    [Fact]
+    public void General_appearance_validates_and_generates_css()
+    {
+        var g = new GeneralSettings();
+        Prefs.ApplyGeneral(JsonNode.Parse("""{"accent":"#112233","lightText":true,"uiFont":"consolas","fontScale":1.2,"borderEnabled":false,"borderColor":"#445566"}""")!.AsObject(), g);
+        var css = Prefs.AppearanceCss(g);
+        Assert.Contains("--accent:#112233;", css);
+        Assert.Contains("--text:#ffffff;", css);
+        Assert.Contains("--font:Consolas,", css);
+        Assert.Contains("--font-scale:1.2;", css);
+        Assert.False(g.BorderEnabled);
+        Assert.Matches(@"(?i)^:root\{(?:--[a-z0-9-]+:[#a-z0-9.,%() \/-]+;)+\}$", css);
+        foreach (var bad in new[] { """{"accent":"red"}""", """{"uiFont":"Evil; x"}""", """{"fontScale":5}""", """{"borderColor":"url(x)"}""" })
+            Assert.ThrowsAny<Exception>(() => Prefs.ApplyGeneral(JsonNode.Parse(bad)!.AsObject(), new GeneralSettings()));
+    }
+
+    [Fact]
+    public void ReduceTransparency_makes_tints_solid_and_windows_opaque()
+    {
+        var g = new GeneralSettings { ReduceTransparency = true };
+        var css = Prefs.AppearanceCss(g);
+        Assert.DoesNotContain("rgba", css);
+        Assert.Equal(1.0, Prefs.ClampOpacity(0.5, true));
+        Assert.Equal(0.5, Prefs.ClampOpacity(0.5));
+    }
+
+    [Fact]
+    public void Border_off_uses_no_color()
+    {
+        Prefs.Configure(new GeneralSettings { BorderEnabled = false });
+        Assert.Equal(Native.DWMWA_COLOR_NONE, Prefs.BorderColorRef);
+        Prefs.Configure(new GeneralSettings { BorderColor = "#010203" });
+        Assert.Equal(Native.ColorRef(1, 2, 3), Prefs.BorderColorRef);
+        Prefs.Configure(new GeneralSettings());
+    }
+
+    [Fact]
+    public void ShowWhen_is_validated_and_evaluated()
+    {
+        var ws = new WidgetSettings();
+        Prefs.ApplyWidget(JsonNode.Parse("""{"startHidden":true,"showWhen":{"from":"22:00","to":"06:00","onAc":true}}""")!.AsObject(), ws);
+        Assert.True(ws.StartHidden);
+        Assert.Equal("22:00", ws.ShowWhen!.From);
+        Func<string, bool> none = _ => false;
+        Assert.True(Prefs.RulesAllow(ws.ShowWhen, new TimeSpan(23, 0, 0), true, none));
+        Assert.True(Prefs.RulesAllow(ws.ShowWhen, new TimeSpan(5, 0, 0), true, none));
+        Assert.False(Prefs.RulesAllow(ws.ShowWhen, new TimeSpan(12, 0, 0), true, none));
+        Assert.False(Prefs.RulesAllow(ws.ShowWhen, new TimeSpan(23, 0, 0), false, none));
+        Assert.True(Prefs.RulesAllow(null, TimeSpan.Zero, false, none));
+        Assert.False(Prefs.RulesAllow(new ShowRules { Monitor = "X" }, TimeSpan.Zero, true, none));
+        Assert.True(Prefs.RulesAllow(new ShowRules { Monitor = "X" }, TimeSpan.Zero, true, _ => true));
+        Prefs.ApplyWidget(JsonNode.Parse("""{"showWhen":null}""")!.AsObject(), ws);
+        Assert.Null(ws.ShowWhen);
+        foreach (var bad in new[] { """{"showWhen":{"from":"25:00","to":"06:00"}}""", """{"showWhen":{"from":"08:00"}}""", """{"showWhen":5}""" })
+            Assert.ThrowsAny<Exception>(() => Prefs.ApplyWidget(JsonNode.Parse(bad)!.AsObject(), new WidgetSettings()));
+    }
 }

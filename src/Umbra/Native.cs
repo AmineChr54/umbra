@@ -34,6 +34,7 @@ static partial class Native
     public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
     public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     public const int DWMWA_BORDER_COLOR = 34;
+    public const int DWMWA_COLOR_NONE = unchecked((int)0xFFFFFFFE);
     public const int DWMWA_CAPTION_COLOR = 35;
     public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
     public const int DWMWCP_ROUND = 2;
