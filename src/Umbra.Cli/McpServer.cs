@@ -86,6 +86,9 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
         new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:general|widgets|browse|themes|about). Returns a PNG of only that surface, never the rest of the screen.",
             Schema(Obj(("target", P("string", "Widget id or settings:<page>"))), "target")),
         new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (general, widgets, browse, themes, about).", Schema(Obj(("page", P("string", "general | widgets | browse | themes | about"))))),
+        new("privacy_report", "privacy", "Read-only: per widget, the hosts it may reach, its declared commands and approval status, saved-data size and recent blocked requests.", Schema(Obj(("id", IdProp.DeepClone())))),
+        new("backup_settings", "backup", "Write settings, layouts, theme, hotkeys and widget data to a JSON file at an absolute path. Command approvals are never included.", Schema(Obj(("path", P("string", "Output file path"))), "path")),
+        new("restore_settings", "restore", "Replace settings, layouts and widget data from a backup file (validated first). Command approvals are not restored: the user must approve again.", Schema(Obj(("path", P("string", "Backup file path"))), "path")),
         new("read_logs", "logs", "The last lines of Umbra's log: widget load errors, blocked network requests, crashes.", Schema(Obj(("lines", P("integer", "How many lines (default 50)"))))),
         new("widget_authoring_guide", "", "How to write an Umbra widget: the manifest format, the JavaScript SDK (umbra.fetchJson, umbra.every, options...), the sandbox and the design rules, plus the widget.json JSON Schema. Read this before create_widget.", Schema(new())),
     };

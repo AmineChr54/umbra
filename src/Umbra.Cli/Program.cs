@@ -101,6 +101,9 @@ static void PrintHelp()
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
           approvals [id]                 local commands widgets declare and whether you approved them (read-only)
+          privacy [id]                  hosts, commands, saved data and blocked requests per widget (read-only)
+          backup <file>                 save settings, layout, theme and widget data (no approvals)
+          restore <file>                restore from a backup (validated; approvals are not restored)
           logs [n]                      last n log lines
           quit                           exit Umbra
           send <command> [json]          raw control-protocol command
