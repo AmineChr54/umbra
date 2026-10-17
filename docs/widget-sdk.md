@@ -151,7 +151,7 @@ scheduleMidnight();
 
 **Saving data.** Options are for settings the user picks in **My widgets**. Anything the widget itself creates
 (a task list, events, "already seen" ids) goes in `umbra.store`. It is private to the widget, survives restarts
-and widget updates, and is deleted when a community widget is removed. It lives in
+and widget updates. Removing a community widget in Settings keeps its data for 7 days (Undo restores it); `umbractl remove` deletes it at once. It lives in
 `%APPDATA%\Umbra\data\<id>.json` (`<app>\data\data\<id>.json` in portable mode, where `%APPDATA%\Umbra` means the `data` folder next to `Umbra.exe`). Don't use `localStorage`: every widget shares one origin, so other widgets could read it.
 
 ```js
@@ -325,7 +325,7 @@ Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; 
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
-- No navigation away, no new windows, no context menu or devtools. Browser zoom keys are off; only the host sets
+- No navigation away, no new windows, no browser context menu or devtools. Right-click opens the host's own menu (Refresh, Options, Lock, Edit mode, Hide, Add another copy); a widget that calls `preventDefault()` on `contextmenu` keeps its own menu, and Shift+right-click always opens the host menu. Browser zoom keys are off; only the host sets
   the zoom (the user's size setting).
 - No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.

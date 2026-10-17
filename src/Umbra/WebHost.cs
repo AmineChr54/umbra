@@ -54,7 +54,9 @@ static class WebHost
         var core = view.CoreWebView2;
         var s = core.Settings;
         s.AreDevToolsEnabled = System.Diagnostics.Debugger.IsAttached || (sandbox is not null && Prefs.DeveloperMode);
-        s.AreDefaultContextMenusEnabled = sandbox is not null && Prefs.DeveloperMode;
+        // Widget pages raise ContextMenuRequested, and WidgetWindow answers it with the host-drawn menu (Handled), so
+        // the Edge menu itself never shows. Settings keeps the default menus off.
+        s.AreDefaultContextMenusEnabled = sandbox is not null;
         s.IsZoomControlEnabled = false;
         s.IsPinchZoomEnabled = false;
         s.IsStatusBarEnabled = false;

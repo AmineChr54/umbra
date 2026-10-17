@@ -60,13 +60,23 @@ $$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.datase
 
 // ---------- toast ----------
 let toastTimer;
-function toast(text, error = false) {
+// With an action ({ label, run }) the toast stays longer and shows a button (Undo).
+function toast(text, error = false, action = null) {
   const t = $("#toast");
   t.textContent = text;
   t.classList.toggle("error", error);
+  t.classList.toggle("has-action", !!action);
+  if (action) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "toast-action";
+    b.textContent = action.label;
+    b.addEventListener("click", () => { t.classList.remove("show"); action.run(); });
+    t.append(b);
+  }
   t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), error ? 4200 : 1600);
+  toastTimer = setTimeout(() => t.classList.remove("show"), action ? 8000 : error ? 4200 : 1600);
 }
 
 // ---------- saving (debounced, so typing in a field doesn't save every keystroke) ----------
@@ -457,6 +467,28 @@ function renderInstalled() {
     labelRows(card);
     list.append(card);
   }
+  applyFocus();
+}
+
+// "Options..." in a widget's right-click menu: the host asks for this copy's card. State may arrive after the
+// request (Settings was just opened), so the request lasts a moment and renderInstalled applies it again.
+let focusId = null;
+let focusUntil = 0;
+let focusScrolled = false;
+function focusWidget(id) {
+  show("widgets");
+  focusId = id;
+  focusUntil = Date.now() + 2500;
+  focusScrolled = false;
+  applyFocus();
+}
+function applyFocus() {
+  if (!focusId || Date.now() > focusUntil) { focusId = null; return; }
+  const card = $$("#installed .wcard").find((c) => c.dataset.instance === focusId);
+  if (!card) return;
+  card.classList.add("focus");
+  if (!focusScrolled) { focusScrolled = true; card.scrollIntoView({ block: "center" }); }
+  setTimeout(() => card.classList.remove("focus"), Math.max(0, focusUntil - Date.now()));
 }
 
 // Local programs a widget may run. The host re-checks everything: this only shows the exact command line and
@@ -738,9 +770,14 @@ bridge && bridge.addEventListener("message", (e) => {
       busy.delete(m.id);
       const isTheme = kind === "installTheme" || kind === "removeTheme";
       const name = ((isTheme ? themes : catalog) || []).find((w) => w.id === m.id)?.name || m.id;
-      m.error ? toast(`${name}: ${m.error}`, true) : toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
+      if (m.error) toast(`${name}: ${m.error}`, true);
+      else if (kind === "remove" && m.undo) toast(`${name} removed`, false, { label: "Undo", run: () => post({ type: "undoRemove", id: m.undo }) });
+      else toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
       break;
     }
+    case "undoDone":
+      m.error ? toast(m.error, true) : toast(`${m.name || "Widget"} restored`);
+      break;
   }
 });
 

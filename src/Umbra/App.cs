@@ -8,8 +8,7 @@ sealed class App : ApplicationContext
     readonly Dictionary<string, WidgetWindow> _windows = new();
     readonly NotifyIcon _tray;
     readonly Notifier _notifier = new();
-    string? _balloonUrl; // only for the balloon fallback; toasts carry their own URL
-    Action? _balloonAction; // what a click on the current balloon does instead of opening _balloonUrl
+    Action? _balloonClick; // what a click on the current tray balloon does; set only by ShowBalloon (toasts carry their own URL)
     ToastService? _toasts;
     bool _toastsTried;
     readonly SynchronizationContext _ui;
@@ -236,6 +235,7 @@ sealed class App : ApplicationContext
         SafeMode = safe;
         _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         Settings = Settings.Load();
+        try { WidgetTrash.Purge(); } catch (Exception ex) { Log.Write($"Trash purge failed: {ex.Message}"); }
         Prefs.Configure(Settings.General);
         _windowsAccent = new WindowsAccent(() => _ui.Post(_ => OnSystemAccentChanged(), null));
         Prefs.SystemAccent = _windowsAccent.Read();
@@ -251,11 +251,7 @@ sealed class App : ApplicationContext
         _tray.ContextMenuStrip.Opening += (_, _) => BuildTrayMenu();
         BuildTrayMenu();
         UpdateTrayStatus();
-        _tray.BalloonTipClicked += (_, _) =>
-        {
-            if (_balloonAction is { } act) act();
-            else if (_balloonUrl is { } u) WebHost.OpenExternal(u);
-        };
+        _tray.BalloonTipClicked += (_, _) => _balloonClick?.Invoke();
         AnnounceUpdate();
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
@@ -312,7 +308,7 @@ sealed class App : ApplicationContext
         if (!announce) return;
         Log.Write($"Updated to {current}");
         _ = ObserveAsync(Updater.LoadWhatsNewAsync(current), "Release notes");
-        ShowBalloon(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None, null, () => _ = ShowPageAsync(ShowSettings(), "about"));
+        ShowBalloon(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None, () => _ = ShowPageAsync(ShowSettings(), "about"));
     }
 
     /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
@@ -432,6 +428,11 @@ sealed class App : ApplicationContext
             }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
         }
+        if (UndoRemoveLabel is { } undo)
+        {
+            menu.Items.Add($"Undo remove {undo}", null, (_, _) => UndoRemove());
+            menu.Items.Add(new ToolStripSeparator());
+        }
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
@@ -476,14 +477,10 @@ sealed class App : ApplicationContext
         ShowBalloon(5000, "Umbra", text, icon, null);
     }
 
-    /// <summary>
-    /// The one place a tray balloon is shown: it resets the click target (URL and action) first, so clicking an unrelated
-    /// balloon never opens an earlier balloon's URL or About.
-    /// </summary>
-    void ShowBalloon(int ms, string title, string text, ToolTipIcon icon, string? url, Action? action = null)
+    /// <summary>The one place a tray balloon is shown: resets the click target first, so clicking an unrelated balloon never opens an earlier balloon's URL.</summary>
+    void ShowBalloon(int ms, string title, string text, ToolTipIcon icon, Action? onClick)
     {
-        _balloonUrl = url;
-        _balloonAction = action;
+        _balloonClick = onClick;
         _tray.ShowBalloonTip(ms, title, text, icon);
     }
 
@@ -515,7 +512,7 @@ sealed class App : ApplicationContext
             }
             catch (Exception ex) { Log.Write($"Toast failed, using a balloon: {ex.Message}"); }
         }
-        ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url);
+        ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url is null ? null : () => WebHost.OpenExternal(url));
         return true;
     }
 
@@ -592,6 +589,8 @@ sealed class App : ApplicationContext
     {
         if (!InstanceId.IsExtra(instance) || !Settings.Widgets.ContainsKey(instance))
             throw new InvalidOperationException($"'{instance}' is not an extra copy of a widget");
+        var m = Manifests.FirstOrDefault(x => x.Id == InstanceId.WidgetOf(instance));
+        _removed = new RemovedCopy(instance, m is null ? instance : InstanceLabel(m, instance), Settings.Widgets[instance], WidgetStore.All(instance));
         CloseWidget(instance);
         Settings.Widgets.Remove(instance);
         WidgetStore.Delete(instance);
@@ -599,11 +598,76 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
+    RemovedCopy? _removed;
+
+    /// <summary>Label of the copy that "Remove" can still bring back, or null when there is nothing to undo.</summary>
+    public string? UndoRemoveLabel =>
+        _removed is { } r && r.CanRestore(Settings) && Manifests.Any(m => m.Id == InstanceId.WidgetOf(r.Instance)) ? r.Label : null;
+
+    /// <summary>Removes an extra copy from the widget menu and says how to get it back (tray menu, or a click on the balloon).</summary>
+    public void RemoveInstanceWithUndo(string instance)
+    {
+        RemoveInstance(instance);
+        if (_removed is not { } r) return;
+        ShowBalloon(5000, "Umbra", $"{r.Label} removed. Click to undo.", ToolTipIcon.None, UndoRemove);
+    }
+
+    /// <summary>Brings back the last removed copy with its settings, position and stored data.</summary>
+    public void UndoRemove()
+    {
+        if (UndoRemoveLabel is null || _removed is not { } r) return;
+        r.Restore(Settings);
+        if (r.Data.Count > 0) WidgetStore.Replace(r.Instance, r.Data);
+        _removed = null;
+        SaveSettings();
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Hides a widget copy (turns it off in Settings); the widget menu's "Hide".</summary>
+    public void DisableWidget(string instance)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws)) return;
+        ws.Enabled = false;
+        SaveSettings();
+        SyncWindows();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Locks or unlocks a copy's position and size; the widget menu's "Lock position".</summary>
+    public void SetLocked(string instance, bool locked)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws)) return;
+        ws.Locked = locked;
+        SaveSettings();
+        Window(instance)?.PushSettings();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Opens (or focuses) Settings on My widgets, scrolled to this copy's card and highlighted.</summary>
+    public async void ShowWidgetOptions(string instance)
+    {
+        try { await ShowSettings().ShowWidgetAsync(instance); }
+        catch (Exception ex) { Log.Write($"Could not open options for {instance}: {ex.Message}"); }
+    }
+
     /// <summary>Forgets all extra copies of an uninstalled widget (settings; the data files go with the widget).</summary>
     public void ForgetInstances(string widgetId)
     {
         Settings.RemoveExtraInstances(widgetId);
         SaveSettings();
+    }
+
+    /// <summary>Undo of Settings > Remove: brings back the trashed widget with its data, options and position. Returns its manifest.</summary>
+    public WidgetManifest? RestoreWidget(string token)
+    {
+        string id;
+        try { id = WidgetTrash.Restore(Settings, token); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { throw new InvalidOperationException($"Could not restore the widget: {ex.Message}"); }
+        SaveSettings();
+        ReloadWidgets();
+        SettingsChangedElsewhere();
+        return Manifests.FirstOrDefault(m => m.Id == id);
     }
 
     /// <summary>
