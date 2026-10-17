@@ -373,6 +373,22 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
     }
 
+    /// <summary>Replaces settings (positions included) and widget data from a validated backup; approvals are untouched.</summary>
+    public void RestoreBackup(Backup.Parsed backup)
+    {
+        Backup.WriteData(backup, WidgetStore.CopyIds().Concat(Settings.Widgets.Keys));
+        foreach (var id in _windows.Keys.ToList()) CloseWidget(id);
+        var s = backup.Settings;
+        if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
+        s.General.LegacyRestoreDone = true;
+        Settings = s;
+        SaveSettings();
+        _hotkeys.Apply(Settings.Hotkeys);
+        SyncWindows();
+        BuildTrayMenu();
+        SettingsChangedElsewhere();
+    }
+
     public void ApplySettings(Settings incoming)
     {
         // Positions are owned by the widget windows (dragging), so keep the current ones.

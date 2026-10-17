@@ -286,6 +286,26 @@ sealed class Control(App app)
                 // Read-only on purpose: there is no control command that approves or revokes a command.
                 return app.Commands.Approvals.Describe(app.Manifests, a["id"] is null ? null : Target(a).Manifest.Id);
 
+            case "privacy":
+                return Backup.Privacy(app, a["id"] is null ? null : Target(a).Manifest.Id);
+
+            case "backup":
+            {
+                var path = Path.GetFullPath(Str(a, "path"));
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, Backup.Create(app.Settings).ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                return new JsonObject { ["path"] = path, ["bytes"] = new FileInfo(path).Length };
+            }
+
+            case "restore":
+            {
+                Backup.Parsed parsed;
+                try { parsed = Backup.ReadFile(Path.GetFullPath(Str(a, "path"))); }
+                catch (InvalidDataException ex) { throw new CommandException(ex.Message); }
+                app.RestoreBackup(parsed);
+                return new JsonObject { ["widgets"] = parsed.Settings.Widgets.Count, ["data"] = parsed.Data.Count, ["note"] = "Command approvals are not part of a backup; approve again if needed" };
+            }
+
             case "capture":
                 return await Capture(Str(a, "target"), a["path"]?.GetValue<string>());
 

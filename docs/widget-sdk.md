@@ -275,6 +275,9 @@ umbractl set weather city Paris      # change an option, typed by the schema
 umbractl capture weather shot.png    # PNG of just the widget
 umbractl configure weather --scale 2 # check how it looks at 200 % (back with --scale 1)
 umbractl data weather                # what the widget saved with umbra.store (set: data <id> <key> <json>)
+umbractl privacy [id]                # hosts, commands, saved data, blocked requests (read-only)
+umbractl backup <file>               # settings, layout, theme, widget data (never approvals)
+umbractl restore <file>              # validated restore; approve widget commands again
 umbractl logs                        # load errors and blocked requests
 ```
 

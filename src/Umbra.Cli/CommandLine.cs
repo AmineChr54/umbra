@@ -72,6 +72,12 @@ static class CommandLine
             case "approvals":
                 // List only. Approving a widget's command is a human action (prompt or Settings > My widgets).
                 return ("approvals", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
+            case "privacy":
+                return ("privacy", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
+            case "backup":
+                return ("backup", O(("path", Path.GetFullPath(Arg(a, 1, "output file")))));
+            case "restore":
+                return ("restore", O(("path", Path.GetFullPath(Arg(a, 1, "backup file")))));
             case "refresh":
                 return ("refresh", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "capture":
