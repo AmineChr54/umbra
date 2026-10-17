@@ -48,6 +48,9 @@
         applyTheme();
         handlers.settings.forEach((fn) => fn(settings));
         break;
+      case "editScale": // live scale while the corner handle is dragged; keeps the overlay's outline size steady
+        if (overlay && typeof m.scale === "number" && m.scale > 0) overlay.style.setProperty("--k", String(1 / m.scale));
+        break;
       case "refresh":
         handlers.refresh.forEach((fn) => fn());
         break;
@@ -150,7 +153,8 @@
   window.addEventListener("pointerup", () => (down = null), true);
 
   // Edit mode (app-wide, switched from the tray or Settings): an unlocked widget gets an outline and a corner
-  // handle. The overlay covers the page, so a press anywhere moves the widget and its own controls don't react.
+  // handle. The overlay covers the page, so mouse presses anywhere move the widget and its own controls don't
+  // react to them (capture-phase listeners and keyboard events can still reach the page).
   // Ctrl+wheel zooms in 10 % steps. The host checks edit mode, the lock and the physical mouse/keyboard state.
   let overlay = null;
   let grip = null;

@@ -348,4 +348,29 @@ public class ScaffoldTests
         Assert.Throws<IOException>(() => Scaffold.Create("my-widget", "My", parent));
         Assert.Throws<ArgumentException>(() => Scaffold.Create("Bad", "x", parent));
     }
+
+    // Commands reachable only through "umbractl send" or without an MCP tool, on purpose.
+    static readonly string[] NoMcpTool = { "quit" };
+    static readonly string[] NoVerb = { "set-general", "create-widget", "open-settings" };
+
+    [Fact]
+    public void Every_protocol_command_has_an_mcp_tool()
+    {
+        var tools = McpServer.ToolCommands.ToHashSet();
+        var missing = Protocol.Commands.Select(c => c.Cmd).Where(c => !tools.Contains(c) && !NoMcpTool.Contains(c)).ToList();
+        Assert.True(missing.Count == 0, "No MCP tool for: " + string.Join(", ", missing));
+    }
+
+    [Fact]
+    public async Task Every_protocol_command_has_a_command_line_mapping()
+    {
+        var unmapped = new List<string>();
+        foreach (var (cmd, _) in Protocol.Commands.Where(c => !NoVerb.Contains(c.Cmd)))
+        {
+            try { await CommandLine.TranslateAsync(new[] { cmd }, (_, _) => Task.FromResult(new System.Text.Json.Nodes.JsonObject())); }
+            catch (ArgumentException ex) when (ex.Message.StartsWith("Unknown command")) { unmapped.Add(cmd); }
+            catch (Exception) { /* a missing argument still proves the verb exists */ }
+        }
+        Assert.True(unmapped.Count == 0, "No command line mapping for: " + string.Join(", ", unmapped));
+    }
 }

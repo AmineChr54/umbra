@@ -227,6 +227,8 @@ sealed class App : ApplicationContext
     /// <summary>Exits shortly after the current pipe reply has been written.</summary>
     public void QuitSoon() => _ = Task.Delay(300).ContinueWith(_ => _ui.Post(_ => ExitThread(), null));
 
+    Font? _trayBold; // one shared bold font for the tray menu (a new one per rebuild would leak)
+
     void BuildTrayMenu()
     {
         var menu = _tray.ContextMenuStrip!;
@@ -241,10 +243,10 @@ sealed class App : ApplicationContext
                     Log.Write($"Update failed: {ex.Message}");
                     _tray.ShowBalloonTip(4000, "Umbra", $"Update failed: {ex.Message}", ToolTipIcon.Error);
                 }
-            }).Font = new Font(menu.Font, FontStyle.Bold);
+            }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add(new ToolStripSeparator());
         }
-        menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = new Font(menu.Font, FontStyle.Bold);
+        menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
         var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
         menu.Items.Add(edit);
@@ -389,6 +391,14 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
+    readonly Dictionary<string, long> _handScaledAt = new();
+
+    /// <summary>A zoom by hand (handle, Ctrl+wheel) just happened: an in-flight Settings save must not revert it.</summary>
+    public void NoteHandScale(string instance) => _handScaledAt[instance] = System.Environment.TickCount64;
+
+    bool HandScaledRecently(string instance) =>
+        _handScaledAt.TryGetValue(instance, out var t) && System.Environment.TickCount64 - t < 2000;
+
     public void ApplySettings(Settings incoming)
     {
         // Positions are owned by the widget windows (dragging), so keep the current ones.
@@ -398,7 +408,7 @@ sealed class App : ApplicationContext
         foreach (var (id, cur) in Settings.Widgets)
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
-            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; }
+            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         Settings = incoming;
         SaveSettings();
