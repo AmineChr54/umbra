@@ -28,9 +28,26 @@ static class DesktopPin
         Native.SetWindowPos(hwnd, Native.HWND_BOTTOM, 0, 0, 0, 0,
             Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
 
+    /// <summary>True while Peek holds the widgets above other windows; <see cref="KeepAtBottom"/> then lets z-order changes through.</summary>
+    public static volatile bool Peeking;
+
+    /// <summary>Raises a widget above other windows without activating it (Peek).</summary>
+    public static void Raise(IntPtr hwnd) =>
+        Native.SetWindowPos(hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0,
+            Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+
+    /// <summary>Ends a peek for one widget: back to normal z-order, then to the bottom.</summary>
+    public static void Lower(IntPtr hwnd)
+    {
+        Native.SetWindowPos(hwnd, Native.HWND_NOTOPMOST, 0, 0, 0, 0,
+            Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+        SendToBottom(hwnd);
+    }
+
     /// <summary>Call from WndProc on WM_WINDOWPOSCHANGING: rewrites any z-order change to "bottom".</summary>
     public static unsafe void KeepAtBottom(IntPtr lParam)
     {
+        if (Peeking) return;
         var pos = (Native.WINDOWPOS*)lParam;
         if ((pos->flags & Native.SWP_NOZORDER) == 0)
             pos->hwndInsertAfter = Native.HWND_BOTTOM;

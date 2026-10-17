@@ -86,7 +86,16 @@ function renderGeneral() {
   $("#startup").checked = state.startup;
   $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
-  $$("#interval button").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === g.refreshSeconds));
+  $("#hideFullscreen").checked = !!g.hideOnFullscreen;
+  if (document.activeElement !== $("#peekSeconds")) $("#peekSeconds").value = g.peekSeconds || 5;
+  $("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
+$("#peekSeconds").addEventListener("change", (e) => {
+  const v = Math.max(1, Math.min(60, Math.round(Number(e.target.value) || 5)));
+  e.target.value = v;
+  state.settings.general.peekSeconds = v;
+  save(true);
+});
+$$("#interval button").forEach((b) => b.classList.toggle("on", Number(b.dataset.v) === g.refreshSeconds));
 }
 $("#startup").addEventListener("change", (e) => {
   post({ type: "setStartup", value: e.target.checked });
@@ -267,6 +276,14 @@ function renderInstalled() {
     const locked = $(".locked", card);
     locked.checked = ws.locked;
     locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
+
+    const mon = $(".monitor", card);
+    const mons = state.monitors || [];
+    mon.parentElement.hidden = mons.length < 2;
+    for (const m of mons) mon.append(new Option(m.label, m.name));
+    if (w.monitor && mons.some((m) => m.name === w.monitor)) mon.value = w.monitor;
+    else mon.selectedIndex = Math.max(0, mons.findIndex((m) => /primary/.test(m.label)));
+    mon.addEventListener("change", () => { post({ type: "setMonitor", id: w.id, monitor: mon.value }); toast("Moved to " + mon.selectedOptions[0].textContent); });
 
     $(".reset", card).addEventListener("click", () => { post({ type: "resetPosition", id: w.id }); toast("Position reset"); });
     // Copies: the first copy can add more (each with its own options, position and data), extra copies can be removed.

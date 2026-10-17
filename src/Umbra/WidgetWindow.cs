@@ -182,6 +182,8 @@ sealed class WidgetWindow : Form
 
         Point loc;
         if (at is Point p) loc = p;
+        else if (ws.RelX is int rx && ws.RelY is int ry && ws.Monitor is not null)
+            loc = Placement.Resolve(Placement.Monitors(), ws.Monitor, rx, ry, size);
         else if (ws.X is int x && ws.Y is int y) loc = new Point(x, y);
         else
         {
@@ -207,8 +209,42 @@ sealed class WidgetWindow : Form
     {
         var ws = Ws;
         ws.X = ws.Y = null;
+        ws.Monitor = null; ws.RelX = ws.RelY = null;
         _app.SaveSettings();
         ApplyBounds();
+    }
+
+    /// <summary>Re-places the window from its saved monitor and offset (monitors were added, removed or rearranged).</summary>
+    public void ReapplyPlacement() => ApplyBounds();
+
+    /// <summary>Puts the widget on another monitor, keeping its offset from the monitor's corner (24 px if it had none).</summary>
+    public void MoveToMonitor(string monitor)
+    {
+        var ws = Ws;
+        if (ws.RelX is null || ws.RelY is null)
+        {
+            var cur = Placement.Find(Placement.Monitors(), Bounds);
+            ws.RelX = cur is MonitorInfo c ? Left - c.Bounds.X : 24;
+            ws.RelY = cur is MonitorInfo d ? Top - d.Bounds.Y : 24;
+        }
+        ws.Monitor = monitor;
+        ApplyBounds();
+        ws.X = Left; ws.Y = Top;
+        _app.SaveSettings();
+    }
+
+    /// <summary>Records where the window is now: absolute spot plus monitor and offset from its corner, so it survives monitor changes.</summary>
+    void RememberPosition()
+    {
+        var ws = Ws;
+        ws.X = Left; ws.Y = Top;
+        var mon = Placement.Find(Placement.Monitors(), Bounds);
+        if (mon is MonitorInfo m)
+        {
+            ws.Monitor = m.Name;
+            ws.RelX = Left - m.Bounds.X;
+            ws.RelY = Top - m.Bounds.Y;
+        }
     }
 
     /// <summary>Zooms the widget by hand (corner handle, Ctrl+wheel): the top-left corner stays where it is.</summary>
@@ -216,7 +252,7 @@ sealed class WidgetWindow : Form
     {
         var ws = Ws;
         ws.Scale = scale;
-        ws.X = Left; ws.Y = Top;
+        RememberPosition();
         _app.SaveSettings();
         PushSettings();
         _app.SettingsChangedElsewhere();
@@ -244,8 +280,7 @@ sealed class WidgetWindow : Form
                 Native.ReleaseCapture();
                 Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTCAPTION, IntPtr.Zero);
                 // SendMessage returns when the move loop ends: persist the new spot.
-                var ws = Ws;
-                ws.X = Left; ws.Y = Top;
+                RememberPosition();
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
                 break;
