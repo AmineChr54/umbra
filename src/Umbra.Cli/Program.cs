@@ -75,11 +75,12 @@ static void PrintHelp()
           enable|disable <id>            show or hide a widget (<id> is a widget id or a copy like sp500#2)
           lock|unlock <id>               lock or unlock moving, resizing and zooming
           move <id> <x> <y>              position in physical pixels
-          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--locked on|off] [--x N] [--y N]
+          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--locked on|off] [--x N] [--y N] [--monitor N|primary]
                                          change several widget settings at once (scale = size and zoom)
+          peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
           edit-mode [on|off]             move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
-          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off]
+          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--peek-seconds 1-60]
           check-update                   look for a newer Umbra on GitHub (install it from the tray or Settings > About)
           reset-position <id>            back to the default position
           add-instance <id>              run another copy of a widget (own options, position, data); ids look like sp500#2
@@ -90,7 +91,7 @@ static void PrintHelp()
           install|remove <id>            install/update or uninstall a community widget
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
-          hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
+          hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
           install-theme|remove-theme <id>  install/update or uninstall a community theme
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
           create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)

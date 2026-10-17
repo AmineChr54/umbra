@@ -15,6 +15,7 @@ public static class Hotkey
         ("edit-mode", "Toggle edit mode"),
         ("refresh-all", "Refresh all widgets"),
         ("toggle-widgets", "Show or hide all widgets"),
+        ("peek", "Peek: raise widgets for a few seconds"),
         ("open-settings", "Open Settings"),
     };
 

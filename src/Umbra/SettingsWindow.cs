@@ -115,6 +115,12 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "setMonitor":
+                if (msg["monitor"]?.GetValue<string>() is string mon && Placement.Has(Placement.Monitors(), mon))
+                    _app.Window(id)?.MoveToMonitor(mon);
+                SendState();
+                break;
+
             case "resetPosition":
                 _app.ResetPosition(id);
                 SendState();
@@ -279,6 +285,7 @@ sealed class SettingsWindow : Form
                 ["widget"] = m.Id,
                 ["instance"] = InstanceId.NumberOf(inst),
                 ["name"] = App.InstanceLabel(m, inst),
+                ["monitor"] = _app.Settings.Widgets[inst].Monitor,
                 ["description"] = m.Description,
                 ["author"] = m.Author,
                 ["version"] = m.Version,
@@ -311,6 +318,7 @@ sealed class SettingsWindow : Form
             ["settings"] = _app.Settings.ToJson(),
             ["themeCss"] = _app.ThemeCss,
             ["hotkeys"] = _app.DescribeHotkeys()["hotkeys"]!.DeepClone(),
+            ["monitors"] = new JsonArray(Placement.Monitors().Select((m, i) => (JsonNode?)new JsonObject { ["name"] = m.Name, ["label"] = $"Monitor {i + 1}{(m.Primary ? " (primary)" : "")} - {m.Bounds.Width}x{m.Bounds.Height}" }).ToArray()),
             ["widgets"] = widgets,
         });
     }

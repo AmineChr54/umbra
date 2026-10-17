@@ -89,6 +89,20 @@
             </div>
             <label class="switch"><input type="checkbox" id="checkUpdates"><span></span></label>
           </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Hide during fullscreen apps</div>
+              <div class="row-sub">Widgets disappear while a fullscreen game or video is in the foreground and come back afterwards.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="hideFullscreen"><span></span></label>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Peek duration</div>
+              <div class="row-sub">The Peek hotkey (set it under Hotkeys) raises widgets above other windows for this many seconds, without taking focus.</div>
+            </div>
+            <input type="number" id="peekSeconds" min="1" max="60" step="1" style="width:64px" aria-label="Peek seconds">
+          </div>
         </div>
 
         <div class="hint">
@@ -209,6 +223,7 @@
           </div>
           <div class="spacer"></div>
           <button class="btn small copy"><span class="ico" data-icon="plus"></span>Add another copy</button>
+          <label class="check monitor-wrap">Monitor <select class="monitor" aria-label="Monitor"></select></label>
           <button class="btn small reset"><span class="ico" data-icon="target"></span>Reset position</button>
           <button class="btn small danger removecopy"><span class="ico" data-icon="trash"></span>Remove copy</button>
           <button class="btn small danger remove"><span class="ico" data-icon="trash"></span>Remove</button>

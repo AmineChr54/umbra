@@ -295,6 +295,15 @@ public class CommandLineTests
         await Assert.ThrowsAsync<ArgumentException>(() => T("configure", "sp500", "--scale", "big"));
 
     [Fact]
+    public async Task Placement_commands_map_to_the_protocol()
+    {
+        Assert.Equal(("configure", """{"id":"sp500","monitor":"2"}"""), await T("configure", "sp500", "--monitor", "2"));
+        Assert.Equal(("peek", "{}"), await T("peek"));
+        Assert.Equal(("peek", """{"seconds":8}"""), await T("peek", "8"));
+        Assert.Equal(("set-general", """{"hideOnFullscreen":true,"peekSeconds":3}"""), await T("general", "--hide-fullscreen", "on", "--peek-seconds", "3"));
+    }
+
+    [Fact]
     public async Task Edit_mode_on_off_or_query()
     {
         Assert.Equal(("edit-mode", """{"on":true}"""), await T("edit-mode", "on"));

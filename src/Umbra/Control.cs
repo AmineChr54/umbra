@@ -55,6 +55,8 @@ sealed class Control(App app)
                     ["update"] = app.Updater.ToJson(),
                     ["updateAvailable"] = app.Updater.Available?.Version,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
+                    ["monitors"] = MonitorList(),
+                    ["hiddenByFullscreen"] = app.HiddenByFullscreen,
                     ["widgets"] = app.Manifests.Count,
                     ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Instance).ToArray()),
                     ["commands"] = new JsonArray(Protocol.Commands.Select(c => (JsonNode?)c.Cmd).ToArray()),
@@ -69,14 +71,22 @@ sealed class Control(App app)
                 var ws = app.Settings.For(m, inst);
                 if (a["enabled"] is JsonNode en) ws.Enabled = Bool(en, "enabled");
                 if (a["locked"] is JsonNode lk) ws.Locked = Bool(lk, "locked");
+                string? monitor = null;
+                if (a["monitor"] is JsonNode mo)
+                {
+                    monitor = mo.GetValueKind() == JsonValueKind.String ? mo.GetValue<string>() : throw new CommandException("\"monitor\" must be a monitor name or number (see status.monitors)");
+                    monitor = ResolveMonitor(monitor);
+                }
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
+                if (a["x"] is not null || a["y"] is not null) { ws.Monitor = null; ws.RelX = ws.RelY = null; } // an absolute spot replaces the recorded monitor
                 if (a["scale"] is JsonNode sc) ws.Scale = CheckScale(sc);
                 if (a["options"] is JsonObject opts)
                     foreach (var (key, value) in opts) ws.Options[key] = CheckOption(m, key, value);
                 else if (a["options"] is not null) throw new CommandException("\"options\" must be an object");
                 app.SaveSettings();
                 app.SyncWindows();
+                if (monitor is not null) app.Window(inst)?.MoveToMonitor(monitor);
                 app.Window(inst)?.PushSettings();
                 app.SettingsChangedElsewhere();
                 return Describe(m, inst);
@@ -93,6 +103,13 @@ sealed class Control(App app)
                 }
                 if (a["animations"] is JsonNode an) g.Animations = Bool(an, "animations");
                 if (a["checkForUpdates"] is JsonNode cu) g.CheckForUpdates = Bool(cu, "checkForUpdates");
+                if (a["hideOnFullscreen"] is JsonNode hf) g.HideOnFullscreen = Bool(hf, "hideOnFullscreen");
+                if (a["peekSeconds"] is JsonNode ps)
+                {
+                    var secs = Int(ps, "peekSeconds");
+                    if (secs is < 1 or > 60) throw new CommandException("peekSeconds must be between 1 and 60");
+                    g.PeekSeconds = secs;
+                }
                 if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
@@ -144,6 +161,17 @@ sealed class Control(App app)
                     catch (ArgumentException ex) { throw new CommandException(ex.Message); }
                 }
                 return app.DescribeHotkeys();
+
+            case "peek":
+                if (a["seconds"] is JsonNode pk)
+                {
+                    var secs = Int(pk, "seconds");
+                    if (secs is < 1 or > 60) throw new CommandException("seconds must be between 1 and 60");
+                    app.Settings.General.PeekSeconds = secs;
+                    app.SaveSettings();
+                }
+                app.Peek();
+                return new JsonObject { ["peeking"] = app.Peeking, ["seconds"] = app.Settings.General.PeekSeconds, ["hidden"] = app.WidgetsHidden || app.HiddenByFullscreen };
 
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
@@ -374,6 +402,7 @@ sealed class Control(App app)
             ["folder"] = Path.Combine(m.Source == WidgetSource.BuiltIn ? AppPaths.WidgetsDir : AppPaths.CommunityDir, m.Folder),
             ["enabled"] = ws.Enabled,
             ["locked"] = ws.Locked,
+            ["monitor"] = ws.Monitor,
             ["scale"] = ws.Scale,
             ["open"] = win is not null,
             ["bounds"] = win is null ? null : new JsonObject { ["x"] = win.Left, ["y"] = win.Top, ["width"] = win.Width, ["height"] = win.Height },
@@ -382,6 +411,26 @@ sealed class Control(App app)
             ["options"] = ws.Options.DeepClone(),
             ["optionSchema"] = m.Options.DeepClone(),
         };
+    }
+
+    internal static JsonArray MonitorList()
+    {
+        var all = Placement.Monitors();
+        return new JsonArray(all.Select((m, i) => (JsonNode?)new JsonObject
+        {
+            ["number"] = i + 1, ["name"] = m.Name, ["primary"] = m.Primary,
+            ["x"] = m.Bounds.X, ["y"] = m.Bounds.Y, ["width"] = m.Bounds.Width, ["height"] = m.Bounds.Height,
+        }).ToArray());
+    }
+
+    /// <summary>Accepts a device name, a 1-based number from status.monitors, or "primary".</summary>
+    internal static string ResolveMonitor(string input)
+    {
+        var all = Placement.Monitors();
+        if (input.Equals("primary", StringComparison.OrdinalIgnoreCase) && all.Any(m => m.Primary)) return all.First(m => m.Primary).Name;
+        if (int.TryParse(input, out var n) && n >= 1 && n <= all.Count) return all[n - 1].Name;
+        if (Placement.Has(all, input)) return all.First(m => string.Equals(m.Name, input, StringComparison.OrdinalIgnoreCase)).Name;
+        throw new CommandException($"No monitor '{input}'. Connected: {string.Join(", ", all.Select((m, i) => $"{i + 1} = {m.Name}"))}");
     }
 
     /// <summary>Checks a value against the option's declared type (text, number, select, toggle).</summary>

@@ -28,6 +28,58 @@ sealed class App : ApplicationContext
 
     readonly HotkeyService _hotkeys;
 
+    /// <summary>True while a fullscreen app hides the widgets (only with General.HideOnFullscreen). Not saved.</summary>
+    public bool HiddenByFullscreen { get; private set; }
+    public bool Peeking { get; private set; }
+    readonly System.Windows.Forms.Timer _fullscreenTimer = new() { Interval = 750 };
+    System.Windows.Forms.Timer? _peekTimer;
+
+    bool ShouldHide => WidgetsHidden || HiddenByFullscreen;
+
+    /// <summary>Shows or hides every widget window from the hotkey and fullscreen states. Only changes windows whose state differs, so nothing flickers.</summary>
+    void ApplyVisibility()
+    {
+        foreach (var w in _windows.Values)
+            if (w.Visible == ShouldHide) w.Visible = !ShouldHide;
+    }
+
+    void CheckFullscreen()
+    {
+        var hide = Settings.General.HideOnFullscreen && Placement.FullscreenAppActive();
+        if (hide == HiddenByFullscreen) return;
+        HiddenByFullscreen = hide;
+        if (hide) EndPeek();
+        ApplyVisibility();
+    }
+
+    /// <summary>Raises the widgets above other windows for General.PeekSeconds (never activating them), then returns them to the bottom.</summary>
+    public void Peek()
+    {
+        if (ShouldHide) return;
+        DesktopPin.Peeking = true;
+        Peeking = true;
+        foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Raise(w.Handle);
+        _peekTimer ??= new System.Windows.Forms.Timer();
+        _peekTimer.Stop();
+        _peekTimer.Interval = Math.Clamp(Settings.General.PeekSeconds, 1, 60) * 1000;
+        _peekTimer.Tick -= PeekTick;
+        _peekTimer.Tick += PeekTick;
+        _peekTimer.Start();
+    }
+
+    void PeekTick(object? s, EventArgs e) => EndPeek();
+
+    void EndPeek()
+    {
+        _peekTimer?.Stop();
+        if (!Peeking) return;
+        Peeking = false;
+        DesktopPin.Peeking = false;
+        foreach (var w in _windows.Values) if (w.IsHandleCreated) DesktopPin.Lower(w.Handle);
+    }
+
+    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); }, null);
+
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
     void RunHotkey(string action)
     {
@@ -37,8 +89,9 @@ sealed class App : ApplicationContext
             case "refresh-all": foreach (var w in _windows.Values) w.RefreshData(); break;
             case "toggle-widgets":
                 WidgetsHidden = !WidgetsHidden;
-                foreach (var w in _windows.Values) w.Visible = !WidgetsHidden;
+                ApplyVisibility();
                 break;
+            case "peek": Peek(); break;
             case "open-settings": ShowSettings(); break;
         }
     }
@@ -95,6 +148,9 @@ sealed class App : ApplicationContext
         SyncWindows();
         _hotkeys = new HotkeyService(RunHotkey);
         _hotkeys.Apply(Settings.Hotkeys);
+        _fullscreenTimer.Tick += (_, _) => CheckFullscreen();
+        _fullscreenTimer.Start();
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
 
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
@@ -232,7 +288,7 @@ sealed class App : ApplicationContext
                     win = new WidgetWindow(this, m, inst);
                     win.FormClosed += (_, _) => _windows.Remove(inst);
                     _windows[inst] = win;
-                    if (!WidgetsHidden) win.Show();
+                    if (!ShouldHide) win.Show();
                 }
                 else if (!enabled && open)
                 {
@@ -326,7 +382,7 @@ sealed class App : ApplicationContext
         foreach (var (id, cur) in Settings.Widgets)
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
-            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; }
+            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         Settings = incoming;
         SaveSettings();
@@ -388,6 +444,9 @@ sealed class App : ApplicationContext
         _tray.Visible = false;
         _tray.Dispose();
         Updater.Dispose();
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        _fullscreenTimer.Dispose();
+        _peekTimer?.Dispose();
         _hotkeys.Dispose();
         foreach (var w in _windows.Values.ToList()) w.Close();
         _settingsWindow?.Close();

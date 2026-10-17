@@ -37,11 +37,12 @@ The installer puts `umbractl` on your PATH. Every command prints JSON and starts
 umbractl list                         # widgets, their settings, option schema and window bounds
 umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
 umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
-umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y
+umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y, --monitor 2 (a monitor number from status, or primary; the widget keeps its offset and survives monitor changes)
 umbractl add-instance sp500           # a second copy (sp500#2) with its own options, position and data; remove-instance sp500#2
-umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, toggle-widgets, open-settings); off to clear
+umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings); off to clear
+umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
-umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check)
+umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove
 umbractl themes                       # installed and community themes; theme <id> switches live

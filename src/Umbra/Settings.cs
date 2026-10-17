@@ -14,6 +14,10 @@ public sealed class GeneralSettings
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>Set once the one-time restore of former built-in widgets (sp500) has finished; see <see cref="Restore"/>.</summary>
     public bool LegacyRestoreDone { get; set; }
+    /// <summary>Hide every widget while a fullscreen app or game is in the foreground, and show them again after.</summary>
+    public bool HideOnFullscreen { get; set; }
+    /// <summary>How long Peek (hotkey or "peek" command) keeps the widgets above other windows, 1-60 s.</summary>
+    public int PeekSeconds { get; set; } = 5;
 }
 
 public sealed class WidgetSettings
@@ -25,6 +29,11 @@ public sealed class WidgetSettings
     public bool Enabled { get; set; } = true;
     public int? X { get; set; }
     public int? Y { get; set; }
+    /// <summary>Device name of the monitor the widget lives on (e.g. \\.\DISPLAY2); null = not recorded yet, X/Y apply as they are.</summary>
+    public string? Monitor { get; set; }
+    /// <summary>Offset from that monitor's top-left corner, so the widget keeps its place when monitors change.</summary>
+    public int? RelX { get; set; }
+    public int? RelY { get; set; }
     /// <summary>No dragging, resizing or zooming, even in edit mode.</summary>
     public bool Locked { get; set; }
 

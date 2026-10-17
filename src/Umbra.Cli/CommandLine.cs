@@ -30,8 +30,11 @@ static class CommandLine
                 if (Flag(a, "--locked") is string lk) o["locked"] = OnOff(lk);
                 if (Flag(a, "--x") is string x) o["x"] = int.Parse(x, CultureInfo.InvariantCulture);
                 if (Flag(a, "--y") is string y) o["y"] = int.Parse(y, CultureInfo.InvariantCulture);
+                if (Flag(a, "--monitor") is string mon) o["monitor"] = mon;
                 return ("configure", o);
             }
+            case "peek":
+                return ("peek", a.Length > 1 ? O(("seconds", int.Parse(a[1], CultureInfo.InvariantCulture))) : new JsonObject());
             case "theme":
                 return ("theme", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
             case "check-update" or "update":
@@ -52,6 +55,8 @@ static class CommandLine
                 if (Flag(a, "--animations") is string an) o["animations"] = OnOff(an);
                 if (Flag(a, "--startup") is string st) o["startup"] = OnOff(st);
                 if (Flag(a, "--updates") is string up) o["checkForUpdates"] = OnOff(up);
+                if (Flag(a, "--hide-fullscreen") is string hf) o["hideOnFullscreen"] = OnOff(hf);
+                if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
                 return ("set-general", o);
             }
             case "reset-position" or "install" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
