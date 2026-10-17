@@ -53,6 +53,7 @@
         break;
       case "fetchResult":
       case "runResult":
+      case "systemResult":
       case "storeResult": {
         const p = pending.get(m.id);
         if (!p) return;
@@ -86,6 +87,8 @@
    * Resolves { exitCode, stdout, stderr, timedOut, truncated, durationMs }; rejects when not declared, not approved, or invalid.
    */
   const run = (command, params) => request({ type: "run", command, params: params ?? undefined }, 300000);
+  /** Machine totals declared in widget.json permissions.system: { cpu:{percent}, memory:{totalBytes,usedBytes,percent}, network:{downBytesPerSec,upBytesPerSec} }. */
+  const system = () => request({ type: "system" }, 10000);
   /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
   const fetchText = (url) => request({ type: "fetchText", url }, 25000);
 
@@ -228,6 +231,7 @@
     onSettings: (fn) => handlers.settings.push(fn),
     fetchJson,
     run,
+    system,
     fetchText,
     store,
     every,
