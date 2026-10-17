@@ -353,6 +353,14 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 }
 .toast-action:hover { background: rgba(255, 255, 255, 0.14); }
 
+/* ---------- layouts ---------- */
+#layoutName { width: 200px; }
+#layoutList:empty { display: none; }
+#layoutList .row { gap: 12px; }
+#layoutList .name { width: 100%; max-width: 280px; font-weight: 600; }
+#layoutList .row-text { flex: 1 1 auto; }
+.pin-on { color: var(--accent-strong); }
+
 /* ---------- local commands (permissions.commands) ---------- */
 .cmds:empty { display: none; }
 .cmds { display: grid; gap: 8px; margin-bottom: 18px; }

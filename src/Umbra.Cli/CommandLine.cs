@@ -58,7 +58,8 @@ static class CommandLine
             case "layouts" or "layout":
                 if (a.Length < 2 || a[1] == "list") return ("layouts", new JsonObject());
                 if (a[1] is "save" or "apply" or "delete") return ("layouts", O(("op", a[1]), ("name", string.Join(' ', a.Skip(2)))));
-                throw new ArgumentException("Usage: layouts [list | save <name> | apply <name> | delete <name>]");
+                if (a[1] == "rename") return ("layouts", O(("op", "rename"), ("name", Arg(a, 2, "layout name")), ("to", Arg(a, 3, "new name"))));
+                throw new ArgumentException("Usage: layouts [list | save <name> | apply <name> | rename <name> <new name> | delete <name>]");
             case "edit-mode":
                 return ("edit-mode", a.Length > 1 ? O(("on", OnOff(a[1]))) : new JsonObject());
             case "set":

@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form
     readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static readonly string[] Pages = { "general", "widgets", "browse", "themes", "hotkeys", "privacy", "about" };
+    public static readonly string[] Pages = { "general", "widgets", "layouts", "browse", "themes", "hotkeys", "privacy", "about" };
 
     readonly bool _background;
     string? _page; // last page the panel showed, saved on close
@@ -151,6 +151,38 @@ sealed class SettingsWindow : Form
                 _app.ResetHotkeys();
                 SendState();
                 break;
+
+            case "saveLayout":
+            case "applyLayout":
+            case "renameLayout":
+            case "deleteLayout":
+            case "undoDeleteLayout":
+            case "pinLayout":
+            {
+                var name = msg["name"]?.GetValue<string>() ?? "";
+                try
+                {
+                    switch (msg["type"]!.GetValue<string>())
+                    {
+                        case "saveLayout": _app.SaveLayout(name); break;
+                        case "applyLayout":
+                            _app.ApplyLayout(name);
+                            Post(new JsonObject { ["type"] = "notice", ["text"] = $"Applied layout {name}" });
+                            break;
+                        case "renameLayout": _app.RenameLayout(name, msg["to"]?.GetValue<string>() ?? ""); break;
+                        case "deleteLayout":
+                            _app.DeleteLayout(name);
+                            Post(new JsonObject { ["type"] = "layoutDeleted", ["name"] = name });
+                            break;
+                        case "undoDeleteLayout": _app.UndoDeleteLayout(); break;
+                        case "pinLayout": _app.PinLayout(name, msg["pinned"]?.GetValue<bool>() == true); break;
+                    }
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+                { Post(new JsonObject { ["type"] = "commandError", ["error"] = ex.Message }); }
+                SendState();
+                break;
+            }
 
             case "setMonitor":
                 if (msg["monitor"]?.GetValue<string>() is string mon && Placement.Has(Placement.Monitors(), mon))
@@ -475,7 +507,7 @@ sealed class SettingsWindow : Form
             ["dataDir"] = AppPaths.DataDir,
             ["editMode"] = _app.EditMode,
             ["safeMode"] = _app.SafeMode,
-            ["layouts"] = _app.Layouts.ToJson(),
+            ["layouts"] = _app.LayoutsJson(),
             ["update"] = _app.Updater.ToJson(),
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),

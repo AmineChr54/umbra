@@ -116,8 +116,6 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) w.RefreshData();
     }
 
-    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ => { foreach (var w in _windows.Values) w.ReapplyPlacement(); UpdateEditPills(); }, null);
-
     // SystemEvents raises these on its own thread, and a clock change often sends several in a row: coalesce them on the UI thread.
     readonly System.Windows.Forms.Timer _timeTimer = new() { Interval = 300 };
     string? _timeSignature;
@@ -137,6 +135,40 @@ sealed class App : ApplicationContext
         _timeTimer.Stop();
         _timeSignature = TimeChange.Signature();
         foreach (var w in _windows.Values) w.NotifyTimeChanged();
+    }
+
+    void OnDisplayChanged(object? s, EventArgs e) => _ui.Post(_ =>
+    {
+        foreach (var w in _windows.Values) w.ReapplyPlacement();
+        UpdateEditPills();
+        // Windows sends several of these while monitors come and go; wait until it has settled.
+        _layoutTimer.Stop();
+        _layoutTimer.Start();
+    }, null);
+
+    /// <summary>Monitor setup the last time it settled; a layout is only switched when this changes.</summary>
+    /// <remarks>Read and written only on the UI thread: <c>_layoutTimer</c> is a WinForms timer and <see cref="SwitchLayoutForSetup"/> runs from its Tick.</remarks>
+    // Not computed in the constructor: touching Screen before the message loop runs makes WebView2 fail later with RPC_E_CHANGED_MODE.
+    string? _knownSetup;
+    readonly System.Windows.Forms.Timer _layoutTimer = new() { Interval = 2000 };
+
+    /// <summary>After a monitor change settles: with the option on, applies the layout pinned to the new setup and says so in a balloon.</summary>
+    void SwitchLayoutForSetup()
+    {
+        _layoutTimer.Stop();
+        var setup = CurrentFingerprint();
+        var first = _knownSetup is null;
+        var previous = _knownSetup;
+        _knownSetup = setup;
+        if (first || setup == previous) return;
+        if (!Settings.General.AutoSwitchLayouts || Layouts.FindPinned(setup) is not { } name) return;
+        try
+        {
+            ApplyLayout(name);
+            Log.Write($"Monitors changed, applied layout '{name}'");
+            ShowBalloon(4000, "Umbra", $"Applied layout {name}", ToolTipIcon.None, null);
+        }
+        catch (Exception ex) { Log.Write($"Auto-switch to layout '{name}' failed: {ex.Message}"); }
     }
 
     /// <summary>Runs a hotkey action. Never activates a widget window; only Settings is brought forward, on request.</summary>
@@ -205,11 +237,39 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    /// <summary>Saves the current positions, sizes and enabled widgets under a name.</summary>
+    /// <summary>The monitor setup in use right now (see <see cref="Placement.Fingerprint"/>).</summary>
+    static string CurrentFingerprint() => Placement.Fingerprint(Placement.Monitors());
+
+    /// <summary>Saves the current positions, sizes and enabled widgets under a name, pinned to the monitor setup in use.</summary>
     public void SaveLayout(string name)
     {
-        Layouts.Capture(name, Settings);
+        Layouts.Capture(name, Settings, CurrentFingerprint());
         SettingsChangedElsewhere();
+    }
+
+    /// <summary>The saved layouts as Settings and umbractl list them, with the one pinned to the current monitors marked.</summary>
+    public System.Text.Json.Nodes.JsonArray LayoutsJson() => Layouts.ToJson(CurrentFingerprint());
+
+    public void RenameLayout(string name, string newName)
+    {
+        Layouts.Rename(name, newName);
+        BuildTrayMenu();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Pins a layout to the monitor setup in use, or unpins it.</summary>
+    public void PinLayout(string name, bool pinned)
+    {
+        Layouts.SetPin(name, pinned ? CurrentFingerprint() : null);
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>Restores the layout deleted last; returns its name or null.</summary>
+    public string? UndoDeleteLayout()
+    {
+        var name = Layouts.UndoDelete();
+        if (name is not null) SettingsChangedElsewhere();
+        return name;
     }
 
     /// <summary>Switches to a saved layout live; returns how many widget copies it changed.</summary>
@@ -264,6 +324,8 @@ sealed class App : ApplicationContext
         _fullscreenTimer.Start();
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
+        _layoutTimer.Tick += (_, _) => SwitchLayoutForSetup();
+        _ui.Post(_ => _knownSetup ??= CurrentFingerprint(), null); // first reading once the message loop runs
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         _timeSignature = TimeChange.Signature();
         _timeTimer.Tick += TimeTimerTick;
@@ -897,6 +959,7 @@ sealed class App : ApplicationContext
         _timeTimer.Dispose();
         _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
+        _layoutTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();
         _snapGuides?.Dispose();

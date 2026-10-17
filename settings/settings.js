@@ -24,6 +24,7 @@ const ICONS = {
   keyboard: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10.5h.01M11 10.5h.01M15 10.5h.01M17.5 10.5h.01M8 14h8"/>',
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  layers: '<path d="m12 4 8.5 4.5L12 13 3.5 8.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
   copy: '<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1"/>',
 };
 function icons(root = document) {
@@ -525,6 +526,71 @@ $("#editMode").addEventListener("change", (e) => {
   toast(e.target.checked ? "Edit mode on: drag to move, drag the corner or Ctrl+scroll to resize" : "Edit mode off");
 });
 
+// ---------- Layouts ----------
+function renderLayouts() {
+  $("#autoLayouts").checked = !!state.settings.general.autoSwitchLayouts;
+  const list = $("#layoutList");
+  list.replaceChildren();
+  for (const l of state.layouts || []) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const name = document.createElement("input");
+    name.className = "input name";
+    name.value = l.name;
+    name.maxLength = 40;
+    name.spellcheck = false;
+    name.setAttribute("aria-label", "Layout name");
+    const rename = () => {
+      const to = name.value.trim();
+      if (!to || to === l.name) { name.value = l.name; return; }
+      post({ type: "renameLayout", name: l.name, to });
+    };
+    name.addEventListener("change", rename);
+    name.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") name.blur();
+      if (e.key === "Escape") { name.value = l.name; name.blur(); }
+    });
+    const sub = document.createElement("div");
+    sub.className = "row-sub";
+    const pin = !l.pinned ? "not pinned to a monitor setup"
+      : l.matchesNow ? "pinned to the monitors connected now"
+      : `pinned to a setup with ${l.pinnedMonitors} monitor${l.pinnedMonitors === 1 ? "" : "s"}`;
+    sub.textContent = `${l.enabled} of ${l.widgets} widgets on \u00b7 ${pin}`;
+    text.append(name, sub);
+
+    const apply = Object.assign(document.createElement("button"), { className: "btn small", textContent: "Apply" });
+    apply.addEventListener("click", () => post({ type: "applyLayout", name: l.name })); // the host answers with a notice or a commandError
+    const pinBtn = Object.assign(document.createElement("button"), {
+      className: "btn small ghost",
+      textContent: l.matchesNow ? "Unpin" : "Pin to these monitors",
+      title: l.matchesNow ? "Stop applying this layout automatically" : "Apply this layout automatically when exactly the monitors connected now are in use",
+    });
+    pinBtn.addEventListener("click", () => post({ type: "pinLayout", name: l.name, pinned: !l.matchesNow }));
+    const del = document.createElement("button");
+    del.className = "btn small danger";
+    del.title = "Delete layout";
+    del.innerHTML = '<span class="ico" data-icon="trash"></span>';
+    del.addEventListener("click", () => post({ type: "deleteLayout", name: l.name })); // the host answers with layoutDeleted or a commandError
+    row.append(text, apply, pinBtn, del);
+    list.append(row);
+  }
+  icons(list);
+}
+$("#autoLayouts").addEventListener("change", (e) => {
+  state.settings.general.autoSwitchLayouts = e.target.checked;
+  save(true);
+});
+$("#layoutSave").addEventListener("click", () => {
+  const name = $("#layoutName").value.trim();
+  if (!name) { $("#layoutName").focus(); return; }
+  post({ type: "saveLayout", name });
+  $("#layoutName").value = "";
+  toast(`Saved layout ${name}`);
+});
+$("#layoutName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#layoutSave").click(); });
+
 // ---------- Browse ----------
 function loadCatalog() {
   catalog = null;
@@ -739,6 +805,9 @@ bridge && bridge.addEventListener("message", (e) => {
       renderUpdate();
       $("#editMode").checked = !!m.editMode;
       $("#safeBanner").hidden = !m.safeMode;
+      // Same for the layout names: don't rebuild while one is being renamed.
+      // Only a layout name being edited blocks the redraw; a clicked button (Apply, Pin, Delete) must see the new state.
+      { const a = document.activeElement; if (!(a && a.tagName === "INPUT" && $("#layoutList").contains(a))) renderLayouts(); }
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
       break;
@@ -747,6 +816,9 @@ bridge && bridge.addEventListener("message", (e) => {
       break;
     case "notice":
       toast(m.text);
+      break;
+    case "layoutDeleted":
+      toast(`Deleted layout ${m.name}`, false, { label: "Undo", run: () => post({ type: "undoDeleteLayout" }) });
       break;
     case "commandError":
       toast(m.error, true);
