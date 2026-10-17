@@ -190,9 +190,9 @@
     {
       "id": "pomodoro",
       "name": "Pomodoro",
-      "description": "A focus timer with a progress ring, start, pause and skip, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
+      "description": "A focus timer with a progress ring: Pomodoro with breaks or a plain countdown, times editable right in the widget, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [],
       "files": [

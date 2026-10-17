@@ -55,12 +55,21 @@ public sealed partial class WidgetManifest
         ? WebHost.Url($"widgets/{Folder}/{Entry}")
         : WebHost.CommunityUrl($"{Folder}/{Entry}");
 
+    /// <summary>
+    /// True for widgets that ship with the app and cannot be removed. A legacy id (it used to be built in and is
+    /// now a catalog widget) can still be sitting in an old install folder; that copy is removable.
+    /// </summary>
+    public bool IsPermanent => Source == WidgetSource.BuiltIn && !Restore.LegacyIds.Contains(Id);
+
     public static List<WidgetManifest> DiscoverAll()
     {
-        var builtIn = Discover(AppPaths.WidgetsDir, WidgetSource.BuiltIn);
-        var community = Discover(AppPaths.CommunityDir, WidgetSource.Community)
-            .Where(c => builtIn.All(b => b.Id != c.Id));
-        return builtIn.Concat(community).ToList();
+        var all = Discover(AppPaths.CommunityDir, WidgetSource.Community);
+        var builtIn = Discover(AppPaths.WidgetsDir, WidgetSource.BuiltIn)
+            // A catalog copy of a legacy id replaces the stale built-in one left by an old install.
+            .Where(b => !Restore.LegacyIds.Contains(b.Id) || all.All(c => c.Id != b.Id));
+        var builtInList = builtIn.ToList();
+        var community = all.Where(c => builtInList.All(b => b.Id != c.Id));
+        return builtInList.Concat(community).ToList();
     }
 
     /// <summary>Parses widget.json text. Throws on invalid JSON; does not check the id.</summary>

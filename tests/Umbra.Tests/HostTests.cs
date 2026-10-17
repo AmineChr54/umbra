@@ -102,6 +102,14 @@ public class RestoreTests
     }
 
     [Fact]
+    public void A_stale_built_in_copy_of_a_legacy_widget_is_removable_but_other_built_ins_are_not()
+    {
+        Assert.False(new WidgetManifest { Id = "sp500", Source = WidgetSource.BuiltIn }.IsPermanent);
+        Assert.True(new WidgetManifest { Id = "clock", Source = WidgetSource.BuiltIn }.IsPermanent);
+        Assert.False(new WidgetManifest { Id = "clock", Source = WidgetSource.Community }.IsPermanent);
+    }
+
+    [Fact]
     public void Only_the_legacy_list_is_restored_never_other_ids_extras_or_disabled()
     {
         Assert.Empty(Restore.ToRestore(With(("clock", true), ("sp500#2", true), ("mine", true)), None));

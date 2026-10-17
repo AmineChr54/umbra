@@ -29,6 +29,17 @@ html, body { height: 100%; overflow: hidden; }
 .totals div { display: flex; flex-direction: column; }
 .totals b { font-family: var(--font-display); font-size: 15px; font-weight: 600; line-height: 1.2; }
 .totals span { font-size: 11px; color: var(--text-3); }
+[hidden] { display: none !important; }
+.gear { width: 24px; height: 24px; padding: 0; font-size: 15px; line-height: 1; color: var(--text-3); background: none; border: 0; border-radius: 7px; cursor: pointer; }
+.gear:hover, .pm.cfg-open .gear { color: var(--text); background: var(--surface-3); }
+.cfg { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--surface-3); border-radius: 9px; }
+.seg button { flex: 1; height: 24px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-3); background: none; border: 0; border-radius: 7px; cursor: pointer; }
+.seg button.on { color: #000; background: var(--accent); }
+.cfg label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-2); }
+.cfg label span { display: flex; align-items: center; gap: 6px; color: var(--text-3); }
+.cfg input { width: 54px; height: 22px; padding: 0 6px; font: inherit; font-size: 12px; color: var(--text); background: var(--surface-3); border: 1px solid var(--line); border-radius: 6px; text-align: right; }
+.cfg input:focus { outline: none; border-color: var(--accent); }
 .chart { display: flex; align-items: flex-end; gap: 5px; height: 52px; }
 .bar { width: 14px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
 .bar i { display: block; width: 100%; min-height: 2px; border-radius: 3px; background: rgba(255,255,255,0.16); }

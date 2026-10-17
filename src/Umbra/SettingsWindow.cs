@@ -353,7 +353,7 @@ sealed class SettingsWindow : Form
                 ["description"] = m.Description,
                 ["author"] = m.Author,
                 ["version"] = m.Version,
-                ["source"] = m.Source == WidgetSource.BuiltIn ? "builtin" : "community",
+                ["source"] = m.IsPermanent ? "builtin" : "community",
                 ["preview"] = m.Preview is null ? null
                     : m.Source == WidgetSource.BuiltIn ? WebHost.Url($"widgets/{m.Folder}/{m.Preview}")
                     : WebHost.CommunityUrl($"{m.Folder}/{m.Preview}"),
@@ -418,7 +418,7 @@ sealed class SettingsWindow : Form
             var wid = copy["id"]?.GetValue<string>() ?? "";
             var installed = _app.Manifests.FirstOrDefault(m => m.Id == wid);
             copy["installed"] = installed is not null;
-            copy["builtin"] = installed?.Source == WidgetSource.BuiltIn;
+            copy["builtin"] = installed?.IsPermanent == true;
             copy["installedVersion"] = installed?.Version;
             copy["updateAvailable"] = installed is { Source: WidgetSource.Community }
                 && Community.CompareVersions(copy["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;

@@ -11,6 +11,7 @@
     <header class="head">
       <span class="phase" id="phase">Focus</span>
       <span class="dots" id="dots" aria-label="Sessions in this cycle"></span>
+      <button class="gear" id="gear" data-no-drag title="Set times" aria-label="Set times">&#9881;</button>
     </header>
     <section class="dial">
       <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -26,12 +27,22 @@
       <button class="btn primary" id="toggle">Start</button>
       <button class="btn" id="skip">Skip</button>
     </div>
-    <section class="stats">
+    <section class="stats" id="stats">
       <div class="totals">
         <div><b class="num" id="today">0m</b><span>today</span></div>
         <div><b class="num" id="week">0m</b><span>last 7 days</span></div>
       </div>
       <div class="chart" id="chart" aria-label="Focus minutes, last 7 days"></div>
+    </section>
+    <section class="cfg" id="cfg" data-no-drag hidden>
+      <div class="seg" id="mode">
+        <button data-breaks="1">With breaks</button>
+        <button data-breaks="0">Countdown</button>
+      </div>
+      <label>Focus <span><input type="number" id="in-work" min="1" max="180" step="1"> min</span></label>
+      <label data-brk>Short break <span><input type="number" id="in-short" min="1" max="60" step="1"> min</span></label>
+      <label data-brk>Long break <span><input type="number" id="in-long" min="1" max="90" step="1"> min</span></label>
+      <label data-brk>Long break every <span><input type="number" id="in-every" min="2" max="10" step="1"> sessions</span></label>
     </section>
   </main>
   <script src="https://umbra.local/shared/umbra.js"></script>
