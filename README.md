@@ -14,9 +14,9 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 
 ## Features
 
-- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
-- **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
-- **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games.
+- **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent color or match the Windows accent live, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live.
+- **Edit mode:** turn it on from the tray menu or **My widgets** to arrange your desktop. Unlocked widgets get an outline and a corner handle: drag to move, drag the corner or Ctrl+scroll to resize. Widgets zoom like a web page, so text stays sharp at any size. A small "Editing widgets" pill at the top of each monitor with widgets has a snap switch (hold Shift to skip snapping) and **Done**; Esc on a clicked widget also leaves edit mode. Locked widgets don't move, resize or zoom, and edit mode is off again after a restart.
+- **Hotkeys, peek and layouts:** global hotkeys for edit mode, refresh, show/hide widgets, peek and Settings. Peek raises widgets for a few seconds. Save named layouts and switch between them. Widgets can hide during fullscreen apps and games. They also stop fetching while the PC is locked or the display is off (one refresh when you are back) and slow down 4x on Windows Energy Saver.
 - **Notifications and media:** with permission, a widget can show a Windows notification (`umbra.notify`) or read and control the current media session (`umbra.media`).
 - **Data and privacy:** the **Data & privacy** page shows what each widget can reach and store, and offers backup, restore, reset and a safe mode that turns community widgets off.
 - **Community widgets:** the **Browse** page lists every widget in this repo's `widgets/` folder, and installs, updates or removes them in one click. The catalog is also published as a static site (`node scripts/site.mjs`). See [CONTRIBUTING.md](CONTRIBUTING.md) to build one.
@@ -34,6 +34,8 @@ Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
 | **Browse:** install, update or remove community widgets in one click. | **About:** version, updates, source code and links to report issues or build a widget. |
 
+Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps to the Browse search, **Ctrl+1** to **Ctrl+7** switch pages, and the arrow keys move through the sidebar and the refresh interval. Switches and buttons have names for screen readers.
+
 ## Automate Umbra (CLI, scripts and AI agents)
 
 The installer puts `umbractl` on your PATH. Every command prints JSON and starts Umbra in the background if it isn't running.
@@ -48,15 +50,15 @@ umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, 
 umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
 umbractl safe-mode on                 # community widgets off, nothing deleted (also `Umbra.exe --safe`; not saved, next normal start restores)
 umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts delete Work`, `layouts`
-umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off); hold Shift while dragging to skip snapping
+umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off; --snap off = master switch, also on the edit-mode pill); hold Shift while dragging to skip snapping
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
-umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60)
+umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60; --energy-saver off stops widgets slowing down 4x on Windows Energy Saver)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)
 umbractl configure sp500 --refresh 300 --opacity 0.8   # per-widget refresh interval (or default) and opacity (or opaque)
 umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --show-on-ac on   # start hidden; show only in a time range / on AC (--show-from always clears)
 umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
-umbractl install clock                # community catalog: catalog, install, remove
+umbractl install clock                # community catalog: catalog, install, remove (an update that adds hosts, media, notifications or commands is refused until you repeat it with --accept-permissions)
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
 umbractl new my-widget                # scaffold a working widget and show it

@@ -49,14 +49,16 @@
     function tick() {
       const now = new Date();
       const o = umbra.options;
-      const parts = new Intl.DateTimeFormat([], {
-        hour: "2-digit", minute: "2-digit", second: o.seconds ? "2-digit" : undefined, hour12: !!o.hour12,
+      // "Follow Windows" uses Region > Time format; the old 12-hour toggle (hour12) still counts as 12-hour.
+      const h12 = o.timeFormat === "12" || (o.timeFormat !== "24" && (o.hour12 === true || umbra.hour12));
+      const parts = new Intl.DateTimeFormat(umbra.locale, {
+        hour: "2-digit", minute: "2-digit", second: o.seconds ? "2-digit" : undefined, hour12: h12,
       }).formatToParts(now);
       const main = parts.filter((p) => p.type !== "dayPeriod").map((p) => p.value).join("").trim();
       const period = parts.find((p) => p.type === "dayPeriod");
       document.getElementById("time").innerHTML = main + (period ? `<small>${period.value}</small>` : "");
       document.getElementById("date").textContent =
-        now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+        now.toLocaleDateString(umbra.locale, { weekday: "long", day: "numeric", month: "long" });
       fill.style.strokeDashoffset = C * (1 - (now.getSeconds() + now.getMilliseconds() / 1000) / 60);
     }
 
@@ -66,6 +68,7 @@
       window.chrome?.webview?.postMessage({ type: "rendered" });
     });
     umbra.onSettings(tick);
+    umbra.onTimeChanged?.(tick); // time zone or clock changed: show it now, not at the next second
   </script>
 </body>
 </html>

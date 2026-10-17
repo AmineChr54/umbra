@@ -4,7 +4,7 @@
   "name": "Weather",
   "description": "Temperature, condition and today's high and low for one city. Uses Open-Meteo, no API key.",
   "author": "AmineChr54",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 300,

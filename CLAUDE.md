@@ -24,6 +24,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
 | `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
 | `src/Umbra/Tray.cs` | Tray tooltip text and the "update ready" badge icon; `--restart` flag (the new process waits for the old one's single-instance mutex) |
+| `src/Umbra/EditPill.cs` | The host-drawn "Editing widgets · Snap · Done" pill per monitor in edit mode: its own non-activating, Progman-owned window just above the widgets (not a WebView, so never in a capture) |
 | `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
@@ -70,6 +71,10 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
   user, in the widget's data dir, with a scrubbed environment, a timeout (max 120 s) and a 1 MB output cap, never
   while the widget is disabled. Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
+- Updating an installed catalog widget never grants new access silently: `Community.PrepareAsync` diffs the downloaded manifest against the
+  installed one (`PermissionDiff`: hosts, system, media, notifications, commands) and `PendingInstall.Require` refuses until the user accepted.
+  Settings asks with a host-drawn box (`SettingsWindow.ConfirmNewAccess`), `umbractl install` needs `--accept-permissions`, and the MCP
+  server strips that argument. Any new install path (e.g. "Update all") must go through `PrepareAsync`/`InstallAsync` with `acceptPermissions` false by default.
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
   `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.
@@ -97,6 +102,10 @@ Use `umbractl capture <widget-id|settings:<page>> out.png`, then look at the PNG
 - Labels: `type: bug|feature|docs|widget|chore`, `area: host|widgets|settings|sdk|ai|installer|ci|docs`,
   `priority: p0|p1|p2`, plus `good first issue` and `help wanted`.
 - One issue per PR when possible, with `Closes #N` in the body. CI (`.github/workflows/ci.yml`) must pass.
+- Before starting an issue, skip it if it has an assignee; otherwise comment "I'm taking this" so work isn't duplicated.
+- Contributors without write access work from a fork (`gh repo fork AmineChr54/umbra --clone`, then
+  `gh pr create --repo AmineChr54/umbra`). They can't set labels, assignees or the board, and never merge; the
+  maintainer does that. A first-time contributor's CI waits for the maintainer to approve the run.
 - Releases: bump the version, tag `vX.Y.Z` and push. `release.yml` builds and attaches the installer
   (see `.claude/skills/release`).
 

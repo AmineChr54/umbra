@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Web.WebView2.Core;
@@ -118,14 +119,22 @@ sealed class WidgetWindow : Form
     /// <summary>WM_MOVING in edit mode: snap to the grid and to screen/widget edges unless Shift is held.</summary>
     unsafe void SnapMove(IntPtr lParam)
     {
-        if ((ModifierKeys & Keys.Shift) != 0) return;
-        var r = (Native.RECT*)lParam;
         var g = _app.Settings.General;
+        if (!Snap.IsActive(g) || (ModifierKeys & Keys.Shift) != 0) return;
+        var r = (Native.RECT*)lParam;
         var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
         var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
         var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
         var s2 = Snap.Move(rect, g.SnapGrid, g.SnapEdges, areas, others, (int)(10 * DeviceDpi / 96.0));
         r->Left = s2.Left; r->Top = s2.Top; r->Right = s2.Right; r->Bottom = s2.Bottom;
+    }
+
+    /// <summary>Esc while this widget has keyboard focus (it only gets it after a real press) ends edit mode.</summary>
+    void OnViewKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Escape || !_app.EditMode) return;
+        e.Handled = true;
+        _app.SetEditMode(false);
     }
 
     /// <summary>The resize loop may only produce sizes between 50 % and 300 % of the manifest size.</summary>
@@ -173,6 +182,7 @@ sealed class WidgetWindow : Form
         {
             await WebHost.InitAsync(_view, sandbox: Manifest);
             _view.CoreWebView2.WebMessageReceived += OnMessage;
+            _view.KeyDown += OnViewKeyDown; // WebView2 forwards accelerator keys (Esc included) here
             _view.CoreWebView2.Navigate(Manifest.PageUrl);
         }
         catch (Exception ex)
@@ -316,6 +326,7 @@ sealed class WidgetWindow : Form
                 RememberPosition();
                 _app.SaveSettings();
                 DesktopPin.SendToBottom(Handle);
+                _app.RefreshEditPills();
                 break;
 
             case "resize":
@@ -382,6 +393,11 @@ sealed class WidgetWindow : Form
 
             case "run":
                 await HandleRun(msg!);
+                break;
+
+            case "exitEdit":
+                // The page saw Esc. Only honoured while this window is the foreground one and Esc is physically down (a page can't fake it).
+                if (_app.EditMode && Native.GetForegroundWindow() == Handle && IsKeyDown(Native.VK_ESCAPE)) _app.SetEditMode(false);
                 break;
 
             case "pointer":
@@ -665,23 +681,40 @@ sealed class WidgetWindow : Form
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 
+    /// <summary>Tells the page that pausing or Energy Saver changed (#104); unlike <see cref="PushSettings"/> it leaves the window alone.</summary>
+    public void PushPower()
+    {
+        if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
+    }
+
     public void RefreshData()
     {
         if (_ready) Post(new JsonObject { ["type"] = "refresh" });
     }
 
+    /// <summary>The system clock or time zone changed: the SDK runs the page's onTimeChanged handlers, or its refresh handlers when it has none.</summary>
+    public void NotifyTimeChanged()
+    {
+        if (_ready) Post(TimeChange.Message());
+    }
+
     JsonObject SettingsPayload()
     {
         var ws = Ws;
+        var saver = _app.Power.EnergySaver && _app.Settings.General.SlowOnEnergySaver; // true = intervals are stretched
         return new JsonObject
         {
-            ["refreshSeconds"] = Prefs.EffectiveRefresh(ws, _app.Settings.General),
+            ["refreshSeconds"] = PowerPolicy.Refresh(Prefs.EffectiveRefresh(ws, _app.Settings.General), saver, true),
+            ["paused"] = _app.Power.Paused,
+            ["energySaver"] = saver,
             ["animations"] = Prefs.MotionOn(_app.Settings.General),
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
             ["locked"] = ws.Locked,
-            ["accent"] = Prefs.TryColor(_app.Settings.General.Accent, out var accent) ? accent : "",
+            ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
+            ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),
+            ["hour12"] = Prefs.Hour12Of(CultureInfo.CurrentCulture),
             ["editMode"] = _app.EditMode,
             ["options"] = ws.Options.DeepClone(),
         };

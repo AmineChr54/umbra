@@ -82,7 +82,7 @@ static void PrintHelp()
           layouts [list|save|apply|delete <name>]  saved arrangements of positions, sizes and enabled widgets
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
-          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--peek-seconds 1-60]
+          general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]
                   [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--default-scale 0.5-3]
                   [--log-level errors|normal|verbose] [--developer-mode on|off] [--hardware-acceleration on|off]
                   [--startup-delay 0-300] [--proxy system|none|https://host:port]
@@ -93,7 +93,8 @@ static void PrintHelp()
           refresh [id]                   fetch fresh data now
           reload                         re-scan widget folders
           catalog                        community widgets on GitHub
-          install|remove <id>            install/update or uninstall a community widget
+          install <id> [--accept-permissions]  install/update a community widget; an update that adds permissions needs the flag
+          remove <id>                    uninstall a community widget
           theme [id]                     show the active theme, or switch to an installed one (live)
           themes                         installed themes and the community theme catalog
           hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
