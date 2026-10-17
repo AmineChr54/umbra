@@ -110,6 +110,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.media.control(cmd)` | `play`, `pause`, `toggle`, `next` or `previous`; resolves true when the session accepted it. Needs `"control"` and a physical click on the widget within the last 2 s |
 | `umbra.run(commandId, params?)` | Runs a command declared in `permissions.commands` and resolves `{ exitCode, stdout, stderr, timedOut, truncated, durationMs }`. Rejects when the command isn't declared, isn't approved yet, or `params` are invalid. See below |
 | `umbra.fetchText(url)` | Like `fetchJson`, but resolves with the response body as a string (up to 2 MB), for Markdown, CSV or HTML |
+| `umbra.status` | Data freshness, tracked from every `fetchJson`/`fetchText`: `state` (`"none"`, `"live"`, `"stale"`, `"offline"`), `lastOk` (Date or `null`), `failures`, `ok(at?)`, `failed(err)`, `onChange(fn)`. See [Freshness and offline](#freshness-and-offline) |
 | `umbra.store.get(key, fallback?)` | Promise of this widget's saved value for `key` (any JSON), or `fallback` when it was never set |
 | `umbra.store.set(key, value)` | Saves a JSON value. Rejects when the widget's data would pass 1 MB |
 | `umbra.store.remove(key)`, `umbra.store.keys()` | Delete one key; list the keys |
@@ -186,6 +187,27 @@ See `widgets/todo` for an example.
 
 **Motion**: `<html data-motion="on|off">` reflects the user's Animations setting and Windows' reduced-motion
 preference. `umbra.css` turns off CSS animations when it is `off`.
+
+## Freshness and offline
+
+A widget that fetches should tell the user when its numbers are old. The SDK does the bookkeeping, so every widget looks the same:
+
+![Live, stale and offline states of the status dot](umbra-status.png)
+
+- Each `umbra.fetchJson` / `umbra.fetchText` outcome is recorded (HTTP errors and timeouts are failures). Nothing to call.
+- `state` is `live` after a success, `stale` when the data is older than 3x the refresh interval, and `offline` after two
+  failures in a row, or a failure when nothing has loaded since the widget started. `none` until the first fetch finishes.
+- `<html data-stale>` is set while the state is `stale` or `offline`; dim your numbers with CSS, e.g.
+  `html[data-stale] .price { opacity: 0.55; }` (keep it to `opacity`; the transition is off with `data-motion="off"`).
+- `<umbra-status></umbra-status>` is an optional element, styled by `umbra.css` with tokens: a small dot (`--up` live, `--text-3`
+  stale, a ring offline). Hover shows "Updated 3 min ago"; offline keeps "Offline · last data 10:42" visible. Put it in a
+  footer; use `placement="below-end"` in a top-right header so the hover text opens downwards. It is hidden while the state is `none`.
+- Override when data arrives some other way: `umbra.status.failed(err)` for a response you can't use (a fetch's own Error is only
+  counted once), and `umbra.status.ok(new Date(savedAt))` to show data restored from `umbra.store` as "last data" at startup.
+- `umbra.status.onChange(fn)` calls `fn(state)` when the state changes.
+
+To see the offline state, start Umbra from a shell with `UMBRA_SIMULATE_OFFLINE=1`: every host fetch fails. Widgets that depend on a
+newer SDK than the installed app should call it as `umbra.status?.failed(err)`.
 
 ## umbra.css tokens
 

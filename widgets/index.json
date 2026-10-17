@@ -102,7 +102,7 @@
       "name": "Crypto price",
       "description": "Price, 24h change and a sparkline for any coin on CoinGecko.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "api.coingecko.com"
@@ -138,7 +138,7 @@
       "name": "Exchange rates",
       "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "api.frankfurter.dev"
@@ -294,7 +294,7 @@
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
       "author": "AmineChr54",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "query1.finance.yahoo.com"
@@ -384,7 +384,7 @@
       "name": "Transit departures",
       "description": "Live departures for one Berlin stop (BVG and VBB) with delays. Uses the free v6.bvg.transport.rest API, no key.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "v6.bvg.transport.rest"
@@ -402,7 +402,7 @@
       "name": "Weather",
       "description": "Temperature, condition and today's high and low for one city. Uses Open-Meteo, no API key.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "preview": "preview.png",
       "hosts": [
         "api.open-meteo.com",

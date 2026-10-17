@@ -26,8 +26,6 @@ function opts() {
   };
 }
 
-const time = (d) => d.toLocaleTimeString(umbra.locale, { hour: "2-digit", minute: "2-digit", hour12: umbra.hour12 });
-
 /** Currency string; small prices get more decimals so they don't read as 0.00. */
 function money(v, cur) {
   const digits = cur === "jpy" ? (v < 1 ? 4 : 0) : v >= 1 ? 2 : v >= 0.01 ? 4 : 6;
@@ -58,13 +56,14 @@ async function load() {
       cap: c.market_cap, spark: all, currency: o.currency, range: o.range,
       fetchedAt: new Date(),
     };
-    el.card.classList.remove("stale", "empty");
+    el.card.classList.remove("empty");
     render();
   } catch (err) {
-    el.card.classList.add("stale");
+    umbra.status?.failed(err); // also covers a rate-limit or unknown-coin response
     if (!current) el.card.classList.add("empty");
     if (!current) { el.name.textContent = o.coin; el.ticker.textContent = ""; }
-    el.updated.textContent = current ? `Offline, retrying  ·  last ${time(current.fetchedAt)}` : `Can't load: ${err.message}`;
+    // With data on screen the <umbra-status> dot says it's old; without any, say why.
+    el.updated.textContent = current ? "" : `Can't load: ${err.message}`;
     if (!renderedOnce) { renderedOnce = true; umbra.rendered(); }
   }
 }
@@ -96,7 +95,7 @@ function render() {
   shownPrice = d.price;
   el.pct.textContent = `${sign}${umbra.fmt(Math.abs(pct))}%`;
   el.chg.textContent = `${sign}${money(Math.abs(change), d.currency)} ${r.delta}`;
-  el.updated.textContent = `Updated ${time(d.fetchedAt)}`;
+  el.updated.textContent = "";
 
   drawChart();
   if (!renderedOnce) { renderedOnce = true; umbra.rendered(); }
