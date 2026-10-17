@@ -9,7 +9,7 @@ namespace Umbra;
 sealed class WidgetWindow : Form
 {
     readonly App _app;
-    readonly WebView2 _view = new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.Black };
+    WebView2 _view = NewView();
     bool _ready;
     readonly TaskCompletionSource _readyTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     readonly TaskCompletionSource _renderedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -171,14 +171,88 @@ sealed class WidgetWindow : Form
         base.OnLoad(e);
         try
         {
-            await WebHost.InitAsync(_view, sandbox: Manifest);
-            _view.CoreWebView2.WebMessageReceived += OnMessage;
-            _view.CoreWebView2.Navigate(Manifest.PageUrl);
+            await StartViewAsync(Manifest.PageUrl);
         }
         catch (Exception ex)
         {
             Log.Write($"[{Instance}] WebView2 init failed: {ex}");
         }
+    }
+
+    static WebView2 NewView() => new() { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.Black };
+
+    /// <summary>Initialises the current WebView2 (sandbox, bridge, crash handler) and opens <paramref name="url"/>.</summary>
+    async Task StartViewAsync(string url)
+    {
+        _envGeneration = WebHost.EnvironmentGeneration;
+        await WebHost.InitAsync(_view, sandbox: Manifest);
+        _view.CoreWebView2.WebMessageReceived += OnMessage;
+        _view.CoreWebView2.ProcessFailed += OnProcessFailed;
+        _view.CoreWebView2.Navigate(url);
+    }
+
+    // ---------- crash recovery (policy in CrashRecovery) ----------
+
+    readonly CrashRecovery _recovery = new();
+    int _envGeneration;
+    bool _recovering, _stopped;
+
+    /// <summary>
+    /// A WebView2 process died. Renderer gone or hung: reload (at most 3 times per 10 minutes, then the "stopped working"
+    /// page). Browser process gone: build a new environment and view first. Other kinds are only logged.
+    /// </summary>
+    async void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        var reaction = CrashRecovery.Classify(e.ProcessFailedKind);
+        Log.Write($"[{Instance}] {CrashRecovery.LogMarker}: {e.ProcessFailedKind} ({e.Reason}, exit code {e.ExitCode})");
+        if (reaction == CrashReaction.Ignore || _recovering || _stopped || !Alive) return;
+        _recovering = true;
+        try
+        {
+            var giveUp = !_recovery.TryAcquire(System.Environment.TickCount64);
+            _ready = false; // the reloaded page says "ready" again
+            if (giveUp)
+            {
+                _stopped = true;
+                CrashRecovery.SetStopped(Instance, true);
+                Log.Write($"[{Instance}] widget keeps failing ({CrashRecovery.MaxRecoveries} recoveries in {CrashRecovery.Window.TotalMinutes:0} min), not reloading again");
+            }
+            else Log.Write($"[{Instance}] reloading widget ({_recovery.Used}/{CrashRecovery.MaxRecoveries})");
+
+            await Task.Delay(giveUp ? 0 : 500); // let the dead process finish going away
+            if (!Alive) return;
+            var url = giveUp ? WebHost.Url("shared/crashed.html") : Manifest.PageUrl;
+            if (reaction == CrashReaction.RecreateBrowser) await RecreateViewAsync(url);
+            else _view.CoreWebView2.Navigate(url);
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"[{Instance}] widget recovery failed: {ex.Message}");
+        }
+        finally { _recovering = false; }
+    }
+
+    /// <summary>The browser process died, so the WebView2 control is unusable: replace the environment (once, however many windows saw it) and the control.</summary>
+    async Task RecreateViewAsync(string url)
+    {
+        WebHost.RecreateEnvironment(_envGeneration);
+        var old = _view;
+        Controls.Remove(old);
+        try { old.Dispose(); } catch (Exception ex) { Log.Write($"[{Instance}] disposing the crashed WebView2 failed: {ex.Message}"); }
+        _view = NewView();
+        Controls.Add(_view);
+        ApplyZoom(Ws.Scale);
+        await StartViewAsync(url);
+    }
+
+    /// <summary>The Reload button on the "stopped working" page (only honoured while that page is showing).</summary>
+    void ReloadAfterStop()
+    {
+        if (!_stopped || _recovering || !Alive || _view.CoreWebView2 is null) return;
+        _stopped = false;
+        CrashRecovery.SetStopped(Instance, false);
+        _recovery.Reset();
+        _view.CoreWebView2.Navigate(Manifest.PageUrl);
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
@@ -308,6 +382,10 @@ sealed class WidgetWindow : Form
                 break;
 
 
+            case "reload":
+                ReloadAfterStop();
+                break;
+
             case "drag":
                 if (Ws.Locked || _resizing) return;
                 Native.ReleaseCapture();
@@ -418,6 +496,7 @@ sealed class WidgetWindow : Form
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _closing.Cancel();
+        CrashRecovery.SetStopped(Instance, false);
         base.OnFormClosed(e);
     }
 

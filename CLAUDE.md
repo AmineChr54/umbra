@@ -23,6 +23,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
 | `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); `CaptureAsync` |
+| `src/Umbra/CrashRecovery.cs`, `shared/crashed.html` | `CoreWebView2.ProcessFailed` policy: renderer exit/hang reloads (max 3 per 10 min), then the host-owned "This widget stopped working" page (Reload button); browser-process exit recreates the environment and view; Data & privacy shows the count |
 | `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
