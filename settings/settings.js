@@ -541,6 +541,14 @@ function applyTheme(css) {
   if (el.textContent !== css) el.textContent = css;
 }
 
+// The accent from Appearance (a picked color, or the Windows accent) is one more :root rule, applied after the theme.
+function applyAccent(css) {
+  let el = document.getElementById("umbra-accent");
+  if (!css) { el && el.remove(); return; }
+  if (!el) { el = document.createElement("style"); el.id = "umbra-accent"; document.head.append(el); }
+  if (el.textContent !== css) el.textContent = css;
+}
+
 function loadThemes() {
   themes = null;
   themesError = null;
@@ -623,6 +631,7 @@ bridge && bridge.addEventListener("message", (e) => {
       $("#ver").textContent = `Version ${m.version}`;
       $("#aboutVer").textContent = `Version ${m.version}`;
       applyTheme(m.themeCss);
+      applyAccent(m.accentCss);
       renderGeneral();
       if (!recording) renderHotkeys();
       if (themes) renderThemes();
