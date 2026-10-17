@@ -1,0 +1,262 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "prayer-times",
+  "name": "Prayer Times",
+  "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated times from the Aladhan API (no key); tune the method and per-prayer minutes to match your mosque.",
+  "author": "Yacine-DH",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "width": 300,
+  "height": 380,
+  "defaultPosition": {
+    "x": 340,
+    "y": 24
+  },
+  "permissions": {
+    "hosts": [
+      "api.aladhan.com"
+    ],
+    "notifications": true
+  },
+  "options": {
+    "city": {
+      "label": "City",
+      "type": "text",
+      "default": "Berlin",
+      "hint": "City name in English, e.g. Paris or Birmingham"
+    },
+    "country": {
+      "label": "Country",
+      "type": "text",
+      "default": "Germany",
+      "hint": "Country name or ISO code, e.g. France or FR"
+    },
+    "method": {
+      "label": "Calculation method",
+      "type": "select",
+      "default": "3",
+      "choices": [
+        {
+          "value": "0",
+          "label": "Shia Ithna-Ashari, Qum"
+        },
+        {
+          "value": "1",
+          "label": "University of Islamic Sciences, Karachi"
+        },
+        {
+          "value": "2",
+          "label": "ISNA (North America)"
+        },
+        {
+          "value": "3",
+          "label": "Muslim World League"
+        },
+        {
+          "value": "4",
+          "label": "Umm Al-Qura, Makkah"
+        },
+        {
+          "value": "5",
+          "label": "Egyptian General Authority"
+        },
+        {
+          "value": "7",
+          "label": "Tehran, Geophysics Institute"
+        },
+        {
+          "value": "8",
+          "label": "Gulf Region"
+        },
+        {
+          "value": "9",
+          "label": "Kuwait"
+        },
+        {
+          "value": "10",
+          "label": "Qatar"
+        },
+        {
+          "value": "11",
+          "label": "Singapore (MUIS)"
+        },
+        {
+          "value": "12",
+          "label": "France (UOIF)"
+        },
+        {
+          "value": "13",
+          "label": "Turkey (Diyanet)"
+        },
+        {
+          "value": "14",
+          "label": "Russia (Spiritual Administration)"
+        },
+        {
+          "value": "15",
+          "label": "Moonsighting Committee"
+        },
+        {
+          "value": "16",
+          "label": "Dubai"
+        },
+        {
+          "value": "17",
+          "label": "Malaysia (JAKIM)"
+        },
+        {
+          "value": "18",
+          "label": "Tunisia"
+        },
+        {
+          "value": "19",
+          "label": "Algeria"
+        },
+        {
+          "value": "20",
+          "label": "Indonesia (Kemenag)"
+        },
+        {
+          "value": "21",
+          "label": "Morocco"
+        },
+        {
+          "value": "22",
+          "label": "Lisbon"
+        },
+        {
+          "value": "23",
+          "label": "Jordan"
+        }
+      ],
+      "hint": "Use the method your mosque follows."
+    },
+    "school": {
+      "label": "Asr calculation",
+      "type": "select",
+      "default": "0",
+      "choices": [
+        {
+          "value": "0",
+          "label": "Standard (Shafi, Maliki, Hanbali)"
+        },
+        {
+          "value": "1",
+          "label": "Hanafi"
+        }
+      ]
+    },
+    "timeFormat": {
+      "label": "Time format",
+      "type": "select",
+      "default": "auto",
+      "choices": [
+        {
+          "value": "auto",
+          "label": "Follow Windows (24-hour if unknown)"
+        },
+        {
+          "value": "24",
+          "label": "24-hour"
+        },
+        {
+          "value": "12",
+          "label": "12-hour"
+        }
+      ]
+    },
+    "hijri": {
+      "label": "Show Hijri date",
+      "type": "toggle",
+      "default": true
+    },
+    "adjustFajr": {
+      "label": "Fajr adjustment (min)",
+      "type": "number",
+      "default": 0,
+      "min": -30,
+      "max": 30,
+      "step": 1,
+      "hint": "Minutes added to the calculated time to match your mosque. Negative = earlier."
+    },
+    "adjustDhuhr": {
+      "label": "Dhuhr adjustment (min)",
+      "type": "number",
+      "default": 0,
+      "min": -30,
+      "max": 30,
+      "step": 1
+    },
+    "adjustAsr": {
+      "label": "Asr adjustment (min)",
+      "type": "number",
+      "default": 0,
+      "min": -30,
+      "max": 30,
+      "step": 1
+    },
+    "adjustMaghrib": {
+      "label": "Maghrib adjustment (min)",
+      "type": "number",
+      "default": 0,
+      "min": -30,
+      "max": 30,
+      "step": 1
+    },
+    "adjustIsha": {
+      "label": "Isha adjustment (min)",
+      "type": "number",
+      "default": 0,
+      "min": -30,
+      "max": 30,
+      "step": 1
+    },
+    "iqamaFajr": {
+      "label": "Fajr iqama delay (min)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 90,
+      "step": 1,
+      "hint": "Minutes from adhan to iqama (jama’ah). 0 hides the iqama time."
+    },
+    "iqamaDhuhr": {
+      "label": "Dhuhr iqama delay (min)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 90,
+      "step": 1
+    },
+    "iqamaAsr": {
+      "label": "Asr iqama delay (min)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 90,
+      "step": 1
+    },
+    "iqamaMaghrib": {
+      "label": "Maghrib iqama delay (min)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 90,
+      "step": 1
+    },
+    "iqamaIsha": {
+      "label": "Isha iqama delay (min)",
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 90,
+      "step": 1
+    },
+    "notify": {
+      "label": "Notify at adhan",
+      "type": "toggle",
+      "default": false,
+      "hint": "Also switch on Allow notifications for this widget in Umbra Settings."
+    }
+  }
+}
