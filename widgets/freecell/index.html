@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FreeCell</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="freecell.css">
+</head>
+<body>
+  <main class="fc" id="app">
+    <header class="head">
+      <span class="title">FreeCell</span>
+      <span class="game num" id="game"></span>
+      <span class="spacer"></span>
+      <span class="info num" id="moves">0 moves</span>
+    </header>
+    <section class="board" id="board" data-no-drag aria-label="FreeCell board"></section>
+    <footer class="foot">
+      <button class="btn" id="undo" data-no-drag>Undo</button>
+      <button class="btn" id="restart" data-no-drag title="Replay this deal from the start">Restart</button>
+      <button class="btn" id="new" data-no-drag>New game</button>
+      <input class="num pick" id="pick" data-no-drag type="text" inputmode="numeric" maxlength="7" placeholder="Game #" aria-label="Game number">
+      <button class="btn" id="play" data-no-drag>Play</button>
+      <span class="spacer"></span>
+      <span class="stats num" id="stats"></span>
+    </footer>
+    <section class="win" id="win" hidden>
+      <div class="bits" id="bits" aria-hidden="true"></div>
+      <div class="msg" data-no-drag>
+        <div class="big">You won!</div>
+        <div class="line num" id="win-line"></div>
+        <div class="best" id="win-best"></div>
+        <div class="acts">
+          <button class="btn accent" id="win-new">New game</button>
+          <button class="btn" id="win-close">Close</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="cards.js"></script>
+  <script src="freecell-rules.js"></script>
+  <script src="freecell.js"></script>
+</body>
+</html>

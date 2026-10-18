@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "freecell",
+  "name": "FreeCell",
+  "description": "FreeCell on true black: eight columns, four free cells, click or drag cards and whole sequences, double-click to send a card home, unlimited undo, numbered deals and win streaks. Your game survives restarts.",
+  "author": "Yacine-DH",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "width": 560,
+  "height": 560,
+  "permissions": { "hosts": [] },
+  "options": {
+    "autoMove": { "label": "Auto-move safe cards to the foundations", "type": "toggle", "default": true,
+                  "hint": "After each move, sends cards home when no card on the board can still need them as a base." }
+  }
+}
