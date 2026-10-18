@@ -134,6 +134,24 @@
       ]
     },
     {
+      "id": "freecell",
+      "name": "FreeCell",
+      "description": "FreeCell on true black: eight columns, four free cells, click or drag cards and whole sequences, double-click to send a card home, unlimited undo, numbered deals and win streaks. Your game survives restarts.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "cards.js",
+        "freecell-rules.js",
+        "freecell.css",
+        "freecell.js",
+        "index.html",
+        "preview.png",
+        "widget.json"
+      ]
+    },
+    {
       "id": "fx-rates",
       "name": "Exchange rates",
       "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
@@ -327,6 +345,24 @@
       ]
     },
     {
+      "id": "solitaire",
+      "name": "Solitaire",
+      "description": "Klondike solitaire on true black: click or drag cards, double-click to send one to a foundation, draw 1 or 3, unlimited undo, numbered deals, auto-complete and win stats. Your game survives restarts.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "cards.js",
+        "index.html",
+        "klondike.js",
+        "preview.png",
+        "solitaire.css",
+        "solitaire.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "sp500",
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
@@ -342,6 +378,24 @@
         "preview.png",
         "sp500.css",
         "sp500.js",
+        "widget.json"
+      ]
+    },
+    {
+      "id": "spider",
+      "name": "Spider",
+      "description": "Spider solitaire on true black: build K to A runs in one, two or four suits, click or drag whole runs, deal a row from the stock, hints, unlimited undo, numbered deals and win stats. Your game survives restarts.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": "preview.png",
+      "hosts": [],
+      "files": [
+        "cards.js",
+        "index.html",
+        "preview.png",
+        "spider-rules.js",
+        "spider.css",
+        "spider.js",
         "widget.json"
       ]
     },
