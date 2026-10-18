@@ -1,0 +1,72 @@
+html, body { height: 100%; overflow: hidden; }
+[hidden] { display: none !important; }
+button, input { font: inherit; }
+
+.fc { position: relative; height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+
+/* Title strip: the only part of the widget that drags the window. */
+.head { flex: none; height: 30px; display: flex; align-items: center; gap: 12px; padding: 0 14px; }
+.title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.game { font-size: 12px; color: var(--text-3); }
+.info { font-size: 12px; color: var(--text-2); }
+.info.stuck { color: var(--down); font-weight: 600; }
+.spacer { flex: 1; }
+
+/* Board: cards are absolutely placed by freecell.js with transforms. */
+.board { position: relative; flex: 1; min-height: 0; touch-action: none; }
+
+.slot { position: absolute; left: 0; top: 0; border: 1px dashed var(--line-strong); border-radius: var(--radius-s); display: grid; place-content: center; font-family: var(--font-display); font-size: 20px; color: var(--text-3); pointer-events: none; }
+.slot.col { border-color: var(--line); }
+.slot.cell { border-style: solid; border-color: var(--line); background: var(--surface-1); }
+
+.card { position: absolute; left: 0; top: 0; border-radius: var(--radius-s); cursor: pointer; touch-action: none;
+        transition: transform calc(150ms * var(--motion-scale, 1)) var(--ease-out); will-change: transform; }
+.card.drag { transition: none; cursor: grabbing; filter: drop-shadow(0 4px 8px #000); }
+.board.instant .card { transition: none; }
+
+
+.face { position: absolute; inset: 0; border-radius: inherit; background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 1px #000; color: var(--text); font-family: var(--font-display); }
+.card.red .face { color: var(--down); }
+.card.sel .face { box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 2px var(--accent); }
+.card.sel .face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-soft); }
+
+.corner { position: absolute; display: flex; align-items: baseline; gap: 1px; font-size: 13px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.corner.tl { left: 5px; top: 4px; }
+.corner.br { right: 5px; bottom: 4px; transform: rotate(180deg); }
+.corner i { font-style: normal; font-size: 13px; font-weight: 400; }
+.mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+.mid .pip { font-size: 28px; }
+.mid .rk { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+.mid .sm { font-size: 16px; }
+
+.foot { flex: none; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid var(--line); }
+.btn { height: 26px; padding: 0 12px; font-size: 12px; font-weight: 600; color: var(--text); background: var(--surface-3); border: 0; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.btn:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, var(--surface-3)); }
+#restart { min-width: 68px; }
+#new { min-width: 82px; }
+.btn:disabled { color: var(--text-3); cursor: default; }
+.btn.accent { color: #000; background: var(--accent); }
+.btn.accent:hover:not(:disabled) { background: var(--accent-strong); }
+.btn.warn { color: #000; background: var(--down); }
+.pick { width: 74px; height: 26px; padding: 0 8px; font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 8px; outline: none; }
+.pick::placeholder { color: var(--text-3); }
+.pick:focus { border-color: var(--accent); }
+.pick.bad { border-color: var(--down); }
+.stats { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-3); }
+
+/* Win screen */
+.win { position: absolute; inset: 0; z-index: 500; display: grid; place-items: center; background: rgba(0, 0, 0, 0.9); overflow: hidden; }
+.bits { position: absolute; inset: 0; pointer-events: none; }
+.bit { position: absolute; font-family: var(--font-display); opacity: 0.35; animation: drift calc(2.6s * var(--motion-scale, 1)) var(--ease-out) both; }
+.bit.red { color: var(--down); }
+@keyframes drift {
+  from { transform: translateY(48px) rotate(-14deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 0.35; }
+}
+.msg { position: relative; text-align: center; }
+.big { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; animation: pop calc(500ms * var(--motion-scale, 1)) var(--ease-out) both; }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.line { margin-top: 6px; font-size: 13px; color: var(--text-2); }
+.best { min-height: 16px; margin-top: 4px; font-size: 12px; color: var(--accent-strong); }
+.acts { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.acts .btn { height: 30px; padding: 0 18px; font-size: 13px; }
