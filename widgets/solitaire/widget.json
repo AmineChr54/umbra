@@ -6,6 +6,7 @@
   "author": "Yacine-DH",
   "version": "1.0.0",
   "entry": "index.html",
+  "preview": "preview.png",
   "width": 480,
   "height": 540,
   "permissions": { "hosts": [] },
