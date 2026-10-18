@@ -1,0 +1,75 @@
+html, body { height: 100%; overflow: hidden; }
+[hidden] { display: none !important; }
+button { font: inherit; }
+
+.sol { position: relative; height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+
+/* Title strip: the only part of the widget that drags the window. */
+.head { flex: none; height: 30px; display: flex; align-items: center; gap: 12px; padding: 0 14px; }
+.title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
+.game { font-size: 12px; color: var(--text-3); }
+.info { font-size: 12px; color: var(--text-2); }
+.spacer { flex: 1; }
+
+/* Board: cards are absolutely placed by solitaire.js with transforms. */
+.board { position: relative; flex: 1; min-height: 0; touch-action: none; }
+
+.slot { position: absolute; left: 0; top: 0; border: 1px dashed var(--line-strong); border-radius: var(--radius-s); display: grid; place-content: center; font-family: var(--font-display); font-size: 20px; color: var(--text-3); pointer-events: none; }
+.slot.recycle { border-style: solid; color: var(--text-2); font-size: 26px; }
+
+.card { position: absolute; left: 0; top: 0; border-radius: var(--radius-s); cursor: default; touch-action: none;
+        transition: transform calc(150ms * var(--motion-scale, 1)) var(--ease-out); will-change: transform; }
+.card.drag { transition: none; cursor: grabbing; filter: drop-shadow(0 4px 8px #000); }
+.board.instant .card { transition: none; }
+.card.up { cursor: pointer; }
+
+.face, .back { position: absolute; inset: 0; border-radius: inherit; }
+.face { display: none; background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 1px #000; color: var(--text); font-family: var(--font-display); }
+.card.up .face { display: block; }
+.card.up .back { display: none; }
+.card.red .face { color: var(--down); }
+.card.sel .face { box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 2px var(--accent); }
+.card.sel .face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent-soft); }
+
+.corner { position: absolute; display: flex; align-items: baseline; gap: 1px; font-size: 13px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.corner.tl { left: 5px; top: 4px; }
+.corner.br { right: 5px; bottom: 4px; transform: rotate(180deg); }
+.corner i { font-style: normal; font-size: 13px; font-weight: 400; }
+.mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+.mid .pip { font-size: 30px; }
+.mid .rk { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+.mid .sm { font-size: 17px; }
+
+/* Own card back: an accent lattice inside a framed border. */
+.back { background:
+          repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--accent) 38%, transparent) 5px 6px),
+          repeating-linear-gradient(-45deg, transparent 0 5px, color-mix(in srgb, var(--accent) 38%, transparent) 5px 6px),
+          var(--surface-1);
+        box-shadow: inset 0 0 0 1px var(--line-strong), 0 0 0 1px #000; }
+.back::after { content: ""; position: absolute; inset: 4px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent); }
+
+.foot { flex: none; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid var(--line); }
+.btn { height: 26px; padding: 0 12px; font-size: 12px; font-weight: 600; color: var(--text); background: var(--surface-3); border: 0; border-radius: 8px; cursor: pointer; }
+.btn:hover:not(:disabled) { background: #1e1e25; }
+.btn:disabled { color: var(--text-3); cursor: default; }
+.btn.accent { color: #000; background: var(--accent); }
+.btn.accent:hover:not(:disabled) { background: var(--accent-strong); }
+.btn.warn { color: #000; background: var(--down); }
+.stats { font-size: 12px; color: var(--text-3); }
+
+/* Win screen */
+.win { position: absolute; inset: 0; z-index: 500; display: grid; place-items: center; background: rgba(0, 0, 0, 0.9); overflow: hidden; }
+.bits { position: absolute; inset: 0; pointer-events: none; }
+.bit { position: absolute; font-family: var(--font-display); opacity: 0.35; animation: drift calc(2.6s * var(--motion-scale, 1)) var(--ease-out) both; }
+.bit.red { color: var(--down); }
+@keyframes drift {
+  from { transform: translateY(48px) rotate(-14deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 0.35; }
+}
+.msg { position: relative; text-align: center; }
+.big { font-family: var(--font-display); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; animation: pop calc(500ms * var(--motion-scale, 1)) var(--ease-out) both; }
+@keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.line { margin-top: 6px; font-size: 13px; color: var(--text-2); }
+.best { min-height: 16px; margin-top: 4px; font-size: 12px; color: var(--accent-strong); }
+.acts { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.acts .btn { height: 30px; padding: 0 18px; font-size: 13px; }

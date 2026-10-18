@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "solitaire",
+  "name": "Solitaire",
+  "description": "Klondike solitaire on true black: click or drag cards, double-click to send one to a foundation, draw 1 or 3, unlimited undo, numbered deals, auto-complete and win stats. Your game survives restarts.",
+  "author": "Yacine-DH",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "width": 480,
+  "height": 540,
+  "permissions": { "hosts": [] },
+  "options": {
+    "draw": { "label": "Cards drawn from the stock", "type": "select", "default": "1",
+              "choices": [ { "value": "1", "label": "Draw 1" }, { "value": "3", "label": "Draw 3" } ],
+              "hint": "Applies to the next new game (or right away if you haven't moved yet)." },
+    "autoComplete": { "label": "Auto-complete when all cards are face up", "type": "toggle", "default": true,
+                      "hint": "Plays the remaining cards to the foundations. Off shows a Finish button instead." }
+  }
+}
