@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Spider</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="spider.css">
+</head>
+<body>
+  <main class="spi" id="app">
+    <header class="head">
+      <span class="title">Spider</span>
+      <span class="game num" id="game"></span>
+      <span class="spacer"></span>
+      <span class="info num" id="runs">Runs 0/8</span>
+      <span class="info num" id="moves">0 moves</span>
+      <span class="info num" id="time">0:00</span>
+    </header>
+    <section class="board" id="board" data-no-drag aria-label="Spider board">
+      <div class="note" id="note"></div>
+    </section>
+    <footer class="foot">
+      <button class="btn" id="undo" data-no-drag>Undo</button>
+      <button class="btn" id="hint" data-no-drag>Hint</button>
+      <button class="btn" id="new" data-no-drag>New game</button>
+      <span class="spacer"></span>
+      <span class="stats num" id="stats"></span>
+    </footer>
+    <section class="win" id="win" hidden>
+      <div class="bits" id="bits" aria-hidden="true"></div>
+      <div class="msg" data-no-drag>
+        <div class="big">You won!</div>
+        <div class="line num" id="win-line"></div>
+        <div class="best" id="win-best"></div>
+        <div class="acts">
+          <button class="btn accent" id="win-new">New game</button>
+          <button class="btn" id="win-close">Close</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="cards.js"></script>
+  <script src="spider-rules.js"></script>
+  <script src="spider.js"></script>
+</body>
+</html>
