@@ -1,48 +1,24 @@
 name: Widgets
 
-# Pull requests: validate every widget and theme folder.
-# Merges to main: regenerate widgets/index.json and themes/index.json so new widgets and themes appear in Umbra's Browse page.
+# Pull requests: validate every widget and theme folder, check that the committed indexes
+# (widgets/index.json, themes/index.json) match them, and check that changed folders bump their version.
+# Nothing is committed from CI: main is protected, so PR authors run `node scripts/catalog.mjs` and commit the result.
 on:
   pull_request:
     paths: ["widgets/**", "themes/**", "scripts/catalog.mjs", "scripts/check-bump.mjs"]
-  push:
-    branches: [main]
-    paths: ["widgets/**", "themes/**", "scripts/catalog.mjs"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - name: Validate widgets
-        run: node scripts/catalog.mjs
+      - name: Validate widgets and themes, and check the indexes are up to date
+        run: node scripts/catalog.mjs --check
       - name: Changed widgets and themes bump their version
         run: node scripts/check-bump.mjs origin/${{ github.base_ref }}
-
-  publish-catalog:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - name: Build catalog
-        run: node scripts/catalog.mjs
-      - name: Commit index.json if it changed
-        run: |
-          if git diff --quiet -- widgets/index.json themes/index.json; then
-            echo "Catalog already up to date"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add widgets/index.json themes/index.json
-            git commit -m "Update widget catalog"
-            git push
-          fi

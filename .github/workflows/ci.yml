@@ -33,8 +33,8 @@ jobs:
       - name: Version consistency
         run: node scripts/check-versions.mjs
       - name: Validate widgets
-        # Validation only: widgets/index.json is regenerated on merge by widgets.yml, so PRs need not touch it.
-        run: node scripts/catalog.mjs
+        # Fails if widgets/index.json or themes/index.json is stale: PR authors run `node scripts/catalog.mjs` and commit the result.
+        run: node scripts/catalog.mjs --check
 
   smoke:
     # End to end: start the real app with a throwaway data folder and drive it with umbractl (scripts/smoke.ps1).

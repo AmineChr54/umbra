@@ -16,7 +16,7 @@ Run `.claude/skills/release-checklist` first: it produces `dist/release-checklis
 2. **Bump** `<Version>` in `Directory.Build.props` and the `#define AppVersion` default in `installer/Umbra.iss`.
    `build.ps1` reads the props file, but CI's `node scripts/check-versions.mjs` fails if the two differ.
 3. **Check** `dotnet build Umbra.slnx -warnaserror`, `dotnet test Umbra.slnx`, `node scripts/check-versions.mjs` and `node scripts/catalog.mjs --check`.
-   If the catalog check is stale, run `node scripts/catalog.mjs` and commit the index: the catalog bot can't push to protected `main`.
+   If the catalog check is stale, run `node scripts/catalog.mjs` and commit the index: nothing regenerates it on `main`.
 4. **Notes:** run `gh pr list --state merged --search "merged:>YYYY-MM-DD"` (the date of the last release), or use `git log vPREV..HEAD --oneline`. Group the changes as Added / Changed / Fixed in user language, and save them to `dist/notes.md`.
 5. **Commit, merge and tag:** `main` is protected, so a direct push is rejected.
    Commit on a `release/vX.Y.Z` branch (`git commit -am "Release vX.Y.Z"`), push it, open a PR and wait for CI.

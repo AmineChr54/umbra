@@ -353,5 +353,5 @@ Through MCP (`claude mcp add umbra -- umbractl mcp`) an agent does the same with
 ## Publish
 
 Open a pull request that adds only `widgets/<id>/` to https://github.com/AmineChr54/umbra. CI validates it
-(`node scripts/catalog.mjs`), and the catalog is rebuilt on merge, so it appears in everyone's Browse page.
+(`node scripts/catalog.mjs --check`), so run `node scripts/catalog.mjs` and commit the regenerated `widgets/index.json` with your widget. Once merged it appears in everyone's Browse page.
 See [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -16,7 +16,7 @@ description: Create a new Umbra widget in widgets/<id> that passes catalog valid
 4. Run it with `umbractl create widgets/<id>`, then `umbractl logs`.
 5. Inspect it with `umbractl capture <id> <scratchpad>/<id>.png` and read the image. Iterate until it's crisp and balanced, with nothing clipped.
 6. Make the preview with `umbractl capture <id> widgets/<id>/preview.png`, and set `"preview": "preview.png"`.
-7. Validate with `node scripts/catalog.mjs` (this regenerates `widgets/index.json`; commit both).
+7. Validate with `node scripts/catalog.mjs`. It regenerates `widgets/index.json` (and `themes/index.json`); commit the result with the widget, since CI only runs `--check` and nothing commits it after merge. Never hand-edit the index.
 8. Clean up with `umbractl remove <id>` if it was only loaded for testing.
 
 Widgets are never built in; they are community widgets installed from Browse (`umbractl install <id>` once merged to main). A built-in would need a `<Content>` item in `src/Umbra/Umbra.csproj`, which needs review.
