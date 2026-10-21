@@ -16,6 +16,8 @@ static partial class Native
     public const int WM_MOUSEACTIVATE = 0x0021;
     public const int MA_NOACTIVATE = 3;
     public const int HTCAPTION = 2;
+    public const int HTRIGHT = 11;
+    public const int HTBOTTOM = 15;
     public const int HTBOTTOMRIGHT = 17;
     public const int WM_GETMINMAXINFO = 0x0024;
     public const int WM_SIZING = 0x0214;

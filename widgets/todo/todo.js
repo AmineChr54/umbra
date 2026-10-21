@@ -23,6 +23,8 @@ let newRepeat = { kind: "none" };
 let menuFor = null; // "new" or a task id
 let dayKey = "";
 let first = true;
+let selected = null; // keyboard-selected task id
+let openIds = [];    // ids of the open rows, in display order
 
 const opts = () => umbra.options;
 const motion = () => document.documentElement.dataset.motion !== "off";
@@ -56,14 +58,27 @@ function expire() {
 
 // ---------- rendering ----------
 
+/** Numbered tasks first (1, 2, 3...), then important ones, then the rest in the order they were added. */
+function sortOpen(list) {
+  const rank = (t) => (t.num ? 0 : t.important ? 1 : 2);
+  return list
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => rank(a.t) - rank(b.t) || (a.t.num || 0) - (b.t.num || 0) || a.i - b.i)
+    .map((x) => x.t);
+}
+
 function row(t, isDone) {
   const label = R.label(t, weekdayShort);
   const streak = opts().streaks !== false ? R.streakOn(t, dayKey) : 0;
+  const tomorrow = t.day && t.day > dayKey;
   return `
-    <div class="row${isDone ? " done" : ""}" data-id="${t.id}">
+    <div class="row${isDone ? " done" : ""}${t.important ? " important" : ""}${t.id === selected ? " sel" : ""}" data-id="${t.id}">
       <button class="check" data-act="toggle" aria-label="${isDone ? "Mark as not done" : "Complete"}">${ICON.check}</button>
+      ${t.num ? `<span class="order num" title="Number ${t.num}">${t.num}</span>` : ""}
       <span class="text" data-act="edit" title="${esc(t.title)}">${esc(t.title)}</span>
       <span class="meta">
+        ${t.important ? `<span class="imp" title="Important" aria-label="Important">!</span>` : ""}
+        ${tomorrow ? `<span class="tom" title="Planned for ${esc(t.day)}">${t.day === R.addDays(dayKey, 1) ? "Tomorrow" : esc(t.day)}</span>` : ""}
         ${streak >= 2 ? `<span class="streak num" title="${streak}-day streak">${ICON.flame}${streak}</span>` : ""}
         ${label ? `<button class="rep" data-act="repeat" title="Change repeat">${ICON.repeat}${esc(label)}</button>` : ""}
       </span>
@@ -84,7 +99,11 @@ function group(name, title, items, isDone) {
 function render() {
   dayKey = today();
   expire();
-  const { open, done, later } = R.plan(tasks, dayKey, opts().clearCompleted !== false);
+  const plan = R.plan(tasks, dayKey, opts().clearCompleted !== false);
+  const { done, later } = plan;
+  const open = sortOpen(plan.open);
+  openIds = open.map((t) => t.id);
+  if (selected && !find(selected)) selected = null;
   const doneToday = done.filter((t) => t.doneOn === dayKey).length;
   const total = open.length + doneToday;
 
@@ -105,7 +124,7 @@ function render() {
       html += `<div class="empty compact"><div class="icon">${ICON.sun}</div><strong>Nothing due today</strong></div>`;
     html += open.map((t) => row(t, false)).join("");
     html += group("completed", "Completed", done, true);
-    html += group("later", "Not today", later, false);
+    html += group("later", "Tomorrow & later", later, false);
   }
   listEl.innerHTML = html;
   paintNewRepeat();
@@ -193,6 +212,12 @@ input.addEventListener("keydown", (e) => {
 });
 
 listEl.addEventListener("click", (e) => {
+  const picked = e.target.closest(".row");
+  if (picked) {
+    selected = picked.dataset.id;
+    for (const r of listEl.querySelectorAll(".row.sel")) r.classList.remove("sel");
+    picked.classList.add("sel");
+  }
   const el = e.target.closest("[data-act]");
   if (!el) return;
   const act = el.dataset.act;
@@ -306,6 +331,134 @@ menuEl.addEventListener("click", (e) => {
 
 document.addEventListener("pointerdown", (e) => {
   if (!menuEl.hidden && !menuEl.contains(e.target) && !e.target.closest("#new-repeat, [data-act='repeat']")) closeMenu();
+  if (!ctxEl.hidden && !ctxEl.contains(e.target)) closeCtx();
+});
+
+// ---------- right-click menu ----------
+
+const ctxEl = $("ctx");
+let ctxFor = null;
+
+const nextNumber = () => tasks.reduce((n, t) => Math.max(n, t.num || 0), 0) + 1;
+
+function patch(id, changes) {
+  const t = find(id);
+  if (!t) return;
+  replace({ ...t, ...changes });
+  render();
+  save();
+}
+
+function openCtx(id, x, y) {
+  const t = find(id);
+  if (!t) return;
+  closeMenu();
+  ctxFor = id;
+  selected = id;
+  const finished = R.plan([t], dayKey, false).done.length > 0;
+  const deferred = t.day && t.day > dayKey;
+  const item = (act, text, hint = "") => `<div class="opt" role="menuitem" tabindex="-1" data-ctx="${act}"><span>${text}</span><kbd>${hint}</kbd></div>`;
+  ctxEl.innerHTML = [
+    item("important", t.important ? "Remove important mark" : "Mark as important !", "I"),
+    item("number", t.num ? `Remove number ${t.num}` : `Number it (${nextNumber()})`, "O"),
+    !finished && item("day", deferred ? "Move to today" : "Move to tomorrow", "T"),
+    tasks.some((x) => x.num) && item("clearNumbers", "Clear all numbers"),
+    '<div class="sep"></div>',
+    item("delete", "Delete", "Del"),
+  ].filter(Boolean).join("");
+  ctxEl.hidden = false;
+  const host = document.querySelector(".todo").getBoundingClientRect();
+  const w = ctxEl.offsetWidth, h = ctxEl.offsetHeight;
+  ctxEl.style.left = `${Math.max(8, Math.min(host.width - w - 8, x))}px`;
+  ctxEl.style.top = `${Math.max(8, Math.min(host.height - h - 8, y))}px`;
+  render();
+  ctxEl.querySelector(".opt")?.focus();
+}
+
+function closeCtx() {
+  if (ctxEl.hidden) return;
+  ctxEl.hidden = true;
+  ctxFor = null;
+}
+
+function runAction(act, id) {
+  const t = find(id);
+  if (!t) return;
+  if (act === "important") patch(id, { important: !t.important });
+  else if (act === "number") patch(id, { num: t.num ? null : nextNumber() });
+  else if (act === "day") patch(id, { day: t.day && t.day > dayKey ? null : R.addDays(dayKey, 1) });
+  else if (act === "clearNumbers") { tasks = tasks.map((x) => (x.num ? { ...x, num: null } : x)); render(); save(); }
+  else if (act === "delete") remove(id);
+}
+
+ctxEl.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-ctx]");
+  if (!el || !ctxFor) return;
+  const id = ctxFor;
+  closeCtx();
+  runAction(el.dataset.ctx, id);
+});
+
+listEl.addEventListener("contextmenu", (e) => {
+  const rowEl = e.target.closest(".row");
+  if (!rowEl) return; // elsewhere the host's own menu appears
+  e.preventDefault();
+  const host = document.querySelector(".todo").getBoundingClientRect();
+  openCtx(rowEl.dataset.id, e.clientX - host.left, e.clientY - host.top);
+});
+
+// ---------- keyboard ----------
+// Only while the widget has keyboard focus (click it first); Umbra widgets never grab focus on their own.
+
+function moveSelection(step) {
+  if (!openIds.length) return;
+  const i = openIds.indexOf(selected);
+  selected = openIds[Math.max(0, Math.min(openIds.length - 1, i < 0 ? (step > 0 ? 0 : openIds.length - 1) : i + step))];
+  render();
+  listEl.querySelector(".row.sel")?.scrollIntoView({ block: "nearest" });
+}
+
+/** Alt+Up/Down: swap a task with its neighbour; numbered tasks swap numbers instead. */
+function moveTask(step) {
+  const t = find(selected);
+  const i = openIds.indexOf(selected);
+  const other = find(openIds[i + step]);
+  if (!t || !other) return;
+  if (t.num && other.num) {
+    tasks = tasks.map((x) => (x.id === t.id ? { ...x, num: other.num } : x.id === other.id ? { ...x, num: t.num } : x));
+  } else {
+    const a = tasks.indexOf(t), b = tasks.indexOf(other);
+    [tasks[a], tasks[b]] = [tasks[b], tasks[a]];
+  }
+  render();
+  save();
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey) return;
+  if (e.key === "Escape" && !ctxEl.hidden) { closeCtx(); return; }
+  if (e.target.closest("input, textarea")) return;
+  if (!ctxEl.hidden) {
+    const items = [...ctxEl.querySelectorAll(".opt")];
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]?.focus();
+    } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.activeElement.click?.(); }
+    return;
+  }
+  const key = e.key.toLowerCase();
+  if (key === "n" || key === "/") { e.preventDefault(); umbra.requestFocus(); input.focus(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (e.altKey) moveTask(e.key === "ArrowDown" ? 1 : -1); else moveSelection(e.key === "ArrowDown" ? 1 : -1);
+  } else if (!selected) return;
+  else if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(selected, listEl.querySelector(`.row[data-id="${selected}"]`) || document.createElement("div")); }
+  else if (key === "i") runAction("important", selected);
+  else if (key === "o") runAction("number", selected);
+  else if (key === "t") runAction("day", selected);
+  else if (e.key === "Delete" || e.key === "Backspace") runAction("delete", selected);
+  else if (e.key === "Escape") { selected = null; render(); }
 });
 
 // ---------- start ----------

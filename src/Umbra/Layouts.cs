@@ -14,6 +14,8 @@ public sealed class LayoutEntry
     public int? RelX { get; set; }
     public int? RelY { get; set; }
     public double Scale { get; set; } = 1.0;
+    public int? Width { get; set; }
+    public int? Height { get; set; }
 }
 
 /// <summary>
@@ -93,6 +95,7 @@ public sealed class Layouts
         {
             Enabled = kv.Value.Enabled, X = kv.Value.X, Y = kv.Value.Y, Monitor = kv.Value.Monitor,
             RelX = kv.Value.RelX, RelY = kv.Value.RelY, Scale = kv.Value.Scale,
+            Width = kv.Value.Width, Height = kv.Value.Height,
         });
         if (!string.IsNullOrEmpty(fingerprint)) Pins[name] = fingerprint;
     }
@@ -161,7 +164,7 @@ public sealed class Layouts
         foreach (var (id, e) in layout)
         {
             if (!settings.Widgets.TryGetValue(id, out var ws)) continue;
-            ws.Enabled = e.Enabled; ws.X = e.X; ws.Y = e.Y; ws.Monitor = e.Monitor; ws.RelX = e.RelX; ws.RelY = e.RelY; ws.Scale = e.Scale;
+            ws.Enabled = e.Enabled; ws.X = e.X; ws.Y = e.Y; ws.Monitor = e.Monitor; ws.RelX = e.RelX; ws.RelY = e.RelY; ws.Scale = e.Scale; ws.Width = e.Width; ws.Height = e.Height;
             n++;
         }
         return n;

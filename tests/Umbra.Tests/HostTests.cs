@@ -559,19 +559,25 @@ public class ProtocolTests
         Assert.Equal(new System.Drawing.Size(ew, eh), WidgetGeometry.ScaledSize(w, h, dpi, scale));
 
     [Fact]
-    public void Scale_for_width_inverts_scaled_size()
+    public void Zoom_is_the_smaller_stretch_so_one_sided_growth_reflows()
     {
-        var size = WidgetGeometry.ScaledSize(320, 200, 120, 1.25);
-        Assert.Equal(1.25, WidgetGeometry.ScaleForWidth(320, 120, size.Width), 3);
+        Assert.Equal(1.0, WidgetGeometry.ZoomFor(320, 200, 96, 640, 200), 3);   // wider only: no zoom, the page gets more room
+        Assert.Equal(1.0, WidgetGeometry.ZoomFor(320, 200, 96, 320, 600), 3);   // taller only
+        Assert.Equal(1.5, WidgetGeometry.ZoomFor(320, 200, 96, 640, 300), 3);   // both grew: the smaller stretch
+        Assert.Equal(1.25, WidgetGeometry.ZoomFor(320, 200, 120, 500, 500), 3); // 120 DPI: 320x200 is 400x250 there
+        Assert.Equal(WidgetSettings.MinScale, WidgetGeometry.ZoomFor(320, 200, 96, 10, 10));
+        Assert.Equal(WidgetSettings.MaxScale, WidgetGeometry.ZoomFor(320, 200, 96, 9000, 9000));
     }
 
     [Fact]
-    public void Keep_aspect_keeps_ratio_takes_the_larger_stretch_and_clamps()
+    public void Free_size_is_used_when_both_sides_are_set_and_clamped_per_side()
     {
-        Assert.Equal(new System.Drawing.Size(640, 400), WidgetGeometry.KeepAspect(320, 200, 96, 640, 100));
-        Assert.Equal(new System.Drawing.Size(640, 400), WidgetGeometry.KeepAspect(320, 200, 96, 100, 400));
-        Assert.Equal(WidgetGeometry.ScaledSize(320, 200, 96, WidgetSettings.MinScale), WidgetGeometry.KeepAspect(320, 200, 96, 10, 10));
-        Assert.Equal(WidgetGeometry.ScaledSize(320, 200, 96, WidgetSettings.MaxScale), WidgetGeometry.KeepAspect(320, 200, 96, 9000, 9000));
+        Assert.Equal(new System.Drawing.Size(480, 300), WidgetGeometry.WindowSize(320, 200, 96, 1.5, null, null));
+        Assert.Equal(new System.Drawing.Size(480, 300), WidgetGeometry.WindowSize(320, 200, 96, 1.5, 480, null)); // half a free size is ignored
+        Assert.Equal(new System.Drawing.Size(700, 250), WidgetGeometry.WindowSize(320, 200, 96, 1.0, 700, 250));
+        Assert.Equal(new System.Drawing.Size(960, 100), WidgetGeometry.WindowSize(320, 200, 96, 1.0, 5000, 5)); // 300 % wide, 50 % tall
+        Assert.Equal(new System.Drawing.Size(1050, 375), WidgetGeometry.WindowSize(320, 200, 144, 1.0, 700, 250)); // 144 DPI scales it
+        Assert.Equal(700, WidgetGeometry.ToLogical(1050, 144));
     }
 
     [Theory]

@@ -82,7 +82,7 @@ sealed class Control(App app)
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
                 if (a["x"] is not null || a["y"] is not null) { ws.Monitor = null; ws.RelX = ws.RelY = null; } // an absolute spot replaces the recorded monitor
-                if (a["scale"] is JsonNode sc) ws.Scale = CheckScale(sc);
+                if (a["scale"] is JsonNode sc) { ws.Scale = CheckScale(sc); ws.Width = ws.Height = null; } // a scale replaces a free size
                 Prefs.ApplyWidget(a, ws);
                 if (a["options"] is JsonObject opts)
                     foreach (var (key, value) in opts) ws.Options[key] = CheckOption(m, key, value);

@@ -107,6 +107,13 @@ public sealed class WidgetSettings
         set => _scale = ClampScale(value);
     }
 
+    /// <summary>
+    /// Free window size in logical (96-DPI) pixels after dragging an edge; both null = manifest size x <see cref="Scale"/>.
+    /// <see cref="Scale"/> then holds the page zoom (the smaller stretch). Setting a scale clears them.
+    /// </summary>
+    public int? Width { get; set; }
+    public int? Height { get; set; }
+
     /// <summary>Own refresh interval in seconds (30-600) overriding the global one; null = global.</summary>
     public int? RefreshSeconds { get; set; }
     /// <summary>Window opacity 0.2-1; null = fully opaque (the default keeps true black and ClearType).</summary>

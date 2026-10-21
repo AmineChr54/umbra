@@ -84,7 +84,9 @@
   function plan(tasks, key, clearCompleted = true) {
     const open = [], done = [], later = [], expired = [];
     for (const t of tasks) {
-      if (!repeats(t)) {
+      // Moved to a later day ("tomorrow"): hidden from today, back on its own.
+      if (t.day && t.day > key && !t.doneOn) later.push(t);
+      else if (!repeats(t)) {
         if (!t.doneOn) open.push(t);
         else if (t.doneOn === key || !clearCompleted) done.push(t);
         else expired.push(t);

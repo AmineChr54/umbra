@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Event Radar</title>
+  <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
+  <link rel="stylesheet" href="radar.css">
+</head>
+<body>
+  <main class="er" id="app">
+    <header class="head">
+      <h1 class="title" id="title">Event Radar</h1>
+      <div class="seg view" id="view" role="radiogroup" aria-label="View" data-no-drag>
+        <button type="button" role="radio" data-view="agenda" aria-label="Agenda" title="Agenda">
+          <svg viewBox="0 0 14 14"><path d="M5 3.5h7M5 7h7M5 10.5h7"/><circle cx="2" cy="3.5" r=".8"/><circle cx="2" cy="7" r=".8"/><circle cx="2" cy="10.5" r=".8"/></svg>
+        </button>
+        <button type="button" role="radio" data-view="timeline" aria-label="Timeline" title="Timeline">
+          <svg viewBox="0 0 14 14"><rect x="1" y="2.5" width="6" height="2.4" rx="1.2"/><rect x="5" y="6" width="8" height="2.4" rx="1.2"/><rect x="2.5" y="9.5" width="5" height="2.4" rx="1.2"/></svg>
+        </button>
+      </div>
+      <button class="add" id="add" data-no-drag aria-label="Add events" title="Add events">
+        <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></svg>
+      </button>
+    </header>
+
+    <section class="body" id="body"></section>
+
+    <form class="sheet" id="add-sheet" data-no-drag autocomplete="off" hidden>
+      <div class="sheet-head">
+        <h2>Add events</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">
+          <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <textarea class="field area" id="f-text" rows="4" spellcheck="false" aria-label="Events, one per line"
+                  placeholder="One per line, or paste a list&#10;Hackathon 26.10.-27.10.&#10;Visa deadline 30.11.&#10;Trip to Rome 2.12.-6.12. maybe"></textarea>
+        <div class="row">
+          <label>Status</label>
+          <div class="seg" id="add-status" role="radiogroup" aria-label="Default status">
+            <button type="button" role="radio" data-status="going">Going</button>
+            <button type="button" role="radio" data-status="maybe">Maybe</button>
+            <button type="button" role="radio" data-status="todo">To do</button>
+            <button type="button" role="radio" data-status="deadline">Deadline</button>
+          </div>
+        </div>
+        <p class="hint-line" id="add-hint">Dates like 26.10., 26.10.-27.10., 2026-12-24 or 23 Oct. A status word on the line (going, maybe, deadline, can't...) wins.</p>
+        <div class="preview" id="preview"></div>
+      </div>
+      <div class="sheet-foot">
+        <span class="msg" id="add-msg"></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary" id="add-go" disabled>Add</button>
+      </div>
+    </form>
+
+    <form class="sheet" id="edit-sheet" data-no-drag autocomplete="off" hidden>
+      <div class="sheet-head">
+        <h2>Edit event</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Close">
+          <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" /></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <input class="field" id="e-title" maxlength="80" placeholder="Title" spellcheck="false" aria-label="Title">
+        <div class="row">
+          <label>Dates</label>
+          <div class="pair">
+            <input class="field num date" type="date" id="e-start" min="2000-01-01" max="2999-12-31" aria-label="Start">
+            <span class="hint">to</span>
+            <input class="field num date" type="date" id="e-end" min="2000-01-01" max="2999-12-31" aria-label="End">
+          </div>
+        </div>
+        <div class="row">
+          <label>Status</label>
+          <div class="seg wrap" id="e-status" role="radiogroup" aria-label="Status">
+            <button type="button" role="radio" data-status="going">Going</button>
+            <button type="button" role="radio" data-status="maybe">Maybe</button>
+            <button type="button" role="radio" data-status="todo">To do</button>
+            <button type="button" role="radio" data-status="deadline">Deadline</button>
+            <button type="button" role="radio" data-status="no">Not going</button>
+          </div>
+        </div>
+        <input class="field" id="e-note" maxlength="80" placeholder="Note (optional)" spellcheck="false" aria-label="Note">
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn danger" id="e-delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </main>
+
+  <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="parse.js"></script>
+  <script src="radar.js"></script>
+</body>
+</html>

@@ -859,7 +859,7 @@ sealed class App : ApplicationContext
         foreach (var (id, cur) in Settings.Widgets)
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
-            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) ws.Scale = cur.Scale; }
+            if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) { ws.Scale = cur.Scale; ws.Width = cur.Width; ws.Height = cur.Height; } }
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window

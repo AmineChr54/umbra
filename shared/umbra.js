@@ -262,11 +262,14 @@
   const EDITABLE = "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
   let down = null;
   window.addEventListener("pointerdown", (e) => {
-    if (grip && e.composedPath().includes(grip)) {
-      // Edit-mode corner handle: the host runs a native resize (aspect ratio kept) and zooms the page to match.
+    const path = grip ? e.composedPath() : [];
+    const edge = path.includes(grip) ? "corner" : path.includes(edgeRight) ? "right" : path.includes(edgeBottom) ? "bottom" : null;
+    if (edge) {
+      // Edit-mode handles: the host runs a native resize. The corner and the edges both resize freely; the page
+      // lays out at window size / zoom, so a widget that fills its window reflows.
       e.preventDefault();
       e.stopPropagation();
-      if (e.button === 0) post({ type: "resize" });
+      if (e.button === 0) post({ type: "resize", edge });
       return;
     }
     const editable = e.target.closest(EDITABLE);
@@ -295,6 +298,8 @@
   // The widget last pressed gets a stronger outline, and its arrow keys nudge it (1 px, Shift 10 px or a grid step).
   let overlay = null;
   let grip = null;
+  let edgeRight = null;
+  let edgeBottom = null;
   let frame = null;
   const editing = () => !!(settings.editMode && !settings.locked);
   function applyEdit() {
@@ -312,6 +317,8 @@
         .frame { position: absolute; inset: 0; pointer-events: none; border-radius: calc(8px * var(--k));
                  background: rgba(139, 147, 255, 0.05); box-shadow: inset 0 0 0 calc(1.5px * var(--k)) rgba(139, 147, 255, 0.75); }
         .frame.sel { background: rgba(139, 147, 255, 0.1); box-shadow: inset 0 0 0 calc(3px * var(--k)) rgba(170, 176, 255, 1); }
+        .edge-r { position: absolute; top: 0; right: 0; bottom: calc(24px * var(--k)); width: calc(10px * var(--k)); cursor: ew-resize; }
+        .edge-b { position: absolute; left: 0; right: calc(24px * var(--k)); bottom: 0; height: calc(10px * var(--k)); cursor: ns-resize; }
         .grip { position: absolute; right: 0; bottom: 0; width: calc(24px * var(--k)); height: calc(24px * var(--k)); cursor: nwse-resize; }
         .grip svg { position: absolute; right: calc(5px * var(--k)); bottom: calc(5px * var(--k)); width: calc(11px * var(--k)); height: calc(11px * var(--k)); }
         /* Windows contrast themes drop box-shadows and backgrounds, so draw the frame as a real border. */
@@ -320,9 +327,11 @@
           .grip { background: Highlight; }
           .grip svg { stroke: HighlightText; }
         }
-      </style><div class="frame"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
+      </style><div class="frame"></div><div class="edge-r" title="Drag to resize"></div><div class="edge-b" title="Drag to resize"></div><div class="grip" title="Drag to resize"><svg viewBox="0 0 11 11" fill="none"
         stroke="#aab0ff" stroke-width="1.6" stroke-linecap="round"><path d="M10 2 2 10M10 6.5 6.5 10"/></svg></div>`;
       grip = root.querySelector(".grip");
+      edgeRight = root.querySelector(".edge-r");
+      edgeBottom = root.querySelector(".edge-b");
       frame = root.querySelector(".frame");
       // Clicks on the overlay are Umbra's, not the widget's.
       for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "contextmenu"])
