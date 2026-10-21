@@ -2,9 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "buddy",
   "name": "Buddy",
-  "description": "Pair with a friend using a one-time code and see a green dot when they are online. Needs the small relay in tools/buddy-relay.",
+  "description": "Pair with a friend using a one-time code and see a glowing star when they are online. Right-click to pair, unpair or edit names. Needs the small relay in tools/buddy-relay.",
   "author": "AmineChr54",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "entry": "index.html",
   "preview": "preview.png",
   "icon": "icon.png",
@@ -15,7 +15,7 @@
     "hosts": ["umbra-buddy-relay.umbra-server.workers.dev"]
   },
   "options": {
-    "you": { "label": "Your name", "type": "text", "default": "You", "hint": "Only shown on your own widget" },
-    "friend": { "label": "Friend's name", "type": "text", "default": "Friend", "hint": "Only shown on your own widget" }
+    "you": { "label": "Your name", "type": "text", "default": "You", "hint": "Shown as the star tooltip" },
+    "friend": { "label": "Friend's name", "type": "text", "default": "Friend", "hint": "Shown as the star tooltip" }
   }
 }

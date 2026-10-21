@@ -1,20 +1,18 @@
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-.buddy { box-sizing: border-box; height: 100%; padding: 16px 18px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.buddy { position: relative; box-sizing: border-box; height: 100%; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-.row { display: flex; align-items: center; gap: 12px; font-size: 15px; }
-.row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-.row .state { font-size: 12px; color: var(--text-3); }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--flat); flex: none; transition: background calc(200ms * var(--motion-scale, 1)); }
-.dot.on { background: var(--up); box-shadow: 0 0 8px var(--up); }
+.star { flex: 1 1 0; min-width: 0; height: 100%; fill: none; stroke: var(--text-3); stroke-opacity: .45; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round;
+  transition: stroke calc(300ms * var(--motion-scale, 1)), filter calc(300ms * var(--motion-scale, 1)); }
+.star.on { stroke: #fff; stroke-opacity: 1; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px rgba(255, 255, 255, .75)); }
 
-.hint { font-size: 12px; color: var(--text-2); line-height: 1.4; }
-.code { font-size: 22px; letter-spacing: 0.12em; color: var(--text); font-variant-numeric: tabular-nums; user-select: all; }
-.actions { display: flex; gap: 8px; }
+.toast { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 12px; color: var(--down); pointer-events: none; }
+.toast.code { font-size: 15px; letter-spacing: .14em; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+.pop { position: absolute; z-index: 5; display: flex; gap: 6px; padding: 6px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius-s); }
+.pop.col, .pop.menu { flex-direction: column; }
+.pop.menu { padding: 4px; gap: 0; }
+.pop.menu button { text-align: left; background: none; border: 0; }
 button, input { font: inherit; font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--radius-s); padding: 6px 10px; }
 button { cursor: pointer; }
 button:hover { background: var(--surface-3); }
-button.link { background: none; border: 0; padding: 0; color: var(--text-3); text-decoration: underline; }
-input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.08em; }
-input::placeholder { text-transform: none; letter-spacing: 0; color: var(--text-3); }
-.err { font-size: 12px; color: var(--down); }
-.foot { display: flex; justify-content: space-between; align-items: center; }
+input { min-width: 0; width: 120px; }
