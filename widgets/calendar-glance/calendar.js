@@ -64,6 +64,66 @@
     return el;
   }
 
+  /** Step-by-step: where to find the private .ics link in each supported calendar (b = bold UI label). */
+  const GUIDES = [
+    { name: "Google", steps: [
+      "Open <b>calendar.google.com</b> on a computer (the phone app can't show it).",
+      "Click the <b>gear</b>, then <b>Settings</b>.",
+      "Under <b>Settings for my calendars</b>, pick the calendar.",
+      "Scroll to <b>Integrate calendar</b> and copy <b>Secret address in iCal format</b>.",
+      "Paste it into <b>iCal address</b> in this widget's settings."],
+      note: "Repeat per calendar. Work/school accounts may hide it (admin setting). Anyone with the link can read the calendar; <b>Reset</b> makes a new one." },
+    { name: "Outlook", steps: [
+      "Open <b>outlook.office.com</b> or <b>outlook.live.com</b> and click the <b>gear</b>.",
+      "Go to <b>Calendar</b>, then <b>Shared calendars</b>.",
+      "Under <b>Publish a calendar</b>, pick the calendar and set <b>Can view all details</b>.",
+      "Click <b>Publish</b>, then copy the <b>ICS</b> link.",
+      "Paste it into <b>iCal address</b>."],
+      note: "The link must be on outlook.office365.com or outlook.live.com. Some work accounts block publishing." },
+    { name: "Zoho", steps: [
+      "Open <b>calendar.zoho.com</b>.",
+      "Hover the calendar in the left list and click <b>Share</b> (or the <b>⋯</b> menu).",
+      "Choose <b>Private URL</b> and click <b>Create</b> (or <b>Generate</b>).",
+      "Copy the <b>ICS</b> link and paste it into <b>iCal address</b>."],
+      note: "Use the link that ends in .ics, not the web view link." },
+    { name: "Proton", steps: [
+      "Open <b>calendar.proton.me</b> and hover the calendar in the sidebar.",
+      "Click <b>⋯</b>, then <b>Settings</b> (or open <b>Settings, Calendars</b>).",
+      "Under <b>Share outside Proton</b>, click <b>Create link</b> and set access to <b>Full view</b>.",
+      "Copy the link and paste it into <b>iCal address</b>."],
+      note: "Proton encrypts calendars: only a link created this way can be read from outside." },
+    { name: "GitHub", steps: [
+      "Put a <code>.ics</code> file in a <b>public</b> repository.",
+      "Open the file, click <b>Raw</b>.",
+      "Copy the address (it starts with <code>raw.githubusercontent.com</code>).",
+      "Paste it into <b>iCal address</b>."],
+      note: "Public repo means public calendar. Don't use it for private events." }
+  ];
+  let guide = 0;
+
+  function renderHelp() {
+    const tabs = $("tabs");
+    tabs.textContent = "";
+    GUIDES.forEach((g, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "tab"; b.textContent = g.name;
+      b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(i === guide));
+      b.onclick = () => { guide = i; renderHelp(); };
+      tabs.append(b);
+    });
+    const g = GUIDES[guide];
+    $("steps").innerHTML = g.steps.map(s => `<li>${s}</li>`).join("");
+    $("note").innerHTML = g.note + " Tip: <code>webcal://</code> links work too.";
+    $("steps").scrollTop = 0;
+  }
+  function toggleHelp(show) {
+    $("help").hidden = !show;
+    if (show) renderHelp();
+  }
+  $("info").onclick = () => toggleHelp(true);
+  $("helpClose").onclick = () => toggleHelp(false);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") toggleHelp(false); });
+
   function render() {
     const o = umbra.options, now = new Date(), nowMs = now.getTime();
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();

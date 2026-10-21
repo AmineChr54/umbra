@@ -153,6 +153,8 @@ public sealed class Settings
     public Dictionary<string, WidgetSettings> Widgets { get; set; } = new();
     /// <summary>Global hotkeys by action id (see <see cref="Hotkey.Actions"/>), e.g. "edit-mode": "Ctrl+Alt+E". No entry = off.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = new();
+    /// <summary>Tab groups by id (see <see cref="WidgetGroup"/>); host-owned like positions, so a stale Settings save keeps them.</summary>
+    public Dictionary<string, WidgetGroup> Groups { get; set; } = new();
 
     /// <summary>Last placement and page of the Settings window; owned by the window, never by a (possibly stale) Settings save or a backup.</summary>
     public SettingsPlacement SettingsPanel { get => _settingsPanel; set => _settingsPanel = value ?? new(); } // a null in the file means defaults

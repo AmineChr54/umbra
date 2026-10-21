@@ -1,6 +1,6 @@
 ; Umbra installer (Inno Setup 6). Build with ..\build.ps1, which passes AppVersion and PublishDir.
 #ifndef AppVersion
-  #define AppVersion "1.6.1"
+  #define AppVersion "1.7.0"
 #endif
 #ifndef PublishDir
   #define PublishDir "..\dist\publish"
@@ -26,8 +26,10 @@ OutputBaseFilename=UmbraSetup-{#AppVersion}
 SetupIconFile=..\assets\umbra.ico
 UninstallDisplayIcon={app}\Umbra.exe
 UninstallDisplayName=Umbra
-WizardStyle=modern
+; Dark to match Umbra; an upgrade (a manual run over an existing install) skips the welcome page.
+WizardStyle=modern dark
 WizardSizePercent=100
+DisableWelcomePage=yes
 Compression=lzma2/ultra64
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible

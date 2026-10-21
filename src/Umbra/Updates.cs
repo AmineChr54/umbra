@@ -116,7 +116,7 @@ public static partial class Updates
     public static bool SignatureAcceptable(int winVerifyTrustResult) => winVerifyTrustResult is 0 or unchecked((int)0x800B0100);
 
     /// <summary>Installer switches for a self-update: no window, no message box, no restart prompt, no cancel; /UPDATE=1 tells Umbra.iss to start the app again afterwards.</summary>
-    public static string InstallerArguments(string logPath) => $"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /SP- /UPDATE=1 /LOG=\"{logPath}\"";
+    public static string InstallerArguments(string logPath) => UpdaterArgs.InstallerArguments(logPath);
 
     /// <summary>What a start finds after Umbra handed over to the installer: running the expected version means it worked, anything else means the installer failed.</summary>
     public enum UpdateOutcome { None, Applied, Failed }
@@ -370,7 +370,7 @@ sealed class UpdateService : IDisposable
             File.WriteAllText(PendingFile, new JsonObject { ["from"] = CurrentVersion, ["to"] = rel.Version, ["log"] = log }.ToJsonString());
             _app.SaveSettings(); // options and widget positions are on disk before Umbra goes away
             Log.Write($"Running {file}");
-            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, Updates.InstallerArguments(log)) { UseShellExecute = true }); }
+            try { if (!StartUpdaterWindow(file, rel.Version, log)) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(file, Updates.InstallerArguments(log)) { UseShellExecute = true }); }
             catch { try { File.Delete(PendingFile); } catch { /* best effort */ } throw; }
             _started = true;
             _app.QuitSoon();
@@ -378,9 +378,45 @@ sealed class UpdateService : IDisposable
         finally { _installing = false; }
     }
 
+    /// <summary>
+    /// Starts the update window (a temp copy: the installer overwrites the one in the install folder) that runs the installer
+    /// and shows its progress. False when it is missing or fails to start, so the caller runs the installer invisibly as before.
+    /// </summary>
+    static bool StartUpdaterWindow(string installer, string version, string log)
+    {
+        try
+        {
+            var source = Path.Combine(AppContext.BaseDirectory, UpdaterArgs.FileName);
+            if (!File.Exists(source)) return false;
+            var dir = Path.Combine(Path.GetTempPath(), $"umbra-updater-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            var copy = Path.Combine(dir, UpdaterArgs.FileName);
+            File.Copy(source, copy);
+            var args = UpdaterArgs.Build(new UpdaterArgs.Request(installer, version, log, Environment.ProcessId, AppContext.BaseDirectory));
+            return System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(copy, args) { UseShellExecute = false }) is not null;
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"Update window could not start, installing without it: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>Removes update-window copies an earlier update left in the temp folder (the window cannot delete itself while it runs).</summary>
+    static void CleanOldUpdaterCopies()
+    {
+        try
+        {
+            foreach (var d in Directory.EnumerateDirectories(Path.GetTempPath(), "umbra-updater-*"))
+                try { Directory.Delete(d, true); } catch { /* still running or locked: next start */ }
+        }
+        catch { /* best effort */ }
+    }
+
     /// <summary>After a start: if Umbra handed over to the installer last time and is still on the old version, say so (the installer starts Umbra again even when it fails).</summary>
     void ReportPreviousUpdate()
     {
+        CleanOldUpdaterCopies();
         try
         {
             if (!File.Exists(PendingFile)) return;

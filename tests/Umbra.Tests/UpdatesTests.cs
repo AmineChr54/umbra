@@ -124,6 +124,44 @@ public class UpdatesTests
         Assert.DoesNotContain("/SILENT", args.Split(' ')); // /SILENT still shows the setup window
     }
 
+    [Fact]
+    public void The_updater_command_line_round_trips()
+    {
+        var req = new UpdaterArgs.Request(@"C:\Temp\umbra-update-1\UmbraSetup-1.6.0.exe", "1.6.0", @"C:\Temp\UmbraUpdate.log", 4242, @"C:\Users\me\AppData\Local\Programs\Umbra\");
+        var parsed = UpdaterArgs.Parse(CommandLineToArgs(UpdaterArgs.Build(req)));
+        Assert.Equal(req with { InstallDir = @"C:\Users\me\AppData\Local\Programs\Umbra" }, parsed);
+    }
+
+    [Theory]
+    [InlineData("UmbraSetup-1.6.0.exe", "1.6.0", true)]
+    [InlineData("UmbraSetup-1.6.0.exe", "1.7.0", false)]  // wrong version
+    [InlineData("calc.exe", "1.6.0", false)]
+    [InlineData("UmbraSetup-1.6.0.exe.bat", "1.6.0", false)]
+    public void The_updater_only_runs_a_correctly_named_installer(string name, string version, bool ok)
+    {
+        Assert.Equal(ok, UpdaterArgs.IsInstallerFor(@"C:\Temp\" + name, version));
+        var args = new[] { "--installer", @"C:\Temp\" + name, "--version", version, "--log", "l.log", "--pid", "1", "--dir", @"C:\x" };
+        Assert.Equal(ok, UpdaterArgs.Parse(args) is not null);
+    }
+
+    [Fact]
+    public void The_updater_refuses_an_incomplete_command_line() =>
+        Assert.Null(UpdaterArgs.Parse(new[] { "--installer", "UmbraSetup-1.6.0.exe", "--version", "1.6.0" }));
+
+    [Fact]
+    public void Install_progress_follows_the_installer_log_and_stops_short_of_done()
+    {
+        var entry = "-- File entry --\nInstalling the file.\n";
+        Assert.Equal(0.5, UpdaterArgs.InstallProgress(string.Concat(Enumerable.Repeat(entry, 5)), 10));
+        Assert.Equal(0.95, UpdaterArgs.InstallProgress(string.Concat(Enumerable.Repeat(entry, 50)), 10)); // more entries than expected
+        Assert.Equal(0, UpdaterArgs.InstallProgress("Setup started", 10));
+        Assert.Null(UpdaterArgs.InstallProgress(entry, 0)); // unknown total: indeterminate
+    }
+
+    /// <summary>Splits like Windows does for a process command line (quotes group, no escapes needed here).</summary>
+    static string[] CommandLineToArgs(string line) =>
+        System.Text.RegularExpressions.Regex.Matches(line, "\"([^\"]*)\"|(\\S+)").Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value).ToArray();
+
     [Theory]
     [InlineData("""{ "from": "1.4.0", "to": "1.5.0", "log": "C:\\Temp\\UmbraUpdate.log" }""", "1.5.0", Updates.UpdateOutcome.Applied)]
     [InlineData("""{ "from": "1.4.0", "to": "1.5.0" }""", "1.4.0", Updates.UpdateOutcome.Failed)]

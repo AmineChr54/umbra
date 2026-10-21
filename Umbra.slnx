@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Umbra.Cli/Umbra.Cli.csproj" />
     <Project Path="src/Umbra/Umbra.csproj" />
+    <Project Path="src/Umbra.Updater/Umbra.Updater.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Umbra.Tests/Umbra.Tests.csproj" />

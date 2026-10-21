@@ -81,6 +81,8 @@ static void PrintHelp()
           peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
           safe-mode [on|off]             community widgets off (not saved); no argument = show the state
           layouts [list|save|apply|delete <name>|rename <name> <new>]  saved arrangements of positions, sizes and enabled widgets
+          groups [list|create <id> [name]|join|activate <group> <id>|leave <id>|next|previous|delete <group>|reorder <group> <id> <i>|cycle <group> <s|off>|rename <group> <name>]
+                                         tab groups: widgets sharing one spot, one visible at a time
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
           general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]

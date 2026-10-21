@@ -16,6 +16,11 @@ if ($LASTEXITCODE) { throw "dotnet publish failed" }
 # umbractl.exe (CLI + MCP server) sits next to Umbra.exe and shares its runtime files.
 dotnet publish $cli -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:DebugType=none -o $publish
 if ($LASTEXITCODE) { throw "dotnet publish (umbractl) failed" }
+# Umbra.Updater.exe (the update window) is one self-contained file: Umbra copies it to temp before the installer overwrites the install folder.
+$updater = Join-Path $root 'src\Umbra.Updater\Umbra.Updater.csproj'
+dotnet publish $updater -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o (Join-Path $root 'dist\updater')
+if ($LASTEXITCODE) { throw "dotnet publish (updater) failed" }
+Copy-Item (Join-Path $root 'dist\updater\Umbra.Updater.exe') $publish
 
 # Make sure the community catalog is valid before shipping
 node (Join-Path $root 'scripts\catalog.mjs') --check

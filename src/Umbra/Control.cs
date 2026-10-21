@@ -218,6 +218,32 @@ sealed class Control(App app)
                 return new JsonObject { ["layouts"] = app.LayoutsJson() };
             }
 
+            case "groups":
+            {
+                var op = a["op"] is null ? "list" : Str(a, "op");
+                try
+                {
+                    switch (op)
+                    {
+                        case "list": break;
+                        case "create": app.CreateGroup(a["name"] is null ? "Group" : Str(a, "name"), Target(a).Instance); break;
+                        case "join": app.JoinGroup(Str(a, "group"), Target(a).Instance); break;
+                        case "leave": app.LeaveGroup(Target(a).Instance); break;
+                        case "activate": app.ActivateTab(Str(a, "group"), Target(a).Instance); break;
+                        case "next": app.StepTab(Str(a, "group"), 1); break;
+                        case "previous": app.StepTab(Str(a, "group"), -1); break;
+                        case "reorder": app.ReorderTab(Str(a, "group"), Target(a).Instance, a["index"] is JsonNode ix ? Int(ix, "index") : throw new CommandException("\"index\" (number) is required")); break;
+                        case "configure":
+                            app.ConfigureGroup(Str(a, "group"), a["name"] is null ? null : Str(a, "name"), a["cycleSeconds"] is JsonNode cs ? Int(cs, "cycleSeconds") : null);
+                            break;
+                        case "delete": app.DeleteGroup(Str(a, "group")); break;
+                        default: throw new CommandException("op must be list, create, join, leave, activate, next, previous, reorder, configure or delete");
+                    }
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }
+                return new JsonObject { ["groups"] = app.GroupsJson() };
+            }
+
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
                 return new JsonObject { ["editMode"] = app.EditMode };

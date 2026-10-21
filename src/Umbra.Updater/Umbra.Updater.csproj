@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Umbra.Updater.exe: the small window shown while the installer replaces Umbra. Umbra copies it to a temp folder
+       first (the installer overwrites everything in the install folder, this exe included). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\..\assets\umbra.ico</ApplicationIcon>
+    <AssemblyName>Umbra.Updater</AssemblyName>
+    <RootNamespace>Umbra.Updater</RootNamespace>
+    <Description>Update window for Umbra.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Umbra\UpdaterArgs.cs" Link="UpdaterArgs.cs" />
+    <EmbeddedResource Include="..\..\assets\umbra.ico" LogicalName="umbra.ico" />
+  </ItemGroup>
+
+</Project>

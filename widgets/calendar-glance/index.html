@@ -11,8 +11,18 @@
     <header class="top">
       <div class="date" id="date"></div>
       <div class="stale" id="stale" hidden>offline</div>
+      <button class="info" id="info" type="button" aria-label="How to get your calendar address" title="How to get your calendar address">i</button>
     </header>
     <div class="list" id="list"></div>
+    <section class="help" id="help" hidden>
+      <div class="help-head">
+        <div class="help-title">Get your iCal address</div>
+        <button class="info" id="helpClose" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <ol class="steps" id="steps"></ol>
+      <p class="note" id="note"></p>
+    </section>
   </main>
 
   <script src="https://umbra.local/shared/umbra.js"></script>

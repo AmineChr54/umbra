@@ -405,6 +405,27 @@ function renderInstalled() {
       save(true);
     });
 
+    // Tab group: widgets in one group share a spot and show one at a time.
+    {
+      const here = (state.groups || []).find((g) => g.members.includes(w.id));
+      const sel = document.createElement("select");
+      sel.className = "input";
+      sel.setAttribute("aria-label", `${w.name} tab group`);
+      sel.append(new Option("No group", ""));
+      for (const g of state.groups || []) sel.append(new Option(g.name, "g:" + g.id));
+      sel.append(new Option("New group…", "new"));
+      sel.value = here ? "g:" + here.id : "";
+      sel.addEventListener("change", () => {
+        if (sel.value === "") post({ type: "group", op: "leave", id: w.id });
+        else if (sel.value === "new") post({ type: "group", op: "create", name: w.name, id: w.id });
+        else post({ type: "group", op: "join", group: sel.value.slice(2), id: w.id });
+      });
+      const row = document.createElement("label");
+      row.className = "grouprow";
+      row.append(Object.assign(document.createElement("span"), { textContent: "Tab group" }), sel);
+      $(".fields", card).before(row);
+    }
+
     // Fold/unfold the options. Remembered per widget in this browser profile.
     const fold = $(".fold", card);
     const setFolded = (folded, remember) => {
@@ -550,6 +571,71 @@ $("#editMode").addEventListener("change", (e) => {
 });
 
 // ---------- Layouts ----------
+function renderGroups() {
+  const list = $("#groupList");
+  list.replaceChildren();
+  $("#groupBox").hidden = !(state.groups || []).length;
+  const label = (inst) => (state.widgets.find((x) => x.id === inst) || { name: inst }).name;
+  for (const g of state.groups || []) {
+    const row = document.createElement("div");
+    row.className = "row grouprow-full";
+    const text = document.createElement("div");
+    text.className = "row-text";
+    const name = document.createElement("input");
+    name.className = "input name";
+    name.value = g.name;
+    name.maxLength = 40;
+    name.spellcheck = false;
+    name.setAttribute("aria-label", "Group name");
+    name.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, name: name.value }));
+    name.addEventListener("keydown", (e) => { if (e.key === "Enter") name.blur(); });
+
+    const tabs = document.createElement("div");
+    tabs.className = "tabchips";
+    g.members.forEach((inst, i) => {
+      const chip = document.createElement("span");
+      chip.className = "tabchip" + (inst === g.active ? " on" : "");
+      const pick = Object.assign(document.createElement("button"), { className: "tabpick", textContent: label(inst) });
+      pick.title = "Show this tab";
+      pick.addEventListener("click", () => post({ type: "group", op: "activate", group: g.id, id: inst }));
+      chip.append(pick);
+      if (i > 0) {
+        const left = Object.assign(document.createElement("button"), { textContent: "‹", title: "Move earlier" });
+        left.setAttribute("aria-label", `Move ${label(inst)} earlier`);
+        left.addEventListener("click", () => post({ type: "group", op: "reorder", group: g.id, id: inst, index: i - 1 }));
+        chip.append(left);
+      }
+      const out = Object.assign(document.createElement("button"), { textContent: "×", title: "Remove from group" });
+      out.setAttribute("aria-label", `Remove ${label(inst)} from group`);
+      out.addEventListener("click", () => post({ type: "group", op: "leave", id: inst }));
+      chip.append(out);
+      tabs.append(chip);
+    });
+    text.append(name, tabs);
+
+    const cycle = document.createElement("input");
+    cycle.className = "input";
+    cycle.type = "number";
+    cycle.min = 0;
+    cycle.max = 3600;
+    cycle.value = g.cycleSeconds || "";
+    cycle.placeholder = "Cycle (s)";
+    cycle.title = "Switch to the next tab every this many seconds (5–3600); empty = off";
+    cycle.setAttribute("aria-label", "Cycle every seconds");
+    cycle.style.width = "92px";
+    cycle.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, cycleSeconds: Math.max(0, Math.round(Number(cycle.value) || 0)) }));
+
+    const del = document.createElement("button");
+    del.className = "btn small danger";
+    del.title = "Ungroup (the widgets stay)";
+    del.innerHTML = '<span class="ico" data-icon="trash"></span>';
+    del.addEventListener("click", () => post({ type: "group", op: "delete", group: g.id }));
+    row.append(text, cycle, del);
+    list.append(row);
+  }
+  icons(list);
+}
+
 function renderLayouts() {
   $("#autoLayouts").checked = !!state.settings.general.autoSwitchLayouts;
   const list = $("#layoutList");
@@ -892,6 +978,7 @@ bridge && bridge.addEventListener("message", (e) => {
       { const a = document.activeElement; if (!(a && a.tagName === "INPUT" && $("#layoutList").contains(a))) renderLayouts(); }
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
+      { const a = document.activeElement; if (!(a && a.tagName === "INPUT" && $("#groupList").contains(a))) renderGroups(); }
       break;
     case "privacy":
       renderPrivacy(m.widgets);
