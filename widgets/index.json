@@ -6,12 +6,14 @@
       "name": "Buddy",
       "description": "Pair with a friend using a one-time code and see a green dot when they are online. Needs the small relay in tools/buddy-relay.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "umbra-buddy-relay.umbra-server.workers.dev"
       ],
       "files": [
+        "icon.png",
         "index.html",
         "main.js",
         "preview.png",
@@ -24,8 +26,9 @@
       "name": "Calendar glance",
       "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "calendar.google.com",
         "outlook.office365.com",
@@ -38,6 +41,7 @@
         "calendar.css",
         "calendar.js",
         "ical.js",
+        "icon.png",
         "index.html",
         "preview.png",
         "widget.json"
@@ -71,10 +75,12 @@
       "name": "Clock",
       "description": "A quiet, OLED-friendly clock with the date and a slim progress ring for the current minute.",
       "author": "AmineChr54",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
+        "icon.png",
         "index.html",
         "preview.png",
         "widget.json"
@@ -85,13 +91,15 @@
       "name": "Countdowns",
       "description": "Count down to birthdays, trips and deadlines as dot grids, bars or rings, plus how far this year, month or week has gone. Add and edit right in the widget.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
         "countdown.js",
         "countdowns.css",
         "countdowns.js",
+        "icon.png",
         "index.html",
         "preview.png",
         "widget.json"
@@ -121,11 +129,13 @@
       "name": "Quote or word of the day",
       "description": "A calm daily quote or word, in English or German. Built-in list, works offline.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
         "data.js",
+        "icon.png",
         "index.html",
         "main.js",
         "preview.png",
@@ -173,12 +183,14 @@
       "name": "Exchange rates",
       "description": "Euro against your chosen currencies with a 7-day sparkline. ECB rates via Frankfurter.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "api.frankfurter.dev"
       ],
       "files": [
+        "icon.png",
         "index.html",
         "main.js",
         "preview.png",
@@ -191,14 +203,16 @@
       "name": "GitHub Activity",
       "description": "Open pull requests, open issues, the latest CI run and the latest release of one public repository. Click a row to open it.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "api.github.com"
       ],
       "files": [
         "gh.css",
         "gh.js",
+        "icon.png",
         "index.html",
         "preview.png",
         "widget.json"
@@ -209,12 +223,14 @@
       "name": "Habits",
       "description": "Daily habits with a 52-week dot grid, current and best streak. One tap marks today; targets are daily or N times a week. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
         "habits.css",
         "habits.js",
+        "icon.png",
         "index.html",
         "preview.png",
         "streaks.js",
@@ -262,14 +278,16 @@
       "name": "Now Playing",
       "description": "Shows what is playing in any Windows media app (Spotify, browsers, VLC...) with album art and play, pause, next and previous controls.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "media": [
         "read",
         "control"
       ],
       "files": [
+        "icon.png",
         "index.html",
         "preview.png",
         "widget.json"
@@ -280,10 +298,12 @@
       "name": "Pomodoro",
       "description": "A focus timer with a progress ring: Pomodoro with breaks or a plain countdown, times editable right in the widget, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
+        "icon.png",
         "index.html",
         "pomodoro.css",
         "pomodoro.js",
@@ -316,10 +336,12 @@
       "name": "Quick Notes",
       "description": "A scratchpad on your desktop with up to five note tabs. Saves as you type and shows a character count. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
+        "icon.png",
         "index.html",
         "notes.css",
         "notes.js",
@@ -384,13 +406,15 @@
       "name": "S&P 500",
       "description": "Live index price, daily change and a smooth intraday chart. Works with any Yahoo Finance symbol.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "query1.finance.yahoo.com"
       ],
       "files": [
         "chart.js",
+        "icon.png",
         "index.html",
         "preview.png",
         "sp500.css",
@@ -459,10 +483,12 @@
       "name": "To Do",
       "description": "Today's tasks with repeats, streaks and a calm progress bar. Right-click a task to mark it important, number your plan or move it to tomorrow. Keys: N add, arrows select, Space done, I, O, T, Del. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [],
       "files": [
+        "icon.png",
         "index.html",
         "preview.png",
         "repeat.js",
@@ -510,13 +536,15 @@
       "name": "Weather",
       "description": "Temperature, condition and today's high and low for one city. Uses Open-Meteo, no API key.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
+      "icon": "icon.png",
       "hosts": [
         "api.open-meteo.com",
         "geocoding-api.open-meteo.com"
       ],
       "files": [
+        "icon.png",
         "index.html",
         "preview.png",
         "weather.css",

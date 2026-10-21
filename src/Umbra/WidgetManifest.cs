@@ -19,6 +19,8 @@ public sealed partial class WidgetManifest
     public string? Changelog { get; set; }
     public string Entry { get; set; } = "index.html";
     public string? Preview { get; set; }
+    /// <summary>Small PNG (up to 128 px, 64 KB) next to widget.json, drawn on the group tab strip; null = a letter badge.</summary>
+    public string? Icon { get; set; }
     public int Width { get; set; } = 320;
     public int Height { get; set; } = 180;
     /// <summary>False opts the widget out of themes (it keeps the default look).</summary>

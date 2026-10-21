@@ -954,7 +954,7 @@ sealed class App : ApplicationContext
     readonly System.Windows.Forms.Timer _tabTimer = new() { Interval = 250 };
 
     /// <summary>
-    /// Every tick: shows a group's tab strip while the pointer is over its visible widget (or the strip) and hides it otherwise,
+    /// Every tick: keeps a group's tab strip on top of its visible widget (hidden with it),
     /// and switches groups that have a cycle interval to their next tab (not while the pointer is over them or in edit mode).
     /// </summary>
     void TickGroups()
@@ -975,7 +975,7 @@ sealed class App : ApplicationContext
             var shown = win is { IsHandleCreated: true, Visible: true } && !ShouldHide;
             _tabStrips.TryGetValue(id, out var strip);
             var hover = shown && (win!.CursorOverThisWindow() || (strip is { Visible: true } && IsOver(strip)));
-            if (hover)
+            if (shown)
             {
                 if (strip is null) { strip = new GroupTabs(this, id, win!.Bounds); _tabStrips[id] = strip; }
                 var changed = strip.Place(win!.Bounds);
