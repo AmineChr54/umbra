@@ -208,8 +208,11 @@ function renderUpdate() {
   $("#updateInstall").lastChild.textContent = u.portable ? "Download" : u.ready ? "Restart to update" : "Update now";
   $("#aboutPortable").hidden = !state.portable;
   $("#aboutPortable").textContent = state.portable ? `Portable mode - data in ${state.dataDir}` : "";
-  $("#updateInstall").disabled = false;
-  $("#updateCheck").disabled = false;
+  // Disabled from the click until Umbra quits (or the install fails), also while the download reports progress.
+  const busy = !!(u.installing || u.progress != null);
+  $("#updateInstall").disabled = busy;
+  $("#updateCheck").disabled = busy;
+  if (u.installing && a) $("#updateText").textContent = u.ready ? "Restarting Umbra to update..." : "Downloading the update. Umbra will restart when it's done...";
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
   renderWhatsNew();
 }

@@ -165,6 +165,8 @@ sealed class UpdateService : IDisposable
     public ReleaseInfo? WhatsNew { get; private set; }
     public string? WhatsNewVersion { get; private set; }
     public DateTime? LastChecked { get; private set; }
+    /// <summary>True from the "Update now" / "Restart to update" click until Umbra quits (or the install fails).</summary>
+    public bool Installing => _installing;
     public string? Error { get; private set; }
     /// <summary>Download progress 0-100 while the installer is being fetched, otherwise null.</summary>
     public int? Progress { get; private set; }
@@ -360,6 +362,7 @@ sealed class UpdateService : IDisposable
         var rel = CheckInstallable();
         if (_installing) throw new InvalidOperationException("Update already in progress");
         _installing = true;
+        _app.SettingsChangedElsewhere(); // About disables the button right away and keeps it disabled
         try
         {
             var file = await StageAsync();
@@ -375,7 +378,11 @@ sealed class UpdateService : IDisposable
             _started = true;
             _app.QuitSoon();
         }
-        finally { _installing = false; }
+        finally
+        {
+            // Once the installer has started Umbra is quitting: the button stays disabled until the process is gone.
+            if (!_started) { _installing = false; _app.SettingsChangedElsewhere(); }
+        }
     }
 
     /// <summary>
@@ -482,6 +489,7 @@ sealed class UpdateService : IDisposable
             ["version"] = WhatsNewVersion, ["url"] = WhatsNew?.PageUrl ?? Updates.ReleasePageUrl(WhatsNewVersion), ["notes"] = WhatsNew?.Notes ?? "",
         },
         ["ready"] = Ready,
+        ["installing"] = _installing,
         ["progress"] = Progress,
         ["lastChecked"] = LastChecked?.ToString("o"),
         ["error"] = Error,
