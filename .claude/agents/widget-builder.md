@@ -13,6 +13,6 @@ Loop:
 4. Look at it: `umbractl capture <id> <scratch>/shot.png`, then read the PNG. Fix layout, clipping, contrast and empty states. Repeat.
 5. Try every option with `umbractl set <id> <key> <value>` and capture again.
 6. Finish: call `umbra.rendered()` after the first real frame, true-black background, text 11px or larger, tabular numbers, respect `data-motion`. Capture `preview.png` at 2x with `umbractl capture <id> widgets/<id>/preview.png`.
-7. Run `node scripts/catalog.mjs` and make sure it passes; it also regenerates `widgets/index.json`.
+7. Run `node scripts/catalog.mjs` and make sure it passes; it also regenerates `widgets/index.json`. Commit that regenerated index with the widget (CI only checks it, nothing regenerates it after merge); never hand-edit it.
 
 Never screenshot the desktop. Report what you verified and which captures you inspected.

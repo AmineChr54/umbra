@@ -95,7 +95,7 @@ To test the Browse catalog end to end, point Umbra at your local repo:
 
 ```powershell
 $env:UMBRA_CATALOG_BASE = "file:///C:/path/to/umbra/widgets"
-node scripts/catalog.mjs          # validates and rebuilds widgets/index.json
+node scripts/catalog.mjs          # validates and rebuilds widgets/index.json and themes/index.json
 & "$env:LOCALAPPDATA\Programs\Umbra\Umbra.exe"
 ```
 
@@ -124,7 +124,7 @@ themes/ember/
 - `id` equals the folder name (2-40 lowercase letters, digits and dashes; `default` is taken). Bump `version` on every change.
 - `tokens` may only use the names in the [token table](docs/widget-sdk.md#umbracss-tokens): colors (`--bg`, `--surface-1..3`, `--line`, `--line-strong`, `--text`, `--text-2`, `--text-3`, `--accent`, `--accent-strong`, `--accent-soft`, `--up`, `--down`, `--flat`) as `#rgb`/`#rrggbb`/`#rrggbbaa`, `rgb()`, `rgba()`, `hsl()` or `hsla()`, and radii (`--radius-s|m|l`) as `0-99px` or `rem`. Anything else (CSS, `url()`, scripts, other tokens, subfolders) fails validation. Leave out what you don't change. Keep `--bg` at the default `#000` unless the theme is about the background, and keep text readable (contrast of `--text` and `--text-2` on your surfaces).
 - Try it: `umbractl send install-theme '{"id":"ember"}'` installs from the catalog; to test a local file copy the folder to `%APPDATA%\Umbra\themes\<id>\` and run `umbractl themes`, then `umbractl theme <id>` and `umbractl capture settings:themes themes.png`.
-- Open a pull request with only your `themes/<id>/` folder. `node scripts/catalog.mjs` validates it (CI runs the same) and `themes/index.json` is regenerated on merge.
+- Run `node scripts/catalog.mjs`: it validates your theme and regenerates `themes/index.json`. Open a pull request with your `themes/<id>/` folder and that regenerated index. CI runs `node scripts/catalog.mjs --check` and fails if the index is out of date (nothing is committed to `main` for you).
 
 ## Working on the app itself
 
@@ -132,7 +132,7 @@ Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/proje
 
 ## 6. Open a pull request
 
-Only add your `widgets/<id>/` folder. You don't need to edit `widgets/index.json`, because CI validates your widget on the PR and regenerates the catalog when it's merged. Validation checks the id, the required fields, the semantic version, the hostnames, the option types, the file types and the 5 MB limit.
+Add your `widgets/<id>/` folder and the regenerated catalog index. Run `node scripts/catalog.mjs` and commit the resulting `widgets/index.json` (and `themes/index.json`) with your widget. Never edit the index by hand. CI runs `node scripts/catalog.mjs --check` on the PR and fails if the index is out of date, because nothing regenerates or commits it after the merge. If another widget PR lands first and your index conflicts, rebase on `main` and run `node scripts/catalog.mjs` again. Validation checks the id, the required fields, the semantic version, the hostnames, the option types, the file types and the 5 MB limit.
 
 Reviewers will check that the widget only uses the hosts it declares and looks at home next to the others.
 
