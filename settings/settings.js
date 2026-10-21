@@ -721,7 +721,9 @@ function renderCatalog() {
     // Collapsed cards show one summary chip; "Read more" lists every command in full.
     const cmds = w.commands || [];
     const open = expandedCards.has(w.id);
-    if (cmds.length && !open) {
+    // Only a lot of command text is folded away; one short command stays visible as it is.
+    const longCmds = cmds.length > 1 || cmds.some((c) => (c.run || "").length > 60);
+    if (longCmds && !open) {
       const c = document.createElement("span");
       c.className = "chip warn";
       c.innerHTML = '<span class="ico" data-icon="alert"></span>';
@@ -739,16 +741,16 @@ function renderCatalog() {
     }
     const desc = $(".cdesc", card);
     desc.classList.toggle("open", open);
-    if ((w.description || "").length > 110 || cmds.length) {
-      const more = $(".cmore", card);
-      more.hidden = false;
-      more.textContent = open ? "Show less" : "Read more…";
-      more.setAttribute("aria-expanded", String(open));
-      more.addEventListener("click", () => {
-        if (expandedCards.has(w.id)) expandedCards.delete(w.id); else expandedCards.add(w.id);
-        renderCatalog();
-      });
-    }
+    const more = $(".cmore", card);
+    more.setAttribute("aria-expanded", String(open));
+    more.textContent = open ? "Show less" : "Read more…";
+    more.addEventListener("click", () => {
+      if (expandedCards.has(w.id)) expandedCards.delete(w.id); else expandedCards.add(w.id);
+      renderCatalog();
+    });
+    // Shown only for a lot of text: commands that were folded away, an open card, or a description cut off by the line clamp (checked once the card is in the page).
+    more.hidden = !(longCmds || open);
+    const checkClamp = () => { if (!open && !longCmds) more.hidden = desc.scrollHeight <= desc.clientHeight + 1; };
 
     card.setAttribute("aria-label", w.name);
     const btn = $(".action", card);
@@ -774,6 +776,7 @@ function renderCatalog() {
     btn.setAttribute("aria-label", `${btn.textContent.trim()} ${w.name}`);
     icons(card);
     grid.append(card);
+    checkClamp();
   }
 }
 
