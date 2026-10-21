@@ -291,9 +291,15 @@ sealed class App : ApplicationContext
         change(Settings);
         Groups.Prune(Settings);
         SaveSettings();
-        SyncWindows();
+        // Order matters: the outgoing tab goes first, the incoming one is moved and sized while still hidden, and only then shown,
+        // so two tabs are never on screen together and the new one never flashes at its old bounds.
+        foreach (var (inst, w) in _windows) if (w.Visible && !WantVisible(inst)) w.Visible = false;
         foreach (var w in _windows.Values) w.ReapplyPlacement();
+        SyncWindows();
         foreach (var w in _windows.Values) w.PushSettings();
+        LowerWidgets();
+        foreach (var id in _tabStrips.Keys.ToList()) _tabSwitchedAt[id] = System.Environment.TickCount64;
+        TickGroups();
         SettingsChangedElsewhere();
     }
 
@@ -305,7 +311,22 @@ sealed class App : ApplicationContext
         ["members"] = new System.Text.Json.Nodes.JsonArray(kv.Value.Members.Select(m => (System.Text.Json.Nodes.JsonNode)System.Text.Json.Nodes.JsonValue.Create(m)!).ToArray()),
         ["active"] = Groups.ActiveOf(kv.Value),
         ["cycleSeconds"] = kv.Value.CycleSeconds,
+        ["icons"] = new System.Text.Json.Nodes.JsonObject(kv.Value.Members
+            .Where(m => Settings.Widgets.TryGetValue(m, out var w) && w.TabIcon is not null)
+            .Select(m => KeyValuePair.Create(m, (System.Text.Json.Nodes.JsonNode?)System.Text.Json.Nodes.JsonValue.Create(Settings.Widgets[m].TabIcon)))),
     }).ToArray());
+
+    /// <summary>Sets (or with null/empty clears) the tab icon of a widget copy; the strip redraws at once.</summary>
+    public void SetTabIcon(string instance, string? icon)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws)) throw new KeyNotFoundException($"No widget copy '{instance}'");
+        if (string.IsNullOrEmpty(icon)) icon = null;
+        else if (Groups.IconPath(icon) is null) throw new ArgumentException($"Unknown tab icon '{icon}'");
+        ws.TabIcon = icon;
+        SaveSettings();
+        foreach (var id in _tabStrips.Keys.ToList()) _tabStrips[id].Redraw();
+        SettingsChangedElsewhere();
+    }
 
     /// <summary>Starts a group with one widget copy; returns the group id.</summary>
     public string CreateGroup(string name, string instance)

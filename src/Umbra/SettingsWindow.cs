@@ -200,6 +200,7 @@ sealed class SettingsWindow : Form
                         case "reorder": _app.ReorderTab(group, inst, msg["index"]?.GetValue<int>() ?? 0); break;
                         case "configure": _app.ConfigureGroup(group, S("name"), msg["cycleSeconds"]?.GetValue<int>()); break;
                         case "delete": _app.DeleteGroup(group); break;
+                        case "icon": _app.SetTabIcon(inst, S("icon")); break;
                     }
                 }
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException)

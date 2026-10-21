@@ -13,6 +13,7 @@ my-widget/            folder name = widget id (lowercase letters, digits, dashes
   index.html          entry page (required, or whatever "entry" names)
   preview.png         screenshot for the Browse page (recommended: 2x, black background)
   icon.png            optional tab icon for widget groups (64x64 PNG, light grey on transparent; "icon": "icon.png" in widget.json)
+  (users can also pick any of the bundled shared/tabicons for a tab in Settings > Tab groups, or with `umbractl groups icon <id> <name>`; their choice wins over icon.png)
   ...                 .js .mjs .css .svg .png .jpg .webp .gif .woff .woff2 .ttf .otf .json .txt .md (5 MB total)
 ```
 

@@ -237,7 +237,8 @@ sealed class Control(App app)
                             app.ConfigureGroup(Str(a, "group"), a["name"] is null ? null : Str(a, "name"), a["cycleSeconds"] is JsonNode cs ? Int(cs, "cycleSeconds") : null);
                             break;
                         case "delete": app.DeleteGroup(Str(a, "group")); break;
-                        default: throw new CommandException("op must be list, create, join, leave, activate, next, previous, reorder, configure or delete");
+                        case "icon": app.SetTabIcon(Target(a).Instance, a["icon"] is null ? null : Str(a, "icon")); break;
+                        default: throw new CommandException("op must be list, create, join, leave, activate, next, previous, reorder, configure, icon or delete");
                     }
                 }
                 catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException) { throw new CommandException(ex.Message); }

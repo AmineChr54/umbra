@@ -496,3 +496,13 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
   .size-val[disabled] { color: GrayText; opacity: 1; }
   .size-val:hover:not([disabled]) { outline-color: Highlight; }
 }
+
+/* Tab icon picker */
+.tabchip .tabicon { display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 3px 0 3px 4px; opacity: .85; }
+.tabchip .tabicon img { width: 16px; height: 16px; }
+.iconpop { position: fixed; z-index: 50; width: 316px; max-height: 340px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--surface-2, #111); border: 1px solid var(--line-strong, var(--line)); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .6); }
+.icongrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px; overflow-y: auto; }
+.iconcell { display: flex; align-items: center; justify-content: center; height: 34px; background: none; border: 1px solid transparent; border-radius: 8px; color: inherit; font: inherit; cursor: pointer; }
+.iconcell:hover, .iconcell:focus-visible { background: var(--line); outline: none; }
+.iconcell.wide { grid-column: 1 / -1; height: 28px; font-size: 12px; }
+.iconcell img { width: 20px; height: 20px; }

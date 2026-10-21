@@ -601,7 +601,13 @@ function renderGroups() {
       const pick = Object.assign(document.createElement("button"), { className: "tabpick", textContent: label(inst) });
       pick.title = "Show this tab";
       pick.addEventListener("click", () => post({ type: "group", op: "activate", group: g.id, id: inst }));
-      chip.append(pick);
+      const ic = Object.assign(document.createElement("button"), { className: "tabicon", title: "Choose tab icon" });
+      ic.setAttribute("aria-label", `Choose tab icon for ${label(inst)}`);
+      const cur = (g.icons || {})[inst];
+      if (cur) ic.append(Object.assign(document.createElement("img"), { src: ICON_BASE + cur + ".png", alt: "" }));
+      else ic.textContent = "◇";
+      ic.addEventListener("click", () => openIconPicker(inst, ic));
+      chip.append(ic, pick);
       if (i > 0) {
         const left = Object.assign(document.createElement("button"), { textContent: "‹", title: "Move earlier" });
         left.setAttribute("aria-label", `Move ${label(inst)} earlier`);
@@ -637,6 +643,54 @@ function renderGroups() {
     list.append(row);
   }
   icons(list);
+}
+
+// ---------- Tab icon picker ----------
+const ICON_BASE = "https://umbra.local/shared/tabicons/";
+let iconIndex = null;
+
+async function openIconPicker(inst, anchor) {
+  document.querySelector(".iconpop")?.remove();
+  if (!iconIndex) {
+    try { iconIndex = await (await fetch(ICON_BASE + "index.json")).json(); }
+    catch { toast("Could not load the icon list", true); return; }
+  }
+  const pop = document.createElement("div");
+  pop.className = "iconpop";
+  const search = Object.assign(document.createElement("input"), { className: "input", type: "search", placeholder: "Search icons" });
+  search.setAttribute("aria-label", "Search icons");
+  const grid = document.createElement("div");
+  grid.className = "icongrid";
+  const close = () => { pop.remove(); document.removeEventListener("mousedown", away, true); };
+  const away = (e) => { if (!pop.contains(e.target) && e.target !== anchor) close(); };
+  const choose = (name) => { post({ type: "group", op: "icon", id: inst, icon: name }); close(); };
+  const fill = () => {
+    const q = search.value.trim().toLowerCase();
+    grid.replaceChildren();
+    const none = Object.assign(document.createElement("button"), { className: "iconcell wide", textContent: "Default" });
+    none.addEventListener("click", () => choose(""));
+    grid.append(none);
+    for (const it of iconIndex) {
+      if (q && !it.name.includes(q) && !it.tags.some((t) => t.includes(q))) continue;
+      const b = document.createElement("button");
+      b.className = "iconcell";
+      b.title = it.name;
+      b.setAttribute("aria-label", it.name);
+      b.append(Object.assign(document.createElement("img"), { src: ICON_BASE + it.name + ".png", alt: "", loading: "lazy" }));
+      b.addEventListener("click", () => choose(it.name));
+      grid.append(b);
+    }
+  };
+  search.addEventListener("input", fill);
+  pop.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  fill();
+  pop.append(search, grid);
+  document.body.append(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + "px";
+  pop.style.top = Math.max(8, Math.min(r.bottom + 6, innerHeight - pop.offsetHeight - 8)) + "px";
+  document.addEventListener("mousedown", away, true);
+  search.focus();
 }
 
 function renderLayouts() {

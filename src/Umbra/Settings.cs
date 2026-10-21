@@ -99,6 +99,8 @@ public sealed class WidgetSettings
     public bool Locked { get; set; }
     /// <summary>The user allows this widget to show notifications (umbra.notify). Off until switched on.</summary>
     public bool Notifications { get; set; }
+    /// <summary>Tab-strip icon chosen by the user (a name from shared/tabicons); null = the widget's own icon or a letter.</summary>
+    public string? TabIcon { get; set; }
 
     /// <summary>Size multiplier for the window and the page zoom, kept within 50-300 % and rounded to whole percent.</summary>
     public double Scale

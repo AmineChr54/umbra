@@ -20,6 +20,18 @@ public static class Groups
 {
     public const int MaxGroups = 20, MaxMembers = 12, MinCycle = 5, MaxCycle = 3600;
 
+    /// <summary>Whether <paramref name="name"/> is a well-formed tab icon name (the file must still exist in shared/tabicons).</summary>
+    public static bool IsIconName(string? name) =>
+        !string.IsNullOrEmpty(name) && name.Length <= 40 && System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-z0-9]+(-[a-z0-9]+)*$");
+
+    /// <summary>The icon file for a chosen name, or null if it is malformed or not in the set.</summary>
+    public static string? IconPath(string? name)
+    {
+        if (!IsIconName(name)) return null;
+        var path = Path.Combine(AppPaths.AppDir, "shared", "tabicons", name + ".png");
+        return File.Exists(path) ? path : null;
+    }
+
     public static string? GroupOf(Settings s, string instance) =>
         s.Groups.FirstOrDefault(g => g.Value.Members.Contains(instance)).Key;
 

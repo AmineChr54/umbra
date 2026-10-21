@@ -161,6 +161,9 @@ sealed class GroupTabs : Form
     Rectangle _target;
     string _signature = "";
 
+    /// <summary>Repaints the chips (a tab icon changed).</summary>
+    public void Redraw() => Invalidate();
+
     /// <summary>Puts the strip on the visible widget at <paramref name="target"/> (physical pixels); returns true if anything moved or changed.</summary>
     public bool Place(Rectangle target)
     {
@@ -202,11 +205,18 @@ sealed class GroupTabs : Form
     /// <summary>The widget's icon as a bitmap (up to 128 px, 64 KB), or null for a letter badge.</summary>
     Bitmap? IconFor(string instance)
     {
-        if (_icons.TryGetValue(instance, out var cached)) return cached;
+        var chosen = _app.Settings.Widgets.TryGetValue(instance, out var ws) ? ws.TabIcon : null;
+        var cacheKey = instance + "|" + chosen;
+        if (_icons.TryGetValue(cacheKey, out var cached)) return cached;
         Bitmap? bmp = null;
         try
         {
-            if (_app.Resolve(instance) is { } r && r.Manifest.Icon is { } file)
+            if (Groups.IconPath(chosen) is { } own)
+            {
+                using var src = Image.FromFile(own);
+                bmp = new Bitmap(src);
+            }
+            else if (_app.Resolve(instance) is { } r && r.Manifest.Icon is { } file)
             {
                 var root = r.Manifest.Source == WidgetSource.BuiltIn ? AppPaths.WidgetsDir : AppPaths.CommunityDir;
                 var path = Path.Combine(root, r.Manifest.Folder, file);
@@ -219,7 +229,7 @@ sealed class GroupTabs : Form
             }
         }
         catch (Exception ex) { Log.Write($"Tab icon for {instance} unusable: {ex.Message}"); }
-        return _icons[instance] = bmp;
+        return _icons[cacheKey] = bmp;
     }
 
     protected override void OnPaint(PaintEventArgs e)

@@ -66,7 +66,7 @@ static class CommandLine
                 throw new ArgumentException("Usage: layouts [list | save <name> | apply <name> | rename <name> <new name> | delete <name>]");
             case "groups" or "group":
             {
-                const string usage = "Usage: groups [list | create <id> [name] | join <group> <id> | leave <id> | activate <group> <id> | next <group> | previous <group> | reorder <group> <id> <index> | cycle <group> <seconds|off> | rename <group> <name> | delete <group>]";
+                const string usage = "Usage: groups [list | create <id> [name] | join <group> <id> | leave <id> | activate <group> <id> | next <group> | previous <group> | reorder <group> <id> <index> | cycle <group> <seconds|off> | rename <group> <name> | icon <id> <name|default> | delete <group>]";
                 if (a.Length < 2 || a[1] == "list") return ("groups", new JsonObject());
                 switch (a[1])
                 {
@@ -83,6 +83,7 @@ static class CommandLine
                         var n = s == "off" ? 0 : int.TryParse(s, out var secs) ? secs : throw new ArgumentException("seconds must be a number or off");
                         return ("groups", O(("op", "configure"), ("group", Arg(a, 2, "group id")), ("cycleSeconds", n)));
                     }
+                    case "icon": return ("groups", O(("op", "icon"), ("id", Arg(a, 2, "widget id")), ("icon", Arg(a, 3, "icon name") is var ic && ic != "default" ? ic : "")));
                     case "rename": return ("groups", O(("op", "configure"), ("group", Arg(a, 2, "group id")), ("name", string.Join(' ', a.Skip(3)))));
                     default: throw new ArgumentException(usage);
                 }
