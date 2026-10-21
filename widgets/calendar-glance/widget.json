@@ -4,7 +4,7 @@
   "name": "Calendar glance",
   "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
   "author": "AmineChr54",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 320,
@@ -25,7 +25,7 @@
       "label": "iCal address",
       "type": "text",
       "default": "demo",
-      "hint": "Secret .ics link (webcal:// is fine) on calendar.google.com, outlook.office365.com, outlook.live.com, calendar.zoho.com, calendar.proton.me or raw.githubusercontent.com. Type demo to see sample events."
+      "hint": "Secret .ics link (webcal:// is fine) on calendar.google.com, outlook.office365.com, outlook.live.com, calendar.zoho.com, calendar.proton.me or raw.githubusercontent.com. Type demo to see sample events. Click the i in the widget for a step-by-step guide."
     },
     "showTomorrow": { "label": "Show tomorrow", "type": "toggle", "default": true },
     "maxRows": { "label": "Max rows", "type": "number", "default": 8, "min": 3, "max": 12, "step": 1 },

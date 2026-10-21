@@ -64,6 +64,29 @@ static class CommandLine
                 if (a[1] is "save" or "apply" or "delete") return ("layouts", O(("op", a[1]), ("name", string.Join(' ', a.Skip(2)))));
                 if (a[1] == "rename") return ("layouts", O(("op", "rename"), ("name", Arg(a, 2, "layout name")), ("to", Arg(a, 3, "new name"))));
                 throw new ArgumentException("Usage: layouts [list | save <name> | apply <name> | rename <name> <new name> | delete <name>]");
+            case "groups" or "group":
+            {
+                const string usage = "Usage: groups [list | create <id> [name] | join <group> <id> | leave <id> | activate <group> <id> | next <group> | previous <group> | reorder <group> <id> <index> | cycle <group> <seconds|off> | rename <group> <name> | delete <group>]";
+                if (a.Length < 2 || a[1] == "list") return ("groups", new JsonObject());
+                switch (a[1])
+                {
+                    case "create": return ("groups", O(("op", "create"), ("id", Arg(a, 2, "widget id")), ("name", a.Length > 3 ? string.Join(' ', a.Skip(3)) : null)));
+                    case "join" or "activate": return ("groups", O(("op", a[1]), ("group", Arg(a, 2, "group id")), ("id", Arg(a, 3, "widget id"))));
+                    case "leave": return ("groups", O(("op", "leave"), ("id", Arg(a, 2, "widget id"))));
+                    case "next" or "previous" or "delete": return ("groups", O(("op", a[1]), ("group", Arg(a, 2, "group id"))));
+                    case "reorder":
+                        return ("groups", O(("op", "reorder"), ("group", Arg(a, 2, "group id")), ("id", Arg(a, 3, "widget id")),
+                            ("index", int.TryParse(Arg(a, 4, "index"), out var ix) ? ix : throw new ArgumentException("index must be a number"))));
+                    case "cycle":
+                    {
+                        var s = Arg(a, 3, "seconds");
+                        var n = s == "off" ? 0 : int.TryParse(s, out var secs) ? secs : throw new ArgumentException("seconds must be a number or off");
+                        return ("groups", O(("op", "configure"), ("group", Arg(a, 2, "group id")), ("cycleSeconds", n)));
+                    }
+                    case "rename": return ("groups", O(("op", "configure"), ("group", Arg(a, 2, "group id")), ("name", string.Join(' ', a.Skip(3)))));
+                    default: throw new ArgumentException(usage);
+                }
+            }
             case "edit-mode":
                 return ("edit-mode", a.Length > 1 ? O(("on", OnOff(a[1]))) : new JsonObject());
             case "set":

@@ -184,6 +184,30 @@ sealed class SettingsWindow : Form
                 break;
             }
 
+            case "group":
+            {
+                string? S(string k) => msg[k] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+                try
+                {
+                    var group = S("group") ?? "";
+                    var inst = S("id") ?? "";
+                    switch (S("op"))
+                    {
+                        case "create": _app.CreateGroup(S("name") ?? "Group", inst); break;
+                        case "join": _app.JoinGroup(group, inst); break;
+                        case "leave": _app.LeaveGroup(inst); break;
+                        case "activate": _app.ActivateTab(group, inst); break;
+                        case "reorder": _app.ReorderTab(group, inst, msg["index"]?.GetValue<int>() ?? 0); break;
+                        case "configure": _app.ConfigureGroup(group, S("name"), msg["cycleSeconds"]?.GetValue<int>()); break;
+                        case "delete": _app.DeleteGroup(group); break;
+                    }
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException)
+                { Post(new JsonObject { ["type"] = "commandError", ["error"] = ex.Message }); }
+                SendState();
+                break;
+            }
+
             case "setMonitor":
                 if (msg["monitor"]?.GetValue<string>() is string mon && Placement.Has(Placement.Monitors(), mon))
                     _app.Window(id)?.MoveToMonitor(mon);
@@ -524,6 +548,7 @@ sealed class SettingsWindow : Form
             ["editMode"] = _app.EditMode,
             ["safeMode"] = _app.SafeMode,
             ["layouts"] = _app.LayoutsJson(),
+            ["groups"] = _app.GroupsJson(),
             ["update"] = _app.Updater.ToJson(),
             ["repo"] = $"https://github.com/{Community.Repo}",
             ["settings"] = _app.Settings.ToJson(),

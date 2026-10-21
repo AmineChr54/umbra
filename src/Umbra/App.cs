@@ -56,7 +56,7 @@ sealed class App : ApplicationContext
     /// <summary>Whether this widget copy may be on screen: global hide states, start-hidden and its "show only when" rules.</summary>
     bool WantVisible(string inst)
     {
-        if (ShouldHide || _startHidden.Contains(inst)) return false;
+        if (ShouldHide || _startHidden.Contains(inst) || !Groups.IsShownTab(Settings, inst)) return false;
         var rules = Settings.Widgets.TryGetValue(inst, out var ws) ? ws.ShowWhen : null;
         if (rules is null) return true;
         return Prefs.RulesAllow(rules, DateTime.Now.TimeOfDay,
@@ -285,6 +285,54 @@ sealed class App : ApplicationContext
         return n;
     }
 
+    /// <summary>Runs a change to the tab groups, then saves, re-places the windows (the incoming tab takes the slot) and refreshes Settings.</summary>
+    void ChangeGroups(Action<Settings> change)
+    {
+        change(Settings);
+        Groups.Prune(Settings);
+        SaveSettings();
+        SyncWindows();
+        foreach (var w in _windows.Values) w.ReapplyPlacement();
+        foreach (var w in _windows.Values) w.PushSettings();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>The groups for Settings and umbractl: id, name, members (instance ids in tab order), active tab and cycle interval.</summary>
+    public System.Text.Json.Nodes.JsonArray GroupsJson() => new(Settings.Groups.Select(kv => (System.Text.Json.Nodes.JsonNode)new System.Text.Json.Nodes.JsonObject
+    {
+        ["id"] = kv.Key,
+        ["name"] = kv.Value.Name,
+        ["members"] = new System.Text.Json.Nodes.JsonArray(kv.Value.Members.Select(m => (System.Text.Json.Nodes.JsonNode)System.Text.Json.Nodes.JsonValue.Create(m)!).ToArray()),
+        ["active"] = Groups.ActiveOf(kv.Value),
+        ["cycleSeconds"] = kv.Value.CycleSeconds,
+    }).ToArray());
+
+    /// <summary>Starts a group with one widget copy; returns the group id.</summary>
+    public string CreateGroup(string name, string instance)
+    {
+        var id = "";
+        ChangeGroups(s => id = Groups.Create(s, name, instance));
+        return id;
+    }
+
+    public void JoinGroup(string groupId, string instance) => ChangeGroups(s => Groups.Join(s, groupId, instance));
+    public void LeaveGroup(string instance) => ChangeGroups(s => Groups.Leave(s, instance));
+    public void ActivateTab(string groupId, string instance) => ChangeGroups(s => Groups.Activate(s, groupId, instance));
+    public void StepTab(string groupId, int direction) => ChangeGroups(s => Groups.Step(s, groupId, direction));
+    public void ReorderTab(string groupId, string instance, int index) => ChangeGroups(s => Groups.Reorder(s, groupId, instance, index));
+
+    public void DeleteGroup(string groupId) => ChangeGroups(s =>
+    {
+        if (!s.Groups.Remove(groupId)) throw new KeyNotFoundException($"No group '{groupId}'");
+    });
+
+    public void ConfigureGroup(string groupId, string? name, int? cycleSeconds) => ChangeGroups(s =>
+    {
+        if (!s.Groups.TryGetValue(groupId, out var g)) throw new KeyNotFoundException($"No group '{groupId}'");
+        if (name is not null) g.Name = Groups.CleanName(name);
+        if (cycleSeconds is { } c) g.CycleSeconds = c <= 0 ? 0 : c;
+    });
+
     public bool DeleteLayout(string name)
     {
         var ok = Layouts.Delete(name);
@@ -324,6 +372,8 @@ sealed class App : ApplicationContext
         _hotkeys.Apply(Settings.Hotkeys);
         _fullscreenTimer.Tick += (_, _) => CheckFullscreen();
         _fullscreenTimer.Start();
+        _tabTimer.Tick += (_, _) => TickGroups();
+        _tabTimer.Start();
         _rulesTimer.Tick += (_, _) => ApplyVisibility();
         _rulesTimer.Start();
         _layoutTimer.Tick += (_, _) => SwitchLayoutForSetup();
@@ -613,6 +663,7 @@ sealed class App : ApplicationContext
     /// <summary>Opens a window for each enabled widget copy and closes the ones that were disabled or removed.</summary>
     public void SyncWindows()
     {
+        Groups.Prune(Settings);
         foreach (var m in Manifests)
             foreach (var inst in Settings.Instances(m.Id))
             {
@@ -860,6 +911,7 @@ sealed class App : ApplicationContext
             if (!incoming.Widgets.ContainsKey(id) && InstanceId.IsExtra(id)) incoming.Widgets[id] = cur;
         foreach (var (id, ws) in incoming.Widgets)
             if (Settings.Widgets.TryGetValue(id, out var cur)) { ws.X = cur.X; ws.Y = cur.Y; ws.Monitor = cur.Monitor; ws.RelX = cur.RelX; ws.RelY = cur.RelY; if (HandScaledRecently(id)) { ws.Scale = cur.Scale; ws.Width = cur.Width; ws.Height = cur.Height; } }
+        incoming.Groups = Settings.Groups; // owned by the group methods, like positions
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
@@ -893,6 +945,60 @@ sealed class App : ApplicationContext
     }
 
     readonly List<EditPill> _pills = new();
+
+    readonly Dictionary<string, GroupTabs> _tabStrips = new();
+    readonly Dictionary<string, long> _tabSwitchedAt = new();
+    readonly System.Windows.Forms.Timer _tabTimer = new() { Interval = 250 };
+
+    /// <summary>
+    /// Every tick: shows a group's tab strip while the pointer is over its visible widget (or the strip) and hides it otherwise,
+    /// and switches groups that have a cycle interval to their next tab (not while the pointer is over them or in edit mode).
+    /// </summary>
+    void TickGroups()
+    {
+        foreach (var id in _tabStrips.Keys.Where(k => !Settings.Groups.TryGetValue(k, out var g) || g.Members.Count < 2).ToList())
+        {
+            _tabStrips[id].Close();
+            _tabStrips.Remove(id);
+            _tabSwitchedAt.Remove(id);
+        }
+        var now = System.Environment.TickCount64;
+        var raise = false;
+        foreach (var (id, g) in Settings.Groups.ToList())
+        {
+            if (g.Members.Count < 2) continue;
+            var active = Groups.ActiveOf(g);
+            var win = active is null ? null : Window(active);
+            var shown = win is { IsHandleCreated: true, Visible: true } && !ShouldHide;
+            _tabStrips.TryGetValue(id, out var strip);
+            var hover = shown && (win!.CursorOverThisWindow() || (strip is { Visible: true } && IsOver(strip)));
+            if (hover)
+            {
+                if (strip is null) { strip = new GroupTabs(this, id, win!.Bounds); _tabStrips[id] = strip; }
+                var changed = strip.Place(win!.Bounds);
+                if (!strip.Visible) { strip.Show(); raise = true; }
+                else if (changed) raise = true;
+            }
+            else if (strip is { Visible: true }) strip.Hide();
+
+            if (!_tabSwitchedAt.ContainsKey(id)) _tabSwitchedAt[id] = now;
+            if (g.CycleSeconds > 0 && shown && !hover && !EditMode && now - _tabSwitchedAt[id] >= g.CycleSeconds * 1000L)
+            {
+                _tabSwitchedAt[id] = now;
+                StepTab(id, 1);
+                return; // the settings changed under the loop; the next tick carries on
+            }
+            if (hover) _tabSwitchedAt[id] = now;
+        }
+        if (raise) LowerWidgets();
+    }
+
+    static bool IsOver(Form f)
+    {
+        var p = Cursor.Position;
+        var hit = Native.WindowFromPoint(new Native.POINT { X = p.X, Y = p.Y });
+        return hit != IntPtr.Zero && Native.GetAncestor(hit, Native.GA_ROOT) == f.Handle;
+    }
 
     /// <summary>The "Done" pills: one per monitor that shows a widget (the primary one if none does) while edit mode is on, none otherwise.</summary>
     void UpdateEditPills()
@@ -1022,6 +1128,8 @@ sealed class App : ApplicationContext
         _timeTimer.Dispose();
         _wakeRefresh?.Dispose();
         _fullscreenTimer.Dispose();
+        _tabTimer.Dispose();
+        foreach (var t in _tabStrips.Values) t.Close();
         _layoutTimer.Dispose();
         _peekTimer?.Dispose();
         _hotkeys.Dispose();

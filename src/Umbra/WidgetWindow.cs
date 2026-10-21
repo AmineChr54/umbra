@@ -499,6 +499,47 @@ sealed class WidgetWindow : Form
         _menu.Show(CursorOverThisWindow() ? Cursor.Position : new Point(Left + Width / 2, Top + Height / 2));
     }
 
+    /// <summary>Tab group entries: switch tabs and leave when grouped, otherwise join a group or start one.</summary>
+    void AddGroupItems(ContextMenuStrip menu)
+    {
+        var s = _app.Settings;
+        void Run(Action a)
+        {
+            try { a(); }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException)
+            { Log.Write($"Group change for {Instance} failed: {ex.Message}"); }
+        }
+        if (Groups.GroupOf(s, Instance) is { } gid && s.Groups.TryGetValue(gid, out var g))
+        {
+            var tabs = new ToolStripMenuItem($"Tab group: {g.Name.Replace("&", "&&")}");
+            if (g.Members.Count > 1)
+            {
+                tabs.DropDownItems.Add("Next tab", null, (_, _) => Run(() => _app.StepTab(gid, 1)));
+                tabs.DropDownItems.Add("Previous tab", null, (_, _) => Run(() => _app.StepTab(gid, -1)));
+                tabs.DropDownItems.Add(new ToolStripSeparator());
+                foreach (var m in g.Members)
+                {
+                    var label = _app.Resolve(m) is { } r ? App.InstanceLabel(r.Manifest, m) : m;
+                    var item = new ToolStripMenuItem(label.Replace("&", "&&"), null, (_, _) => Run(() => _app.ActivateTab(gid, m))) { Checked = m == Instance };
+                    tabs.DropDownItems.Add(item);
+                }
+                tabs.DropDownItems.Add(new ToolStripSeparator());
+            }
+            tabs.DropDownItems.Add("Remove from group", null, (_, _) => Run(() => _app.LeaveGroup(Instance)));
+            menu.Items.Add(tabs);
+            return;
+        }
+        var add = new ToolStripMenuItem("Add to tab group");
+        foreach (var (id, grp) in s.Groups)
+        {
+            var target = id;
+            add.DropDownItems.Add(grp.Name.Replace("&", "&&"), null, (_, _) => Run(() => _app.JoinGroup(target, Instance)));
+        }
+        if (add.DropDownItems.Count > 0) add.DropDownItems.Add(new ToolStripSeparator());
+        add.DropDownItems.Add("New group", null, (_, _) => Run(() => _app.CreateGroup(Manifest.Name, Instance)));
+        menu.Items.Add(add);
+    }
+
     ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
@@ -510,6 +551,7 @@ sealed class WidgetWindow : Form
         menu.Items.Add(locked ? "Unlock position" : "Lock position", null, (_, _) => _app.SetLocked(Instance, !locked));
         menu.Items.Add(new ToolStripMenuItem("Edit mode", null, (_, _) => _app.SetEditMode(!_app.EditMode)) { Checked = _app.EditMode });
         menu.Items.Add(new ToolStripSeparator());
+        AddGroupItems(menu);
         menu.Items.Add("Hide", null, (_, _) => _app.DisableWidget(Instance));
         var copy = menu.Items.Add("Add another copy", null, (_, _) =>
         {
@@ -733,7 +775,7 @@ sealed class WidgetWindow : Form
 
     static bool IsKeyDown(int vk) => (Native.GetAsyncKeyState(vk) & 0x8000) != 0;
 
-    bool CursorOverThisWindow()
+    public bool CursorOverThisWindow()
     {
         var p = Cursor.Position;
         var hit = Native.WindowFromPoint(new Native.POINT { X = p.X, Y = p.Y });
