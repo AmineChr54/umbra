@@ -252,36 +252,38 @@
     return n === 1 ? "tomorrow" : `in ${n}d`;
   }
 
+  /** Days from `today` to the same day of the month `months` later (clamped to that month's last day). */
+  function daysAhead(today, months) {
+    const d = toDate(today);
+    const end = new Date(d.getFullYear(), d.getMonth() + months + 1, 0); // last day of the target month
+    end.setDate(Math.min(d.getDate(), end.getDate()));
+    return diffDays(today, key(end.getFullYear(), end.getMonth() + 1, end.getDate()));
+  }
+
   /**
-   * Timeline strip layout: events -> bars on lanes, in pixels. Labels sit inside a bar when they fit, else to the
-   * right (or left when the right is out of room); lanes are packed so labels never overlap.
+   * Vertical timeline layout: time runs down, one `dayPx` per day. Events become bars (y1..y2) packed into
+   * side-by-side lanes, and each gets a label row at its start, nudged down so labels never overlap.
    */
   function timeline(events, today, o) {
-    const days = (o && o.days) || 56, width = (o && o.width) || 324;
-    const charPx = (o && o.charPx) || 6.4, minBar = (o && o.minBar) || 6;
+    const days = (o && o.days) || daysAhead(today, (o && o.months) || 3);
+    const dayPx = (o && o.dayPx) || 12, minBar = (o && o.minBar) || 8, labelH = (o && o.labelH) || 18;
     const last = addDays(today, days - 1);
-    const px = width / days;
-    const lanes = []; // right-most occupied pixel per lane
+    const lanes = []; // bottom-most occupied pixel per lane
     const items = [];
-    let later = 0;
+    let later = 0, labelEnd = 0;
     for (const e of sortEvents(events)) {
       if (e.status === "no" || e.end < today) continue;
       if (e.start > last) { later++; continue; }
       const s = Math.max(0, diffDays(today, e.start)), t = Math.min(days - 1, diffDays(today, e.end));
-      const x1 = s * px, x2 = Math.max(x1 + minBar, (t + 1) * px), w = x2 - x1;
-      const text = e.title.length * charPx + 10;
-      let side = "in", from = x1, to = x2;
-      if (w < text) {
-        if (x2 + 4 + text <= width) { side = "right"; to = x2 + 4 + text; }
-        else if (x1 - 4 - text >= 0) { side = "left"; from = x1 - 4 - text; }
-        else { side = "right"; to = width; }
-      }
-      let lane = lanes.findIndex((end) => end + 3 <= from);
+      const y1 = s * dayPx, y2 = Math.max(y1 + minBar, (t + 1) * dayPx);
+      let lane = lanes.findIndex((end) => end + 2 <= y1);
       if (lane < 0) { lane = lanes.length; lanes.push(0); }
-      lanes[lane] = to;
-      items.push({ event: e, x1, x2, side, lane, clippedLeft: e.start < today });
+      lanes[lane] = y2;
+      const labelY = Math.max(y1, labelEnd);
+      labelEnd = labelY + labelH;
+      items.push({ event: e, y1, y2, lane, labelY, clippedTop: e.start < today });
     }
-    return { items, lanes: lanes.length, later, px, days, last };
+    return { items, lanes: lanes.length, later, dayPx, days, last, height: Math.max(days * dayPx, labelEnd) };
   }
 
   root.EventCore = {
