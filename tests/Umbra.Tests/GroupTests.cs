@@ -115,6 +115,24 @@ public class GroupTests
         Assert.Equal(new[] { "a", "b" }, back.Groups[g].Members);
         Assert.Empty(Settings.FromJson(System.Text.Json.Nodes.JsonNode.Parse("{\"widgets\":{}}")!).Groups);
     }
+
+    [Theory]
+    [InlineData("rocket", true)]
+    [InlineData("chart-line", true)]
+    [InlineData("", false)]
+    [InlineData("../x", false)]
+    [InlineData("Rocket", false)]
+    [InlineData("a--b", false)]
+    public void Tab_icon_names_are_validated(string name, bool ok) => Assert.Equal(ok, Groups.IsIconName(name));
+
+    [Fact]
+    public void Tab_icon_survives_a_json_round_trip()
+    {
+        var s = With("a");
+        s.Widgets["a"].TabIcon = "rocket";
+        Assert.Equal("rocket", Settings.FromJson(s.ToJson()).Widgets["a"].TabIcon);
+        Assert.Null(new WidgetSettings().TabIcon);
+    }
 }
 
 public class TabStripTests
