@@ -1,9 +1,9 @@
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .buddy { position: relative; box-sizing: border-box; height: 100%; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-.star { flex: 1 1 0; min-width: 0; height: 100%; fill: none; stroke: var(--text-3); stroke-opacity: .45; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round;
-  transition: stroke calc(300ms * var(--motion-scale, 1)), filter calc(300ms * var(--motion-scale, 1)); }
-.star.on { stroke: #fff; stroke-opacity: 1; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px rgba(255, 255, 255, .75)); }
+.star { flex: 1 1 0; min-width: 0; height: 100%; object-fit: contain; opacity: .3; user-select: none;
+  transition: opacity calc(300ms * var(--motion-scale, 1)), filter calc(300ms * var(--motion-scale, 1)); }
+.star.on { opacity: 1; filter: drop-shadow(0 0 2px rgba(255, 255, 255, .6)) drop-shadow(0 0 6px rgba(255, 255, 255, .3)); }
 
 .toast { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 12px; color: var(--down); pointer-events: none; }
 .toast.code { font-size: 15px; letter-spacing: .14em; color: var(--text-2); font-variant-numeric: tabular-nums; }

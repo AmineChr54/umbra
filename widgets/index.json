@@ -6,7 +6,7 @@
       "name": "Buddy",
       "description": "Pair with a friend using a one-time code and see a glowing star when they are online. Right-click to pair, unpair or edit names. Needs the small relay in tools/buddy-relay.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [
@@ -17,6 +17,8 @@
         "index.html",
         "main.js",
         "preview.png",
+        "star1.png",
+        "star2.png",
         "style.css",
         "widget.json"
       ]

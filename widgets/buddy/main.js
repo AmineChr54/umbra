@@ -23,10 +23,8 @@ async function save(p) {
   if (p) await umbra.store.set("pair", p); else await umbra.store.remove("pair");
 }
 
-// Hand-traced marker stars (viewBox 150): one self-crossing stroke each.
-const STAR1 = "M78 22 L46 118 L136 52 L18 74 L106 116 Z";
-const STAR2 = "M80 26 L36 120 L132 56 L22 70 L112 112 L84 30";
-const star = (cls, d, tip) => `<svg class="star ${cls}" viewBox="0 0 150 150" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path d="${d}"/></svg>`;
+// The two stars are the user's own drawings (star1.png = you, star2.png = friend), white on transparent.
+const star = (cls, src, tip) => `<img class="star ${cls}" src="${src}" alt="${esc(tip)}" title="${esc(tip)}" draggable="false">`;
 
 let names = null;       // { you, friend } overrides saved from the menu; options are the fallback
 let pop = null;         // { type: "menu" | "join" | "names", x, y } while a popup is open
@@ -39,7 +37,7 @@ function render() {
   const meOn = !!pair && !offline && !unconfigured;
   const friendOn = !!pair && !!peer?.online;
   const waiting = pair?.code && peer && !peer.seen && Date.now() < pair.codeExp;
-  let html = star(meOn ? "on" : "", STAR1, you) + star(friendOn ? "on" : "", STAR2, friend);
+  let html = star(meOn ? "on" : "", "star1.png", you) + star(friendOn ? "on" : "", "star2.png", friend);
   if (unconfigured) toast = "Relay not configured";
   const note = error || toast || (waiting ? `${pair.code.slice(0, 4)}-${pair.code.slice(4)}` : "");
   if (note && !pop) html += `<div class="toast${waiting && !error && !toast ? " code" : ""}" data-no-drag>${esc(note)}</div>`;
