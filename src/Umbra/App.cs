@@ -529,9 +529,10 @@ sealed class App : ApplicationContext
             : Updater.Ready && Updater.Available is { } ready ? $"Umbra - restart to update to v{ready.Version}" : "Umbra";
         if (Updater.Available is { } up)
         {
-            var label = Updater.Progress is { } pct ? $"Downloading update v{up.Version} ({pct}%)"
+            var label = Updater.Installing ? $"Updating to v{up.Version}..."
+                : Updater.Progress is { } pct ? $"Downloading update v{up.Version} ({pct}%)"
                 : Updater.Ready ? $"Restart to update to v{up.Version}" : $"Update to v{up.Version} available";
-            menu.Items.Add(label, null, async (_, _) =>
+            var item = menu.Items.Add(label, null, async (_, _) =>
             {
                 try { await Updater.InstallAsync(); }
                 catch (Exception ex)
@@ -539,7 +540,9 @@ sealed class App : ApplicationContext
                     Log.Write($"Update failed: {ex.Message}");
                     ShowTrayMessage($"Update failed: {ex.Message}", ToolTipIcon.Error);
                 }
-            }).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
+            });
+            item.Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
+            item.Enabled = !Updater.Installing;
             menu.Items.Add(new ToolStripSeparator());
         }
         if (Settings.General.CheckForUpdates && WidgetUpdateCount is > 0 and var pending)
