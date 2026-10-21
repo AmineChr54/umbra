@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "event-radar",
+  "name": "Event Radar",
+  "description": "Your events, trips and deadlines as an agenda or an 8-week timeline. Type or paste lines like \"Hackathon 26.10.-27.10.\" and they are sorted into the plan, with overlaps flagged.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "preview": "preview.png",
+  "width": 360,
+  "height": 462,
+  "defaultPosition": { "x": 760, "y": 400 },
+  "permissions": { "hosts": [] },
+  "options": {
+    "title": { "label": "Title", "type": "text", "default": "Event Radar" },
+    "showPast": { "label": "Show past events", "type": "toggle", "default": false,
+                  "hint": "Off hides events once they are over. They stay saved until you delete them." }
+  }
+}
