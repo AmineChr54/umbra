@@ -25,6 +25,7 @@ const ICONS = {
   palette: '<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.5-1-2.6 0-.9.7-1.7 1.7-1.7H16a4 4 0 0 0 4-4C20 6.7 16.4 4 12 4z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.6" r="1"/><circle cx="15.2" cy="8.4" r="1"/>',
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   layers: '<path d="m12 4 8.5 4.5L12 13 3.5 8.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
+  chevron: '<path d="m6 9 6 6 6-6"/>',
   copy: '<rect x="8" y="8" width="11" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1"/>',
 };
 function icons(root = document) {
@@ -404,6 +405,24 @@ function renderInstalled() {
       save(true);
     });
 
+    // Fold/unfold the options. Remembered per widget in this browser profile.
+    const fold = $(".fold", card);
+    const setFolded = (folded, remember) => {
+      card.classList.toggle("folded", folded);
+      fold.setAttribute("aria-expanded", String(!folded));
+      fold.setAttribute("aria-label", `${folded ? "Show" : "Hide"} ${w.name} options`);
+      if (!remember) return;
+      try {
+        const set = new Set(JSON.parse(localStorage.getItem("foldedCards") || "[]"));
+        if (folded) set.add(w.id); else set.delete(w.id);
+        localStorage.setItem("foldedCards", JSON.stringify([...set]));
+      } catch { /* storage unavailable */ }
+    };
+    let wasFolded = false;
+    try { wasFolded = JSON.parse(localStorage.getItem("foldedCards") || "[]").includes(w.id); } catch { /* ignore */ }
+    setFolded(wasFolded, false);
+    fold.addEventListener("click", () => setFolded(!card.classList.contains("folded"), true));
+
     renderCommands($(".cmds", card), w);
     window.prefsCard && prefsCard(card, w);
 
@@ -419,7 +438,8 @@ function renderInstalled() {
       scale.setAttribute("aria-valuetext", `${Math.round(pct)}%`);
       scale.style.setProperty("--p", `${((pct - 50) / 250) * 100}%`);
     };
-    const setScale = (pct) => { cur().scale = pct / 100; scale.value = pct; showScale(pct); save(true); };
+    // The slider sets a proportional size, so it replaces a free width/height dragged by hand.
+    const setScale = (pct) => { cur().scale = pct / 100; cur().width = cur().height = null; scale.value = pct; showScale(pct); save(true); };
     const lockScale = (on) => { scale.disabled = scaleVal.disabled = on; };
     scale.setAttribute("aria-label", `${w.name} size`);
     scaleVal.setAttribute("aria-label", `Reset ${w.name} size to 100%`);
@@ -628,6 +648,8 @@ function renderBrowseBar() {
   $("#updateStatus").textContent = updatingAll && updatingAll.index ? `Updating ${updatingAll.index} of ${updatingAll.total}...` : "";
 }
 
+const expandedCards = new Set(); // catalog ids whose description and commands are shown in full
+
 function renderCatalog() {
   const grid = $("#catalog");
   grid.textContent = "";
@@ -696,13 +718,36 @@ function renderCatalog() {
       chips.append(c);
     }
     // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).
-    for (const cmd of w.commands || []) {
+    // Collapsed cards show one summary chip; "Read more" lists every command in full.
+    const cmds = w.commands || [];
+    const open = expandedCards.has(w.id);
+    if (cmds.length && !open) {
       const c = document.createElement("span");
       c.className = "chip warn";
-      c.title = `${cmd.description || ""}\nAsks permission before it runs.`.trim();
       c.innerHTML = '<span class="ico" data-icon="alert"></span>';
-      c.append(`Runs: ${cmd.run}`);
+      c.append(cmds.length === 1 ? "Runs 1 program (asks first)" : `Runs ${cmds.length} programs (asks first)`);
       chips.append(c);
+    } else {
+      for (const cmd of cmds) {
+        const c = document.createElement("span");
+        c.className = "chip warn";
+        c.title = `${cmd.description || ""}\nAsks permission before it runs.`.trim();
+        c.innerHTML = '<span class="ico" data-icon="alert"></span>';
+        c.append(`Runs: ${cmd.run}`);
+        chips.append(c);
+      }
+    }
+    const desc = $(".cdesc", card);
+    desc.classList.toggle("open", open);
+    if ((w.description || "").length > 110 || cmds.length) {
+      const more = $(".cmore", card);
+      more.hidden = false;
+      more.textContent = open ? "Show less" : "Read more…";
+      more.setAttribute("aria-expanded", String(open));
+      more.addEventListener("click", () => {
+        if (expandedCards.has(w.id)) expandedCards.delete(w.id); else expandedCards.add(w.id);
+        renderCatalog();
+      });
     }
 
     card.setAttribute("aria-label", w.name);

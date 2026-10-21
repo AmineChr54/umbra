@@ -53,14 +53,34 @@ public static class WidgetGeometry
         (int)Math.Round(width * dpi / 96.0 * scale),
         (int)Math.Round(height * dpi / 96.0 * scale));
 
-    /// <summary>The scale a window width stands for at a DPI.</summary>
-    public static double ScaleForWidth(int manifestWidth, int dpi, int windowWidth) => windowWidth / (manifestWidth * dpi / 96.0);
-
-    /// <summary>The size a dragged rectangle snaps to: manifest aspect ratio, the larger stretch wins, clamped to the scale range.</summary>
-    public static Size KeepAspect(int width, int height, int dpi, int dragWidth, int dragHeight)
+    /// <summary>
+    /// The window size for a widget: the free size the user dragged it to (logical pixels, both set), otherwise the
+    /// manifest size times the scale. Each side stays between the min and max scale of the manifest size.
+    /// </summary>
+    public static Size WindowSize(int width, int height, int dpi, double scale, int? freeWidth, int? freeHeight)
     {
-        var one = ScaledSize(width, height, dpi, 1);
-        var s = Math.Max(dragWidth / (double)one.Width, dragHeight / (double)one.Height);
-        return ScaledSize(width, height, dpi, Math.Clamp(s, WidgetSettings.MinScale, WidgetSettings.MaxScale));
+        if (freeWidth is not int w || freeHeight is not int h) return ScaledSize(width, height, dpi, scale);
+        return ClampSize(width, height, dpi, (int)Math.Round(w * dpi / 96.0), (int)Math.Round(h * dpi / 96.0));
     }
+
+    /// <summary>Clamps a window size (physical pixels) so each side is 50-300 % of the manifest size.</summary>
+    public static Size ClampSize(int width, int height, int dpi, int windowWidth, int windowHeight)
+    {
+        var min = ScaledSize(width, height, dpi, WidgetSettings.MinScale);
+        var max = ScaledSize(width, height, dpi, WidgetSettings.MaxScale);
+        return new Size(Math.Clamp(windowWidth, min.Width, max.Width), Math.Clamp(windowHeight, min.Height, max.Height));
+    }
+
+    /// <summary>
+    /// The page zoom for a window size: the smaller of the two stretches, so growing only one side reflows the page
+    /// (it lays out at window / zoom) and growing both makes everything larger.
+    /// </summary>
+    public static double ZoomFor(int width, int height, int dpi, int windowWidth, int windowHeight)
+    {
+        var s = Math.Min(windowWidth / (width * dpi / 96.0), windowHeight / (height * dpi / 96.0));
+        return Math.Clamp(s, WidgetSettings.MinScale, WidgetSettings.MaxScale);
+    }
+
+    /// <summary>A window size in physical pixels as logical (96-DPI) pixels, for saving.</summary>
+    public static int ToLogical(int pixels, int dpi) => (int)Math.Round(pixels * 96.0 / dpi);
 }

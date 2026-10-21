@@ -165,10 +165,14 @@ umbra.store.onChange(async () => render(await umbra.store.get("tasks", [])));
 user locked it). Put `data-no-drag` on buttons or links that need normal clicks; inputs, textareas, selects and
 `contenteditable` elements never start a drag.
 
-**Zoom and edit mode.** Users can resize any widget from 50 % to 300 %. Umbra makes the window bigger and zooms the
-page by the same factor (like browser zoom), so your page always lays out at the `width` x `height` from
-`widget.json` and renders sharply. Don't scale it yourself:
-- Use CSS pixels and layout as usual. `window.innerWidth` stays at the manifest width.
+**Zoom, free resize and edit mode.** Users can resize any widget freely (right edge, bottom edge or corner in edit mode),
+each side from 50 % to 300 % of `widget.json`'s `width` x `height`. Umbra zooms the page by the smaller of the two
+stretches (like browser zoom) and your page lays out in the window size divided by that zoom. A widget that is only
+made wider or taller keeps its zoom and gets more room; one made bigger on both sides is also drawn larger. At the
+default size the page lays out at exactly the manifest size and renders sharply. Don't scale it yourself:
+- Use CSS pixels and layout as usual, and let the page fill its window (`height: 100%`, flex, grid, `%`/`fr` sizes) so
+  it uses extra room. `window.innerWidth`/`innerHeight` is the manifest size only at the default size; read them (or
+  use container queries) instead of hard-coding it. Fixed-size pages just show empty space.
 - `devicePixelRatio` includes the zoom. Canvas code that sizes its backing store by `devicePixelRatio` stays crisp;
   redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
 - In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by

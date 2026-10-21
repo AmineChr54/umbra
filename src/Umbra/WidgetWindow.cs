@@ -42,8 +42,11 @@ sealed class WidgetWindow : Form
     /// <summary>The window size for a scale: manifest size (logical pixels) x monitor DPI x scale.</summary>
     Size ScaledSize(double scale) => WidgetGeometry.ScaledSize(Manifest.Width, Manifest.Height, DeviceDpi, scale);
 
-    /// <summary>The scale a window width stands for at the current DPI.</summary>
-    double ScaleForWidth(int width) => WidgetGeometry.ScaleForWidth(Manifest.Width, DeviceDpi, width);
+    /// <summary>The window size from this copy's settings: a free size if the user dragged an edge, otherwise manifest x scale.</summary>
+    Size SavedSize(WidgetSettings ws) => WidgetGeometry.WindowSize(Manifest.Width, Manifest.Height, DeviceDpi, ws.Scale, ws.Width, ws.Height);
+
+    /// <summary>The page zoom for a window size at the current DPI (the smaller stretch; the page lays out at window / zoom).</summary>
+    double ZoomFor(Size size) => WidgetGeometry.ZoomFor(Manifest.Width, Manifest.Height, DeviceDpi, size.Width, size.Height);
 
     public WidgetWindow(App app, WidgetManifest manifest, string instance)
     {
@@ -111,10 +114,6 @@ sealed class WidgetWindow : Form
             case Native.WM_EXITSIZEMOVE:
                 _app.ShowGuides(Array.Empty<Snap.Guide>(), DeviceDpi); // the move or resize ended: guides go away
                 break;
-            case Native.WM_SIZING when _resizing:
-                KeepAspect(m.LParam);
-                m.Result = 1;
-                return;
         }
         base.WndProc(ref m);
     }
@@ -156,25 +155,13 @@ sealed class WidgetWindow : Form
         mmi->MaxTrackSize = new Native.POINT { X = max.Width + 1, Y = max.Height + 1 };
     }
 
-    /// <summary>
-    /// WM_SIZING from the corner handle: the widget zooms rather than reflows, so keep the manifest's aspect ratio.
-    /// The top-left corner stays put; the larger of the two stretches wins.
-    /// </summary>
-    unsafe void KeepAspect(IntPtr lParam)
-    {
-        var r = (Native.RECT*)lParam;
-        var size = WidgetGeometry.KeepAspect(Manifest.Width, Manifest.Height, DeviceDpi, r->Right - r->Left, r->Bottom - r->Top);
-        r->Right = r->Left + size.Width;
-        r->Bottom = r->Top + size.Height;
-    }
-
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
-        // While the corner handle is dragged, zoom the page along with the window.
+        // While an edge or the corner handle is dragged, the page lays out at window / zoom and zooms with the smaller stretch.
         if (_resizing)
         {
-            var scale = ScaleForWidth(Width);
+            var scale = ZoomFor(Size);
             ApplyZoom(scale);
             if (_ready) Post(new JsonObject { ["type"] = "editScale", ["scale"] = scale }); // keeps the overlay outline steady
         }
@@ -318,7 +305,7 @@ sealed class WidgetWindow : Form
         try { old.Dispose(); } catch (Exception ex) { Log.Write($"[{Instance}] disposing the crashed WebView2 failed: {ex.Message}"); }
         _view = NewView();
         Controls.Add(_view);
-        ApplyZoom(Ws.Scale);
+        ApplyZoom(ZoomFor(Size));
         await StartViewAsync(url);
     }
 
@@ -349,14 +336,15 @@ sealed class WidgetWindow : Form
     }
 
     /// <summary>
-    /// Manifest size is in logical (96-DPI) pixels: scale it to the monitor's DPI and the user's scale, and zoom
-    /// the page by the same scale, so the content is laid out at the manifest size and rendered sharply.
+    /// Manifest size is in logical (96-DPI) pixels: scale it to the monitor's DPI and the user's scale (or use the free
+    /// size they dragged), and zoom the page by the smaller stretch, so the content is laid out at window / zoom and
+    /// rendered sharply. A widget that keeps its manifest aspect ratio is laid out at exactly the manifest size.
     /// </summary>
     void ApplyBounds(Point? at = null)
     {
         var ws = Ws;
         float dpi = DeviceDpi / 96f;
-        var size = ScaledSize(ws.Scale);
+        var size = SavedSize(ws);
 
         Point loc;
         if (at is Point p) loc = p;
@@ -380,7 +368,7 @@ sealed class WidgetWindow : Form
             rect.Location = new Point(wa.Right - size.Width - 24, wa.Top + 24);
         }
         Bounds = rect;
-        ApplyZoom(ws.Scale);
+        ApplyZoom(ZoomFor(size));
     }
 
     public void ResetPosition()
@@ -425,11 +413,33 @@ sealed class WidgetWindow : Form
         }
     }
 
-    /// <summary>Zooms the widget by hand (corner handle, Ctrl+wheel): the top-left corner stays where it is.</summary>
+    /// <summary>Zooms the widget by hand (Ctrl+wheel): the top-left corner stays where it is. A free size grows or shrinks with it.</summary>
     void SetScaleByHand(double scale)
     {
         var ws = Ws;
-        ws.Scale = scale;
+        if (ws.Width is int w && ws.Height is int h)
+        {
+            var factor = scale / Math.Max(0.01, ws.Scale);
+            var size = WidgetGeometry.ClampSize(Manifest.Width, Manifest.Height, 96, (int)Math.Round(w * factor), (int)Math.Round(h * factor));
+            ws.Width = size.Width; ws.Height = size.Height;
+            ws.Scale = WidgetGeometry.ZoomFor(Manifest.Width, Manifest.Height, 96, size.Width, size.Height);
+        }
+        else ws.Scale = scale;
+        FinishHandResize();
+    }
+
+    /// <summary>After an edge or corner drag: keep the dragged window size (logical pixels) and the zoom it implies.</summary>
+    void SetSizeByHand()
+    {
+        var ws = Ws;
+        ws.Width = WidgetGeometry.ToLogical(Width, DeviceDpi);
+        ws.Height = WidgetGeometry.ToLogical(Height, DeviceDpi);
+        ws.Scale = WidgetSettings.ClampScale(ZoomFor(Size));
+        FinishHandResize();
+    }
+
+    void FinishHandResize()
+    {
         _app.NoteHandScale(Instance);
         RememberPosition();
         PushSettings();
@@ -552,21 +562,27 @@ sealed class WidgetWindow : Form
                 break;
 
             case "resize":
-                // The edit-mode corner handle. Only a real press on this window starts the native size loop.
-                // Messages still arrive during the modal size loop, so a second "resize" must not nest.
+                // The edit-mode edge and corner handles ("right", "bottom" or the corner). Only a real press on this window
+                // starts the native size loop. Messages still arrive during the modal size loop, so a second "resize" must not nest.
                 if (_resizing || !CanArrange || !PressedOnThisWindow()) return;
+                var hit = msg?["edge"]?.GetValue<string>() switch
+                {
+                    "right" => Native.HTRIGHT,
+                    "bottom" => Native.HTBOTTOM,
+                    _ => Native.HTBOTTOMRIGHT,
+                };
                 SelectForEdit();
                 var before = Size;
                 _resizing = true;
                 try
                 {
                     Native.ReleaseCapture();
-                    Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTBOTTOMRIGHT, IntPtr.Zero);
+                    Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, hit, IntPtr.Zero);
                 }
                 finally { _resizing = false; }
                 // Edit mode may have been turned off (or the widget locked) during the drag: put the saved size back.
                 if (!CanArrange) ApplyBounds();
-                else if (Size != before) SetScaleByHand(ScaleForWidth(Width));
+                else if (Size != before) SetSizeByHand();
                 DesktopPin.SendToBottom(Handle);
                 break;
 
