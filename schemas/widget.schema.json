@@ -28,6 +28,7 @@
     },
     "entry": { "type": "string", "default": "index.html", "description": "The page Umbra loads, relative to the widget folder." },
     "preview": { "type": "string", "description": "Screenshot shown in Browse (PNG, 2x, black background)." },
+    "icon": { "type": "string", "pattern": "^[A-Za-z0-9_-]+\.png$", "description": "Tab icon for widget groups: a small PNG (64x64 recommended, light grey on transparent, at most 128 px and 64 KB) in the widget folder. Without one the tab shows the first letter of the widget name." },
     "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },
     "height": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 180, "description": "Logical (96-DPI) pixels." },
     "themeable": { "type": "boolean", "default": true, "description": "Set false to keep the widget's own look: the user's theme is not applied to it." },

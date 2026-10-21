@@ -373,7 +373,6 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 #layoutList:empty { display: none; }
 #layoutList .row, #groupList .row { gap: 12px; }
 .grouprow { display: flex; align-items: center; gap: 12px; padding: 4px 0 10px; color: var(--muted, inherit); font-size: 13px; }
-.grouprow select { max-width: 220px; }
 .tabchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tabchip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .tabchip.on { border-color: var(--accent, currentColor); }

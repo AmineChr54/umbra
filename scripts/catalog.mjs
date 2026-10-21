@@ -21,7 +21,7 @@ const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png"
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_CHANGELOG = 500;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
-const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "icon", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -117,6 +117,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
   const entry = m.entry || "index.html";
   if (!existsSync(join(dir, entry))) fail(id, `entry file "${entry}" not found`);
   if (m.preview && !existsSync(join(dir, m.preview))) fail(id, `preview "${m.preview}" not found`);
+  if (m.icon !== undefined && (typeof m.icon !== "string" || !/^[A-Za-z0-9_-]+.png$/.test(m.icon) || !existsSync(join(dir, m.icon)) || statSync(join(dir, m.icon)).size > 65536))
+    fail(id, `"icon" must be an existing .png in the widget folder (letters, digits, - or _), at most 64 KB`);
   for (const k of ["width", "height"])
     if (m[k] !== undefined && (!Number.isInteger(m[k]) || m[k] < 80 || m[k] > 1200)) fail(id, `"${k}" must be an integer between 80 and 1200`);
 
@@ -156,6 +158,7 @@ for (const id of readdirSync(widgetsDir).sort()) {
     version: m.version,
     ...(typeof m.changelog === "string" && m.changelog.trim() ? { changelog: m.changelog.trim() } : {}),
     preview: m.preview ?? null,
+    ...(m.icon ? { icon: m.icon } : {}),
     hosts,
     ...(system.length ? { system } : {}),
     ...(media.length ? { media } : {}),

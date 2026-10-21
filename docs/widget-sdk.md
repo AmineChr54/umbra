@@ -12,6 +12,7 @@ my-widget/            folder name = widget id (lowercase letters, digits, dashes
   widget.json         manifest (required)
   index.html          entry page (required, or whatever "entry" names)
   preview.png         screenshot for the Browse page (recommended: 2x, black background)
+  icon.png            optional tab icon for widget groups (64x64 PNG, light grey on transparent; "icon": "icon.png" in widget.json)
   ...                 .js .mjs .css .svg .png .jpg .webp .gif .woff .woff2 .ttf .otf .json .txt .md (5 MB total)
 ```
 

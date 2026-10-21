@@ -409,7 +409,7 @@ function renderInstalled() {
     {
       const here = (state.groups || []).find((g) => g.members.includes(w.id));
       const sel = document.createElement("select");
-      sel.className = "input";
+      sel.className = "select";
       sel.setAttribute("aria-label", `${w.name} tab group`);
       sel.append(new Option("No group", ""));
       for (const g of state.groups || []) sel.append(new Option(g.name, "g:" + g.id));

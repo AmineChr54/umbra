@@ -116,3 +116,38 @@ public class GroupTests
         Assert.Empty(Settings.FromJson(System.Text.Json.Nodes.JsonNode.Parse("{\"widgets\":{}}")!).Groups);
     }
 }
+
+public class TabStripTests
+{
+    [Fact]
+    public void Strip_sits_just_above_the_widget_when_there_is_room()
+    {
+        var work = new Rectangle(0, 0, 1920, 1040);
+        var r = TabStripGeometry.Place(new Rectangle(500, 300, 400, 300), work, 1f, 3, out var above);
+        Assert.True(above);
+        Assert.Equal(500, r.X);
+        Assert.Equal(300 - TabStripGeometry.Space, r.Bottom);
+        Assert.Equal(3 * TabStripGeometry.Cell + 2 * TabStripGeometry.Gap + 2 * TabStripGeometry.Pad, r.Width);
+    }
+
+    [Fact]
+    public void Strip_drops_inside_the_top_edge_at_the_top_of_the_screen_and_scales_with_dpi()
+    {
+        var work = new Rectangle(0, 0, 1920, 1040);
+        var r = TabStripGeometry.Place(new Rectangle(100, 10, 400, 300), work, 1.5f, 2, out var above);
+        Assert.False(above);
+        Assert.True(r.Y > 10 && r.Y < 10 + 20);
+        Assert.Equal((int)Math.Round(TabStripGeometry.Bar * 1.5f), r.Height);
+    }
+}
+
+public class WidgetIconTests
+{
+    [Fact]
+    public void Manifest_reads_the_optional_icon()
+    {
+        var json = "{\"id\":\"demo\",\"name\":\"Demo\",\"description\":\"d\",\"author\":\"a\",\"version\":\"1.0.0\",\"icon\":\"icon.png\"}";
+        Assert.Equal("icon.png", WidgetManifest.Parse(json).Icon);
+        Assert.Null(WidgetManifest.Parse(json.Replace(",\"icon\":\"icon.png\"", "")).Icon);
+    }
+}
