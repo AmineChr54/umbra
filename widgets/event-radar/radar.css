@@ -125,25 +125,29 @@ html, body { height: 100%; overflow: hidden; }
 .warn-text { color: var(--warn); }
 
 /* ---------- timeline ---------- */
+/* Time runs down: gutter (month names) | bar lanes | labels. Text stays horizontal. */
 
-.tl { position: relative; padding-bottom: 6px; }
-.axis { position: relative; height: 20px; }
+.tl { --gutter: 42px; position: relative; }
+.grid, .gutter, .rails, .labels { position: absolute; top: 0; bottom: 0; }
+.grid { left: 0; right: 0; pointer-events: none; }
+.gutter { left: 0; width: var(--gutter); }
+.rails { left: var(--gutter); width: var(--rails); }
+.labels { left: calc(var(--gutter) + var(--rails) + 8px); right: 0; }
+
 .tick {
-  position: absolute; top: 0;
-  padding-left: 4px;
-  font-size: 11px; font-weight: 600; color: var(--text-3);
+  position: absolute; left: 0;
+  font-size: 11px; font-weight: 600; line-height: 14px; color: var(--text-3);
   white-space: nowrap;
 }
-.tick.today { padding-left: 0; color: var(--accent-strong); }
-.lanes { position: relative; }
-.vline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
-.vline.month { background: var(--line-strong); }
-.vline.now { background: var(--accent); opacity: 0.8; }
+.tick.today { color: var(--accent-strong); }
+.hline { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.hline.month { background: var(--line-strong); }
+.hline.now { background: var(--accent); opacity: 0.8; }
 
 .bar {
   --c: var(--accent);
   position: absolute;
-  height: 18px;
+  width: 10px;
   background: color-mix(in srgb, var(--c) 78%, #000);
   border-radius: 5px;
   cursor: pointer;
@@ -151,26 +155,38 @@ html, body { height: 100%; overflow: hidden; }
   transition: filter 120ms;
 }
 .bar:hover, .bar:focus-visible { filter: brightness(1.25); }
-.bar.clipped { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.bar.clipped { border-top-left-radius: 0; border-top-right-radius: 0; }
 .bar.st-maybe { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c); }
 .bar.st-deadline { background: repeating-linear-gradient(135deg, var(--c) 0 3px, color-mix(in srgb, var(--c) 35%, #000) 3px 6px); }
 .bar.clash { box-shadow: 0 0 0 1.5px var(--warn); }
 .bar.st-maybe.clash { box-shadow: inset 0 0 0 1.5px var(--c), 0 0 0 1.5px var(--warn); }
 
-.lbl {
-  position: absolute; top: 0;
+.tl-label {
+  --c: var(--accent);
+  position: absolute; left: 0; right: 0;
+  height: 18px;
+  display: flex; align-items: baseline; gap: 8px;
+  padding-left: 12px;
   line-height: 18px;
-  font-size: 11px; font-weight: 600;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  pointer-events: none;
+  cursor: pointer;
+  outline: none;
 }
-.lbl.in { left: 0; right: 0; padding: 0 5px; color: #000; }
-.bar.st-maybe .lbl.in { color: var(--text); }
-.bar.st-deadline .lbl.in { color: #fff; text-shadow: 0 0 3px #000, 0 0 3px #000; }
-.lbl.right { left: 100%; margin-left: 4px; color: var(--text-2); max-width: 300px; }
-.lbl.left { right: 100%; margin-right: 4px; color: var(--text-2); }
+.tl-label::before {
+  content: ""; position: absolute; left: 0; top: 5px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--c);
+}
+.tl-label.st-maybe::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c); }
+.tl-label.st-deadline::before { border-radius: 2px; transform: rotate(45deg) scale(0.9); }
+.l-title {
+  min-width: 0;
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.l-when { flex: none; font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.tl-label:hover .l-title, .tl-label:focus-visible .l-title { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 
-.tl-foot { margin-top: 10px; font-size: 11.5px; color: var(--text-3); }
+.tl-foot { margin-top: 14px; font-size: 11.5px; color: var(--text-3); }
 .tl-empty { padding: 60px 24px; text-align: center; font-size: 12px; color: var(--text-3); }
 
 /* ---------- empty and notes ---------- */

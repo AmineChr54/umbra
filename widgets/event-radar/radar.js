@@ -18,6 +18,8 @@ const ICON = {
   warn: '<svg viewBox="0 0 12 12"><path d="M6 1.6l4.9 8.6H1.1z"/><path d="M6 5v2.4M6 9h.01"/></svg>',
 };
 
+const DAY_PX = 12, RAIL = 14; // timeline: pixels per day, and width of one bar lane
+
 let events = [];
 let view = "agenda";
 let today = K.todayKey();
@@ -93,43 +95,46 @@ function renderAgenda() {
 
 function renderTimeline() {
   const list = visible();
-  const W = Math.max(200, bodyEl.clientWidth - 36);
-  const t = K.timeline(list, today, { days: 56, width: W });
+  const t = K.timeline(list, today, { months: 3, dayPx: DAY_PX });
   const clashes = K.findClashes(events);
-  const LANE = 22;
-  const height = Math.max(1, t.lanes) * LANE + 4;
+  const railsW = Math.max(1, t.lanes) * RAIL;
 
-  let axis = "", grid = "";
-  for (let i = 0; i < t.days; i++) {
+  let ticks = "", grid = "";
+  for (let i = 1; i < t.days; i++) {
     const k = K.addDays(today, i);
-    const x = (i * t.px).toFixed(1);
-    if (k.endsWith("-01") && i > 0) {
-      axis += `<span class="tick" style="left:${x}px">${esc(fmtMonth(k))}</span>`;
-      grid += `<i class="vline month" style="left:${x}px"></i>`;
-    } else if (K.weekday(k) === 1 && i > 0) {
-      grid += `<i class="vline" style="left:${x}px"></i>`;
+    const y = i * t.dayPx;
+    if (k.endsWith("-01")) {
+      ticks += `<span class="tick" style="top:${y}px">${esc(fmtMonth(k))}</span>`;
+      grid += `<i class="hline month" style="top:${y}px"></i>`;
+    } else if (K.weekday(k) === 1) {
+      grid += `<i class="hline" style="top:${y}px"></i>`;
     }
   }
 
-  const bars = t.items.map(({ event: e, x1, x2, side, lane, clippedLeft }) => {
+  let bars = "", labels = "";
+  for (const { event: e, y1, y2, lane, labelY, clippedTop } of t.items) {
     const clash = clashes.get(e.id);
-    return `<div class="bar st-${e.status}${clash ? " clash" : ""}${clippedLeft ? " clipped" : ""}" role="button" tabindex="0" data-id="${e.id}" data-no-drag
-        style="--c:${STATUS[e.status].color};left:${x1.toFixed(1)}px;width:${(x2 - x1).toFixed(1)}px;top:${lane * LANE + 2}px"
-        title="${esc(e.title)}: ${esc(fmtRange(e))}${clash ? " (overlaps " + esc(clash.map((o) => o.title).join(", ")) + ")" : ""}">
-        <span class="lbl ${side}">${esc(e.title)}</span></div>`;
-  }).join("");
+    const tip = `${esc(e.title)}: ${esc(fmtRange(e))}${clash ? " (overlaps " + esc(clash.map((o) => o.title).join(", ")) + ")" : ""}`;
+    const c = `--c:${STATUS[e.status].color}`;
+    bars += `<div class="bar st-${e.status}${clash ? " clash" : ""}${clippedTop ? " clipped" : ""}" role="button" tabindex="0" data-id="${e.id}" data-no-drag
+        style="${c};top:${y1}px;height:${y2 - y1}px;left:${lane * RAIL}px" title="${tip}" aria-label="${tip}"></div>`;
+    labels += `<div class="tl-label st-${e.status}" role="button" tabindex="0" data-id="${e.id}" data-no-drag style="${c};top:${labelY}px" title="${tip}">
+        <span class="l-title">${esc(e.title)}</span><span class="l-when num">${esc(fmtRange(e))}</span></div>`;
+  }
 
   bodyEl.className = "body timeline";
   if (!t.items.length) {
-    bodyEl.innerHTML = `<div class="tl-empty">${t.later ? `Nothing in the next 8 weeks. ${t.later} later.` : "Nothing in the next 8 weeks."}</div>`;
+    bodyEl.innerHTML = `<div class="tl-empty">${t.later ? `Nothing in the next 3 months. ${t.later} later.` : "Nothing in the next 3 months."}</div>`;
     return;
   }
   bodyEl.innerHTML = `
-    <div class="tl" style="width:${W}px">
-      <div class="axis"><span class="tick today" style="left:0">Today</span>${axis}</div>
-      <div class="lanes" style="height:${height}px">${grid}<i class="vline now" style="left:0"></i>${bars}</div>
-      <div class="tl-foot">Next 8 weeks${t.later ? ` · ${t.later} later` : ""}${clashes.size ? ` · <span class="warn-text">overlaps</span>` : ""}</div>
-    </div>`;
+    <div class="tl" style="height:${t.height}px;--rails:${railsW}px">
+      <div class="grid">${grid}<i class="hline now" style="top:0"></i></div>
+      <div class="gutter"><span class="tick today" style="top:0">Today</span>${ticks}</div>
+      <div class="rails">${bars}</div>
+      <div class="labels">${labels}</div>
+    </div>
+    <div class="tl-foot">Next 3 months${t.later ? ` · ${t.later} later` : ""}${clashes.size ? ` · <span class="warn-text">overlaps</span>` : ""}</div>`;
 }
 
 // ---------- render ----------
