@@ -9,6 +9,7 @@ public sealed record RunResult(int ExitCode, string Stdout, string Stderr, bool 
 /// <summary>
 /// Starts one already-approved command: no shell, no window, scrubbed environment, output and time capped.
 /// It does no policy checks itself; <see cref="CommandService"/> decides whether a run is allowed.
+/// Windows contains the process tree in a job object, Linux in a process group (<see cref="IProcessContainment"/>).
 /// </summary>
 static class CommandRunner
 {
@@ -17,30 +18,18 @@ static class CommandRunner
     static readonly string[] ProgramExtensions = { ".exe", ".com" };
     static readonly string[] ScriptExtensions = { ".cmd", ".bat" };
 
-    /// <summary>Only these variables reach the child. Tokens, API keys and UMBRA_* are never passed on.</summary>
-    static readonly string[] EnvAllowList =
-    {
-        "SystemRoot", "windir", "SystemDrive", "ComSpec", "PATH", "PATHEXT", "TEMP", "TMP", "USERNAME", "USERDOMAIN",
-        "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "ProgramData", "ProgramFiles", "ProgramFiles(x86)",
-        "ProgramW6432", "CommonProgramFiles", "CommonProgramFiles(x86)", "CommonProgramW6432", "NUMBER_OF_PROCESSORS",
-        "PROCESSOR_ARCHITECTURE", "OS", "COMPUTERNAME", "PSModulePath",
-    };
-
-    public static Dictionary<string, string> ScrubbedEnvironment()
-    {
-        var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var name in EnvAllowList)
-            if (Environment.GetEnvironmentVariable(name) is { Length: > 0 } v) env[name] = v;
-        env["NO_COLOR"] = "1";
-        return env;
-    }
+    /// <summary>Only the variables on <see cref="CommandEnvironment"/>'s allow-list reach the child. Tokens, API keys and UMBRA_* are never passed on.</summary>
+    public static Dictionary<string, string> ScrubbedEnvironment() =>
+        CommandEnvironment.Scrub(WidgetPlatforms.Current, Environment.GetEnvironmentVariable);
 
     /// <summary>
-    /// Finds the program file for a declared executable: an absolute path as given, or a bare name searched on PATH
+    /// Finds the program file for a declared executable on Windows: a drive-letter path as given, or a bare name searched on PATH
     /// (absolute PATH entries only, never the current folder). .cmd/.bat are only found when <paramref name="allowScripts"/>.
+    /// A POSIX-style path ("/usr/bin/x", which Windows would read relative to the current drive) is never accepted. Other OSes use <see cref="ExecutableResolver"/>.
     /// </summary>
     public static string? ResolveExe(string exe, bool allowScripts, string? pathVariable = null)
     {
+        if (exe.StartsWith('/') || exe.StartsWith('\\')) return null;
         var exts = allowScripts ? ProgramExtensions.Concat(ScriptExtensions).ToArray() : ProgramExtensions;
         var given = Path.GetExtension(exe);
         var names = exts.Contains(given, StringComparer.OrdinalIgnoreCase) ? new[] { exe } : exts.Select(e => exe + e).ToArray();
@@ -63,36 +52,6 @@ static class CommandRunner
         return null;
     }
 
-    /// <summary>Capped, drained copy of a child's output stream.</summary>
-    sealed class Capture(int max)
-    {
-        readonly MemoryStream _buf = new();
-        readonly object _gate = new();
-        public bool Truncated { get; private set; }
-
-        public async Task PumpAsync(Stream s)
-        {
-            var chunk = new byte[8192];
-            int n;
-            try
-            {
-                while ((n = await s.ReadAsync(chunk)) > 0)
-                    lock (_gate)
-                    {
-                        var room = max - (int)_buf.Length;
-                        if (room > 0) _buf.Write(chunk, 0, Math.Min(room, n));
-                        if (n > room) Truncated = true; // keep reading so the child never blocks on a full pipe
-                    }
-            }
-            catch (Exception ex) when (ex is IOException or ObjectDisposedException or InvalidOperationException) { }
-        }
-
-        public string Text()
-        {
-            lock (_gate) return Encoding.UTF8.GetString(_buf.GetBuffer(), 0, (int)_buf.Length);
-        }
-    }
-
     /// <summary>
     /// Runs <paramref name="exePath"/> with <paramref name="args"/> (each one argv element). After <paramref name="timeout"/>
     /// or when <paramref name="ct"/> fires, the whole process tree is killed. Output beyond <paramref name="maxBytes"/> per stream is dropped.
@@ -100,51 +59,52 @@ static class CommandRunner
     public static async Task<RunResult> RunAsync(string exePath, IReadOnlyList<string> args, string workingDir,
         TimeSpan timeout, int maxBytes = MaxOutputBytes, CancellationToken ct = default)
     {
-        // Containing the process tree is Windows-only so far (job objects); Linux gets process groups in #194.
-        if (!OperatingSystem.IsWindows()) throw new WidgetCommandException("Widget commands are not supported on this platform yet");
+        var platform = WidgetPlatforms.Current;
+        if (platform == WidgetPlatforms.Other) throw new WidgetCommandException("Widget commands are not supported on this platform");
         Directory.CreateDirectory(workingDir);
-        var psi = new ProcessStartInfo(exePath)
+        // Fail closed in a Flatpak: exePath was resolved inside the sandbox, so it may name a different file than the host's.
+        // CommandLaunch.Plan can build the flatpak-spawn line, but it is not wired in until host programs can be identified.
+        if (platform == WidgetPlatforms.Linux && CommandLaunch.IsFlatpak(File.Exists))
+            throw new WidgetCommandException("Widget commands are not available in the Flatpak build yet");
+        var plan = CommandLaunch.Plan(platform, flatpak: false, SetsidPath(), exePath, args, workingDir, ScrubbedEnvironment());
+        var psi = new ProcessStartInfo(plan.FileName)
         {
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
-            WorkingDirectory = workingDir,
+            WorkingDirectory = plan.WorkingDirectory,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
-        foreach (var a in args) psi.ArgumentList.Add(a);
+        foreach (var a in plan.Args) psi.ArgumentList.Add(a);
         psi.Environment.Clear();
-        foreach (var (k, v) in ScrubbedEnvironment()) psi.Environment[k] = v;
+        foreach (var (k, v) in plan.Environment) psi.Environment[k] = v;
 
         var sw = Stopwatch.StartNew();
-        // The job makes every descendant die with the job: on timeout, when the run ends, or if Umbra itself exits.
-        var job = ProcessJob.CreateKillOnCloseJob();
-        if (job == IntPtr.Zero) throw new WidgetCommandException("Could not create a job object to contain the program");
-        try
-        {
-            return await RunInJobAsync(psi, job, sw, maxBytes, timeout, ct);
-        }
-        finally
-        {
-            ProcessJob.TerminateJobObject(job, 1);
-            ProcessJob.CloseHandle(job);
-        }
+        // The containment makes every descendant die with the run: on timeout, when the run ends, and on Windows also if Umbra itself exits.
+        using var containment = CreateContainment();
+        return await RunContainedAsync(psi, containment, sw, maxBytes, timeout, ct);
     }
 
-    static async Task<RunResult> RunInJobAsync(ProcessStartInfo psi, IntPtr job, Stopwatch sw, int maxBytes, TimeSpan timeout, CancellationToken ct)
+    /// <summary>util-linux <c>setsid</c> at its usual absolute path (never a PATH lookup), else the bare name.</summary>
+    static string SetsidPath() =>
+        OperatingSystem.IsWindows() ? "setsid" : new[] { "/usr/bin/setsid", "/bin/setsid" }.FirstOrDefault(ExecutableResolver.IsExecutableFile) ?? "setsid";
+
+    static IProcessContainment CreateContainment() =>
+        OperatingSystem.IsWindows() ? JobContainment.Create()
+        : OperatingSystem.IsLinux() ? new ProcessGroupContainment()
+        : throw new WidgetCommandException("Widget commands are not supported on this platform");
+
+    static async Task<RunResult> RunContainedAsync(ProcessStartInfo psi, IProcessContainment containment, Stopwatch sw, int maxBytes, TimeSpan timeout, CancellationToken ct)
     {
         using var proc = Process.Start(psi) ?? throw new WidgetCommandException("The program could not be started");
-        if (!ProcessJob.AddToJob(job, proc.Handle))
-        {
-            try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
-            throw new WidgetCommandException("Could not contain the program in a job object");
-        }
+        containment.Attach(proc);
         try { proc.StandardInput.Close(); } catch (IOException) { }
-        var stdout = new Capture(maxBytes);
-        var stderr = new Capture(maxBytes);
+        var stdout = new OutputCapture(maxBytes);
+        var stderr = new OutputCapture(maxBytes);
         var pumps = Task.WhenAll(stdout.PumpAsync(proc.StandardOutput.BaseStream), stderr.PumpAsync(proc.StandardError.BaseStream));
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -154,7 +114,7 @@ static class CommandRunner
         catch (OperationCanceledException)
         {
             timedOut = !ct.IsCancellationRequested;
-            ProcessJob.TerminateJobObject(job, 1);
+            await containment.KillAsync(proc);
             try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
             try { await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); } catch (TimeoutException) { }
         }
