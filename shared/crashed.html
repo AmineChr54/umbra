@@ -22,8 +22,9 @@
   <p>Its page kept crashing, so Umbra stopped reloading it.</p>
   <button id="reload" type="button">Reload</button>
 </main>
+<script src="bridge.js"></script>
 <script>
-  document.getElementById("reload").addEventListener("click", () => window.chrome.webview.postMessage({ type: "reload" }));
+  document.getElementById("reload").addEventListener("click", () => window.umbraBridge && window.umbraBridge.post({ type: "reload" }));
 </script>
 </body>
 </html>
