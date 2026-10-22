@@ -33,7 +33,7 @@ static class Diagnostics
             .Select(m => new WidgetLine(m.Id, m.Version, m.IsPermanent ? "built-in" : "community"))
             .ToList();
         return new Snapshot(
-            Application.ProductVersion.Split('+')[0], AppPaths.IsPortable, app.SafeMode,
+            AppInfo.Version, AppPaths.IsPortable, app.SafeMode,
             WindowsText(), WebView2Version(), Monitors(), g.HardwareAcceleration, ProxyKind(g.Proxy),
             widgets, ScrubLog(Log.Tail(LogLines), Roots(g.Proxy), Names()));
     }

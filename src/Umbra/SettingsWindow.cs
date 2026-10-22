@@ -606,7 +606,7 @@ sealed class SettingsWindow : Form, ISettingsView
         Post(new JsonObject
         {
             ["type"] = "state",
-            ["version"] = Application.ProductVersion.Split('+')[0],
+            ["version"] = AppInfo.Version,
             ["startup"] = Startup.IsEnabled(),
             ["portable"] = AppPaths.IsPortable,
             ["dataDir"] = AppPaths.DataDir,

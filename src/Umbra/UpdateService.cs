@@ -55,7 +55,7 @@ sealed class UpdateService : IDisposable, IUpdater
         return c;
     }
 
-    public static string CurrentVersion => Application.ProductVersion.Split('+')[0];
+    public static string CurrentVersion => AppInfo.Version;
 
     /// <summary>
     /// Queries GitHub. An automatic check does nothing when the user turned update checks off. Only the host's own timers

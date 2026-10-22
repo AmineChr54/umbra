@@ -33,7 +33,8 @@ sealed class SingleInstance : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", Protocol.PipeName, PipeDirection.Out);
+            // CurrentUserOnly: only hand the signal to a server owned by this user (on Linux the socket lives in a shared temp folder).
+            using var client = new NamedPipeClientStream(".", Protocol.PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(2000);
             using var w = new StreamWriter(client);
             w.WriteLine(message);

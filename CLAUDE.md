@@ -60,7 +60,7 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
    `IUmbraHost` in `src/Umbra.Core/UmbraHost.cs` and implement it in `App`).
 2. Map it in `umbractl` (`CommandLine.TranslateAsync` in `src/Umbra.Cli/CommandLine.cs`, plus the help text in
    `Program.cs`) and add an MCP tool in `McpServer.Tools`.
-3. Add tests (`tests/Umbra.Tests`), then update the README "Automate Umbra" section and `docs/widget-sdk.md` if widget-facing.
+3. Add tests (`tests/Umbra.Core.Tests` for Control/protocol logic, so they also run on Linux; `tests/Umbra.Tests` for Windows host code), then update the README "Automate Umbra" section and `docs/widget-sdk.md` if widget-facing.
 
 ## Security invariants (never weaken without an issue and review)
 

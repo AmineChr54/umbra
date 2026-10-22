@@ -5,7 +5,7 @@ namespace Umbra.Tests;
 
 /// <summary>
 /// The control pipe end to end with the same options the app uses (CurrentUserOnly). On Linux .NET runs named pipes
-/// over Unix domain sockets and checks the peer's uid, so this also proves the "current user only" invariant there.
+/// over Unix domain sockets and checks the peer's uid, so this exercises the "current user only" path there (refusing other users needs a second account).
 /// </summary>
 public class ProtocolPipeTests
 {
