@@ -23,7 +23,7 @@ static partial class Tray
     public const string RestartArg = "--restart";
 
     /// <summary>How long a restarted Umbra waits for the previous instance to exit.</summary>
-    public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan RestartWait = SingleInstance.RestartWait;
 
     /// <summary>
     /// The app icon at the tray's current icon size with a small orange dot in the bottom-right corner. The dark ring

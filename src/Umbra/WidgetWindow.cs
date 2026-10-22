@@ -7,7 +7,7 @@ using Microsoft.Web.WebView2.WinForms;
 namespace Umbra;
 
 /// <summary>A borderless, desktop-pinned window that hosts one widget's HTML in WebView2.</summary>
-sealed class WidgetWindow : Form
+sealed class WidgetWindow : Form, IWidgetView
 {
     readonly App _app;
     WebView2 _view = NewView();
@@ -54,7 +54,7 @@ sealed class WidgetWindow : Form
         Manifest = manifest;
         Instance = instance;
 
-        Text = $"Umbra - {App.InstanceLabel(manifest, instance)}";
+        Text = $"Umbra - {InstanceId.Label(manifest, instance)}";
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
@@ -129,7 +129,7 @@ sealed class WidgetWindow : Form
         }
         var r = (Native.RECT*)lParam;
         var rect = Rectangle.FromLTRB(r->Left, r->Top, r->Right, r->Bottom);
-        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        var areas = Screens.All().Select(s => s.WorkArea).ToList();
         var others = _app.OpenWindows.Where(w => w != this && w.Visible).Select(w => w.Bounds).ToList();
         var gap = (int)Math.Round(Math.Clamp(g.SnapGap, 0, Snap.MaxGap) * DeviceDpi / 96.0);
         var snapped = Snap.Compute(rect, g.SnapGrid, g.SnapEdges, gap, areas, others, (int)(10 * DeviceDpi / 96.0));
@@ -213,7 +213,7 @@ sealed class WidgetWindow : Form
     /// </summary>
     async void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
     {
-        var reaction = CrashRecovery.Classify(e.ProcessFailedKind);
+        var reaction = WebView2Crash.Classify(e.ProcessFailedKind);
         Log.Write($"[{Instance}] {CrashRecovery.LogMarker}: {e.ProcessFailedKind} ({e.Reason}, exit code {e.ExitCode})");
         if (reaction == CrashReaction.Ignore || _stopped || !Alive) return;
         if (_recovering)
@@ -349,7 +349,7 @@ sealed class WidgetWindow : Form
         Point loc;
         if (at is Point p) loc = p;
         else if (ws.RelX is int rx && ws.RelY is int ry && ws.Monitor is not null)
-            loc = Placement.Resolve(Placement.Monitors(), ws.Monitor, rx, ry, size);
+            loc = Placement.Resolve(Screens.All(), ws.Monitor, rx, ry, size);
         else if (ws.X is int x && ws.Y is int y) loc = new Point(x, y);
         else
         {
@@ -389,7 +389,7 @@ sealed class WidgetWindow : Form
         var ws = Ws;
         if (ws.RelX is null || ws.RelY is null)
         {
-            var cur = Placement.Find(Placement.Monitors(), Bounds);
+            var cur = Placement.Find(Screens.All(), Bounds);
             ws.RelX = cur is MonitorInfo c ? Left - c.Bounds.X : 24;
             ws.RelY = cur is MonitorInfo d ? Top - d.Bounds.Y : 24;
         }
@@ -404,7 +404,7 @@ sealed class WidgetWindow : Form
     {
         var ws = Ws;
         ws.X = Left; ws.Y = Top;
-        var mon = Placement.Find(Placement.Monitors(), Bounds);
+        var mon = Placement.Find(Screens.All(), Bounds);
         if (mon is MonitorInfo m)
         {
             ws.Monitor = m.Name;
@@ -519,7 +519,7 @@ sealed class WidgetWindow : Form
                 tabs.DropDownItems.Add(new ToolStripSeparator());
                 foreach (var m in g.Members)
                 {
-                    var label = _app.Resolve(m) is { } r ? App.InstanceLabel(r.Manifest, m) : m;
+                    var label = _app.Resolve(m) is { } r ? InstanceId.Label(r.Manifest, m) : m;
                     var item = new ToolStripMenuItem(label.Replace("&", "&&"), null, (_, _) => Run(() => _app.ActivateTab(gid, m))) { Checked = m == Instance };
                     tabs.DropDownItems.Add(item);
                 }
@@ -544,7 +544,7 @@ sealed class WidgetWindow : Form
     {
         var menu = new ContextMenuStrip();
         var locked = Ws.Locked;
-        menu.Items.Add(new ToolStripLabel(App.InstanceLabel(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
+        menu.Items.Add(new ToolStripLabel(InstanceId.Label(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh", null, (_, _) => RefreshData());
         menu.Items.Add("Options...", null, (_, _) => _app.ShowWidgetOptions(Instance));
@@ -733,7 +733,7 @@ sealed class WidgetWindow : Form
         var to = new Point(
             sx == 0 ? Left : WidgetGeometry.NudgeTo(Left, sx, big, grid),
             sy == 0 ? Top : WidgetGeometry.NudgeTo(Top, sy, big, grid));
-        var areas = Placement.Monitors().Select(s => s.WorkArea).ToList();
+        var areas = Screens.All().Select(s => s.WorkArea).ToList();
         if (!WidgetGeometry.NudgeAllowed(Bounds, new Rectangle(to, Size), areas, (int)(WidgetGeometry.NudgeKeepVisible * DeviceDpi / 96.0))) return;
 
         Location = to;
@@ -859,7 +859,7 @@ sealed class WidgetWindow : Form
         else
         {
             reply["ok"] = true;
-            reply["data"] = SystemMetrics.Read(Manifest.Permissions.System);
+            reply["data"] = WindowsMetrics.Read(Manifest.Permissions.System);
         }
         Post(reply);
     }
@@ -879,7 +879,7 @@ sealed class WidgetWindow : Form
         else if (title.Length == 0) error = "A title is required";
         else if (url is not null && !Manifest.AllowsUrl(url)) error = "url must be HTTPS on a host in permissions.hosts";
         else if (actions is null) error = actionError;
-        else if (!_app.Notify(Instance, App.InstanceLabel(Manifest, Instance), title, body, url, tag, actions)) error = "Rate limit reached (5 per 10 minutes)";
+        else if (!_app.Notify(Instance, InstanceId.Label(Manifest, Instance), title, body, url, tag, actions)) error = "Rate limit reached (5 per 10 minutes)";
         reply["ok"] = error is null;
         if (error is not null) reply["error"] = error;
         Post(reply);
@@ -904,7 +904,7 @@ sealed class WidgetWindow : Form
             if (action == "get")
             {
                 if (!media.Contains("read")) throw new WidgetCommandException("This widget has no permissions.media \"read\"");
-                reply["data"] = await MediaService.NowPlayingAsync();
+                reply["data"] = await WindowsMedia.NowPlayingAsync();
             }
             else if (action == "control")
             {
@@ -912,7 +912,7 @@ sealed class WidgetWindow : Form
                 var cmd = msg["command"] is JsonValue c && c.GetValueKind() == JsonValueKind.String ? c.GetValue<string>() : null;
                 if (!MediaService.IsCommand(cmd)) throw new WidgetCommandException("Unknown media command");
                 if (!RecentUserPress()) throw new WidgetCommandException("Click the widget first: media controls need a physical click");
-                reply["data"] = await MediaService.ControlAsync(cmd!);
+                reply["data"] = await WindowsMedia.ControlAsync(cmd!);
             }
             else throw new WidgetCommandException("Unknown media action");
             reply["ok"] = true;

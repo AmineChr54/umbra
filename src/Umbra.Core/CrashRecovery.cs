@@ -1,8 +1,6 @@
-using Microsoft.Web.WebView2.Core;
-
 namespace Umbra;
 
-/// <summary>What a widget window does about a failed WebView2 process.</summary>
+/// <summary>What a widget window does about a failed web process (Windows: <c>WebView2Crash.Classify</c>).</summary>
 enum CrashReaction
 {
     /// <summary>Only log it (a hung renderer too: it may recover on its own, and a reload would lose widget state; GPU, utility and sandbox processes restart on their own; a frame crash leaves the page up).</summary>
@@ -14,7 +12,7 @@ enum CrashReaction
 }
 
 /// <summary>
-/// Recovery policy for <c>CoreWebView2.ProcessFailed</c>, one instance per widget window: at most
+/// Recovery policy for a failed widget web process, one instance per widget window: at most
 /// <see cref="MaxRecoveries"/> automatic recoveries per <see cref="Window"/>, so a crash loop ends in a
 /// "This widget stopped working" page instead of burning CPU. Pure logic (the window supplies the clock) so it is testable.
 /// </summary>
@@ -24,13 +22,6 @@ sealed class CrashRecovery
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(10);
 
     readonly Queue<long> _at = new();
-
-    public static CrashReaction Classify(CoreWebView2ProcessFailedKind kind) => kind switch
-    {
-        CoreWebView2ProcessFailedKind.RenderProcessExited => CrashReaction.Reload,
-        CoreWebView2ProcessFailedKind.BrowserProcessExited => CrashReaction.RecreateBrowser,
-        _ => CrashReaction.Ignore,
-    };
 
     /// <summary>Spends one recovery if the budget allows (<paramref name="nowMs"/> is a monotonic millisecond clock); false means give up.</summary>
     public bool TryAcquire(long nowMs)

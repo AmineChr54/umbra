@@ -1,16 +1,11 @@
-using System.Runtime.InteropServices;
-
 namespace Umbra;
 
 /// <summary>One monitor as placement sees it (pure data, so the maths can be unit tested).</summary>
 public readonly record struct MonitorInfo(string Name, Rectangle Bounds, Rectangle WorkArea, bool Primary);
 
-/// <summary>Per-monitor placement and the fullscreen test. Pure functions; <see cref="Monitors"/> reads the live screens.</summary>
+/// <summary>Per-monitor placement and the fullscreen test. Pure functions; each host reads the live monitors (Windows: <c>Screens</c>).</summary>
 public static class Placement
 {
-    public static List<MonitorInfo> Monitors() =>
-        Screen.AllScreens.Select(s => new MonitorInfo(s.DeviceName, s.Bounds, s.WorkingArea, s.Primary)).ToList();
-
     /// <summary>The monitor a window mostly sits on (the one containing its centre, else the largest overlap, else primary).</summary>
     public static MonitorInfo? Find(IReadOnlyList<MonitorInfo> screens, Rectangle rect)
     {
@@ -104,10 +99,4 @@ public static class Placement
     /// 4 = presentation mode. The other states (screensaver, quiet time, normal) are not a fullscreen app.
     /// </summary>
     public static bool IsFullscreenState(int state) => state is 2 or 3 or 4;
-
-    [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
-
-    /// <summary>True while a fullscreen app or game is in the foreground (false if Windows can't say).</summary>
-    public static bool FullscreenAppActive() =>
-        SHQueryUserNotificationState(out var s) == 0 && IsFullscreenState(s);
 }

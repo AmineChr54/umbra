@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-neutral heart of Umbra: settings and widget model, security checks, control protocol and commands.
+       The Windows host (src/Umbra) and the Linux host build on it; nothing here may use WinForms, WebView2 or WinRT. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Umbra.Core</AssemblyName>
+    <RootNamespace>Umbra</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Umbra" />
+    <InternalsVisibleTo Include="Umbra.Linux" />
+    <InternalsVisibleTo Include="Umbra.Tests" />
+    <InternalsVisibleTo Include="Umbra.Core.Tests" />
+    <InternalsVisibleTo Include="Umbra.Linux.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="System.Drawing" />
+  </ItemGroup>
+
+</Project>

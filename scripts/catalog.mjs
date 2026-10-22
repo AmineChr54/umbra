@@ -33,7 +33,7 @@ function walk(dir) {
   });
 }
 
-// permissions.commands: the same rules as CommandSpec.Validate in the host (src/Umbra/WidgetCommands.cs).
+// permissions.commands: the same rules as CommandSpec.Validate in the host (src/Umbra.Core/WidgetCommands.cs).
 const CMD_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const PLACEHOLDER = /^\$\{([a-z][A-Za-z0-9]{0,31})\}$/;
 const BARE_EXE = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$/;

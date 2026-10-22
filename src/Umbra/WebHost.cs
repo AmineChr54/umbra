@@ -6,13 +6,11 @@ namespace Umbra;
 /// <summary>Shared WebView2 environment + common hardening for every Umbra web surface.</summary>
 static class WebHost
 {
-    /// <summary>App files: shared/, settings/, built-in widgets/.</summary>
-    public const string Host = "umbra.local";
-    /// <summary>Installed community widgets (%APPDATA%\Umbra\widgets).</summary>
-    public const string CommunityHost = "community.umbra.local";
+    public const string Host = VirtualHosts.Host;
+    public const string CommunityHost = VirtualHosts.CommunityHost;
 
-    public static string Url(string relative) => $"https://{Host}/{relative.TrimStart('/')}";
-    public static string CommunityUrl(string relative) => $"https://{CommunityHost}/{relative.TrimStart('/')}";
+    public static string Url(string relative) => VirtualHosts.Url(relative);
+    public static string CommunityUrl(string relative) => VirtualHosts.CommunityUrl(relative);
 
     static Task<CoreWebView2Environment>? _env;
 
