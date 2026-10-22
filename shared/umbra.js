@@ -1,9 +1,24 @@
 // Umbra widget SDK. Include with:
 //   <script src="https://umbra.local/shared/umbra.js"></script>
-// It talks to the host app through WebView2's postMessage bridge.
+// It talks to the host app through the host's message bridge (WebView2 on Windows, WebKitGTK on Linux).
 (() => {
-  const bridge = window.chrome && window.chrome.webview;
-  const post = (msg) => bridge && bridge.postMessage(msg);
+// BRIDGE-START
+  // WebView2 (Windows): window.chrome.webview. WebKitGTK (Linux): page -> host through
+  // window.webkit.messageHandlers.umbra, host -> page by the host calling window.__umbraReceive(message).
+  // Same message objects either way; null when the page runs outside Umbra.
+  const umbraBridge = (() => {
+    const wv = window.chrome && window.chrome.webview;
+    if (wv) return { post: (m) => wv.postMessage(m), listen: (fn) => wv.addEventListener("message", (e) => fn(e.data)) };
+    const wk = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.umbra;
+    if (!wk) return null;
+    const listeners = [];
+    if (!("__umbraReceive" in window))
+      Object.defineProperty(window, "__umbraReceive", { value: (m) => listeners.forEach((fn) => fn(m)) });
+    return { post: (m) => wk.postMessage(m), listen: (fn) => listeners.push(fn) };
+  })();
+// BRIDGE-END
+  const bridge = umbraBridge;
+  const post = (msg) => bridge && bridge.post(msg);
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
@@ -39,8 +54,7 @@
     if (el.textContent !== css) el.textContent = css;
   }
 
-  bridge && bridge.addEventListener("message", (e) => {
-    const m = e.data;
+  bridge && bridge.listen((m) => {
     switch (m.type) {
       case "init":
         widget = m.widget;

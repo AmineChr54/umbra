@@ -113,6 +113,9 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 
 ## JavaScript API (`window.umbra`)
 
+Talk to the host only through `window.umbra`. Don't use `window.chrome.webview` (or any other host bridge) directly: it
+is WebView2 on Windows, and other platforms use a different one that `umbra.js` hides.
+
 | API | Description |
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |

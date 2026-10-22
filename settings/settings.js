@@ -1,6 +1,6 @@
 // Umbra Settings panel. All state lives in the host; this page renders it and posts changes back.
-const bridge = window.chrome && window.chrome.webview;
-const post = (msg) => bridge && bridge.postMessage(msg);
+const bridge = window.umbraBridge; // shared/bridge.js: WebView2 or WebKitGTK
+const post = (msg) => bridge && bridge.post(msg);
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
@@ -1279,8 +1279,7 @@ function escapeHtml(s) {
 }
 
 // ---------- messages from the host ----------
-bridge && bridge.addEventListener("message", (e) => {
-  const m = e.data;
+bridge && bridge.listen((m) => {
   switch (m.type) {
     case "state":
       state = m;
