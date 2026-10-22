@@ -226,9 +226,9 @@ public class PrefsTests
     public void Border_off_uses_no_color()
     {
         Prefs.Configure(new GeneralSettings { BorderEnabled = false });
-        Assert.Equal(Native.DWMWA_COLOR_NONE, Prefs.BorderColorRef);
+        Assert.Equal(unchecked((int)0xFFFFFFFE), Prefs.BorderColorRef); // DWMWA_COLOR_NONE
         Prefs.Configure(new GeneralSettings { BorderColor = "#010203" });
-        Assert.Equal(Native.ColorRef(1, 2, 3), Prefs.BorderColorRef);
+        Assert.Equal(0x030201, Prefs.BorderColorRef); // COLORREF 0x00BBGGRR
         Prefs.Configure(new GeneralSettings());
     }
 

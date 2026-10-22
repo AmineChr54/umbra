@@ -34,4 +34,4 @@ Record `umbractl list` first, and restore the values at the end. Positions too: 
 
 Read every PNG you use as evidence. Manual only, so ask the user: Win+D keeps widgets visible, dragging moves and persists, edit-mode resize handle and Ctrl+wheel zoom, multi-monitor and DPI changes.
 
-Testing a dev build: exit the installed one first (`umbractl quit`), then `dotnet run --project src/Umbra`, and use `src/Umbra.Cli/bin/Debug/net10.0-windows/umbractl.exe`.
+Testing a dev build: exit the installed one first (`umbractl quit`), then `dotnet run --project src/Umbra`, and use `src/Umbra.Cli/bin/Debug/net10.0/umbractl.exe`.

@@ -278,9 +278,14 @@ public class McpResourcesAndPromptsTests : IDisposable
         Directory.CreateDirectory(outside);
         File.WriteAllText(Path.Combine(outside, "leak.json"), "{}");
         var link = Path.Combine(_dir, "demo", "link");
-        var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
-            { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
-        p.WaitForExit();
+        if (OperatingSystem.IsWindows())
+        {
+            // A junction: unlike a directory symlink it needs no admin rights or developer mode.
+            var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
+                { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+            p.WaitForExit();
+        }
+        else Directory.CreateSymbolicLink(link, outside);
         Assert.True(Directory.Exists(link));
 
         var reply = (await Server().HandleAsync(Call("resources/read", new JsonObject { ["uri"] = "umbra://widgets/demo/link/leak.json" })))!;

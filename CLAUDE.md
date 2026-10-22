@@ -8,7 +8,8 @@ about any specific widget; widgets are folders with a `widget.json`. Windows 10 
 ```powershell
 dotnet build Umbra.slnx -warnaserror      # must stay at 0 warnings
 dotnet test Umbra.slnx                    # unit tests (xUnit), no app or network needed
-dotnet build src/Umbra.Core               # the platform-neutral core alone (builds on Linux too)
+dotnet build Umbra.Linux.slnf -warnaserror   # Core + umbractl + Core tests: the part that builds on Linux (CI runs it on Ubuntu)
+dotnet test Umbra.Linux.slnf
 node scripts/catalog.mjs                  # validate widgets/ + themes/ and regenerate both index.json files (commit them)
 powershell -File build.ps1                # publish both exes + installer -> dist/UmbraSetup-<ver>.exe
 dotnet run --project src/Umbra            # run from source (exit the installed Umbra first: one instance per user)
@@ -49,7 +50,8 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `site/` | Website on GitHub Pages (Astro + Starlight): landing page, widget catalog, docs in `src/content/docs/docs/`. `npm run build` there (Node >=22.23.4, CI uses 24); `scripts/sync.mjs` pulls catalog, previews, SDK doc and schemas from the repo, so `docs/widget-sdk.md` stays the one SDK source. Deployed by `pages.yml`; not part of the app |
 | `schemas/widget.schema.json`, `docs/widget-sdk.md` | Manifest schema and SDK reference (both ship next to umbractl for agents) |
 | `installer/Umbra.iss`, `build.ps1` | Inno Setup per-user installer; the version comes from `Directory.Build.props` |
-| `tests/Umbra.Tests/` | Unit tests for host and CLI (the CLI project is referenced with `extern alias cli`) |
+| `tests/Umbra.Core.Tests/` | Unit tests for Core and the CLI (`extern alias cli`); plain `net10.0`, run on Windows and Linux. `[WindowsFact]`/`[WindowsTheory]` skip Windows-only cases elsewhere |
+| `tests/Umbra.Tests/` | Windows host tests (WebView2, WinForms, toasts, power events, command runner with cmd/powershell) |
 
 ## Adding a capability
 

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Tests for Umbra.Core and umbractl: plain net10.0, so they run on Windows and Linux alike. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Umbra.Core\Umbra.Core.csproj" />
+    <!-- Aliased: umbractl compiles its own copy of Protocol.cs, so keep its types out of the global namespace. -->
+    <ProjectReference Include="..\..\src\Umbra.Cli\Umbra.Cli.csproj" Aliases="cli" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="System.Drawing" />
+  </ItemGroup>
+
+</Project>

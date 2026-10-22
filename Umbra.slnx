@@ -6,6 +6,7 @@
     <Project Path="src/Umbra.Updater/Umbra.Updater.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Umbra.Core.Tests/Umbra.Core.Tests.csproj" />
     <Project Path="tests/Umbra.Tests/Umbra.Tests.csproj" />
   </Folder>
 </Solution>
