@@ -1,7 +1,8 @@
 # Umbra: guide for AI agents and contributors
 
 Umbra pins small web widgets (HTML/CSS/JS in WebView2) to the Windows desktop. The C# host knows nothing
-about any specific widget; widgets are folders with a `widget.json`. Windows 10 1809+ / 11 only.
+about any specific widget; widgets are folders with a `widget.json`. Windows 10 1809+ / 11 only today; a Linux version
+(KDE Plasma 6, GNOME 46+) is in progress, see "Linux port" below.
 
 ## Commands
 
@@ -51,6 +52,25 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `installer/Umbra.iss`, `build.ps1` | Inno Setup per-user installer; the version comes from `Directory.Build.props` |
 | `tests/Umbra.Core.Tests/` | Unit tests for Core and the CLI (`extern alias cli`); plain `net10.0`, run on Windows and Linux. `[WindowsFact]`/`[WindowsTheory]` skip Windows-only cases elsewhere |
 | `tests/Umbra.Tests/` | Windows host tests (WebView2, WinForms, toasts, power events, command runner with cmd/powershell) |
+
+## Linux port (epic #172, in progress)
+
+Read epic [#172](https://github.com/AmineChr54/umbra/issues/172) before touching anything Linux: it holds the design and the ordered
+child issues (#173-#200). Only part of it exists in the repo; don't document or assume the rest as done.
+
+- **Exists:** `src/Umbra.Core`, `tests/Umbra.Core.Tests`, `src/Umbra.Cli` as plain `net10.0`, `Umbra.Linux.slnf`, the Ubuntu CI job,
+  the bridge shim in `shared/bridge.js`, and `.claude/skills/linux-port/SKILL.md` (the loop a Linux contributor runs: `/loop 2m /linux-port`).
+- **Planned, not in the repo yet** (names from the epic; add map rows when the files land): `src/Umbra.Linux` (GTK4 + WebKitGTK host,
+  assembly `umbra`, from #179), `src/Umbra.Linux/native/umbra-webext.c` (web-process extension, #180), `tests/Umbra.Linux.Tests`,
+  `linux/` (launcher, `.desktop`, metainfo, `flatpak/`, `test/`), `linux/gnome-extension/umbra@aminechr54.github.io/` (#187).
+  Linux app id: `io.github.aminechr54.Umbra` (the Windows AUMID stays `AmineChr54.Umbra`).
+- Every security invariant below applies **unchanged** on Linux and sandbox parity is a release blocker. If something can't be matched,
+  say so in the issue; don't quietly weaken it. Changes to the sandbox, commands, approvals, focus gating or the control socket need the maintainer's review.
+- **Linux screenshots:** on a real desktop use only `umbractl capture` (that WebView), never a desktop or full-screen screenshot.
+  Compositor screenshots only inside a throwaway nested/headless session you started (`xvfb-run`, `kwin_wayland --virtual`,
+  `dbus-run-session -- gnome-shell --nested --wayland`), with `UMBRA_DATA_DIR=$(mktemp -d)`. Drag, typing into widgets, multi-monitor and
+  fractional scaling are human checks: list them in the PR. No `sudo` or GNOME settings changes outside a nested session.
+- Windows CI must stay green on every PR. Label: `platform: linux`. Widgets use only `window.umbra`, never `chrome.webview`.
 
 ## Adding a capability
 

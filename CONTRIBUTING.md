@@ -128,7 +128,55 @@ themes/ember/
 
 ## Working on the app itself
 
-Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects/5) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows. [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.
+Pick an issue from the [roadmap board](https://github.com/users/AmineChr54/projects/5) (labels `good first issue` and `help wanted` are a good start), comment that you're on it, and open a PR that says `Closes #N`. Build and test with `dotnet build Umbra.slnx` and `dotnet test Umbra.slnx`; CI runs the same on Windows, plus an Ubuntu job for the platform-neutral part (`Umbra.Linux.slnf`). [CLAUDE.md](CLAUDE.md) explains the architecture and the security rules, and AI coding agents read it too.
+
+## Working on the Linux port
+
+Umbra runs on Windows only today. A Linux version for KDE Plasma 6 and GNOME 46+ is in progress, tracked in epic [#172](https://github.com/AmineChr54/umbra/issues/172). **Read the epic first**: it holds the design (repo layout, dependencies, the Windows to Linux mapping) and the ordered child issues (#173 to #200). Each child issue says what it depends on. The Linux host (`src/Umbra.Linux`) and the `linux/` folder do not exist yet; the first host issue is #179.
+
+**Status of what you can build today.** The platform-neutral part (`src/Umbra.Core`, `src/Umbra.Cli`, `tests/Umbra.Core.Tests`) builds and tests on Linux and on Windows:
+
+```bash
+dotnet build Umbra.Linux.slnf -warnaserror   # 0 warnings
+dotnet test Umbra.Linux.slnf
+```
+
+That needs only the .NET 10 SDK. The Linux host is not part of the solution filter until it exists.
+
+**Dev setup on Ubuntu (GNOME), from the epic.** You need this once the host lands (#179); it is not needed for the commands above. Package names are the epic's and are not yet exercised in this repo:
+
+```bash
+# runtime + dev libs
+sudo apt install libgtk-4-1 libgtk-4-dev libwebkitgtk-6.0-4 libwebkitgtk-6.0-dev \
+                 libgtk4-layer-shell0 libgtk4-layer-shell-dev build-essential nodejs gh
+# test tools (nested/headless sessions, X11 path)
+sudo apt install xvfb openbox xdotool kwin-wayland mutter weston imagemagick dbus-x11
+# .NET 10 SDK: the dotnet backports PPA, or https://dot.net/v1/dotnet-install.sh --channel 10.0
+```
+
+If `libgtk4-layer-shell*` is missing from your Ubuntu release, build it from https://github.com/wmww/gtk4-layer-shell (meson). The epic also names the runtime packages for Fedora 41 (`gtk4 webkitgtk6.0 gtk4-layer-shell`) and Arch (`gtk4 webkitgtk-6.0 gtk4-layer-shell`). Node 22 runs the catalog scripts.
+
+**How to test on Linux (rules from the epic):**
+
+- **On your real desktop, inspect only through `umbractl capture <widget|settings:page> out.png`.** It captures just that WebView. **Never take desktop or full-screen screenshots** of a personal desktop: they capture your other windows (same rule as in CLAUDE.md).
+- **Compositor screenshots are fine only in a throwaway session you started yourself**, where nothing personal is on screen. The epic lists these ways to start one (not yet exercised in this repo):
+  - X11: `xvfb-run -s "-screen 0 1920x1080x24" openbox ...`
+  - KDE: `kwin_wayland --virtual --width 1920 --height 1080 --socket wayland-umbra`, or nested in a window
+  - GNOME: `dbus-run-session -- gnome-shell --nested --wayland`, or `mutter --headless --wayland --virtual-monitor 1920x1080`
+- Use a throwaway profile: `UMBRA_DATA_DIR=$(mktemp -d)`. Only one instance runs per user and data dir. Never touch the data folder of an Umbra you actually use, and only kill processes you started.
+- No `sudo`, system-wide installs or changes to GNOME settings and extensions outside a nested session as part of a test.
+- Drag, typing into widgets, multi-monitor and fractional scaling need a human check on a real desktop: list them in the PR under a "Human check" heading, saying what you tried and on which distribution, desktop and session type.
+
+**Working rules for Linux PRs** (from the epic):
+
+- Comment "I'm taking this" on the child issue before you start, work from your fork, and open one PR per issue with `Closes #N`.
+- Windows must keep working: the Windows CI jobs must stay green, and `dotnet build -warnaserror` stays at 0 warnings.
+- Every security invariant in CLAUDE.md applies unchanged on Linux, and Linux sandbox parity is a release blocker. A PR that touches the sandbox, commands, approvals, focus gating or the control socket needs the maintainer's review. If something can't be matched on Linux, open a discussion in the issue; don't quietly weaken it.
+- New NuGet packages need a reason in the PR; the epic allows only `GirCore.Gtk-4.0` and `GirCore.WebKit-6.0`.
+- Update the CLAUDE.md map when you add files or projects. The label for Linux issues is `platform: linux`.
+- Widgets must talk to the host only through `window.umbra`, never through `window.chrome.webview` or any other bridge ([widget SDK](docs/widget-sdk.md)).
+
+**Running it with Claude Code.** On the Linux machine, with your fork cloned and the prerequisites installed, `/loop 2m /linux-port` runs the loop in [`.claude/skills/linux-port/SKILL.md`](.claude/skills/linux-port/SKILL.md): it picks the next ready issue, hands it to agents in worktrees, routes review and CI feedback, and collects the human checks.
 
 ## 6. Open a pull request
 

@@ -12,6 +12,24 @@ Download `UmbraSetup-<version>.exe` from [Releases](https://github.com/AmineChr5
 
 Build it yourself: `powershell -File build.ps1` (needs the .NET 10 SDK, Node and Inno Setup 6). For development: `dotnet build Umbra.slnx`, `dotnet test Umbra.slnx` and `dotnet run --project src/Umbra`.
 
+## Platforms and Linux status
+
+| Platform | Status |
+|---|---|
+| Windows 10 1809+ / Windows 11 | Supported. This is the only platform Umbra releases for today. |
+| Linux (KDE Plasma 6, GNOME 46+) | **In progress, tracked in [#172](https://github.com/AmineChr54/umbra/issues/172). Not usable yet: there is no Linux release, tarball, Flatpak or installer, and the Linux app does not exist.** |
+
+What exists on Linux today is only the platform-neutral groundwork: the shared `Umbra.Core` library, `umbractl` built as plain `net10.0`, the bridge shim that lets widget pages talk to WebKitGTK as well as WebView2, and a CI job that builds and tests that part on Ubuntu. Nothing draws a widget on a Linux desktop yet. If you are not a contributor, there is nothing to install: follow #172 for progress.
+
+What the Linux port aims for, as designed in #172 (none of this is shipped or verified yet):
+
+- **Desktops:** KDE Plasma 6 (Wayland, and X11 sessions) and GNOME 46 or newer (Wayland through a small Umbra GNOME Shell extension, with an XWayland fallback, and X11 sessions). Minimum distributions in the design: Ubuntu 24.04, Fedora 41, Arch.
+- **Packaging:** a self-contained tarball (`umbra-<version>-linux-<x64|arm64>.tar.gz`) and a Flatpak (`io.github.aminechr54.Umbra`). Exact install steps will be written here once the packaging issue (#196) lands, so none are listed yet.
+- **Expected differences from Windows,** from the individual issues: global hotkeys need the GlobalShortcuts portal, which is KDE Plasma 6 and GNOME 48+ (on GNOME 46 Settings is meant to say "Not supported on this desktop"); the tray icon needs a StatusNotifierItem host (KDE, and Ubuntu's GNOME, which ships AppIndicator, have one; stock GNOME has none); `umbra.media` album art is only read from `file://` URLs; updates will only notify and open the release page, never install; a few catalog widgets run Windows programs and are planned to be marked Windows only.
+- **Same security rules:** the sandbox, command approvals and focus rules in [CLAUDE.md](CLAUDE.md) apply unchanged. Linux sandbox parity is a release blocker.
+
+To help, see "Working on the Linux port" in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Features
 
 - **Settings panel:** start with Windows, refresh interval, animations, appearance (corner radius, border, accent color or match the Windows accent live, interface font and size, light text, reduce transparency) and advanced options (log level, developer mode, GPU, startup delay, proxy). Each widget can be turned on or off, run more than once (**Add another copy**, e.g. S&P 500 and Nasdaq side by side), configured, resized (50-300 %), locked, dimmed, given its own refresh interval, started hidden, shown only in a time range or on AC power, or reset to its default position. Changes apply live. The window reopens where you left it (size, monitor, maximized, last page).
@@ -40,6 +58,8 @@ Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps t
 ## Automate Umbra (CLI, scripts and AI agents)
 
 The installer puts `umbractl` on your PATH. Every command prints JSON and starts Umbra in the background if it isn't running.
+
+> **Linux:** `umbractl` and the MCP server are being made cross-platform (they already build as plain `net10.0`), but there is no Linux Umbra for them to talk to yet (#172). The examples below are Windows. Planned for the Flatpak: an MCP client runs `flatpak run --command=umbractl io.github.aminechr54.Umbra mcp`, because the control socket lives inside the sandbox (#175). Not usable today.
 
 ```powershell
 umbractl list                         # widgets, their settings, option schema and window bounds
@@ -122,7 +142,7 @@ The original lightweight Rainmeter skin is still in [`extras/rainmeter`](extras/
 
 ## Limitations
 
-Market data comes from Yahoo's unofficial endpoint. It may be delayed or change without notice, so don't use it for trading. Umbra is Windows 10 1809+ / Windows 11 only (it targets `net10.0-windows10.0.19041.0`).
+Market data comes from Yahoo's unofficial endpoint. It may be delayed or change without notice, so don't use it for trading. The Umbra app is Windows 10 1809+ / Windows 11 only today (it targets `net10.0-windows10.0.19041.0`); Linux is in progress, see [Platforms and Linux status](#platforms-and-linux-status).
 
 ## License
 
