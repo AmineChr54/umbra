@@ -49,7 +49,7 @@
     function tick() {
       const now = new Date();
       const o = umbra.options;
-      // "Follow Windows" uses Region > Time format; the old 12-hour toggle (hour12) still counts as 12-hour.
+      // "Follow system" uses the OS time format (Windows Region > Time format); the old 12-hour toggle (hour12) still counts as 12-hour.
       const h12 = o.timeFormat === "12" || (o.timeFormat !== "24" && (o.hour12 === true || umbra.hour12));
       const parts = new Intl.DateTimeFormat(umbra.locale, {
         hour: "2-digit", minute: "2-digit", second: o.seconds ? "2-digit" : undefined, hour12: h12,

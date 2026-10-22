@@ -4,7 +4,7 @@
   "name": "Calendar glance",
   "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
   "author": "AmineChr54",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "entry": "index.html",
   "preview": "preview.png",
   "icon": "icon.png",
@@ -33,7 +33,7 @@
     "showLocation": { "label": "Show location", "type": "toggle", "default": true },
     "clock": {
       "label": "Time format", "type": "select", "default": "auto",
-      "choices": [{ "value": "auto", "label": "Follow Windows" }, { "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
+      "choices": [{ "value": "auto", "label": "Follow system" }, { "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
     }
   }
 }
