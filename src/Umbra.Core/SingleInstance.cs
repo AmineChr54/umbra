@@ -12,15 +12,18 @@ sealed class SingleInstance : IDisposable
     readonly Mutex _mutex;
     readonly CancellationTokenSource _cts = new();
 
+    /// <summary>How long a restarted Umbra waits for the previous instance to exit.</summary>
+    public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);
+
     public bool IsFirst { get; }
 
-    /// <param name="waitForPrevious">A restart: wait (up to <see cref="Tray.RestartWait"/>) for the old instance to exit instead of treating it as a second launch.</param>
+    /// <param name="waitForPrevious">A restart: wait (up to <see cref="RestartWait"/>) for the old instance to exit instead of treating it as a second launch.</param>
     public SingleInstance(bool waitForPrevious = false)
     {
         _mutex = new Mutex(true, $@"Local\{Protocol.PipeName}", out var created);
         if (!created && waitForPrevious)
         {
-            try { created = _mutex.WaitOne(Tray.RestartWait); }
+            try { created = _mutex.WaitOne(RestartWait); }
             catch (AbandonedMutexException) { created = true; } // the old instance died without releasing it; ours now
         }
         IsFirst = created;
@@ -30,7 +33,8 @@ sealed class SingleInstance : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", Protocol.PipeName, PipeDirection.Out);
+            // CurrentUserOnly: only hand the signal to a server owned by this user (on Linux the socket lives in a shared temp folder).
+            using var client = new NamedPipeClientStream(".", Protocol.PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(2000);
             using var w = new StreamWriter(client);
             w.WriteLine(message);
@@ -77,7 +81,7 @@ sealed class SingleInstance : IDisposable
                 if (reply is null) return;
                 await using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
                 await writer.WriteLineAsync(reply.AsMemory(), _cts.Token);
-                server.WaitForPipeDrain();
+                if (OperatingSystem.IsWindows()) server.WaitForPipeDrain();
             }
             catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
             {

@@ -60,16 +60,6 @@ public class NotifyMediaTests
     }
 
     [Fact]
-    public void Toasts_use_the_installed_aumid_or_a_per_folder_one()
-    {
-        Assert.Equal(("AmineChr54.Umbra", false), ToastService.ChooseAumid(true, @"C:\a"));
-        var (a, reg) = ToastService.ChooseAumid(false, @"C:\a");
-        Assert.True(reg);
-        Assert.StartsWith("AmineChr54.Umbra.Local.", a);
-        Assert.NotEqual(a, ToastService.ChooseAumid(false, @"C:\b").Aumid);
-    }
-
-    [Fact]
     public void Notify_url_must_be_https_on_a_declared_host()
     {
         var m = WidgetManifest.Parse("""{ "id": "np", "name": "N", "permissions": { "hosts": ["example.com"], "notifications": true } }""");

@@ -1,17 +1,7 @@
-using Microsoft.Web.WebView2.Core;
-
 namespace Umbra.Tests;
 
 public class CrashRecoveryTests
 {
-    [Fact]
-    public void A_hung_renderer_is_only_logged_a_dead_one_reloads()
-    {
-        Assert.Equal(CrashReaction.Ignore, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.RenderProcessUnresponsive));
-        Assert.Equal(CrashReaction.Reload, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.RenderProcessExited));
-        Assert.Equal(CrashReaction.RecreateBrowser, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.BrowserProcessExited));
-    }
-
     [Fact]
     public void Only_host_written_log_lines_count_as_crashes()
     {

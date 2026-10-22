@@ -5,30 +5,6 @@ using System.Text.RegularExpressions;
 
 namespace Umbra;
 
-/// <summary>Where a group's tab strip goes: just above the widget, or inside its top edge when the screen has no room above.</summary>
-static class TabStripGeometry
-{
-    public const int Cell = 30, Pad = 3, Gap = 2, Bar = Cell + 2 * Pad, Space = 3, Inset = 6;
-
-    public static Size SizeFor(int count, float k)
-    {
-        var n = Math.Max(1, count);
-        return new Size((int)Math.Round((n * Cell + (n - 1) * Gap + 2 * Pad) * k), (int)Math.Round(Bar * k));
-    }
-
-    /// <summary>Strip bounds for a widget at <paramref name="target"/> (physical pixels); <paramref name="above"/> is false for the inside fallback.</summary>
-    public static Rectangle Place(Rectangle target, Rectangle workArea, float k, int count, out bool above)
-    {
-        var size = SizeFor(count, k);
-        size.Width = Math.Min(size.Width, Math.Max(size.Height, target.Width));
-        var top = target.Y - size.Height - (int)Math.Round(Space * k);
-        above = top >= workArea.Y;
-        if (!above) top = target.Y + (int)Math.Round(Inset * k);
-        var x = above ? target.X : target.X + (int)Math.Round(Inset * k);
-        return new Rectangle(x, top, size.Width, size.Height);
-    }
-}
-
 /// <summary>
 /// The host-drawn tab strip of a widget group: one icon per member, attached above the visible widget so it covers none of its content.
 /// Like <see cref="EditPill"/> it is its own non-activating window owned by Progman (no WebView), so no widget can draw into it
@@ -185,7 +161,7 @@ sealed class GroupTabs : Form
         _active = active;
 
         float k = Dpi;
-        var screens = Placement.Monitors();
+        var screens = Screens.All();
         var work = Placement.Find(screens, _target) is MonitorInfo mi ? mi.WorkArea : _target;
         var bounds = TabStripGeometry.Place(_target, work, k, g.Members.Count, out _);
         _chips.Clear();
@@ -194,7 +170,7 @@ sealed class GroupTabs : Form
         foreach (var m in g.Members)
         {
             if (x + cell > bounds.Width) break; // a widget narrower than its tabs: the rest stay reachable through the menu
-            _chips.Add((new Rectangle(x, pad, cell, cell), m, _app.Resolve(m) is { } r ? App.InstanceLabel(r.Manifest, m) : m));
+            _chips.Add((new Rectangle(x, pad, cell, cell), m, _app.Resolve(m) is { } r ? InstanceId.Label(r.Manifest, m) : m));
             x += cell + gap;
         }
         if (Bounds != bounds) Bounds = bounds;

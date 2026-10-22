@@ -14,11 +14,11 @@ public class SystemMetricsTests
     [Fact]
     public void Read_returns_only_declared_kinds_as_numbers()
     {
-        var o = SystemMetrics.Read(["cpu", "memory"]);
+        var o = WindowsMetrics.Read(["cpu", "memory"]);
         Assert.Null(o["network"]);
         Assert.InRange(o["cpu"]!["percent"]!.GetValue<double>(), 0, 100);
         var mem = o["memory"]!;
         Assert.True(mem["totalBytes"]!.GetValue<long>() >= mem["usedBytes"]!.GetValue<long>());
-        Assert.Empty(SystemMetrics.Read([]));
+        Assert.Empty(WindowsMetrics.Read([]));
     }
 }

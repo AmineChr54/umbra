@@ -100,6 +100,8 @@ static class CommandRunner
     public static async Task<RunResult> RunAsync(string exePath, IReadOnlyList<string> args, string workingDir,
         TimeSpan timeout, int maxBytes = MaxOutputBytes, CancellationToken ct = default)
     {
+        // Containing the process tree is Windows-only so far (job objects); Linux gets process groups in #194.
+        if (!OperatingSystem.IsWindows()) throw new WidgetCommandException("Widget commands are not supported on this platform yet");
         Directory.CreateDirectory(workingDir);
         var psi = new ProcessStartInfo(exePath)
         {
@@ -119,7 +121,7 @@ static class CommandRunner
 
         var sw = Stopwatch.StartNew();
         // The job makes every descendant die with the job: on timeout, when the run ends, or if Umbra itself exits.
-        var job = Native.CreateKillOnCloseJob();
+        var job = ProcessJob.CreateKillOnCloseJob();
         if (job == IntPtr.Zero) throw new WidgetCommandException("Could not create a job object to contain the program");
         try
         {
@@ -127,15 +129,15 @@ static class CommandRunner
         }
         finally
         {
-            Native.TerminateJobObject(job, 1);
-            Native.CloseHandle(job);
+            ProcessJob.TerminateJobObject(job, 1);
+            ProcessJob.CloseHandle(job);
         }
     }
 
     static async Task<RunResult> RunInJobAsync(ProcessStartInfo psi, IntPtr job, Stopwatch sw, int maxBytes, TimeSpan timeout, CancellationToken ct)
     {
         using var proc = Process.Start(psi) ?? throw new WidgetCommandException("The program could not be started");
-        if (!Native.AddToJob(job, proc.Handle))
+        if (!ProcessJob.AddToJob(job, proc.Handle))
         {
             try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
             throw new WidgetCommandException("Could not contain the program in a job object");
@@ -152,7 +154,7 @@ static class CommandRunner
         catch (OperationCanceledException)
         {
             timedOut = !ct.IsCancellationRequested;
-            Native.TerminateJobObject(job, 1);
+            ProcessJob.TerminateJobObject(job, 1);
             try { proc.Kill(entireProcessTree: true); } catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
             try { await proc.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); } catch (TimeoutException) { }
         }

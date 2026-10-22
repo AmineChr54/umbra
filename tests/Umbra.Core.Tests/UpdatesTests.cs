@@ -124,7 +124,7 @@ public class UpdatesTests
         Assert.DoesNotContain("/SILENT", args.Split(' ')); // /SILENT still shows the setup window
     }
 
-    [Fact]
+    [WindowsFact] // the updater and its paths are Windows-only
     public void The_updater_command_line_round_trips()
     {
         var req = new UpdaterArgs.Request(@"C:\Temp\umbra-update-1\UmbraSetup-1.6.0.exe", "1.6.0", @"C:\Temp\UmbraUpdate.log", 4242, @"C:\Users\me\AppData\Local\Programs\Umbra\");
@@ -132,7 +132,7 @@ public class UpdatesTests
         Assert.Equal(req with { InstallDir = @"C:\Users\me\AppData\Local\Programs\Umbra" }, parsed);
     }
 
-    [Theory]
+    [WindowsTheory]
     [InlineData("UmbraSetup-1.6.0.exe", "1.6.0", true)]
     [InlineData("UmbraSetup-1.6.0.exe", "1.7.0", false)]  // wrong version
     [InlineData("calc.exe", "1.6.0", false)]

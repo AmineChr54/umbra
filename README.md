@@ -83,7 +83,7 @@ The Settings window has a **Data & privacy** page: per widget it shows the hosts
 
 The server also exposes every installed widget's files as read-only **resources** (`umbra://widgets/<id>/<file>`, same path and extension rules as agent-written files, 5 MB cap) so an agent can read a widget before editing it, and three **prompts**, `new_widget`, `fix_widget` and `restyle_widget`, that walk it through `widget_authoring_guide`, `create_widget` and `capture`.
 
-Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
+Under the hood, both talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra.Core/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 
 ## How it works
 

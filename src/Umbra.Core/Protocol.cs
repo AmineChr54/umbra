@@ -66,10 +66,10 @@ public static class Protocol
 
     public static JsonObject Error(string message) => new() { ["ok"] = false, ["error"] = message };
 
-    /// <summary>Client side: send one request to the running Umbra and wait for its reply.</summary>
-    public static async Task<JsonObject> SendAsync(JsonObject request, int connectTimeoutMs = 1500, CancellationToken ct = default)
+    /// <summary>Client side: send one request to the running Umbra and wait for its reply (<paramref name="pipeName"/> is for tests).</summary>
+    public static async Task<JsonObject> SendAsync(JsonObject request, int connectTimeoutMs = 1500, CancellationToken ct = default, string? pipeName = null)
     {
-        using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut,
+        using var pipe = new NamedPipeClientStream(".", pipeName ?? PipeName, PipeDirection.InOut,
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         await pipe.ConnectAsync(connectTimeoutMs, ct);
         using var reader = new StreamReader(pipe);

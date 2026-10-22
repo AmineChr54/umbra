@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Umbra;
 
-/// <summary>Job object interop: a started command and everything it spawns die with the job.</summary>
-static partial class Native
+/// <summary>Windows job object interop: a started command and everything it spawns die with the job.</summary>
+static partial class ProcessJob
 {
     const int JobObjectExtendedLimitInformation = 9;
     const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;

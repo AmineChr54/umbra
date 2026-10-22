@@ -1,0 +1,10 @@
+{
+  "solution": {
+    "path": "Umbra.slnx",
+    "projects": [
+      "src/Umbra.Core/Umbra.Core.csproj",
+      "src/Umbra.Cli/Umbra.Cli.csproj",
+      "tests/Umbra.Core.Tests/Umbra.Core.Tests.csproj"
+    ]
+  }
+}

@@ -33,7 +33,7 @@ static class Diagnostics
             .Select(m => new WidgetLine(m.Id, m.Version, m.IsPermanent ? "built-in" : "community"))
             .ToList();
         return new Snapshot(
-            Application.ProductVersion.Split('+')[0], AppPaths.IsPortable, app.SafeMode,
+            AppInfo.Version, AppPaths.IsPortable, app.SafeMode,
             WindowsText(), WebView2Version(), Monitors(), g.HardwareAcceleration, ProxyKind(g.Proxy),
             widgets, ScrubLog(Log.Tail(LogLines), Roots(g.Proxy), Names()));
     }
@@ -102,7 +102,7 @@ static class Diagnostics
     }
 
     static List<MonitorLine> Monitors() =>
-        Placement.Monitors().Select(m => new MonitorLine(m.Bounds.Width, m.Bounds.Height, MonitorDpi(m.Bounds), m.Primary)).ToList();
+        Screens.All().Select(m => new MonitorLine(m.Bounds.Width, m.Bounds.Height, MonitorDpi(m.Bounds), m.Primary)).ToList();
 
     /// <summary>Effective DPI of the monitor containing the rectangle's centre (96 when Windows can't say).</summary>
     static int MonitorDpi(Rectangle bounds) =>

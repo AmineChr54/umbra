@@ -17,6 +17,7 @@
   { "name": "priority: p0", "color": "b60205", "description": "Crash, data loss or security: fix now" },
   { "name": "priority: p1", "color": "d93f0b", "description": "Important: next release" },
   { "name": "priority: p2", "color": "c5def5", "description": "Nice to have" },
+  { "name": "platform: linux", "color": "0e8a16", "description": "Linux port (KDE Plasma + GNOME)" },
   { "name": "good first issue", "color": "7057ff", "description": "Small and self-contained, great for newcomers" },
   { "name": "help wanted", "color": "008672", "description": "Community contributions welcome" }
 ]

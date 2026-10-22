@@ -26,7 +26,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $Umbra) { $Umbra = Join-Path $root "src\Umbra\bin\$Configuration\net10.0-windows10.0.19041.0\Umbra.exe" }
-if (-not $Ctl) { $Ctl = Join-Path $root "src\Umbra.Cli\bin\$Configuration\net10.0-windows\umbractl.exe" }
+if (-not $Ctl) { $Ctl = Join-Path $root "src\Umbra.Cli\bin\$Configuration\net10.0\umbractl.exe" }
 if (-not $OutDir) { $OutDir = Join-Path $root 'dist\smoke' }
 foreach ($p in $Umbra, $Ctl) { if (-not (Test-Path $p)) { throw "Not found: $p (build first: dotnet build Umbra.slnx -c $Configuration)" } }
 if (Get-Process -Name Umbra -ErrorAction SilentlyContinue) {
