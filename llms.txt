@@ -18,5 +18,5 @@
 
 ## Automation
 
-- [Control protocol](https://github.com/AmineChr54/umbra/blob/main/src/Umbra/Protocol.cs): commands available over the per-user pipe
+- [Control protocol](https://github.com/AmineChr54/umbra/blob/main/src/Umbra.Core/Protocol.cs): commands available over the per-user pipe
 - [MCP server](https://github.com/AmineChr54/umbra/blob/main/src/Umbra.Cli/McpServer.cs): tool definitions for `umbractl mcp`
