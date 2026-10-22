@@ -16,7 +16,7 @@ static class UmbraClient
         catch (TimeoutException) when (autoStart && cmd != "quit")
         {
             var exe = FindUmbraExe() ?? throw new InvalidOperationException(
-                "Umbra is not running and Umbra.exe was not found. Install it from https://github.com/AmineChr54/umbra/releases or set UMBRA_EXE.");
+                $"Umbra is not running and {AppFileName} was not found. Install it from https://github.com/AmineChr54/umbra/releases or set UMBRA_EXE.");
             Process.Start(new ProcessStartInfo(exe, "--background") { UseShellExecute = false });
             var deadline = DateTime.UtcNow.AddSeconds(25);
             while (true)
@@ -28,13 +28,20 @@ static class UmbraClient
         }
     }
 
+    /// <summary>The app's file name: Umbra.exe on Windows, umbra on Linux.</summary>
+    static string AppFileName => OperatingSystem.IsWindows() ? "Umbra.exe" : "umbra";
+
     static string? FindUmbraExe()
     {
+        // Next to umbractl first; then the per-user install folder (Windows installer, or the Linux tarball's install.sh).
+        var installed = OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Umbra", AppFileName)
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "lib", "umbra", AppFileName);
         string?[] candidates =
         {
             Environment.GetEnvironmentVariable("UMBRA_EXE"),
-            Path.Combine(AppContext.BaseDirectory, "Umbra.exe"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Umbra", "Umbra.exe"),
+            Path.Combine(AppContext.BaseDirectory, AppFileName),
+            installed,
         };
         return candidates.FirstOrDefault(p => !string.IsNullOrEmpty(p) && File.Exists(p));
     }
