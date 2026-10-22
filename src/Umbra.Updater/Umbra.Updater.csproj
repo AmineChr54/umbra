@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Umbra\UpdaterArgs.cs" Link="UpdaterArgs.cs" />
+    <Compile Include="..\Umbra.Core\UpdaterArgs.cs" Link="UpdaterArgs.cs" />
     <EmbeddedResource Include="..\..\assets\umbra.ico" LogicalName="umbra.ico" />
   </ItemGroup>
 

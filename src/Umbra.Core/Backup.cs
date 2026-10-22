@@ -32,7 +32,7 @@ static class Backup
             ["format"] = Format,
             ["version"] = Version,
             ["createdAt"] = DateTime.UtcNow.ToString("o"),
-            ["umbraVersion"] = Application.ProductVersion.Split('+')[0],
+            ["umbraVersion"] = AppInfo.Version,
             ["settings"] = settings.ToJson(),
             ["data"] = data,
         };
@@ -107,7 +107,7 @@ static class Backup
     /// Read-only privacy overview per installed widget: reachable hosts, declared commands and approval status,
     /// saved data size, blocked requests and crashed-process events found in the log, and whether it gave up restarting.
     /// </summary>
-    public static JsonArray Privacy(App app, string? onlyWidget = null)
+    public static JsonArray Privacy(IUmbraHost app, string? onlyWidget = null)
     {
         var blocked = new Dictionary<string, List<string>>();
         foreach (var line in Log.Tail(2000))

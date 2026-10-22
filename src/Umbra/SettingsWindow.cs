@@ -6,7 +6,7 @@ using Microsoft.Web.WebView2.WinForms;
 namespace Umbra;
 
 /// <summary>The Settings panel: a dark window hosting settings/index.html.</summary>
-sealed class SettingsWindow : Form
+sealed class SettingsWindow : Form, ISettingsView
 {
     static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     static readonly Color Surface = Color.FromArgb(0, 0, 0);
@@ -61,7 +61,7 @@ sealed class SettingsWindow : Form
     {
         var saved = _app.Settings.SettingsPanel;
         static float ScaleOf(MonitorInfo m) => Native.MonitorScale(new Point(m.Bounds.X + m.Bounds.Width / 2, m.Bounds.Y + m.Bounds.Height / 2));
-        if (Placement.ResolveWindow(Placement.Monitors(), saved, ScaleOf, new Size(760, 520)) is not { } r) return;
+        if (Placement.ResolveWindow(Screens.All(), saved, ScaleOf, new Size(760, 520)) is not { } r) return;
         StartPosition = FormStartPosition.Manual;
         Bounds = r;
         if (saved.Maximized) WindowState = FormWindowState.Maximized;
@@ -73,7 +73,7 @@ sealed class SettingsWindow : Form
         if (_background || e.Cancel || !IsHandleCreated) return;
         // RestoreBounds is the normal rectangle even while maximized or minimized.
         var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
-        _app.SaveSettingsPlacement(Placement.Capture(Placement.Monitors(), bounds, DeviceDpi / 96f, WindowState == FormWindowState.Maximized, _page));
+        _app.SaveSettingsPlacement(Placement.Capture(Screens.All(), bounds, DeviceDpi / 96f, WindowState == FormWindowState.Maximized, _page));
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -210,7 +210,7 @@ sealed class SettingsWindow : Form
             }
 
             case "setMonitor":
-                if (msg["monitor"]?.GetValue<string>() is string mon && Placement.Has(Placement.Monitors(), mon))
+                if (msg["monitor"]?.GetValue<string>() is string mon && Placement.Has(Screens.All(), mon))
                     _app.Window(id)?.MoveToMonitor(mon);
                 SendState();
                 break;
@@ -574,7 +574,7 @@ sealed class SettingsWindow : Form
                 ["id"] = inst,
                 ["widget"] = m.Id,
                 ["instance"] = InstanceId.NumberOf(inst),
-                ["name"] = App.InstanceLabel(m, inst),
+                ["name"] = InstanceId.Label(m, inst),
                 ["monitor"] = _app.Settings.Widgets[inst].Monitor,
                 ["description"] = m.Description,
                 ["author"] = m.Author,
@@ -621,7 +621,7 @@ sealed class SettingsWindow : Form
             ["accentCss"] = Prefs.AccentCss(_app.Settings.General),
             ["systemAccent"] = Prefs.SystemAccent?.Accent ?? "",
             ["hotkeys"] = _app.DescribeHotkeys()["hotkeys"]!.DeepClone(),
-            ["monitors"] = new JsonArray(Placement.Monitors().Select((m, i) => (JsonNode?)new JsonObject { ["name"] = m.Name, ["label"] = $"Monitor {i + 1}{(m.Primary ? " (primary)" : "")} - {m.Bounds.Width}x{m.Bounds.Height}" }).ToArray()),
+            ["monitors"] = new JsonArray(Screens.All().Select((m, i) => (JsonNode?)new JsonObject { ["name"] = m.Name, ["label"] = $"Monitor {i + 1}{(m.Primary ? " (primary)" : "")} - {m.Bounds.Width}x{m.Bounds.Height}" }).ToArray()),
             ["widgets"] = widgets,
         });
     }

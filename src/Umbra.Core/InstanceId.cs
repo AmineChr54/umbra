@@ -32,6 +32,10 @@ public static partial class InstanceId
 
     public static bool IsExtra(string instance) => NumberOf(instance) > 1;
 
+    /// <summary>A label for one copy of a widget: its name, plus the copy number for extra copies ("Clock (2)").</summary>
+    public static string Label(WidgetManifest m, string instance) =>
+        IsExtra(instance) ? $"{m.Name} ({NumberOf(instance)})" : m.Name;
+
     public static string Make(string widgetId, int number) => number <= 1 ? widgetId : $"{widgetId}#{number}";
 
     /// <summary>A file-name-safe form ("sp500#2" becomes "sp500__2"; ids never contain underscores).</summary>

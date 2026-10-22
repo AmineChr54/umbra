@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 namespace Umbra;
 
 /// <summary>Owns the settings, the widget windows, the tray icon and the Settings window.</summary>
-sealed class App : ApplicationContext
+sealed class App : ApplicationContext, IUmbraHost
 {
     public static readonly Icon AppIcon = LoadIcon();
 
@@ -82,7 +82,7 @@ sealed class App : ApplicationContext
 
     void CheckFullscreen()
     {
-        var hide = Settings.General.HideOnFullscreen && Placement.FullscreenAppActive();
+        var hide = Settings.General.HideOnFullscreen && Screens.FullscreenAppActive();
         if (hide == HiddenByFullscreen) return;
         HiddenByFullscreen = hide;
         if (hide) EndPeek();
@@ -246,7 +246,7 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>The monitor setup in use right now (see <see cref="Placement.Fingerprint"/>).</summary>
-    static string CurrentFingerprint() => Placement.Fingerprint(Placement.Monitors());
+    static string CurrentFingerprint() => Placement.Fingerprint(Screens.All());
 
     /// <summary>Saves the current positions, sizes and enabled widgets under a name, pinned to the monitor setup in use.</summary>
     public void SaveLayout(string name)
@@ -484,6 +484,16 @@ sealed class App : ApplicationContext
         }
     }
 
+    // ---------- IUmbraHost: the surface Control (umbractl, MCP, tests) automates ----------
+
+    IUpdater IUmbraHost.Updater => Updater;
+    IEnumerable<IWidgetView> IUmbraHost.OpenWindows => OpenWindows;
+    IWidgetView? IUmbraHost.Window(string instance) => Window(instance);
+    ISettingsView IUmbraHost.ShowSettings(bool background) => ShowSettings(background);
+    List<MonitorInfo> IUmbraHost.Monitors() => Screens.All();
+    bool IUmbraHost.StartupEnabled { get => Startup.IsEnabled(); set => Startup.Set(value); }
+    string IUmbraHost.Diagnostics() => Umbra.Diagnostics.Format(Umbra.Diagnostics.Collect(this));
+
     /// <summary>Runs work on the UI thread (pipe requests arrive on worker threads) and returns its result.</summary>
     public Task<T> OnUi<T>(Func<Task<T>> work)
     {
@@ -668,7 +678,7 @@ sealed class App : ApplicationContext
             foreach (var inst in Settings.Instances(m.Id))
             {
                 var ws = Settings.For(m, inst);
-                var item = new ToolStripMenuItem(InstanceLabel(m, inst)) { Checked = ws.Enabled, CheckOnClick = true };
+                var item = new ToolStripMenuItem(InstanceId.Label(m, inst)) { Checked = ws.Enabled, CheckOnClick = true };
                 item.Click += (_, _) => { ws.Enabled = item.Checked; SaveSettings(); SyncWindows(); };
                 menu.Items.Add(item);
             }
@@ -727,9 +737,6 @@ sealed class App : ApplicationContext
         ShowBalloon(5000, widgetName, body.Length == 0 ? title : $"{title}\n{body}", ToolTipIcon.None, url is null ? null : () => WebHost.OpenExternal(url));
         return true;
     }
-
-    public static string InstanceLabel(WidgetManifest m, string instance) =>
-        InstanceId.IsExtra(instance) ? $"{m.Name} ({InstanceId.NumberOf(instance)})" : m.Name;
 
     /// <summary>The manifest and instance id for a widget id or an instance id ("sp500#2"), or null when unknown.</summary>
     public (WidgetManifest Manifest, string Instance)? Resolve(string id)
@@ -803,7 +810,7 @@ sealed class App : ApplicationContext
         if (!InstanceId.IsExtra(instance) || !Settings.Widgets.ContainsKey(instance))
             throw new InvalidOperationException($"'{instance}' is not an extra copy of a widget");
         var m = Manifests.FirstOrDefault(x => x.Id == InstanceId.WidgetOf(instance));
-        _removed = new RemovedCopy(instance, m is null ? instance : InstanceLabel(m, instance), Settings.Widgets[instance], WidgetStore.All(instance));
+        _removed = new RemovedCopy(instance, m is null ? instance : InstanceId.Label(m, instance), Settings.Widgets[instance], WidgetStore.All(instance));
         CloseWidget(instance);
         Settings.Widgets.Remove(instance);
         WidgetStore.Delete(instance);
@@ -1098,7 +1105,7 @@ sealed class App : ApplicationContext
             _pills.Clear();
             return;
         }
-        var screens = Placement.Monitors();
+        var screens = Screens.All();
         var areas = _windows.Values.Where(w => w.IsHandleCreated && w.Visible)
             .Select(w => Placement.Find(screens, w.Bounds)).OfType<MonitorInfo>().Select(m => m.WorkArea).Distinct().ToList();
         if (areas.Count == 0) areas = screens.Where(s => s.Primary).Select(s => s.WorkArea).Take(1).ToList();

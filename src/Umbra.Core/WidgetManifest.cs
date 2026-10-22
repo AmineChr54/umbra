@@ -104,8 +104,8 @@ public sealed partial class WidgetManifest
 
     /// <summary>Page URL inside WebView2. Built-ins and community widgets live on separate virtual hosts.</summary>
     public string PageUrl => Source == WidgetSource.BuiltIn
-        ? WebHost.Url($"widgets/{Folder}/{Entry}")
-        : WebHost.CommunityUrl($"{Folder}/{Entry}");
+        ? VirtualHosts.Url($"widgets/{Folder}/{Entry}")
+        : VirtualHosts.CommunityUrl($"{Folder}/{Entry}");
 
     /// <summary>
     /// True for widgets that ship with the app and cannot be removed. A legacy id (it used to be built in and is

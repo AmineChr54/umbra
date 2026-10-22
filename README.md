@@ -193,7 +193,7 @@ Then ask, for example, *"add a widget that shows the weather in Berlin under my 
 - **Resources:** every installed widget's files, read-only, as `umbra://widgets/<id>/<file>` (same path and extension rules as agent-written files, 5 MB cap), so an agent can read a widget before editing it.
 - **Prompts:** `new_widget`, `fix_widget` and `restyle_widget`, which walk the agent through `widget_authoring_guide`, `create_widget` and `capture`.
 
-Under the hood, the CLI and the MCP server talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
+Under the hood, the CLI and the MCP server talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra.Core/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 </details>
 
 ## How it works

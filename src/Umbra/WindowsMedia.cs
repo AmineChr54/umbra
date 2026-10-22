@@ -4,30 +4,9 @@ using Windows.Storage.Streams;
 
 namespace Umbra;
 
-/// <summary>
-/// Backs <c>umbra.media</c>: the current Windows media session (System Media Transport Controls). Reading needs
-/// <c>permissions.media</c> to contain "read", transport commands need "control" and a physical click on the widget.
-/// </summary>
-public static class MediaService
+/// <summary><c>umbra.media</c> on Windows: the current System Media Transport Controls session (rules in <see cref="MediaService"/>).</summary>
+static class WindowsMedia
 {
-    public static readonly string[] Kinds = ["read", "control"];
-    public static readonly string[] Commands = ["play", "pause", "toggle", "next", "previous"];
-    /// <summary>Album art larger than this is left out (the data URL would be ~4/3 of it).</summary>
-    public const int MaxArtBytes = 512 * 1024;
-
-    public static void Validate(IEnumerable<string> kinds)
-    {
-        foreach (var k in kinds)
-            if (!Kinds.Contains(k)) throw new InvalidOperationException($"permissions.media: unknown entry '{k}' (allowed: {string.Join(", ", Kinds)})");
-    }
-
-    /// <summary>"image/png" or "image/jpeg" from the leading bytes, else null (anything else is not sent to the page).</summary>
-    public static string? SniffImage(ReadOnlySpan<byte> b) =>
-        b.Length > 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47 ? "image/png"
-        : b.Length > 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF ? "image/jpeg" : null;
-
-    public static bool IsCommand(string? c) => c is not null && Commands.Contains(c);
-
     static async Task<GlobalSystemMediaTransportControlsSession?> CurrentAsync()
     {
         var mgr = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
@@ -60,13 +39,13 @@ public static class MediaService
             if (props.Thumbnail is { } t)
             {
                 using var stream = await t.OpenReadAsync();
-                if (stream.Size is > 0 and <= MaxArtBytes)
+                if (stream.Size is > 0 and <= MediaService.MaxArtBytes)
                 {
                     var buf = new byte[stream.Size];
                     using var reader = new DataReader(stream);
                     await reader.LoadAsync((uint)stream.Size);
                     reader.ReadBytes(buf);
-                    if (SniffImage(buf) is { } mime) o["art"] = $"data:{mime};base64,{Convert.ToBase64String(buf)}";
+                    if (MediaService.SniffImage(buf) is { } mime) o["art"] = $"data:{mime};base64,{Convert.ToBase64String(buf)}";
                 }
             }
         }

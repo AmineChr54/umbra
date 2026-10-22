@@ -9,7 +9,7 @@ namespace Umbra;
 /// This is what makes Umbra scriptable: umbractl, the MCP server and tests all end up here.
 /// Every command runs on the UI thread, so it can touch windows and settings directly.
 /// </summary>
-sealed class Control(App app)
+sealed class Control(IUmbraHost app)
 {
     internal sealed class CommandException(string message) : Exception(message);
 
@@ -56,20 +56,20 @@ sealed class Control(App app)
             case "status":
                 return new JsonObject
                 {
-                    ["version"] = Application.ProductVersion.Split('+')[0],
+                    ["version"] = AppInfo.Version,
                     ["protocol"] = 1,
                     ["exe"] = AppPaths.ExePath,
                     ["dataDir"] = AppPaths.DataDir,
                     ["portable"] = AppPaths.IsPortable,
                     ["communityDir"] = AppPaths.CommunityDir,
-                    ["startup"] = Startup.IsEnabled(),
+                    ["startup"] = app.StartupEnabled,
                     ["editMode"] = app.EditMode,
                     ["lockAll"] = !app.EditMode,
                     ["safeMode"] = app.SafeMode,
                     ["update"] = app.Updater.ToJson(),
                     ["updateAvailable"] = app.Updater.Available?.Version,
                     ["general"] = JsonSerializer.SerializeToNode(app.Settings.General, Web),
-                    ["monitors"] = MonitorList(),
+                    ["monitors"] = MonitorList(app.Monitors()),
                     ["hiddenByFullscreen"] = app.HiddenByFullscreen,
                     ["widgets"] = app.Manifests.Count,
                     ["open"] = new JsonArray(app.OpenWindows.Select(w => (JsonNode?)w.Instance).ToArray()),
@@ -89,7 +89,7 @@ sealed class Control(App app)
                 if (a["monitor"] is JsonNode mo)
                 {
                     monitor = mo.GetValueKind() == JsonValueKind.String ? mo.GetValue<string>() : throw new CommandException("\"monitor\" must be a monitor name or number (see status.monitors)");
-                    monitor = ResolveMonitor(monitor);
+                    monitor = ResolveMonitor(app.Monitors(), monitor);
                 }
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
@@ -144,7 +144,7 @@ sealed class Control(App app)
                     if (grid is < 0 or > Snap.MaxGrid) throw new CommandException($"snapGrid must be between 0 (off) and {Snap.MaxGrid}");
                     g.SnapGrid = grid;
                 }
-                if (a["startup"] is JsonNode st) Startup.Set(Bool(st, "startup"));
+                if (a["startup"] is JsonNode st) app.StartupEnabled = Bool(st, "startup");
                 app.SaveSettings();
                 foreach (var w in app.OpenWindows) w.PushSettings();
                 app.SettingsChangedElsewhere();
@@ -152,7 +152,7 @@ sealed class Control(App app)
                 return new JsonObject
                 {
                     ["general"] = JsonSerializer.SerializeToNode(g, Web),
-                    ["startup"] = Startup.IsEnabled(),
+                    ["startup"] = app.StartupEnabled,
                 };
             }
 
@@ -508,7 +508,7 @@ sealed class Control(App app)
                 return new JsonArray(Log.Tail(a["lines"] is JsonNode n ? Int(n, "lines") : 50).Select(l => (JsonNode?)l).ToArray());
 
             case "diagnostics":
-                return Diagnostics.Format(Diagnostics.Collect(app));
+                return app.Diagnostics();
 
             case "quit":
                 app.QuitSoon();
@@ -605,7 +605,7 @@ sealed class Control(App app)
             ["id"] = inst,
             ["widget"] = m.Id,
             ["instance"] = InstanceId.NumberOf(inst),
-            ["name"] = App.InstanceLabel(m, inst),
+            ["name"] = InstanceId.Label(m, inst),
             ["description"] = m.Description,
             ["author"] = m.Author,
             ["version"] = m.Version,
@@ -630,9 +630,8 @@ sealed class Control(App app)
         };
     }
 
-    internal static JsonArray MonitorList()
+    internal static JsonArray MonitorList(List<MonitorInfo> all)
     {
-        var all = Placement.Monitors();
         return new JsonArray(all.Select((m, i) => (JsonNode?)new JsonObject
         {
             ["number"] = i + 1, ["name"] = m.Name, ["primary"] = m.Primary,
@@ -641,9 +640,8 @@ sealed class Control(App app)
     }
 
     /// <summary>Accepts a device name, a 1-based number from status.monitors, or "primary".</summary>
-    internal static string ResolveMonitor(string input)
+    internal static string ResolveMonitor(List<MonitorInfo> all, string input)
     {
-        var all = Placement.Monitors();
         if (input.Equals("primary", StringComparison.OrdinalIgnoreCase) && all.Any(m => m.Primary)) return all.First(m => m.Primary).Name;
         if (int.TryParse(input, out var n) && n >= 1 && n <= all.Count) return all[n - 1].Name;
         if (Placement.Has(all, input)) return all.First(m => string.Equals(m.Name, input, StringComparison.OrdinalIgnoreCase)).Name;

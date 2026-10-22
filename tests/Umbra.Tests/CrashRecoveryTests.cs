@@ -7,9 +7,9 @@ public class CrashRecoveryTests
     [Fact]
     public void A_hung_renderer_is_only_logged_a_dead_one_reloads()
     {
-        Assert.Equal(CrashReaction.Ignore, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.RenderProcessUnresponsive));
-        Assert.Equal(CrashReaction.Reload, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.RenderProcessExited));
-        Assert.Equal(CrashReaction.RecreateBrowser, CrashRecovery.Classify(CoreWebView2ProcessFailedKind.BrowserProcessExited));
+        Assert.Equal(CrashReaction.Ignore, WebView2Crash.Classify(CoreWebView2ProcessFailedKind.RenderProcessUnresponsive));
+        Assert.Equal(CrashReaction.Reload, WebView2Crash.Classify(CoreWebView2ProcessFailedKind.RenderProcessExited));
+        Assert.Equal(CrashReaction.RecreateBrowser, WebView2Crash.Classify(CoreWebView2ProcessFailedKind.BrowserProcessExited));
     }
 
     [Fact]

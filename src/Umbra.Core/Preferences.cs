@@ -26,7 +26,11 @@ static class Prefs
     public const double MinFontScale = 0.8, MaxFontScale = 1.4;
 
     /// <summary>Border color for widget windows as COLORREF, or DWMWA_COLOR_NONE when the border is off. Set by <see cref="Configure"/>.</summary>
-    public static int BorderColorRef { get; private set; } = Native.ColorRef(38, 40, 46);
+    public static int BorderColorRef { get; private set; } = ColorRef(38, 40, 46);
+
+    /// <summary>DWMWA_COLOR_NONE and the COLORREF layout (0x00BBGGRR), kept here so the settings model stays platform-neutral.</summary>
+    const int ColorNone = unchecked((int)0xFFFFFFFE);
+    static int ColorRef(byte r, byte g, byte b) => r | (g << 8) | (b << 16);
 
     /// <summary>Developer mode: widget windows get devtools and a context menu (reaches windows opened after the change).</summary>
     public static bool DeveloperMode { get; private set; }
@@ -38,8 +42,8 @@ static class Prefs
         Log.Level = Pick(g.LogLevel, LogLevels, "normal");
         DeveloperMode = g.DeveloperMode;
         Proxy = TryParseProxy(g.Proxy, out var p, out _) ? p : "system";
-        BorderColorRef = !g.BorderEnabled ? Native.DWMWA_COLOR_NONE
-            : TryColor(g.BorderColor, out var bc) && TryHex(bc, out var rgb) ? Native.ColorRef(rgb.r, rgb.g, rgb.b) : Native.ColorRef(38, 40, 46);
+        BorderColorRef = !g.BorderEnabled ? ColorNone
+            : TryColor(g.BorderColor, out var bc) && TryHex(bc, out var rgb) ? ColorRef(rgb.r, rgb.g, rgb.b) : ColorRef(38, 40, 46);
     }
 
     /// <summary>Accepts "#rrggbb" or "#rgb" (also without #); returns "#rrggbb" in lower case. "" is valid and means unset.</summary>

@@ -185,7 +185,7 @@ sealed class GroupTabs : Form
         _active = active;
 
         float k = Dpi;
-        var screens = Placement.Monitors();
+        var screens = Screens.All();
         var work = Placement.Find(screens, _target) is MonitorInfo mi ? mi.WorkArea : _target;
         var bounds = TabStripGeometry.Place(_target, work, k, g.Members.Count, out _);
         _chips.Clear();
@@ -194,7 +194,7 @@ sealed class GroupTabs : Form
         foreach (var m in g.Members)
         {
             if (x + cell > bounds.Width) break; // a widget narrower than its tabs: the rest stay reachable through the menu
-            _chips.Add((new Rectangle(x, pad, cell, cell), m, _app.Resolve(m) is { } r ? App.InstanceLabel(r.Manifest, m) : m));
+            _chips.Add((new Rectangle(x, pad, cell, cell), m, _app.Resolve(m) is { } r ? InstanceId.Label(r.Manifest, m) : m));
             x += cell + gap;
         }
         if (Bounds != bounds) Bounds = bounds;
