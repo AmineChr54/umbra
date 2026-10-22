@@ -591,6 +591,7 @@ sealed class SettingsWindow : Form, ISettingsView
             copy["builtin"] = installed?.IsPermanent == true;
             copy["installedVersion"] = installed?.Version;
             copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+            copy["supported"] = WidgetPlatforms.Supports(copy, WidgetPlatforms.Current); // false: for another OS, Browse offers no install
             copy["previewUrl"] = previews.FirstOrDefault(x => x.wid == wid).Item2;
             list.Add(copy);
         }

@@ -175,11 +175,14 @@ static class Community
     /// it would add to the installed copy; call <see cref="PendingInstall.Require"/> then <see cref="PendingInstall.Commit"/>.
     /// <paramref name="fetch"/> replaces the download (tests).
     /// </summary>
-    public static async Task<PendingInstall> PrepareAsync(JsonNode entry, Func<string, Task<byte[]>>? fetch = null)
+    public static async Task<PendingInstall> PrepareAsync(JsonNode entry, Func<string, Task<byte[]>>? fetch = null, string? platform = null)
     {
         fetch ??= GetBytes;
+        platform ??= WidgetPlatforms.Current;
         var id = entry["id"]?.GetValue<string>() ?? "";
         if (!WidgetManifest.IdPattern().IsMatch(id)) throw new InvalidOperationException($"Invalid widget id '{id}'");
+        // Refuse a widget for another OS before downloading it (the index is a hint; widget.json is checked again below).
+        WidgetPlatforms.Require(entry, platform);
         var files = (entry["files"] as JsonArray)?.Select(f => f?.GetValue<string>() ?? "").ToList() ?? new();
         if (!files.Contains("widget.json")) throw new InvalidOperationException("Catalog entry has no widget.json");
 
@@ -203,6 +206,7 @@ static class Community
             var manifest = WidgetManifest.Parse(await File.ReadAllTextAsync(Path.Combine(staging, "widget.json")));
             if (manifest.Id != id)
                 throw new InvalidOperationException("widget.json id does not match the catalog");
+            WidgetPlatforms.Require(manifest.Id, manifest.Platforms, platform);
 
             var installed = InstalledManifest(id);
             return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null);
@@ -272,7 +276,7 @@ static class Community
     /// Same rules as a catalog install: safe relative paths, allowed file types, 5 MB, widget.json id = folder.
     /// Text files are passed as text, binary files (images, fonts) as base64.
     /// </summary>
-    public static string WriteLocalWidget(string id, IReadOnlyDictionary<string, string> files, bool overwrite)
+    public static string WriteLocalWidget(string id, IReadOnlyDictionary<string, string> files, bool overwrite, string? platform = null)
     {
         if (!WidgetManifest.IdPattern().IsMatch(id)) throw new InvalidOperationException($"Invalid widget id '{id}': use 2-40 lowercase letters, digits and dashes");
         if (!files.ContainsKey("widget.json")) throw new InvalidOperationException("files must include widget.json");
@@ -281,6 +285,7 @@ static class Community
 
         var manifest = WidgetManifest.Parse(files["widget.json"]);
         if (manifest.Id != id) throw new InvalidOperationException($"widget.json id is '{manifest.Id}', expected '{id}'");
+        WidgetPlatforms.Require(id, manifest.Platforms, platform ?? WidgetPlatforms.Current);
         if (!files.ContainsKey(manifest.Entry)) throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing from files");
 
         var staging = Path.Combine(Path.GetTempPath(), $"umbra-{id}-{Guid.NewGuid():N}");

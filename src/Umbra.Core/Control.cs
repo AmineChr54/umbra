@@ -299,6 +299,7 @@ sealed class Control(IUmbraHost app)
                     copy["builtin"] = installed?.IsPermanent == true;
                     copy["installedVersion"] = installed?.Version;
                     copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+                    copy["supported"] = WidgetPlatforms.Supports(copy, WidgetPlatforms.Current); // false: for another OS, install is refused
                     list.Add(copy);
                 }
                 return list;

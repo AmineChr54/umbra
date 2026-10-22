@@ -26,6 +26,8 @@ public sealed partial class WidgetManifest
     /// <summary>False opts the widget out of themes (it keeps the default look).</summary>
     public bool Themeable { get; set; } = true;
     public PointSpec? DefaultPosition { get; set; }
+    /// <summary>The operating systems the widget runs on: any of "windows", "linux". Null (the default) means both. See <see cref="WidgetPlatforms"/>.</summary>
+    public List<string>? Platforms { get; set; }
     public PermissionSpec Permissions { get; set; } = new();
     /// <summary>Option schema shown in Settings: key -> {label, type, default, choices?}.</summary>
     public JsonObject Options { get; set; } = new();
@@ -65,6 +67,9 @@ public sealed partial class WidgetManifest
     /// </summary>
     public bool IsPermanent => Source == WidgetSource.BuiltIn && !Restore.LegacyIds.Contains(Id);
 
+    /// <summary>True when the widget can run on <paramref name="platform"/> (see <see cref="WidgetPlatforms.Current"/>).</summary>
+    public bool SupportsPlatform(string platform) => WidgetPlatforms.Supports(Platforms, platform);
+
     public static List<WidgetManifest> DiscoverAll()
     {
         var all = Discover(AppPaths.CommunityDir, WidgetSource.Community);
@@ -102,12 +107,16 @@ public sealed partial class WidgetManifest
         }
         m.Changelog = SanitizeChangelog(m.Changelog);
         CommandSpec.ValidateAll(m.Permissions.Commands);
+        WidgetPlatforms.Validate(m.Platforms);
         SystemMetrics.Validate(m.Permissions.System);
         MediaService.Validate(m.Permissions.Media);
         return m;
     }
 
-    internal static List<WidgetManifest> Discover(string root, WidgetSource source)
+    internal static List<WidgetManifest> Discover(string root, WidgetSource source) => Discover(root, source, WidgetPlatforms.Current);
+
+    /// <summary>Loads every valid widget folder under <paramref name="root"/> that can run on <paramref name="platform"/>; others are logged and skipped.</summary>
+    internal static List<WidgetManifest> Discover(string root, WidgetSource source, string platform)
     {
         var list = new List<WidgetManifest>();
         if (!Directory.Exists(root)) return list;
@@ -119,6 +128,11 @@ public sealed partial class WidgetManifest
             {
                 var m = Parse(File.ReadAllText(file));
                 if (!IdPattern().IsMatch(m.Id)) continue;
+                if (!m.SupportsPlatform(platform))
+                {
+                    Log.Write($"Skipping widget {dir}: only for {string.Join(" and ", m.Platforms!)}, this is {platform}");
+                    continue;
+                }
                 m.Folder = Path.GetFileName(dir);
                 m.Source = source;
                 list.Add(m);

@@ -41,6 +41,8 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra.Core/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
 | `src/Umbra.Core/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
 | `src/Umbra.Core/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
+| `src/Umbra.Core/WidgetPlatforms.cs` | The optional `platforms` field (`["windows","linux"]`, absent = both): validation and the pure "does this run on OS X" policy for manifests and catalog entries (the OS is always a parameter). Browse flags "Windows only" and offers no install; `Community.PrepareAsync`, `WriteLocalWidget` and `WidgetManifest.Discover` refuse/skip widgets for another OS |
+| `src/Umbra.Core/CommandRunner.cs`, `CommandEnvironment.cs`, `CommandLaunch.cs`, `ProcessContainment.cs`, `ExecutableResolver.cs`, `OutputCapture.cs` | `permissions.commands` execution split into pure, testable-on-any-OS parts (environment allow-lists per OS, the argv that reaches the OS, PATH/absolute-path resolution with an injected file test, the capped output reader) and thin process code: `JobContainment` (Windows job object) and `ProcessGroupContainment` (Linux `setsid` group + `kill(-pgid)`; not run on Linux yet) |
 | `src/Umbra.Core/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
 | `src/Umbra.Core/Control.cs` | Executes control commands against `IUmbraHost`: the single place that defines what automation can do |
 | `src/Umbra/Screens.cs`, `WindowsMedia.cs`, `WindowsMetrics.cs` | Windows halves of pure Core rules: live monitors + fullscreen test (`Placement`), media session (`MediaService`), CPU/memory/network (`SystemMetrics`) |
@@ -79,8 +81,13 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   command needs the user's approval, stored per widget id + command hash in `approvals.json` (a changed command is
   asked again). Only a host-drawn prompt (after a physical click on the widget, rate-limited) or the Settings button
   approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
-  user, in the widget's data dir, with a scrubbed environment, a timeout (max 120 s) and a 1 MB output cap, never
-  while the widget is disabled. Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
+  user, in the widget's data dir, with a scrubbed environment (an allow-list per OS in `CommandEnvironment`; on Linux
+  `PATH` keeps only absolute entries, and no `LD_*`, display or bus variables), a timeout (max 120 s) and a 1 MB output cap, never
+  while the widget is disabled. The approval is bound to the resolved program: its path (case-insensitive on Windows, exact
+  on Linux) and SHA-256 (`ExeIdentity.Matches`). Interpreters and launchers (shells, script runtimes, `env`, `sudo`, `xargs`...) never take
+  free-text parameters. The whole process tree dies with the run (Windows job object, Linux process group), and commands fail
+  closed where the program can't be identified (a Flatpak, until reviewed). Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
+- `platforms` is a compatibility hint, not a permission: it never grants anything, and the install gate reads the downloaded `widget.json`, not only the index.
 - Updating an installed catalog widget never grants new access silently: `Community.PrepareAsync` diffs the downloaded manifest against the
   installed one (`PermissionDiff`: hosts, system, media, notifications, commands) and `PendingInstall.Require` refuses until the user accepted.
   Settings asks with a host-drawn box (`SettingsWindow.ConfirmNewAccess`), `umbractl install` needs `--accept-permissions`, and the MCP
