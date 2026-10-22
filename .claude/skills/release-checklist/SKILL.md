@@ -15,6 +15,17 @@ Complements `.claude/skills/release` (which does the bump, tag and workflow watc
 4. From each body, collect every line matching `needs human check` (case-insensitive, also "human check"), prefixed with `#<number>`.
 5. Write `dist/release-checklist-<ver>.md` (create `dist/`): the template below with `<ver>` filled in and the collected lines added as extra rows in the human table. Tick boxes (`- [ ]`) stay empty for the user; tick the automated ones yourself only after running them.
 
+## Linux release (epic #172)
+
+When the release ships Linux assets (tarball or Flatpak, issues #196/#197; same tag and release as the Windows installer), also
+append [`linux.md`](linux.md) to the file you wrote, after "Ship": it holds the Linux per-build items, the human test matrix
+(distro x desktop x session x scaling/multi-monitor) and the per-feature human checks, all derived from issues #173-#199.
+
+- Fill `<ver>`. For the human rows, use the PRs that close an issue #173-#200 (`gh pr list ... --json number,title,body,closingIssuesReferences`)
+  and collect their "Human check" lines under "Collected from merged PRs" in `linux.md`, instead of mixing them into the Windows table.
+- The matrix cells and configuration table stay empty for the person who ran them. Never tick a Linux check from a PR description.
+- The first Linux release is done only when the matrix is filled and every failure is an issue labelled `platform: linux` (#200).
+
 ## Template
 
 ### Per build (every installer or portable zip)
