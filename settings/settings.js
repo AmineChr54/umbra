@@ -603,7 +603,7 @@ function renderGroups() {
       pick.addEventListener("click", () => post({ type: "group", op: "activate", group: g.id, id: inst }));
       const ic = Object.assign(document.createElement("button"), { className: "tabicon", title: "Choose tab icon" });
       ic.setAttribute("aria-label", `Choose tab icon for ${label(inst)}`);
-      const cur = (g.icons || {})[inst];
+      const cur = (g.icons || {})[inst] || (g.suggestedIcons || {})[inst]; // the user's pick wins over the widget's suggestion
       if (cur) ic.append(Object.assign(document.createElement("img"), { src: ICON_BASE + cur + ".png", alt: "" }));
       else ic.textContent = "◇";
       ic.addEventListener("click", () => openIconPicker(inst, ic));
