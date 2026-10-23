@@ -16,7 +16,6 @@
   let lastSig = "";
   let lastStatusAt = 0;
   let sentRendered = false;
-  let hoverOn = false;
   const ui = { panel: false, joining: false, draft: "", confirm: null };
   let confirmTimer = 0;
   let countdownTimer = 0;
@@ -84,14 +83,6 @@
       `<span class="ph">Overview placeholder (#210)</span></div></section>`;
   }
 
-  // Placeholder: #212 replaces this with the drawing board. Hovering it already switches the sync client to fast polling.
-  function boardStub(v, strokes) {
-    return `<section class="square-wrap"><div class="square board-stub" data-board>` +
-      `<span class="ph">Board placeholder (#212)</span>` +
-      `<p class="num">${esc(umbra.fmt(strokes, 0))} ${strokes === 1 ? "stroke" : "strokes"} synced</p>` +
-      `<p class="muted">Sync: ${v.fast ? "fast, about every 1.5 s" : "idle, about once a minute"}</p></div></section>`;
-  }
-
   // Placeholder: #214 replaces this with the real Pet (care buttons, levels, outfits, naming). Only the mascot is real.
   function petStub() {
     return `<section class="square-wrap"><div class="square pet-stub" data-pet><span class="ph">Pet placeholder (#214)</span></div></section>`;
@@ -139,10 +130,9 @@
     if (!v || v.phase === "loading") return;
     const w = which();
     const days = core.daysTogether(v.togetherSince);
-    const strokes = v.sync.board.strokes.length;
     const mood = moodOf(v);
     const sig = JSON.stringify([w, v.phase, v.names, days, statusOffline(), v.invite && [v.invite.code, v.invite.kind, v.invite.expired], v.unpaired, v.notice && v.notice.text,
-      v.busy, v.link, ui.panel, ui.joining, ui.confirm, w === "board" ? [strokes, v.fast] : 0, w === "pet" ? [mood, v.sync.petName] : 0]);
+      v.busy, v.link, ui.panel, ui.joining, ui.confirm, w === "pet" ? [mood, v.sync.petName] : 0]);
     if (!force && sig === lastSig) return;
     lastSig = sig;
     const typing = document.activeElement && document.activeElement.id === "code";
@@ -153,18 +143,14 @@
     if (v.phase === "setup") body = setup(v);
     else if (v.phase === "unpaired") body = unpairedCard(v);
     else if (v.invite) body = inviteCard(v);
-    else if (w === "board") body = boardStub(v, strokes);
+    else if (w === "board") body = '<section class="board-slot"></section>'; // board.js owns what goes in it
     else if (w === "pet") body = petStub();
     else body = overviewStub(v, days);
     app.innerHTML = top(v) + body + toasts(v) + (ui.panel && v.paired ? panel(v) : "");
 
     // hooks that need the new elements
-    const board = app.querySelector("[data-board]");
-    if (board) {
-      board.onpointerenter = () => setHover(true);
-      board.onpointerleave = () => setHover(false);
-      board.onpointercancel = () => setHover(false);
-    } else setHover(false);
+    const slot = app.querySelector(".board-slot"); // the board keeps its own element (and its fast-polling hover) across renders
+    if (slot) window.HearthBoard.mount(slot, client, v); else window.HearthBoard.unmount();
     const pet = app.querySelector("[data-pet]");
     if (pet) pet.insertAdjacentHTML("afterbegin", mascot.renderScene({ mood, title: v.sync.petName }));
     const code = app.querySelector("#code");
@@ -178,12 +164,6 @@
       requestAnimationFrame(send);
       setTimeout(send, 400);
     }
-  }
-
-  function setHover(on) {
-    if (on === hoverOn || !client) return;
-    hoverOn = on;
-    client.setBoardHover(on);
   }
 
   // The invite countdown ticks once a second in place; nothing else re-renders for it.

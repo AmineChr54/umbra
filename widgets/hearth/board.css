@@ -1,0 +1,129 @@
+/* Hearth Board view (#212). Uses the Meadow tokens of hearth.css. The board is a square of paper inside the card;
+   the colour and brush tools sit under it when the widget is tall, and open as a small popover when it is not. */
+
+.board-slot { flex: 1; min-height: 0; display: flex; }
+.bd { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.bd-stage { flex: 1; min-height: 0; container-type: size; display: grid; place-items: center; }
+.bd-sq {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  overflow: hidden;
+  border: 2px solid var(--hm-brown);
+  border-radius: 14px;
+  background: #FFFBEA;
+}
+.bd-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+
+/* ---------- overlays on the paper ---------- */
+
+.bd-top { position: absolute; z-index: 2; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.bd-top:empty { display: none; }
+.pill {
+  display: flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 2px 6px 2px 12px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+  pointer-events: auto;
+}
+.pill.alert { background: var(--hm-alert); }
+.pill > span { min-width: 0; }
+.pill .bd-btn { padding: 0 10px; }
+.bd-remain { color: var(--hm-soft); min-width: 2.2em; text-align: right; }
+
+.bd-hint, .bd-note {
+  position: absolute; z-index: 1;
+  margin: 0; text-align: center; pointer-events: none;
+  opacity: 0;
+  transition: opacity calc(160ms * var(--motion-scale, 1));
+}
+/* the hint belongs to the stage, not the paper, so it can still be read on a board squeezed to a few pixels */
+.bd-stage { position: relative; }
+.bd-hint { z-index: 1; left: 10px; right: 10px; top: 50%; transform: translateY(-50%); color: var(--hm-soft); font-size: 0.95rem; font-weight: 700; }
+.bd-note {
+  bottom: 8px; left: 50%; width: max-content; max-width: calc(100% - 20px); transform: translateX(-50%);
+  padding: 2px 12px; border: 2px solid var(--hm-brown); border-radius: 999px;
+  background: var(--hm-green); color: var(--hm-ink); font-size: 0.85rem; font-weight: 700;
+}
+.bd-note.error { background: var(--hm-alert); }
+.bd-hint.show, .bd-note.show { opacity: 1; }
+
+/* ---------- gallery ---------- */
+
+.bd-gallery { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 8px; overflow: auto; background: var(--hm-card); }
+.bd-gallery[hidden] { display: none; }
+.bd-gal-head, .bd-gal-foot { flex: none; display: flex; align-items: center; gap: 6px; }
+.bd-gal-sub { flex: none; margin: 0; color: var(--hm-soft); font-size: 0.85rem; font-weight: 700; }
+.bd-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.thumb { padding: 0; border: 2px solid var(--hm-brown); border-radius: 10px; overflow: hidden; background: #FFFBEA; cursor: pointer; }
+.thumb img { display: block; width: 100%; aspect-ratio: 1; }
+.thumb:focus-visible { outline: 2px dashed var(--hm-brown); outline-offset: 2px; }
+.bd-prev { flex: 1; min-height: 0; display: flex; justify-content: center; }
+.bd-prev img { max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid var(--hm-brown); border-radius: 10px; background: #FFFBEA; }
+.bd-gal-foot { justify-content: center; }
+
+/* ---------- tools and buttons ---------- */
+
+.bd-tools {
+  display: none; flex-direction: column; gap: 8px;
+  padding: 8px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 14px;
+  background: var(--hm-butter);
+}
+.bd[data-tools="open"] .bd-tools { display: flex; position: absolute; z-index: 6; left: 0; right: 0; bottom: 34px; }
+.bd-pal { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; justify-items: center; }
+.sw {
+  box-sizing: border-box; width: 22px; height: 22px; padding: 0;
+  display: grid; place-items: center;
+  border: 2px solid var(--hm-brown); border-radius: 50%;
+  background: var(--c); cursor: pointer;
+}
+.sw.eraser { border-style: dashed; }
+.sw.eraser svg { width: 16px; height: 16px; }
+.sw.on, .sz.on { outline: 3px solid var(--hm-brown); outline-offset: 1px; }
+.sw:focus-visible, .sz:focus-visible, .bd-btn:focus-visible { outline: 2px dashed var(--hm-brown); outline-offset: 2px; }
+.bd-sizes { display: flex; justify-content: space-between; align-items: center; }
+.sz { box-sizing: border-box; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; border: 2px solid transparent; border-radius: 50%; background: transparent; cursor: pointer; }
+.sz.on { background: var(--hm-card); outline-width: 2px; }
+.sz i { display: block; width: var(--d); height: var(--d); border-radius: 50%; background: var(--hm-brown); }
+
+.bd-bar { flex: none; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; justify-content: center; }
+.bd-btn {
+  font: inherit; font-size: 0.85rem; font-weight: 800; line-height: 1.5;
+  padding: 0 8px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  cursor: pointer;
+  transition: transform calc(160ms * var(--motion-scale, 1)), filter calc(160ms * var(--motion-scale, 1));
+}
+.bd-btn:hover:not([disabled]) { filter: brightness(1.05); }
+.bd-btn:active:not([disabled]) { transform: translateY(1px); }
+.bd-btn[disabled] { opacity: 0.55; cursor: default; }
+.bd-btn.quiet { border-color: transparent; background: transparent; text-decoration: underline; }
+.bd-toggle { display: inline-flex; align-items: center; padding: 0 8px; }
+.bd-cur { box-sizing: border-box; width: 16px; height: 16px; border: 2px solid var(--hm-brown); border-radius: 50%; background: var(--c, #3A2A20); }
+.bd-cur.eraser { border-style: dashed; }
+.bd-count:not(:empty) { margin-left: 0.35em; font-weight: 800; }
+
+/* a strip too short to draw on (the manifest's 300 x 120): no paper, just the hint and the buttons */
+@container (max-height: 60px) {
+  .bd-sq { visibility: hidden; }
+}
+
+/* tall widget: the tools stay open under the board */
+@container card (min-height: 400px) and (min-width: 250px) {
+  .bd-tools { display: flex; }
+  .bd[data-tools="open"] .bd-tools { position: static; }
+  .bd-toggle { display: none; }
+}
+
+html[data-motion="off"] .bd *, html[data-motion="off"] .bd-hint, html[data-motion="off"] .bd-note { transition: none !important; }

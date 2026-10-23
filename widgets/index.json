@@ -252,6 +252,9 @@
       ],
       "notifications": true,
       "files": [
+        "board-logic.js",
+        "board.css",
+        "board.js",
         "hearth-core.js",
         "hearth.css",
         "hearth.js",
