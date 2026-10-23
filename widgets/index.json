@@ -259,6 +259,9 @@
         "index.html",
         "mascot.css",
         "mascot.js",
+        "overview-logic.js",
+        "overview.css",
+        "overview.js",
         "widget.json"
       ]
     },
