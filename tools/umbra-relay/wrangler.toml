@@ -1,0 +1,19 @@
+# Keep this name: it is part of the deployed host https://umbra-buddy-relay.umbra-server.workers.dev that the Buddy
+# widget (and later Hearth) call. A different name would deploy a NEW Worker with an empty Durable Object namespace.
+name = "umbra-buddy-relay"
+main = "worker.js"
+compatibility_date = "2025-09-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+# Hearth: two taps closer together than this many seconds (5..900) make a "together" moment.
+[vars]
+TOGETHER_WINDOW_S = "120"
+
+# SQLite-backed Durable Objects are the ones the Workers Free plan allows. Hearth added no new class,
+# so there is no new migration: redeploying keeps every existing room.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
