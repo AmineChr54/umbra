@@ -1,0 +1,90 @@
+/* Hearth mascot animations. Pair with mascot.js; the SVG itself is fully coloured by attributes, this file only moves it.
+   Everything is built from durations multiplied by --motion-scale (Umbra's "calm motion" sets it to 2) and is switched
+   off by html[data-motion="off"]: then the mascot is a static picture of its mood and no reaction effect is shown. */
+
+.hm, .hm-scene { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* Everything that moves uses the feet as its pivot (the viewBox is 200x200, feet at 100,168). */
+.hm-bounce, .hm-react, .hm-breathe, .hm-shadow, .hm-floaters, .hm-fx, .hm-glow {
+  transform-box: view-box;
+  transform-origin: 100px 168px;
+}
+.hm-eyes, .hm-mouth, .hm-float, .hm-zfloat, .hm-drip, .hm-twinkle, .hm-fire, .hm-confetti, .hm-rumble, .hm-fx-pet1, .hm-fx-pet2, .hm-fx-pet3 {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.hm-fire { transform-origin: 50% 100%; }
+.hm-fx-tap { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* ---------- idle ---------- */
+
+.hm-breathe { animation: hm-breathe calc(3.8s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-bounce  { animation: hm-bounce  calc(5.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-eyes    { animation: hm-blink   calc(4.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-shadow  { animation: hm-shadow  calc(5.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+
+.hm-mood-sleepy .hm-breathe { animation-duration: calc(6s * var(--motion-scale, 1)); }
+.hm-mood-sad    .hm-breathe { animation-duration: calc(5s * var(--motion-scale, 1)); }
+.hm-mood-sleepy .hm-bounce, .hm-mood-sad .hm-bounce, .hm-mood-sleepy .hm-shadow, .hm-mood-sad .hm-shadow { animation: none; }
+.hm-mood-love .hm-bounce, .hm-mood-love .hm-shadow { animation-duration: calc(3.4s * var(--motion-scale, 1)); }
+.hm-mood-hungry .hm-breathe { animation-duration: calc(2.6s * var(--motion-scale, 1)); }
+
+.hm-float  { animation: hm-float  calc(3.2s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-zfloat { animation: hm-zfloat calc(3.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-drip   { animation: hm-drip   calc(3s   * var(--motion-scale, 1)) ease-in infinite; }
+.hm-rumble { animation: hm-rumble calc(1.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-twinkle { animation: hm-twinkle calc(2.8s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-glow   { animation: hm-glow   calc(4.2s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-fire   { animation: hm-flicker calc(1.1s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-confetti { animation: hm-float calc(2.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-d1 { animation-delay: calc(0.6s * var(--motion-scale, 1)); }
+.hm-d2 { animation-delay: calc(1.2s * var(--motion-scale, 1)); }
+
+@keyframes hm-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(0.985, 1.03); } }
+@keyframes hm-bounce  { 0%, 62%, 100% { transform: translateY(0); } 70% { transform: translateY(-7px); } 78% { transform: translateY(0); } 85% { transform: translateY(-3px); } 92% { transform: translateY(0); } }
+@keyframes hm-shadow  { 0%, 62%, 100% { transform: scale(1); } 70% { transform: scale(0.9); } 78% { transform: scale(1); } 85% { transform: scale(0.95); } }
+@keyframes hm-blink   { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes hm-float   { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes hm-zfloat  { 0% { transform: translate(0, 6px); opacity: 0; } 25%, 70% { opacity: 1; } 100% { transform: translate(5px, -8px); opacity: 0; } }
+@keyframes hm-drip    { 0%, 55% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(9px); opacity: 0; } }
+@keyframes hm-rumble  { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.6; } }
+@keyframes hm-twinkle { 0%, 100% { transform: scale(0.7); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 1; } }
+@keyframes hm-glow    { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.6; } }
+@keyframes hm-flicker { 0%, 100% { transform: scale(1, 1); } 30% { transform: scale(0.96, 1.07); } 65% { transform: scale(1.03, 0.95); } }
+
+/* ---------- reactions: mascot.js adds hm-react-<name> to the <svg> for REACTION_MS ---------- */
+
+.hm-react-feed  .hm-react { animation: hm-chomp calc(0.5s * var(--motion-scale, 1)) ease-in-out 3; }
+.hm-react-feed  .hm-mouth { animation: hm-mouth calc(0.5s * var(--motion-scale, 1)) ease-in-out 3; }
+.hm-react-feed  .hm-fx-feed  { animation: hm-berry calc(0.9s * var(--motion-scale, 1)) ease-in 1 both; }
+.hm-react-water .hm-react { animation: hm-wiggle calc(0.4s * var(--motion-scale, 1)) ease-in-out 3; }
+.hm-react-water .hm-fx-water { animation: hm-rain calc(1.2s * var(--motion-scale, 1)) ease-in 1 both; }
+.hm-react-pet   .hm-react { animation: hm-squish calc(0.6s * var(--motion-scale, 1)) ease-in-out 2; }
+.hm-react-pet   .hm-fx-pet { animation: hm-show calc(1.6s * var(--motion-scale, 1)) linear 1 both; }
+.hm-react-pet   .hm-fx-pet1 { animation: hm-rise calc(1.4s * var(--motion-scale, 1)) ease-out 1 both; }
+.hm-react-pet   .hm-fx-pet2 { animation: hm-rise calc(1.4s * var(--motion-scale, 1)) ease-out calc(0.2s * var(--motion-scale, 1)) 1 both; }
+.hm-react-pet   .hm-fx-pet3 { animation: hm-rise calc(1.4s * var(--motion-scale, 1)) ease-out calc(0.4s * var(--motion-scale, 1)) 1 both; }
+.hm-react-tap   .hm-react { animation: hm-hop calc(0.5s * var(--motion-scale, 1)) ease-out 2; }
+.hm-react-tap   .hm-fx-tap { animation: hm-pulse calc(1.5s * var(--motion-scale, 1)) ease-out 1 both; }
+
+@keyframes hm-chomp  { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.06, 0.93); } }
+@keyframes hm-mouth  { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
+@keyframes hm-berry  { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } 78% { transform: translateY(98px); opacity: 1; } 100% { transform: translateY(100px); opacity: 0; } }
+@keyframes hm-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes hm-rain   { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 85% { transform: translateY(96px); opacity: 1; } 100% { transform: translateY(104px); opacity: 0; } }
+@keyframes hm-squish { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.07, 0.92); } }
+@keyframes hm-show   { 0% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes hm-rise   { 0% { transform: translateY(26px) scale(0.4); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-14px) scale(1); opacity: 0; } }
+@keyframes hm-hop    { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-10px); } }
+@keyframes hm-pulse  { 0% { transform: scale(0.2); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 45% { transform: scale(0.95); } 65% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1) translateY(-12px); opacity: 0; } }
+
+/* ---------- reduced motion: a static picture, no reaction effects ---------- */
+
+html[data-motion="off"] .hm *, html[data-motion="off"] .hm-scene *,
+html[data-motion="off"] .hm, html[data-motion="off"] .hm-scene {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm *, .hm-scene * { animation: none !important; transition: none !important; }
+}
