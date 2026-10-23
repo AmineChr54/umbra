@@ -8,6 +8,7 @@ about any specific widget; widgets are folders with a `widget.json`. Windows 10 
 ```powershell
 dotnet build Umbra.slnx -warnaserror      # must stay at 0 warnings
 dotnet test Umbra.slnx                    # unit tests (xUnit), no app or network needed
+node --test tests/relay/*.test.mjs        # relay (Buddy + Hearth) Worker logic, no Cloudflare needed
 node scripts/catalog.mjs                  # validate widgets/ + themes/ and regenerate both index.json files (commit them)
 powershell -File build.ps1                # publish both exes + installer -> dist/UmbraSetup-<ver>.exe
 dotnet run --project src/Umbra            # run from source (exit the installed Umbra first: one instance per user)
@@ -47,6 +48,7 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `schemas/widget.schema.json`, `docs/widget-sdk.md` | Manifest schema and SDK reference (both ship next to umbractl for agents) |
 | `installer/Umbra.iss`, `build.ps1` | Inno Setup per-user installer; the version comes from `Directory.Build.props` |
 | `tests/Umbra.Tests/` | Unit tests for host and CLI (the CLI project is referenced with `extern alias cli`) |
+| `tools/umbra-relay/` | The only server: a Cloudflare Worker + Durable Object behind Buddy (`/pair`, `/beat`, `/unpair`, API frozen) and Hearth (`/hearth/*`, contract in its README). Free plan, all answers status-200 JSON because `fetchJson` drops non-2xx bodies. Never deployed from here; `tests/relay/*.test.mjs` run the Worker against an in-memory fake (`node --test tests/relay/*.test.mjs`) |
 
 ## Adding a capability
 

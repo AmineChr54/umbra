@@ -18,6 +18,6 @@ To update, install the newer folder or zip again; the saved pairing is kept.
 
 ## buddy
 
-Two stars, you and your friend, paired with a one-time code over the relay in `tools/buddy-relay`. Whoever creates the
+Two stars, you and your friend, paired with a one-time code over the relay in `tools/umbra-relay`. Whoever creates the
 code is the left star (`star1.png`) and whoever joins is the right one (`star2.png`), so both PCs show the same picture.
 Right-click > "I'm the left/right star" swaps it on one PC if needed.
