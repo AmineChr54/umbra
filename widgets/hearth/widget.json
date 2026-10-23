@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "hearth",
   "name": "Hearth",
-  "description": "A cozy shared space for two people on two PCs. Pair once with a code, then add copies of this widget as an Overview strip, a drawing Board or a Pet. Needs the Umbra relay.",
+  "description": "A cozy shared space for two people on two PCs. Pair once with a code, then add copies of this widget as an Overview strip, a drawing Board or a Pet. Needs the Umbra relay, which stores your names, dates, drawings and pet state (deleted 7 days after unpairing or after 30 days unused) and never your location.",
   "author": "Yacine-DH",
   "version": "1.0.0",
   "entry": "index.html",
