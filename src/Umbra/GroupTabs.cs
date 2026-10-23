@@ -205,7 +205,9 @@ sealed class GroupTabs : Form
     /// <summary>The widget's icon as a bitmap (up to 128 px, 64 KB), or null for a letter badge.</summary>
     Bitmap? IconFor(string instance)
     {
-        var chosen = _app.Settings.Widgets.TryGetValue(instance, out var ws) ? ws.TabIcon : null;
+        _app.Settings.Widgets.TryGetValue(instance, out var ws);
+        // The user's own pick wins; the widget's suggestion (umbra.setTabIcon) only fills in when there is none.
+        var chosen = Groups.ChooseIcon(ws?.TabIcon, ws?.SuggestedTabIcon);
         var cacheKey = instance + "|" + chosen;
         if (_icons.TryGetValue(cacheKey, out var cached)) return cached;
         Bitmap? bmp = null;
