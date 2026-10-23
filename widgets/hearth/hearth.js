@@ -75,15 +75,6 @@
       btn("leave", "Leave", "", v.busy ? "disabled" : "") + `</div></div></section>`;
   }
 
-  // Placeholder: #210 replaces this with the real Overview (names joined by a bow, N days together, milestones, the Tap heart).
-  function overviewStub(v, days) {
-    const names = [v.names.you, v.names.partner].filter(Boolean);
-    return `<section class="body"><div class="ov">` +
-      `<div class="names">${names.length === 2 ? esc(names[0]) + ' <span class="bow">&hearts;</span> ' + esc(names[1]) : names.length ? esc(names[0]) : "Your hearth"}</div>` +
-      (days === null ? `<div class="days muted">No together-since date yet</div>` : `<div class="days"><b class="num">${esc(umbra.fmt(days, 0))}</b> ${days === 1 ? "day" : "days"} together</div>`) +
-      `<span class="ph">Overview placeholder (#210)</span></div></section>`;
-  }
-
   // Placeholder: #212 replaces this with the drawing board. Hovering it already switches the sync client to fast polling.
   function boardStub(v, strokes) {
     return `<section class="square-wrap"><div class="square board-stub" data-board>` +
@@ -155,7 +146,7 @@
     else if (v.invite) body = inviteCard(v);
     else if (w === "board") body = boardStub(v, strokes);
     else if (w === "pet") body = petStub();
-    else body = overviewStub(v, days);
+    else body = window.HearthOverview.html(v);
     app.innerHTML = top(v) + body + toasts(v) + (ui.panel && v.paired ? panel(v) : "");
 
     // hooks that need the new elements
@@ -170,6 +161,7 @@
     const code = app.querySelector("#code");
     if (code && (typing || ui.focusCode)) { ui.focusCode = false; code.focus(); code.setSelectionRange(code.value.length, code.value.length); }
     startCountdown();
+    window.HearthOverview.mounted(v);   // only acts when the card body is the Overview
 
     if (!sentRendered) {
       sentRendered = true;
@@ -277,6 +269,7 @@
       channel,
       instance: (umbra.widget && (umbra.widget.instance || umbra.widget.id)) || "hearth",
     });
+    await window.HearthOverview.init({ app, client, core, mascot, rerender: () => render(true) });
     client.subscribe(onView);
     client.setRefreshSeconds(umbra.settings.refreshSeconds);
     client.setPaused(!!umbra.settings.paused);

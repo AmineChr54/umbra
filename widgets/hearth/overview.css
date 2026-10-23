@@ -1,0 +1,140 @@
+/* Hearth Overview (Meadow look). Uses the tokens and the card container ("card") from hearth.css.
+   Text is never below 0.85rem (11px at the default size), numbers are tabular, motion follows --motion-scale and data-motion. */
+
+.hov { gap: 12px; }
+
+/* ---------- the pair: two initials on one ribbon with a bow ---------- */
+
+.hov-pair { flex: none; display: flex; align-items: center; }
+.hov-dot {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border: 2px solid var(--hm-brown);
+  border-radius: 50%;
+  background: var(--hm-green);
+  color: var(--hm-ink);
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.hov-dot.b { background: var(--hm-butter); }
+.hov-dot.unset { border-style: dashed; color: var(--hm-soft); background: var(--hm-card); }
+.hov-bow { flex: none; width: 36px; height: 18px; margin: 0 -7px; overflow: visible; }
+
+/* ---------- the text next to it ---------- */
+
+.hov-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+.hov-names { display: flex; align-items: center; gap: 2px; min-width: 0; font-size: 1rem; font-weight: 800; line-height: 1.25; }
+.hov-name, .hov-amp { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hov-amp { flex: none; color: var(--hm-pink-deep); }
+.hov-name.unset { color: var(--hm-soft); font-weight: 700; font-style: italic; }
+.hov-edit { flex: none; margin-left: 6px; width: 22px; height: 22px; }
+
+.hov-days { font-size: 0.95rem; line-height: 1.2; }
+.hov-count { font-size: 1.7rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hov-unit { font-weight: 700; }
+.hov-ask { color: var(--hm-soft); font-weight: 700; }
+.hov-setdate { padding: 1px 10px; font-size: 0.9rem; }
+
+.hov-cheer {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 2px;
+  padding: 0 10px;
+  border: 1.5px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: hov-pop calc(520ms * var(--motion-scale, 1)) cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+@keyframes hov-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* The Tap view puts its button here. Nothing in it, nothing shown. */
+.hov-tap { display: none; }
+.hov-tap:not(:empty) { display: block; margin-top: 2px; }
+
+/* While a milestone line is shown the strip has no room for the names row as well as the count: the circles carry the names. */
+@container card (max-height: 170px) {
+  .hov-dot { width: 36px; height: 36px; }
+  .hov.has-cheer .hov-names { display: none; }
+}
+
+/* ---------- the edit sheet ---------- */
+
+.hov-sheet {
+  position: absolute; inset: 0; z-index: 4;
+  display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--hm-card);
+}
+.hov-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.hov-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 0.88rem; font-weight: 800; color: var(--hm-soft); }
+.hov-sheet input {
+  width: 100%;
+  padding: 3px 10px;
+  border-radius: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.hov-sheet input.bad { border-color: #B23A5E; background: var(--hm-alert); }
+.hov-actions { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hov-actions .btn { flex: none; padding-block: 1px; }
+.hov-err { flex: 1; min-width: 0; font-size: 0.88rem; font-weight: 700; line-height: 1.15; color: #8E2447; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ---------- sizes ---------- */
+
+@container card (min-height: 171px) {
+  .hov { gap: 10px; }
+  .hov-dot { width: 56px; height: 56px; font-size: 1.7rem; }
+  .hov-bow { width: 52px; height: 26px; margin: 0 -10px; }
+  .hov-info { align-items: center; text-align: center; gap: 3px; flex: none; max-width: 100%; }
+  .hov-names { font-size: 1.15rem; justify-content: center; }
+  .hov-count { font-size: 2.4rem; }
+  .hov-days { font-size: 1.05rem; }
+  .hov-cheer { align-self: center; font-size: 1rem; padding: 1px 14px; }
+  .hov-sheet { gap: 12px; padding: 14px 18px; }
+  .hov-fields { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .hov-err { -webkit-line-clamp: 3; }
+}
+@container card (max-width: 230px) {
+  .hov { flex-direction: column; justify-content: center; text-align: center; gap: 4px; }
+  .hov-info { align-items: center; text-align: center; flex: none; max-width: 100%; }
+  .hov-names { justify-content: center; }
+  .hov-cheer { align-self: center; }
+  .hov-fields { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- confetti: lives outside the card so a re-render does not cut it short ---------- */
+
+.hov-confetti {
+  position: fixed; inset: 5px;
+  z-index: 9;
+  overflow: hidden;
+  border-radius: 20px;
+  pointer-events: none;
+}
+.hov-confetti i {
+  position: absolute;
+  top: -16px;
+  border-radius: 2px;
+  border: 1px solid rgba(107, 79, 58, 0.55);
+  animation-name: hov-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes hov-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0), 125vh) rotate(var(--rot, 360deg)); opacity: 0; }
+}
