@@ -259,6 +259,9 @@
         "index.html",
         "mascot.css",
         "mascot.js",
+        "pet-logic.js",
+        "pet.css",
+        "pet.js",
         "widget.json"
       ]
     },

@@ -92,9 +92,9 @@
       `<p class="muted">Sync: ${v.fast ? "fast, about every 1.5 s" : "idle, about once a minute"}</p></div></section>`;
   }
 
-  // Placeholder: #214 replaces this with the real Pet (care buttons, levels, outfits, naming). Only the mascot is real.
+  // The Pet view (#214) lives in pet.js; the shell only provides its element and calls HearthPet.attach after each render.
   function petStub() {
-    return `<section class="square-wrap"><div class="square pet-stub" data-pet><span class="ph">Pet placeholder (#214)</span></div></section>`;
+    return `<section data-pet-root></section>`;
   }
 
   function toasts(v) {
@@ -165,8 +165,8 @@
       board.onpointerleave = () => setHover(false);
       board.onpointercancel = () => setHover(false);
     } else setHover(false);
-    const pet = app.querySelector("[data-pet]");
-    if (pet) pet.insertAdjacentHTML("afterbegin", mascot.renderScene({ mood, title: v.sync.petName }));
+    const pet = app.querySelector("[data-pet-root]");
+    if (pet) window.HearthPet.attach(pet, client);
     const code = app.querySelector("#code");
     if (code && (typing || ui.focusCode)) { ui.focusCode = false; code.focus(); code.setSelectionRange(code.value.length, code.value.length); }
     startCountdown();
