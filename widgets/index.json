@@ -259,6 +259,9 @@
         "index.html",
         "mascot.css",
         "mascot.js",
+        "tap-logic.js",
+        "tap.css",
+        "tap.js",
         "widget.json"
       ]
     },

@@ -81,7 +81,7 @@
     return `<section class="body"><div class="ov">` +
       `<div class="names">${names.length === 2 ? esc(names[0]) + ' <span class="bow">&hearts;</span> ' + esc(names[1]) : names.length ? esc(names[0]) : "Your hearth"}</div>` +
       (days === null ? `<div class="days muted">No together-since date yet</div>` : `<div class="days"><b class="num">${esc(umbra.fmt(days, 0))}</b> ${days === 1 ? "day" : "days"} together</div>`) +
-      `<span class="ph">Overview placeholder (#210)</span></div></section>`;
+      `</div><div class="tap-slot" data-hearth-tap></div></section>`; // #211: HearthTap.mount draws the Tap button into [data-hearth-tap] after each render
   }
 
   // Placeholder: #212 replaces this with the drawing board. Hovering it already switches the sync client to fast polling.
@@ -167,6 +167,8 @@
     } else setHover(false);
     const pet = app.querySelector("[data-pet]");
     if (pet) pet.insertAdjacentHTML("afterbegin", mascot.renderScene({ mood, title: v.sync.petName }));
+    const tapSlot = app.querySelector("[data-hearth-tap]"); // #211: any view may hold a Tap button
+    if (tapSlot && window.HearthTap) window.HearthTap.mount(tapSlot, client);
     const code = app.querySelector("#code");
     if (code && (typing || ui.focusCode)) { ui.focusCode = false; code.focus(); code.setSelectionRange(code.value.length, code.value.length); }
     startCountdown();
@@ -277,6 +279,7 @@
       channel,
       instance: (umbra.widget && (umbra.widget.instance || umbra.widget.id)) || "hearth",
     });
+    if (window.HearthTap) window.HearthTap.attach(client); // #211: taps, pulse, toast and the together moment work in every view
     client.subscribe(onView);
     client.setRefreshSeconds(umbra.settings.refreshSeconds);
     client.setPaused(!!umbra.settings.paused);
