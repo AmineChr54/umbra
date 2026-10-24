@@ -70,7 +70,7 @@ public sealed partial class WidgetManifest
     /// <summary>The running Umbra version ("1.8.0"), from the assembly (Directory.Build.props).</summary>
     public static string AppVersion { get; } =
         (System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(WidgetManifest).Assembly)?.InformationalVersion
-         ?? "0.0.0").Split('+')[0];
+         ?? typeof(WidgetManifest).Assembly.GetName().Version?.ToString(3) ?? "999.0.0").Split('+')[0];
 
     [GeneratedRegex(@"^\d+\.\d+\.\d+$")]
     private static partial Regex SemVer();
@@ -115,11 +115,13 @@ public sealed partial class WidgetManifest
 
     public static List<WidgetManifest> DiscoverAll()
     {
-        var all = Discover(AppPaths.CommunityDir, WidgetSource.Community);
-        var builtIn = Discover(AppPaths.WidgetsDir, WidgetSource.BuiltIn)
+        var skipped = new List<(string Id, string Name, string Why)>();
+        var all = Discover(AppPaths.CommunityDir, WidgetSource.Community, skipped);
+        var builtIn = Discover(AppPaths.WidgetsDir, WidgetSource.BuiltIn, skipped)
             // A catalog copy of a legacy id replaces the stale built-in one left by an old install.
             .Where(b => !Restore.LegacyIds.Contains(b.Id) || all.All(c => c.Id != b.Id));
         var builtInList = builtIn.ToList();
+        Skipped = skipped;
         var community = all.Where(c => builtInList.All(b => b.Id != c.Id));
         return builtInList.Concat(community).ToList();
     }
@@ -176,7 +178,10 @@ public sealed partial class WidgetManifest
         return m;
     }
 
-    internal static List<WidgetManifest> Discover(string root, WidgetSource source)
+    /// <summary>Widgets on disk that this Umbra can't run (made for a newer Umbra), from the last <see cref="DiscoverAll"/>: id, name, reason.</summary>
+    public static IReadOnlyList<(string Id, string Name, string Why)> Skipped { get; private set; } = Array.Empty<(string, string, string)>();
+
+    internal static List<WidgetManifest> Discover(string root, WidgetSource source, List<(string Id, string Name, string Why)>? skipped = null)
     {
         var list = new List<WidgetManifest>();
         if (!Directory.Exists(root)) return list;
@@ -189,7 +194,7 @@ public sealed partial class WidgetManifest
                 var m = Parse(File.ReadAllText(file));
                 if (!IdPattern().IsMatch(m.Id)) continue;
                 // A widget for a newer Umbra stays on disk untouched and loads again once Umbra is updated.
-                if (m.Incompatibility() is { } why) { Log.Write($"Skipping widget {m.Id}: {why}"); continue; }
+                if (m.Incompatibility() is { } why) { Log.Write($"Skipping widget {m.Id}: {why}"); skipped?.Add((m.Id, m.Name, why)); continue; }
                 m.Folder = Path.GetFileName(dir);
                 m.Source = source;
                 list.Add(m);

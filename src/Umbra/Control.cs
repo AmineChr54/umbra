@@ -371,6 +371,37 @@ sealed class Control(App app)
                 }
             }
 
+            case "validate-widget":
+            {
+                var path = Str(a, "path");
+                if (!Path.IsPathFullyQualified(path)) throw new CommandException("path must be a full path to a widget folder or .zip/.umbrawidget");
+                return (await Task.Run(() => WidgetLint.Run(path))).ToJson();
+            }
+
+            case "pack-widget":
+            {
+                // Writes one file and nothing else: no install, no permission is granted by packing.
+                var folder = Str(a, "path");
+                if (!Path.IsPathFullyQualified(folder) || !Directory.Exists(folder)) throw new CommandException("path must be the full path of a widget folder");
+                var trimmed = Path.GetFullPath(folder).TrimEnd('\\', '/');
+                var output = a["out"]?.GetValue<string>() ?? trimmed + Community.PackageExtension;
+                if (!Path.IsPathFullyQualified(output) || !output.EndsWith(Community.PackageExtension, StringComparison.OrdinalIgnoreCase))
+                    throw new CommandException($"out must be a full path ending in {Community.PackageExtension}");
+                if (Path.GetFullPath(output).StartsWith(trimmed + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    throw new CommandException("out must be outside the widget folder (the package would contain itself)");
+                var lint = await Task.Run(() => WidgetLint.Run(trimmed));
+                if (!lint.Ok) throw new CommandException($"Not packed, fix these first: {string.Join("; ", lint.Errors)}");
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
+                var manifest = await Task.Run(() => Community.WritePackage(trimmed, output));
+                var bytes = await File.ReadAllBytesAsync(output);
+                return new JsonObject
+                {
+                    ["path"] = Path.GetFullPath(output), ["id"] = manifest.Id, ["version"] = manifest.Version, ["bytes"] = bytes.Length,
+                    ["sha256"] = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant(),
+                    ["warnings"] = new JsonArray(lint.Warnings.Select(w => (JsonNode?)w).ToArray()),
+                };
+            }
+
             case "remove":
             {
                 var (m, _) = Target(a);
