@@ -74,9 +74,9 @@ static void PrintHelp()
           status                         version, paths, open widgets
           list                           widgets with settings, option schema and bounds
           enable|disable <id>            show or hide a widget (<id> is a widget id or a copy like sp500#2)
-          lock|unlock <id>               lock or unlock moving, resizing and zooming
+          lock-all|unlock-all            lock every widget (default) or unlock them to arrange (same as edit-mode off/on)
           move <id> <x> <y>              position in physical pixels
-          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--locked on|off] [--x N] [--y N] [--monitor N|primary] [--refresh 30-600|default] [--opacity 0.2-1|opaque]
+          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--x N] [--y N] [--monitor N|primary] [--refresh 30-600|default] [--opacity 0.2-1|opaque]
                                          change several widget settings at once (scale = size and zoom)
           peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
           safe-mode [on|off]             community widgets off (not saved); no argument = show the state

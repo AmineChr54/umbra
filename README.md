@@ -80,13 +80,13 @@ Missing one? [Build it](CONTRIBUTING.md) in an afternoon, or let an agent [write
   <tr>
     <td width="50%" valign="top">
 
-**Arrange your desktop.** Edit mode gives unlocked widgets an outline and a corner handle. Drag to move, drag the corner or Ctrl+scroll to resize, and nudge a selected widget with the arrow keys. Snapping shows guide lines for edges, centers and gaps. Widgets zoom like a web page, so text stays sharp at any size.
+**Arrange your desktop.** Widgets are locked until you turn on **Arrange widgets** (My widgets header, tray menu or a hotkey), which gives them an outline and a corner handle. Drag to move, drag the corner or Ctrl+scroll to resize, and nudge a selected widget with the arrow keys. Snapping shows guide lines for edges, centers and gaps. Widgets zoom like a web page, so text stays sharp at any size.
 
 **Layouts and tab groups.** Save named layouts and switch between them. They are pinned to the monitors they were saved on and can switch automatically when you dock or undock. A tab group lets several widgets share one spot, one visible at a time.
 
 **Run copies side by side.** Use **Add another copy** for an S&P 500 and a Nasdaq widget next to each other, each with its own options, position and data.
 
-**Show widgets only when you need them.** Each widget can be turned off, dimmed, locked, started hidden, or shown only in a time range or on AC power. Widgets can also hide during fullscreen apps and games.
+**Show widgets only when you need them.** Each widget can be turned off, dimmed, started hidden, or shown only in a time range or on AC power. Widgets can also hide during fullscreen apps and games.
 
   </td>
     <td width="50%" valign="top">
@@ -103,7 +103,7 @@ Missing one? [Build it](CONTRIBUTING.md) in an afternoon, or let an agent [write
   </tr>
 </table>
 
-Right-click any widget for Refresh, Options, Lock, Edit mode, Hide and Add another copy. Shift+right-click always opens Umbra's menu, even on widgets that use right-click themselves.
+Right-click any widget for Refresh, Options, Arrange widgets, Hide and Add another copy. Shift+right-click always opens Umbra's menu, even on widgets that use right-click themselves.
 
 <details>
 <summary><b>Settings screenshots</b></summary>
@@ -111,7 +111,7 @@ Right-click any widget for Refresh, Options, Lock, Edit mode, Hide and Add anoth
 | | |
 |---|---|
 | ![General settings](docs/settings-general.png) | ![My widgets](docs/settings-widgets.png) |
-| **General:** start with Windows, refresh interval, animations, appearance and advanced options (log level, developer mode, GPU, startup delay, proxy). | **My widgets:** edit mode, turn widgets on or off, edit their options and size (50-300 %), lock them, give them their own refresh interval, or reset their position. |
+| **General:** start with Windows, refresh interval, animations, appearance and advanced options (log level, developer mode, GPU, startup delay, proxy). | **My widgets:** Arrange widgets (the one global lock), turn widgets on or off, edit their options and size (50-300 %), give them their own refresh interval, or reset their position. |
 | ![Browse community widgets](docs/settings-browse.png) | ![About](docs/settings-about.png) |
 | **Browse:** install, update or remove community widgets in one click. | **About:** version and updates (with release notes after an update), **Copy diagnostics** for bug reports, and pre-filled issue links. |
 
@@ -139,8 +139,8 @@ umbractl help                          # everything else
 ```powershell
 umbractl list                         # widgets, their settings, option schema and window bounds
 umbractl set sp500 symbol ^IXIC       # change an option; it applies instantly
-umbractl move sp500 100 100           # position in physical pixels; also enable/disable, lock/unlock
-umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --locked, --enabled, --x, --y, --monitor 2 (a monitor number from status, or primary; the widget keeps its offset and survives monitor changes)
+umbractl move sp500 100 100           # position in physical pixels; also enable/disable
+umbractl configure sp500 --scale 1.5  # 150 % size and zoom (0.5-3, or 150%); also --enabled, --x, --y, --monitor 2 (a monitor number from status, or primary; the widget keeps its offset and survives monitor changes)
 umbractl add-instance sp500           # a second copy (sp500#2) with its own options, position and data; remove-instance sp500#2
 umbractl groups                       # tab groups: widgets sharing one spot, one visible at a time (create, join, leave, activate, next, previous, reorder, cycle, rename, icon, delete)
 umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings); off to clear
@@ -149,6 +149,7 @@ umbractl safe-mode on                 # community widgets off, nothing deleted (
 umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts rename Work Docked`, `layouts delete Work`, `layouts`
 umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off; --snap-gap 12 = px kept between neighbouring widgets, 0 = touch; edges, centers and the gap show guide lines; --snap off = master switch, also on the edit-mode pill); hold Shift while dragging to skip snapping
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
+umbractl lock-all                     # lock every widget (the default; unlock-all = edit-mode on)
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60; --energy-saver off stops widgets slowing down 4x on Windows Energy Saver)
 umbractl general --corner-radius round --animation-speed calm --log-level verbose --proxy none   # appearance and advanced settings (also --default-scale, --developer-mode, --hardware-acceleration, --startup-delay; proxy and GPU need a restart)
 umbractl configure sp500 --refresh 300 --opacity 0.8   # per-widget refresh interval (or default) and opacity (or opaque)

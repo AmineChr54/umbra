@@ -36,8 +36,8 @@ sealed class WidgetWindow : Form
     /// <summary>False once the window is disposed or its copy was removed: nothing may be written for it.</summary>
     bool Alive => !IsDisposed && _app.Settings.Widgets.ContainsKey(Instance);
 
-    /// <summary>Changing the widget by hand (corner handle, Ctrl+wheel) needs edit mode and an unlocked widget.</summary>
-    bool CanArrange => WidgetGeometry.CanArrange(_app.EditMode, Ws.Locked);
+    /// <summary>Moving or changing the widget by hand (drag, corner handle, Ctrl+wheel) needs the global lock off (#234).</summary>
+    bool CanArrange => WidgetGeometry.CanArrange(_app.Settings.General);
 
     /// <summary>The window size for a scale: manifest size (logical pixels) x monitor DPI x scale.</summary>
     Size ScaledSize(double scale) => WidgetGeometry.ScaledSize(Manifest.Width, Manifest.Height, DeviceDpi, scale);
@@ -107,7 +107,7 @@ sealed class WidgetWindow : Form
                 base.WndProc(ref m);
                 LimitTrackSize(m.LParam);
                 return;
-            case Native.WM_MOVING when _app.EditMode && !Ws.Locked && !_resizing:
+            case Native.WM_MOVING when CanArrange && !_resizing:
                 SnapMove(m.LParam);
                 m.Result = 1;
                 return;
@@ -543,13 +543,11 @@ sealed class WidgetWindow : Form
     ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        var locked = Ws.Locked;
         menu.Items.Add(new ToolStripLabel(App.InstanceLabel(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh", null, (_, _) => RefreshData());
         menu.Items.Add("Options...", null, (_, _) => _app.ShowWidgetOptions(Instance));
-        menu.Items.Add(locked ? "Unlock position" : "Lock position", null, (_, _) => _app.SetLocked(Instance, !locked));
-        menu.Items.Add(new ToolStripMenuItem("Edit mode", null, (_, _) => _app.SetEditMode(!_app.EditMode)) { Checked = _app.EditMode });
+        menu.Items.Add(new ToolStripMenuItem("Arrange widgets", null, (_, _) => _app.SetEditMode(!_app.EditMode)) { Checked = _app.EditMode });
         menu.Items.Add(new ToolStripSeparator());
         AddGroupItems(menu);
         menu.Items.Add("Hide", null, (_, _) => _app.DisableWidget(Instance));
@@ -592,7 +590,7 @@ sealed class WidgetWindow : Form
                 break;
 
             case "drag":
-                if (Ws.Locked || _resizing) return;
+                if (!CanArrange || _resizing) return;
                 Native.ReleaseCapture();
                 Native.SendMessage(Handle, Native.WM_NCLBUTTONDOWN, Native.HTCAPTION, IntPtr.Zero);
                 // SendMessage returns when the move loop ends: persist the new spot.
@@ -1053,7 +1051,7 @@ sealed class WidgetWindow : Form
             ["animations"] = Prefs.MotionOn(_app.Settings.General),
             ["appearanceCss"] = Manifest.Themeable ? Prefs.AppearanceCss(_app.Settings.General) : "",
             ["themeCss"] = Manifest.Themeable ? _app.ThemeCss : "",
-            ["locked"] = ws.Locked,
+            ["locked"] = !_app.EditMode, // the global lock (#234)
             ["accent"] = Prefs.ResolveAccent(_app.Settings.General, Prefs.SystemAccent),
             ["scale"] = ws.Scale,
             ["locale"] = Prefs.LocaleOf(CultureInfo.CurrentCulture),

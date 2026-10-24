@@ -19,6 +19,7 @@ const ICONS = {
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  unlock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.75-1.4"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   alert: '<path d="M12 4 3 19.5h18zM12 10v4.5M12 17.2h.01"/>',
   keyboard: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M7 10.5h.01M11 10.5h.01M15 10.5h.01M17.5 10.5h.01M8 14h8"/>',
@@ -487,7 +488,7 @@ function renderInstalled() {
     }
     for (const [name, els] of sections) fields.append(optionSection(w.id, name, els));
 
-    // Size: 50-300 %. Locked widgets keep their size here too.
+    // Size: 50-300 %.
     const scale = $(".scale", card);
     const scaleVal = $(".size-val", card);
     const showScale = (pct) => {
@@ -497,21 +498,15 @@ function renderInstalled() {
     };
     // The slider sets a proportional size, so it replaces a free width/height dragged by hand.
     const setScale = (pct) => { cur().scale = pct / 100; cur().width = cur().height = null; scale.value = pct; showScale(pct); save(true); };
-    const lockScale = (on) => { scale.disabled = scaleVal.disabled = on; };
     scale.setAttribute("aria-label", `${w.name} size`);
     scaleVal.setAttribute("aria-label", `Reset ${w.name} size to 100%`);
     scale.value = Math.round((ws.scale || 1) * 100);
     showScale((ws.scale || 1) * 100);
-    lockScale(ws.locked);
     scale.addEventListener("input", () => showScale(Number(scale.value)));
     scale.addEventListener("change", () => setScale(Number(scale.value)));
     // Let go of focus after a mouse drag so later updates from the desktop can re-render this list.
     scale.addEventListener("pointerup", () => setTimeout(() => scale.blur()));
     scaleVal.addEventListener("click", () => { setScale(100); scaleVal.blur(); });
-
-    const locked = $(".locked", card);
-    locked.checked = ws.locked;
-    locked.addEventListener("change", () => { cur().locked = locked.checked; lockScale(locked.checked); save(true); });
 
     const notif = $(".notif", card);
     notif.parentElement.hidden = !w.notifications;
@@ -599,12 +594,20 @@ function renderCommands(root, w) {
   }
 }
 
-// Edit mode is app-wide and lives in the host (not in settings.json), so it has its own message.
+// Arrange widgets (edit mode) is the one global lock (#234). The host owns it (general.lockAll), so it has its own message.
 $("#safeOff").addEventListener("click", () => post({ type: "setSafeMode", value: false }));
 $("#editMode").addEventListener("change", (e) => {
   post({ type: "setEditMode", value: e.target.checked });
-  toast(e.target.checked ? "Edit mode on: drag to move, drag the corner or Ctrl+scroll to resize" : "Edit mode off");
+  showArrange(e.target.checked);
+  toast(e.target.checked ? "Widgets unlocked: drag to move, drag the corner or Ctrl+scroll to resize" : "Widgets locked");
 });
+function showArrange(on) {
+  $("#editMode").checked = on;
+  $("#arrangeBox").classList.toggle("on", on);
+  $("#arrangeState").textContent = on ? "Unlocked: drag, resize, then turn off" : "Locked";
+  const ico = $(".arrange-ico");
+  if (ico.dataset.icon !== (on ? "unlock" : "lock")) { ico.dataset.icon = on ? "unlock" : "lock"; ico.textContent = ""; icons(ico.parentElement); }
+}
 
 // ---------- Layouts ----------
 function renderGroups() {
@@ -1061,7 +1064,7 @@ bridge && bridge.addEventListener("message", (e) => {
       if (!recording) renderHotkeys();
       if (themes) renderThemes();
       renderUpdate();
-      $("#editMode").checked = !!m.editMode;
+      showArrange(!!m.editMode);
       $("#safeBanner").hidden = !m.safeMode;
       // Same for the layout names: don't rebuild while one is being renamed.
       // Only a layout name being edited blocks the redraw; a clicked button (Apply, Pin, Delete) must see the new state.

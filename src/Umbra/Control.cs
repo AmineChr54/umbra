@@ -53,6 +53,7 @@ sealed class Control(App app)
                     ["communityDir"] = AppPaths.CommunityDir,
                     ["startup"] = Startup.IsEnabled(),
                     ["editMode"] = app.EditMode,
+                    ["lockAll"] = !app.EditMode,
                     ["safeMode"] = app.SafeMode,
                     ["update"] = app.Updater.ToJson(),
                     ["updateAvailable"] = app.Updater.Available?.Version,
@@ -72,7 +73,7 @@ sealed class Control(App app)
                 var (m, inst) = Target(a);
                 var ws = app.Settings.For(m, inst);
                 if (a["enabled"] is JsonNode en) ws.Enabled = Bool(en, "enabled");
-                if (a["locked"] is JsonNode lk) ws.Locked = Bool(lk, "locked");
+                if (a["locked"] is not null) throw new CommandException("Widgets have no own lock any more: use lock-all or unlock-all");
                 string? monitor = null;
                 if (a["monitor"] is JsonNode mo)
                 {
@@ -247,7 +248,12 @@ sealed class Control(App app)
 
             case "edit-mode":
                 if (a["on"] is JsonNode on) app.SetEditMode(Bool(on, "on"));
-                return new JsonObject { ["editMode"] = app.EditMode };
+                return new JsonObject { ["editMode"] = app.EditMode, ["lockAll"] = !app.EditMode };
+
+            case "lock-all":
+            case "unlock-all":
+                app.SetEditMode(cmd == "unlock-all");
+                return new JsonObject { ["editMode"] = app.EditMode, ["lockAll"] = !app.EditMode };
 
             case "reset-position":
             {
@@ -539,7 +545,7 @@ sealed class Control(App app)
             ["source"] = m.IsPermanent ? "builtin" : "community",
             ["folder"] = Path.Combine(m.Source == WidgetSource.BuiltIn ? AppPaths.WidgetsDir : AppPaths.CommunityDir, m.Folder),
             ["enabled"] = ws.Enabled,
-            ["locked"] = ws.Locked,
+            ["locked"] = !app.EditMode, // the global lock (#234)
             ["monitor"] = ws.Monitor,
             ["scale"] = ws.Scale,
             ["refreshSeconds"] = ws.RefreshSeconds,

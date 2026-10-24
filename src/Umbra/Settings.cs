@@ -1,6 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Umbra;
 
@@ -65,6 +66,11 @@ public sealed class GeneralSettings
     public int SnapGap { get; set; } = 12;
     /// <summary>Master switch for snapping (the edit-mode pill toggles it); the grid and edge settings above are kept while it is off.</summary>
     public bool SnapEnabled { get; set; } = true;
+    /// <summary>
+    /// One global lock (#234): true = widgets can't be moved, resized or zoomed by hand. Turning it off is "Arrange
+    /// widgets" (edit mode). Owned by <c>App.SetEditMode</c>, never by a Settings save.
+    /// </summary>
+    public bool LockAll { get; set; } = true;
     /// <summary>When the monitor setup changes (dock/undock), apply the layout pinned to the new setup after a short pause. Off by default.</summary>
     public bool AutoSwitchLayouts { get; set; }
 }
@@ -95,8 +101,9 @@ public sealed class WidgetSettings
     /// <summary>Offset from that monitor's top-left corner, so the widget keeps its place when monitors change.</summary>
     public int? RelX { get; set; }
     public int? RelY { get; set; }
-    /// <summary>No dragging, resizing or zooming, even in edit mode.</summary>
-    public bool Locked { get; set; }
+    /// <summary>Legacy per-widget lock, replaced by <see cref="GeneralSettings.LockAll"/> (#234): still read from old files, ignored and never written.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Locked { get => false; set { } }
     /// <summary>The user allows this widget to show notifications (umbra.notify). Off until switched on.</summary>
     public bool Notifications { get; set; }
     /// <summary>Tab-strip icon chosen by the user (a name from shared/tabicons); null = the widget's own icon or a letter.</summary>

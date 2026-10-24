@@ -24,10 +24,10 @@ sealed class App : ApplicationContext
     public List<WidgetManifest> Manifests { get; private set; }
 
     /// <summary>
-    /// App-wide "arranging" state: unlocked widgets show an outline and a corner handle and can be zoomed.
-    /// Deliberately not saved, so widgets always start in their normal, untouchable state.
+    /// App-wide "Arrange widgets" state: the global lock (<see cref="GeneralSettings.LockAll"/>, #234) is off, so
+    /// widgets show an outline and a corner handle and can be moved, resized and zoomed. Locked by default.
     /// </summary>
-    public bool EditMode { get; private set; }
+    public bool EditMode => !Settings.General.LockAll;
 
     /// <summary>The widget copy last pressed in edit mode: the one the arrow keys nudge. Null outside edit mode.</summary>
     public string? EditSelection { get; private set; }
@@ -406,6 +406,8 @@ sealed class App : ApplicationContext
         Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnPreferenceChanged;
         _wakeRefresh = new WakeRefresh(_ui, RefreshAfterWake, () => Settings.General.RefreshSeconds);
 
+        if (EditMode) _ui.Post(_ => UpdateEditPills(), null); // left unlocked last time: show the Done pill again
+
         // Former built-in widgets are fetched again once; a fresh install starts on Browse.
         var restore = Restore.ToRestore(Settings, Manifests);
         if (restore.Count > 0)
@@ -590,7 +592,7 @@ sealed class App : ApplicationContext
             menu.Items.Add(new ToolStripSeparator());
         }
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
-        var edit = new ToolStripMenuItem("Edit mode (move and resize)") { Checked = EditMode };
+        var edit = new ToolStripMenuItem("Arrange widgets (unlock)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
         menu.Items.Add(edit);
         var safe = new ToolStripMenuItem("Safe mode (community widgets off)") { Checked = SafeMode };
@@ -791,16 +793,6 @@ sealed class App : ApplicationContext
         SettingsChangedElsewhere();
     }
 
-    /// <summary>Locks or unlocks a copy's position and size; the widget menu's "Lock position".</summary>
-    public void SetLocked(string instance, bool locked)
-    {
-        if (!Settings.Widgets.TryGetValue(instance, out var ws)) return;
-        ws.Locked = locked;
-        SaveSettings();
-        Window(instance)?.PushSettings();
-        SettingsChangedElsewhere();
-    }
-
     /// <summary>Opens (or focuses) Settings on My widgets, scrolled to this copy's card and highlighted.</summary>
     public async void ShowWidgetOptions(string instance)
     {
@@ -938,6 +930,7 @@ sealed class App : ApplicationContext
         incoming.Groups = Settings.Groups; // owned by the group methods, like positions
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
+        incoming.General.LockAll = Settings.General.LockAll; // owned by SetEditMode
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
         Settings = incoming;
         SaveSettings();
@@ -945,11 +938,12 @@ sealed class App : ApplicationContext
         foreach (var w in _windows.Values) w.PushSettings();
     }
 
-    /// <summary>Turns edit mode on or off for every widget and updates the tray and Settings window.</summary>
+    /// <summary>Turns "Arrange widgets" (the global lock off) on or off, saves it and updates the widgets, tray and Settings.</summary>
     public void SetEditMode(bool on)
     {
         if (EditMode == on) return;
-        EditMode = on;
+        Settings.General.LockAll = !on;
+        SaveSettings();
         if (!on) ShowGuides(Array.Empty<Snap.Guide>(), 96);
         EditSelection = null;
         Log.Write($"Edit mode {(on ? "on" : "off")}");

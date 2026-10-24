@@ -3,8 +3,8 @@ namespace Umbra;
 /// <summary>Pure sizing rules for widget windows (kept free of WinForms state so they can be unit tested).</summary>
 public static class WidgetGeometry
 {
-    /// <summary>Changing a widget by hand needs edit mode and an unlocked widget.</summary>
-    public static bool CanArrange(bool editMode, bool locked) => editMode && !locked;
+    /// <summary>Changing a widget by hand needs the global lock off ("Arrange widgets", #234); there is no per-widget lock.</summary>
+    public static bool CanArrange(GeneralSettings general) => !general.LockAll;
 
     /// <summary>Smallest part of a nudged widget that must stay inside a work area, in logical pixels.</summary>
     public const int NudgeKeepVisible = 32;

@@ -16,7 +16,7 @@ public class RemovedCopyTests
         s.For(m);
         var two = s.AddInstance(m)!;
         s.For(m, two).X = 40;
-        s.For(m, two).Locked = true;
+        s.For(m, two).Scale = 2;
         var removed = new RemovedCopy(two, "Demo (2)", s.Widgets[two], new JsonObject { ["k"] = 1 });
         s.Widgets.Remove(two);
 
@@ -25,7 +25,7 @@ public class RemovedCopyTests
 
         Assert.Equal(new[] { "demo", "demo#2" }, s.Instances("demo"));
         Assert.Equal(40, s.For(m, two).X);
-        Assert.True(s.For(m, two).Locked);
+        Assert.Equal(2, s.For(m, two).Scale);
     }
 
     [Fact]
