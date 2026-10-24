@@ -298,18 +298,21 @@
     {
       "id": "pomodoro",
       "name": "Pomodoro",
-      "description": "A focus timer with a progress ring: Pomodoro with breaks or a plain countdown, times editable right in the widget, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
+      "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Survives restarts.",
       "author": "AmineChr54",
-      "version": "1.1.1",
+      "version": "2.0.0",
+      "changelog": "Focus sessions: set the total minutes, breaks off by default or 22-33 min blocks with 5 min breaks, ring with ticks, pause and a ... menu (skip, +5 min, end), toasts at phase changes. The focus/break minute options are gone; the daily log is kept.",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [],
+      "notifications": true,
       "files": [
         "icon.png",
         "index.html",
         "pomodoro.css",
         "pomodoro.js",
         "preview.png",
+        "session.js",
         "widget.json"
       ]
     },

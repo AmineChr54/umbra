@@ -8,44 +8,61 @@
 </head>
 <body>
   <main class="pm" id="app">
-    <header class="head">
-      <span class="phase" id="phase">Focus</span>
-      <span class="dots" id="dots" aria-label="Sessions in this cycle"></span>
-      <button class="gear" id="gear" data-no-drag title="Set times" aria-label="Set times">&#9881;</button>
-    </header>
-    <section class="dial">
-      <svg viewBox="0 0 120 120" aria-hidden="true">
-        <circle class="track" cx="60" cy="60" r="52"/>
-        <circle class="arc" id="arc" cx="60" cy="60" r="52"/>
-      </svg>
-      <div class="center">
-        <div class="time num" id="time">25:00</div>
-        <div class="sub" id="sub">Ready</div>
+    <!-- Setup: pick the session length and whether it has breaks -->
+    <section class="view setup" id="setup">
+      <header class="head">
+        <span class="title">Focus session</span>
+        <span class="today"><b class="num" id="today">0m</b> today</span>
+      </header>
+      <div class="pick">
+        <div class="stepper" data-no-drag>
+          <button class="step" id="minus" aria-label="5 minutes less">&minus;</button>
+          <label class="mins">
+            <input class="num" id="minutes" type="number" min="5" max="600" step="5" aria-label="Session minutes">
+            <span>mins</span>
+          </label>
+          <button class="step" id="plus" aria-label="5 minutes more">+</button>
+        </div>
+        <p class="hint" id="breaks-hint">You'll have no breaks</p>
+        <label class="check" data-no-drag>
+          <input type="checkbox" id="skip-breaks" checked>
+          <span class="box" aria-hidden="true"></span>
+          Skip breaks
+        </label>
       </div>
+      <button class="btn primary wide" id="start" data-no-drag>Start focus session</button>
     </section>
-    <div class="ctl" data-no-drag>
-      <button class="btn primary" id="toggle">Start</button>
-      <button class="btn" id="skip">Skip</button>
-    </div>
-    <section class="stats" id="stats">
-      <div class="totals">
-        <div><b class="num" id="today">0m</b><span>today</span></div>
-        <div><b class="num" id="week">0m</b><span>last 7 days</span></div>
+
+    <!-- Run: ring, phase, up next, pause and the "..." menu -->
+    <section class="view run" id="run" hidden>
+      <header class="head">
+        <span class="title num" id="phase">Focus period 1 of 1</span>
+        <button class="more" id="more" data-no-drag aria-label="More" aria-haspopup="menu">&middot;&middot;&middot;</button>
+      </header>
+      <div class="dial">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <g id="ticks"></g>
+          <circle class="track" cx="60" cy="60" r="54"/>
+          <circle class="arc" id="arc" cx="60" cy="60" r="54"/>
+        </svg>
+        <div class="center">
+          <div class="time num" id="time">00:00</div>
+          <div class="sub" id="sub">min left</div>
+        </div>
       </div>
-      <div class="chart" id="chart" aria-label="Focus minutes, last 7 days"></div>
-    </section>
-    <section class="cfg" id="cfg" data-no-drag hidden>
-      <div class="seg" id="mode">
-        <button data-breaks="1">With breaks</button>
-        <button data-breaks="0">Countdown</button>
+      <p class="next num" id="next">Up next: 5 min break</p>
+      <div class="ctl" data-no-drag>
+        <button class="btn primary" id="toggle">Pause</button>
       </div>
-      <label>Focus <span><input type="number" id="in-work" min="1" max="180" step="1"> min</span></label>
-      <label data-brk>Short break <span><input type="number" id="in-short" min="1" max="60" step="1"> min</span></label>
-      <label data-brk>Long break <span><input type="number" id="in-long" min="1" max="90" step="1"> min</span></label>
-      <label data-brk>Long break every <span><input type="number" id="in-every" min="2" max="10" step="1"> sessions</span></label>
+      <div class="menu" id="menu" role="menu" data-no-drag hidden>
+        <button role="menuitem" id="m-skip">Skip break</button>
+        <button role="menuitem" id="m-add">Add 5 minutes</button>
+        <button role="menuitem" id="m-end" class="danger">End session</button>
+      </div>
     </section>
   </main>
   <script src="https://umbra.local/shared/umbra.js"></script>
+  <script src="session.js"></script>
   <script src="pomodoro.js"></script>
 </body>
 </html>
