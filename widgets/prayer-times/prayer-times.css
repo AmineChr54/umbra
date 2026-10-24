@@ -40,3 +40,46 @@ html, body { height: 100%; overflow: hidden; background: #000; }
 
 .msg { height: 100%; display: flex; align-items: center; justify-content: center; padding: 0 24px;
   text-align: center; font-size: 13px; line-height: 1.45; color: var(--text-2); }
+.msg { flex-direction: column; gap: 12px; }
+.msg p { margin: 0; }
+.msg[hidden], .setup[hidden], .btn[hidden] { display: none; }
+
+/* gear: dim until the widget is hovered */
+.top { align-items: center; }
+.city { flex: 1; min-width: 0; }
+.gear { all: unset; flex: none; width: 22px; height: 22px; margin: -4px -6px -4px 0; display: grid; place-items: center;
+  border-radius: var(--radius-s); color: var(--text-3); cursor: pointer; opacity: 0.55; transition: opacity 0.15s, color 0.15s; }
+.gear svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linejoin: round; }
+.pt:hover .gear, .gear:focus-visible { opacity: 1; }
+.gear:hover { color: var(--text); background: var(--surface-2); }
+html[data-motion="off"] .gear { transition: none; }
+
+/* setup screen */
+.setup { height: 100%; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.setup::-webkit-scrollbar, .sugg::-webkit-scrollbar { width: 0; }
+.stitle { margin: 0 0 2px; font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text); }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.flbl { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.setup input, .setup select { height: 30px; min-width: 0; padding: 0 8px; font: inherit; font-size: 13px; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-s); }
+.setup input:focus, .setup select:focus { outline: none; border-color: var(--accent); }
+.setup select { appearance: none; padding-right: 22px; text-overflow: ellipsis; cursor: pointer;
+  background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a3a7b1' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 8px center / 10px 6px; }
+.setup select option { background: #111114; color: #f4f5f7; }
+.sugg { margin: -4px 0 0; padding: 4px; list-style: none; flex: none; max-height: 132px; overflow-y: auto;
+  background: var(--surface-1); border: 1px solid var(--line-strong); border-radius: var(--radius-s); }
+.sugg[hidden] { display: none; }
+.sugg li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 13px;
+  color: var(--text); cursor: pointer; white-space: nowrap; }
+.sugg li span { overflow: hidden; text-overflow: ellipsis; }
+.sugg li .sub { flex: none; max-width: 50%; font-size: 11px; color: var(--text-3); }
+.sugg li:hover, .sugg li.sel { background: var(--accent-soft); }
+.shint { min-height: 15px; font-size: 11px; line-height: 1.35; color: var(--text-3); }
+.shint.err { color: var(--down); }
+.pair { display: grid; grid-template-columns: 1fr 104px; gap: 8px; }
+.acts { margin-top: auto; padding-top: 4px; display: flex; justify-content: flex-end; gap: 8px; }
+.btn { height: 28px; padding: 0 12px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-2); background: var(--surface-2);
+  border: 0; border-radius: var(--radius-s); cursor: pointer; }
+.btn:hover { color: var(--text); }
+.btn.primary { color: var(--accent-strong); background: var(--accent-soft); }
+.btn:disabled { opacity: 0.45; cursor: default; }
