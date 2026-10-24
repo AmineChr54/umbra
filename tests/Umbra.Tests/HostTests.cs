@@ -413,12 +413,11 @@ public class SettingsTests
     public void Json_round_trip()
     {
         var s = new Settings();
-        s.Widgets["w"] = new WidgetSettings { Enabled = false, X = 10, Y = -5, Locked = true, Options = new JsonObject { ["k"] = 3 } };
+        s.Widgets["w"] = new WidgetSettings { Enabled = false, X = 10, Y = -5, Options = new JsonObject { ["k"] = 3 } };
         var back = Settings.FromJson(s.ToJson());
         var w = back.Widgets["w"];
         Assert.False(w.Enabled);
         Assert.Equal((10, -5), (w.X, w.Y));
-        Assert.True(w.Locked);
         Assert.Equal(3, w.Options["k"]!.GetValue<int>());
         Assert.Equal(1.0, w.Scale);
     }
@@ -460,11 +459,10 @@ public class SettingsTests
     public void Scale_survives_save_and_load()
     {
         var s = new Settings();
-        s.Widgets["persist"] = new WidgetSettings { Scale = 2.25, Locked = true };
+        s.Widgets["persist"] = new WidgetSettings { Scale = 2.25 };
         s.Save();
         var back = Settings.Load();
         Assert.Equal(2.25, back.Widgets["persist"].Scale);
-        Assert.True(back.Widgets["persist"].Locked);
     }
 }
 
@@ -549,6 +547,9 @@ public class ProtocolTests
         var edit = Protocol.Commands.Single(c => c.Cmd == "edit-mode");
         Assert.Contains("{on?}", edit.Help);
         Assert.Contains("scale? (0.5-3)", Protocol.Commands.Single(c => c.Cmd == "configure").Help);
+        Assert.Contains(Protocol.Commands, c => c.Cmd == "lock-all");
+        Assert.Contains(Protocol.Commands, c => c.Cmd == "unlock-all");
+        Assert.DoesNotContain("locked?", Protocol.Commands.Single(c => c.Cmd == "configure").Help);
     }
 
     [Theory]
@@ -580,13 +581,31 @@ public class ProtocolTests
         Assert.Equal(700, WidgetGeometry.ToLogical(1050, 144));
     }
 
-    [Theory]
-    [InlineData(true, false, true)]
-    [InlineData(true, true, false)]
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    public void Arranging_needs_edit_mode_and_an_unlocked_widget(bool edit, bool locked, bool expected) =>
-        Assert.Equal(expected, WidgetGeometry.CanArrange(edit, locked));
+    [Fact]
+    public void Widgets_are_locked_by_default_and_arranging_needs_the_global_lock_off()
+    {
+        var g = new GeneralSettings();
+        Assert.True(g.LockAll);
+        Assert.False(WidgetGeometry.CanArrange(g));
+        g.LockAll = false;
+        Assert.True(WidgetGeometry.CanArrange(g));
+        Assert.False(WidgetGeometry.CanArrange(Settings.FromJson(JsonNode.Parse("{}")!).General)); // fresh profile
+    }
+
+    [Fact]
+    public void Legacy_per_widget_lock_is_read_ignored_and_not_written()
+    {
+        // An upgraded profile: some widgets were locked one by one, no lockAll yet.
+        var old = Settings.FromJson(JsonNode.Parse("""{ "widgets": { "a": { "locked": true, "x": 5 }, "b": { "locked": false } } }""")!);
+        Assert.True(old.General.LockAll);
+        Assert.False(old.Widgets["a"].Locked);
+        Assert.Equal(5, old.Widgets["a"].X);
+        var json = old.ToJson();
+        Assert.Null(json["widgets"]!["a"]!["locked"]);
+        Assert.Null(json["widgets"]!["b"]!["locked"]);
+        Assert.True(json["general"]!["lockAll"]!.GetValue<bool>());
+        Assert.False(Settings.FromJson(JsonNode.Parse("""{ "general": { "lockAll": false } }""")!).General.LockAll);
+    }
 
     [Theory]
     [InlineData(100, 1, false, 0, 101)]

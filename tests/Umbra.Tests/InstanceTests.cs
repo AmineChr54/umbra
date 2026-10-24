@@ -194,7 +194,7 @@ public class InstanceCommandTests
         Assert.Equal(("add-instance", "sp500"), (cmd, args["id"]!.GetValue<string>()));
         (cmd, args) = await CommandLine.TranslateAsync(new[] { "remove-instance", "sp500#2" }, Send);
         Assert.Equal(("remove-instance", "sp500#2"), (cmd, args["id"]!.GetValue<string>()));
-        (cmd, args) = await CommandLine.TranslateAsync(new[] { "lock", "sp500#2" }, Send);
+        (cmd, args) = await CommandLine.TranslateAsync(new[] { "disable", "sp500#2" }, Send);
         Assert.Equal(("configure", "sp500#2"), (cmd, args["id"]!.GetValue<string>()));
     }
 

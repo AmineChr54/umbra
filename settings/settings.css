@@ -259,7 +259,18 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 [data-motion="off"] .optsection summary .ico { transition: none; }
 .optsection-body { padding: 6px 0 2px; }
 
-.edit-group { margin-bottom: 14px; }
+/* My widgets header: the one global lock, "Arrange widgets" (#234) */
+.page-head.with-action { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.arrange {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 14px; border-radius: var(--radius-l);
+  background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+.arrange .arrange-ico { width: 20px; height: 20px; color: var(--text-2); }
+.arrange .row-sub { white-space: nowrap; }
+.arrange.on { box-shadow: inset 0 0 0 1px var(--accent); background: rgba(139, 147, 255, 0.1); }
+[data-motion="off"] .arrange { transition: none; }
+.arrange.on .arrange-ico { color: var(--accent); }
 
 /* size (scale) slider: the filled part of the track follows --p */
 .size { display: inline-flex; align-items: center; gap: 10px; margin-left: 14px; color: var(--text-2); font-size: 12.5px; }

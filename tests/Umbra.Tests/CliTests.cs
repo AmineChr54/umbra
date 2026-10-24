@@ -102,6 +102,8 @@ public class McpServerTests
         var configure = tools.Single(t => t!["name"]!.GetValue<string>() == "configure_widget")!;
         Assert.Equal("number", configure["inputSchema"]!["properties"]!["scale"]!["type"]!.GetValue<string>());
         Assert.Contains(tools, t => t!["name"]!.GetValue<string>() == "edit_mode");
+        Assert.Contains(tools, t => t!["name"]!.GetValue<string>() == "lock_all");
+        Assert.Contains(tools, t => t!["name"]!.GetValue<string>() == "unlock_all");
 
         await Server().HandleAsync(Call("tools/call", new JsonObject { ["name"] = "configure_widget", ["arguments"] = new JsonObject { ["id"] = "sp500", ["scale"] = 1.5 } }));
         await Server().HandleAsync(Call("tools/call", new JsonObject { ["name"] = "edit_mode", ["arguments"] = new JsonObject { ["on"] = true } }));
@@ -331,8 +333,8 @@ public class CommandLineTests
 
     [Fact]
     public async Task Configure_takes_several_flags() =>
-        Assert.Equal(("configure", """{"id":"sp500","scale":2,"enabled":true,"locked":false,"x":-100,"y":40}"""),
-            await T("configure", "sp500", "--scale", "2", "--enabled", "on", "--locked", "off", "--x", "-100", "--y", "40"));
+        Assert.Equal(("configure", """{"id":"sp500","scale":2,"enabled":true,"x":-100,"y":40}"""),
+            await T("configure", "sp500", "--scale", "2", "--enabled", "on", "--x", "-100", "--y", "40"));
 
     [Fact]
     public async Task Install_accepts_new_permissions_only_with_the_flag()
@@ -369,7 +371,8 @@ public class CommandLineTests
     [Fact]
     public async Task Existing_shortcuts_still_map_to_configure()
     {
-        Assert.Equal(("configure", """{"id":"sp500","locked":true}"""), await T("lock", "sp500"));
+        Assert.Equal(("lock-all", "{}"), await T("lock-all"));
+        Assert.Equal(("unlock-all", "{}"), await T("unlock-all"));
         Assert.Equal(("configure", """{"id":"sp500","x":10,"y":20}"""), await T("move", "sp500", "10", "20"));
         Assert.Equal(("configure", """{"id":"clock","options":{"seconds":true}}"""), await T("set", "clock", "seconds", "on"));
         Assert.Equal(("configure", """{"id":"clock","options":{"size":2.5}}"""), await T("set", "clock", "size", "2.5"));

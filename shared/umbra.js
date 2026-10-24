@@ -287,7 +287,7 @@
   });
   window.addEventListener("pointerup", () => (down = null), true);
 
-  // Right-click opens the host's widget menu (Refresh, Options, Lock...). A page that calls preventDefault() on
+  // Right-click opens the host's widget menu (Refresh, Options, Arrange widgets...). A page that calls preventDefault() on
   // "contextmenu" keeps its own menu; Shift+right-click always reaches the host, so the page never sees that event.
   window.addEventListener("contextmenu", (e) => { if (e.shiftKey) e.stopImmediatePropagation(); }, true);
 

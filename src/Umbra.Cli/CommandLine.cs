@@ -14,12 +14,10 @@ static class CommandLine
 
         switch (a[0])
         {
-            case "status" or "list" or "reload" or "catalog" or "themes" or "quit":
+            case "status" or "list" or "reload" or "catalog" or "themes" or "quit" or "lock-all" or "unlock-all":
                 return (a[0], new JsonObject());
             case "enable" or "disable":
                 return ("configure", O(("id", Arg(a, 1, "widget id")), ("enabled", a[0] == "enable")));
-            case "lock" or "unlock":
-                return ("configure", O(("id", Arg(a, 1, "widget id")), ("locked", a[0] == "lock")));
             case "move":
                 return ("configure", O(("id", Arg(a, 1, "widget id")), ("x", int.Parse(Arg(a, 2, "x"))), ("y", int.Parse(Arg(a, 3, "y")))));
             case "configure":
@@ -27,7 +25,6 @@ static class CommandLine
                 var o = O(("id", Arg(a, 1, "widget id")));
                 if (Flag(a, "--scale") is string sc) o["scale"] = Scale(sc);
                 if (Flag(a, "--enabled") is string en) o["enabled"] = OnOff(en);
-                if (Flag(a, "--locked") is string lk) o["locked"] = OnOff(lk);
                 if (Flag(a, "--refresh") is string wr) o["refreshSeconds"] = wr == "default" ? null : int.Parse(wr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--opacity") is string op) o["opacity"] = op == "opaque" ? null : double.Parse(op, CultureInfo.InvariantCulture);
                 if (Flag(a, "--start-hidden") is string sh) o["startHidden"] = OnOff(sh);

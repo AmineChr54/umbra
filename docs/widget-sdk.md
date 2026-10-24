@@ -101,7 +101,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 |---|---|
 | `umbra.ready` | Promise, resolves when the host has sent this widget's settings |
 | `umbra.options` | This widget's option values, e.g. `{ city: "Berlin", units: "c" }` |
-| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, locale, hour12, editMode, paused, energySaver, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets. `paused` is true while the PC is locked or the display is off; `energySaver` is true while Windows Energy Saver is on and the user allows slowing down, in which case `refreshSeconds` is already 4x longer. Both arrive through `umbra.onSettings` |
+| `umbra.settings` | `{ refreshSeconds, animations, locked, scale, locale, hour12, editMode, paused, energySaver, options }`. `scale` is the user's size (0.5-3), `editMode` is true while the user arranges widgets, and `locked` is its opposite (one global lock: widgets are locked unless the user turns on Arrange widgets). `paused` is true while the PC is locked or the display is off; `energySaver` is true while Windows Energy Saver is on and the user allows slowing down, in which case `refreshSeconds` is already 4x longer. Both arrive through `umbra.onSettings` |
 | `umbra.widget` | `{ id, instance, name }`. `id` is the widget (the folder); `instance` identifies this copy: the same as `id` for the first copy, `"<id>#2"`, `"<id>#3"`... for copies the user added |
 | `umbra.every(fn)` | Calls `fn` once ready, then every `refreshSeconds`. Rescheduled when the user changes the interval, also run on "Refresh all", after the PC resumes from sleep, when the network comes back and after a long lock (at most once per 10 s). Errors are caught and logged. Does not run while `umbra.settings.paused` and runs once when the PC is unlocked or the display is back on |
 | `umbra.onSettings(fn)` | Called with the new settings whenever the user changes anything |
@@ -164,8 +164,8 @@ await umbra.store.set("tasks", tasks);
 umbra.store.onChange(async () => render(await umbra.store.get("tasks", [])));
 ```
 
-**Dragging** is built in: holding the mouse button and moving more than 4 px moves the window (unless the
-user locked it). Put `data-no-drag` on buttons or links that need normal clicks; inputs, textareas, selects and
+**Dragging** is built in: holding the mouse button and moving more than 4 px moves the window while the
+user arranges widgets (edit mode); otherwise widgets are locked. Put `data-no-drag` on buttons or links that need normal clicks; inputs, textareas, selects and
 `contenteditable` elements never start a drag.
 
 **Zoom, free resize and edit mode.** Users can resize any widget freely (right edge, bottom edge or corner in edit mode),
@@ -178,7 +178,7 @@ default size the page lays out at exactly the manifest size and renders sharply.
   use container queries) instead of hard-coding it. Fixed-size pages just show empty space.
 - `devicePixelRatio` includes the zoom. Canvas code that sizes its backing store by `devicePixelRatio` stays crisp;
   redraw on `umbra.onSettings` when `umbra.settings.scale` changes.
-- In **edit mode** (`umbra.settings.editMode`, switched from the tray or Settings), an unlocked widget is covered by
+- In **edit mode** (`umbra.settings.editMode`, switched from the tray, a hotkey or Settings > My widgets > Arrange widgets), every widget is covered by
   Umbra's overlay with an outline and a corner handle: presses move the widget, the handle resizes it and Ctrl+wheel
   zooms it. The last widget pressed is selected (stronger outline) and takes the keyboard; its arrow keys nudge it
   (1 px, Shift: 10 px or one grid step), only while the host sees the key physically down. Mouse presses on your page are taken by the overlay then, so don't rely on interaction (capture-phase listeners and keyboard events can still reach it). Locked widgets are left alone. A page can't
@@ -332,7 +332,7 @@ Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; 
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
-- No navigation away, no new windows, no browser context menu or devtools. Right-click opens the host's own menu (Refresh, Options, Lock, Edit mode, Hide, Add another copy); a widget that calls `preventDefault()` on `contextmenu` keeps its own menu, and Shift+right-click always opens the host menu. Browser zoom keys are off; only the host sets
+- No navigation away, no new windows, no browser context menu or devtools. Right-click opens the host's own menu (Refresh, Options, Arrange widgets, Hide, Add another copy); a widget that calls `preventDefault()` on `contextmenu` keeps its own menu, and Shift+right-click always opens the host menu. Browser zoom keys are off; only the host sets
   the zoom (the user's size setting).
 - No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.

@@ -119,25 +119,26 @@
 
         <div class="hint">
           <span class="ico" data-icon="mouse"></span>
-          Drag a widget to move it (unless it's locked). To resize it, turn on Edit mode in My widgets or the tray menu. Some widgets open their source on double-click. Umbra lives in the tray.
+          Widgets are locked. To move or resize them, turn on Arrange widgets in My widgets or the tray menu. Some widgets open their source on double-click. Umbra lives in the tray.
         </div>
       </section>
 
       <!-- My widgets -->
       <section class="page" data-page="widgets">
-        <header class="page-head">
-          <h1>My widgets</h1>
-          <p>Turn widgets on or off and change their settings. Changes apply instantly.</p>
-        </header>
-        <div class="group edit-group">
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Edit mode</div>
-              <div class="row-sub">Arrange widgets on the desktop: drag to move, drag the corner handle or Ctrl+scroll to resize. Locked widgets stay as they are. Edit mode turns off when Umbra restarts.</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="editMode"><span></span></label>
+        <header class="page-head with-action">
+          <div>
+            <h1>My widgets</h1>
+            <p>Turn widgets on or off and change their settings. Changes apply instantly.</p>
           </div>
-        </div>
+          <div class="arrange" id="arrangeBox" title="Widgets are locked unless you arrange them. Also in the tray menu and on a hotkey.">
+            <span class="ico arrange-ico" data-icon="lock"></span>
+            <div class="arrange-text">
+              <div class="row-title">Arrange widgets</div>
+              <div class="row-sub" id="arrangeState">Locked</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="editMode" aria-label="Arrange widgets: unlock to move and resize"><span></span></label>
+          </div>
+        </header>
         <div class="group" id="groupBox" hidden>
           <div class="row">
             <div class="row-text">
@@ -308,7 +309,6 @@
         <div class="cmds"></div>
         <div class="fields"></div>
         <div class="wcard-actions">
-          <label class="check"><input type="checkbox" class="locked"><span></span>Lock position and size</label>
           <label class="check" hidden><input type="checkbox" class="notif"><span></span>Allow notifications</label>
           <div class="size">
             <span class="size-label">Size</span>
