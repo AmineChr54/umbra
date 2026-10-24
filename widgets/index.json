@@ -290,15 +290,16 @@
     {
       "id": "pomodoro",
       "name": "Pomodoro",
-      "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Survives restarts.",
+      "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Optional webcam timelapse of the whole session (replaces Study Time-Lapse). Survives restarts.",
       "author": "AmineChr54",
-      "version": "2.0.1",
+      "version": "2.1.0",
       "manifestVersion": 1,
-      "changelog": "Focus sessions: set the total minutes, breaks off by default or 22-33 min blocks with 5 min breaks, ring with ticks, pause and a ... menu (skip, +5 min, end), toasts at phase changes. The focus/break minute options are gone; the daily log is kept.",
+      "changelog": "Timelapse: an optional collapsible setup section records a webcam timelapse for the session and renders the video when it ends. Replaces the Study Time-Lapse widget (set its interval, video length and fps here). Needs camera approval on first use.",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [],
       "notifications": true,
+      "camera": true,
       "files": [
         "icon.png",
         "index.html",
@@ -306,6 +307,8 @@
         "pomodoro.js",
         "preview.png",
         "session.js",
+        "timelapse.css",
+        "timelapse.js",
         "widget.json"
       ]
     },
@@ -443,45 +446,6 @@
         "spider-rules.js",
         "spider.css",
         "spider.js",
-        "widget.json"
-      ]
-    },
-    {
-      "id": "study-timelapse",
-      "name": "Study Time-Lapse",
-      "description": "Start and stop a Study Time-Lapse capture session and open the renderer from your desktop, with a live estimate of photos, time studied and finish time. Needs a one-time setup (see the widget).",
-      "author": "AmineChr54",
-      "version": "1.0.1",
-      "manifestVersion": 1,
-      "preview": "preview.png",
-      "hosts": [],
-      "commands": [
-        {
-          "id": "status",
-          "run": "tasklist /FI \"IMAGENAME eq Capture.exe\" /NH /FO CSV",
-          "description": "Checks whether Study Time-Lapse Capture.exe is running"
-        },
-        {
-          "id": "start",
-          "run": "schtasks /Run /TN \"StudyTimeLapse Capture\"",
-          "description": "Starts the 'StudyTimeLapse Capture' scheduled task (which runs Capture.exe)"
-        },
-        {
-          "id": "stop",
-          "run": "taskkill /IM Capture.exe",
-          "description": "Asks Capture.exe to close (no force)"
-        },
-        {
-          "id": "render",
-          "run": "schtasks /Run /TN \"StudyTimeLapse Render\"",
-          "description": "Starts the 'StudyTimeLapse Render' scheduled task (which runs Render.exe)"
-        }
-      ],
-      "files": [
-        "index.html",
-        "preview.png",
-        "study.css",
-        "study.js",
         "widget.json"
       ]
     },

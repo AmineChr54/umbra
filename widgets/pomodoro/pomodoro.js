@@ -8,7 +8,12 @@ const app = q("app"), arc = q("arc");
 const R = 54, CIRC = 2 * Math.PI * R, MIN = 60000;
 const LIVE_MS = 60000; // a phase change older than this (caught up after a restart) gets no toast
 
+const T = window.PomodoroTimelapse;
 let session = null, setup = { minutes: 60, breaks: false }, log = {}, timer = null, menuOpen = false;
+// Timelapse: settings in store key "timelapse"; tlState is the host's latest state, tlError a plain-words failure.
+// The camera only starts from a click (Start, or "Start timelapse" in the run view), never automatically. The host has no
+// pause, so capture runs through pauses and breaks and stops when the session ends; it also pauses while the widget is hidden.
+let tl = T.clean(null), tlState = null, tlError = "", folderLabel = "Videos", tlBusy = false;
 
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`);
@@ -27,6 +32,7 @@ window.Pomodoro = { on: (fn) => listeners.push(fn), get session() { return sessi
 function emit(events) {
   for (const e of events) {
     if (e.type === "phaseEnd" && e.focusMs > 0) credit(e.focusMs, e.at);
+    if (e.type === "done" || e.type === "end") stopTl();
     for (const fn of listeners) { try { fn(e, session); } catch (err) { console.error(err); } }
   }
   const last = events.filter((e) => e.type === "phaseStart" || e.type === "done").at(-1);
@@ -75,7 +81,63 @@ function startSession() {
   setup.minutes = S.clampTotal(setup.minutes);
   store("setup", setup);
   apply(S.start(S.create(setup.minutes, setup.breaks), now()));
+  tlError = ""; if (!tlActive()) tlState = null;
+  if (tl.on) startTl(); // inside the Start click, which the host requires
 }
+
+// ---- timelapse ----
+const tlActive = () => !!tlState && (tlState.state === "recording" || tlState.state === "paused");
+async function startTl() {
+  if (tlBusy || tlActive() || !session || session.done) return;
+  tlBusy = true; tlError = ""; tlState = null; render();
+  try {
+    // The video holds one frame per photo: aim for the session's own photo count, never above the chosen length.
+    const e = T.estimate(tl, session.total);
+    tlState = await umbra.timelapse.start({ interval: tl.interval, length: Math.max(1, Math.ceil(e.seconds)), fps: tl.fps });
+    if (tlState && tlState.error) tlError = T.friendly(tlState.error);
+  } catch (err) { tlError = T.friendly(err && err.message); }
+  tlBusy = false; render();
+}
+function stopTl() {
+  if (!tlActive()) return;
+  umbra.timelapse.stop().then((s) => { tlState = s; render(); }).catch(() => {});
+}
+function onTlState(s) {
+  tlState = s;
+  if (s && s.state === "idle" && s.error) tlError = T.friendly(s.error);
+  render();
+}
+function renderTl() {
+  const box = q("tl-run"), stat = q("tl-stat"), act = q("tl-act"), st = tlState && tlState.state;
+  const show = tl.on || tlActive() || st === "rendering" || (tlState && tlState.file);
+  box.hidden = !show;
+  if (!show) return;
+  stat.className = "tl-stat num";
+  act.hidden = true;
+  if (tlError) { stat.textContent = tlError; stat.classList.add("err"); }
+  else if (st === "recording" || st === "paused") {
+    stat.classList.add("rec");
+    const n = tlState.framesCaptured || 0;
+    stat.textContent = `${st === "paused" ? "Timelapse paused" : "Timelapse"}: ${plural(n, "photo")}`;
+  } else if (st === "rendering") stat.textContent = "Making the video...";
+  else if (tlState && tlState.file) stat.textContent = `Saved ${tlState.file} in ${tlState.folder || folderLabel}`;
+  else if (!session.done) { stat.textContent = tlBusy ? "Starting the camera..." : "Timelapse is not running"; act.hidden = tlBusy; act.textContent = "Start timelapse"; }
+  else stat.textContent = "";
+  if (tlError && !session.done && !tlActive()) { act.hidden = false; act.textContent = "Try again"; }
+}
+function renderTlSetup() {
+  const sum = q("tl-sum");
+  if (document.activeElement.id !== "tl-interval") q("tl-interval").value = tl.interval;
+  if (document.activeElement.id !== "tl-length") q("tl-length").value = tl.length;
+  if (document.activeElement.id !== "tl-fps") q("tl-fps").value = tl.fps;
+  q("tl-on").checked = tl.on;
+  q("tl-fields").hidden = !tl.on;
+  q("tl-folder").textContent = folderLabel;
+  const e = T.estimate(tl, setup.minutes);
+  q("tl-est").textContent = tl.on ? `About ${plural(e.frames, "photo")}, a ${Math.round(e.seconds * 10) / 10} s video${e.capped ? " (shortened by the length limit)" : ""}` : "";
+  sum.textContent = tl.on ? `On, ${Math.round(e.seconds * 10) / 10} s video` : "Off";
+}
+const setTl = (patch) => { tl = T.clean({ ...tl, ...patch }); store("timelapse", tl); render(); };
 function toggle() {
   if (!session) return;
   if (session.done) { session = null; umbra.store.remove("session").catch(() => {}); render(); return; }
@@ -130,6 +192,7 @@ function renderRun() {
     ? (nxt.kind === "break" ? `Up next: ${nxt.min} min break` : `Up next: ${phaseTitle(s, s.idx + 1).toLowerCase()}`)
     : "Last focus period";
   q("toggle").textContent = s.done ? "New session" : s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start";
+  renderTl();
   q("more").hidden = s.done;
   q("m-skip").textContent = p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now";
   q("menu").hidden = !menuOpen || s.done;
@@ -140,7 +203,7 @@ function render() {
   q("today").textContent = fmtMin(log[dayKey()] || 0);
   q("setup").hidden = !!session;
   q("run").hidden = !session;
-  if (session) renderRun(); else { app.classList.remove("brk", "paused", "done"); renderSetup(); }
+  if (session) renderRun(); else { app.classList.remove("brk", "paused", "done"); renderSetup(); renderTlSetup(); }
   schedule();
 }
 
@@ -159,6 +222,16 @@ q("minutes").onfocus = () => umbra.requestFocus?.();
 q("minutes").onchange = () => setMinutes(q("minutes").value);
 q("minutes").onkeydown = (e) => { if (e.key === "Enter") q("minutes").blur(); };
 q("skip-breaks").onchange = () => { setup.breaks = !q("skip-breaks").checked; store("setup", setup); render(); };
+q("tl-on").onchange = () => setTl({ on: q("tl-on").checked });
+for (const [id, key] of [["tl-interval", "interval"], ["tl-length", "length"], ["tl-fps", "fps"]]) {
+  q(id).onfocus = () => umbra.requestFocus?.();
+  q(id).onchange = () => setTl({ [key]: q(id).value });
+  q(id).onkeydown = (e) => { if (e.key === "Enter") q(id).blur(); };
+}
+q("tl-folder").onclick = () => umbra.timelapse.chooseFolder()
+  .then((r) => { if (r && r.folder) { folderLabel = r.folder; render(); } })
+  .catch((err) => { const m = q("setup-msg"); m.textContent = T.friendly(err && err.message); m.hidden = false; });
+q("tl-act").onclick = startTl;
 q("start").onclick = startSession;
 q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
@@ -185,6 +258,15 @@ umbra.store.onChange?.(async (k) => {
   setup = { ...setup, ...(await umbra.store.get("setup", {})) };
   const s = await umbra.store.get("session", null);
   session = S.valid(s) ? s : null;
+  tl = T.clean(await umbra.store.get("timelapse", null));
+  q("tl-box").open = tl.on; // show the options when the timelapse is on, collapsed otherwise
+  try {
+    umbra.timelapse.onChange(onTlState);
+    const st = await umbra.timelapse.status();
+    folderLabel = st.folder || folderLabel;
+    // A recording from before a reload is not ours to resume without a click; only show a live one.
+    if (st.state !== "idle") tlState = st;
+  } catch { /* no camera permission or an older host: the section still saves settings */ }
   tick(); // catches up on phases that ended while Umbra was closed
   umbra.rendered();
 })();

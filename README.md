@@ -66,8 +66,8 @@ The **Browse** page installs, updates and removes these in one click. You can al
 | | |
 |---|---|
 | **Markets** | S&P 500 (any Yahoo Finance symbol) · Crypto price · Exchange rates |
-| **Time and plans** | Clock · Pomodoro · Countdowns · Event Radar · Calendar glance (iCal) · Prayer Times |
-| **Get things done** | To Do · Habits · Quick Notes · Application Tracker · Internships · Study Time-Lapse |
+| **Time and plans** | Clock · Pomodoro (with optional webcam timelapse) · Countdowns · Event Radar · Calendar glance (iCal) · Prayer Times |
+| **Get things done** | To Do · Habits · Quick Notes · Application Tracker · Internships |
 | **Around you** | Weather · Transit departures (Berlin) · Now Playing · GitHub Activity · Quote or word of the day |
 | **Games** | Solitaire · Spider · FreeCell · Minesweeper |
 | **Power tools** | Script Runner (your own scripts, approved once) · Claude waker |
