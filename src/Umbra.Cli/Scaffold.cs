@@ -20,6 +20,7 @@ static partial class Scaffold
               "description": "Describe in one sentence why people want this widget.",
               "author": "your-github-name",
               "version": "0.1.0",
+              "manifestVersion": 1,
               "entry": "index.html",
               "width": 260,
               "height": 120,

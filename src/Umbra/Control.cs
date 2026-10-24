@@ -299,6 +299,7 @@ sealed class Control(App app)
                     copy["builtin"] = installed?.IsPermanent == true;
                     copy["installedVersion"] = installed?.Version;
                     copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+                    copy["incompatible"] = Community.CatalogIncompatibility(copy);
                     // Installed from a file with the same id: never updated from the catalog; "install" would replace it.
                     copy["local"] = installed is not null && Community.IsLocalInstall(installed.Id);
                     list.Add(copy);

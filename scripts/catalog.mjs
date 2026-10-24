@@ -21,7 +21,9 @@ const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png"
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_CHANGELOG = 500;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
-const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "icon", "width", "height", "themeable", "private", "defaultPosition", "permissions", "options"]);
+// Highest widget.json format the app understands (WidgetManifest.SupportedManifestVersion).
+const MANIFEST_VERSION = 1;
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "manifestVersion", "minUmbraVersion", "changelog", "entry", "preview", "icon", "width", "height", "themeable", "private", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -112,6 +114,10 @@ for (const id of readdirSync(widgetsDir).sort()) {
   for (const k of ["name", "description", "author", "version"])
     if (typeof m[k] !== "string" || !m[k].trim()) fail(id, `"${k}" is required`);
   if (m.version && !SEMVER.test(m.version)) fail(id, `"version" must look like 1.2.3`);
+  if (m.manifestVersion !== undefined && (!Number.isInteger(m.manifestVersion) || m.manifestVersion < 1 || m.manifestVersion > MANIFEST_VERSION))
+    fail(id, `"manifestVersion" must be an integer from 1 to ${MANIFEST_VERSION}`);
+  if (m.minUmbraVersion !== undefined && (typeof m.minUmbraVersion !== "string" || !SEMVER.test(m.minUmbraVersion)))
+    fail(id, `"minUmbraVersion" must look like 1.9.0`);
   if (m.changelog !== undefined && (typeof m.changelog !== "string" || !m.changelog.trim() || m.changelog.length > MAX_CHANGELOG))
     fail(id, `"changelog" must be a non-empty string of at most ${MAX_CHANGELOG} characters (what changed in this version)`);
   if (m.private !== undefined && typeof m.private !== "boolean") fail(id, `"private" must be true or false`);
@@ -161,6 +167,9 @@ for (const id of readdirSync(widgetsDir).sort()) {
     description: m.description,
     author: m.author,
     version: m.version,
+    // Browse greys out an entry made for a newer Umbra (WidgetManifest.Incompatibility).
+    manifestVersion: m.manifestVersion ?? 1,
+    ...(m.minUmbraVersion ? { minUmbraVersion: m.minUmbraVersion } : {}),
     ...(typeof m.changelog === "string" && m.changelog.trim() ? { changelog: m.changelog.trim() } : {}),
     preview: m.preview ?? null,
     ...(m.icon ? { icon: m.icon } : {}),

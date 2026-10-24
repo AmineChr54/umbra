@@ -944,6 +944,11 @@ function renderCatalog() {
       btn.classList.add("danger");
       btn.innerHTML = '<span class="ico" data-icon="trash"></span>Remove';
       btn.addEventListener("click", () => job(w.id, "remove", btn));
+    } else if (w.incompatible) {
+      // Made for a newer Umbra (manifestVersion / minUmbraVersion): greyed out with the reason.
+      btn.disabled = true;
+      btn.textContent = "Needs a newer Umbra";
+      btn.title = w.incompatible;
     } else {
       btn.classList.add("primary");
       btn.innerHTML = '<span class="ico" data-icon="download"></span>Install';
