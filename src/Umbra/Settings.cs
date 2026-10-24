@@ -34,7 +34,9 @@ public sealed class GeneralSettings
     /// <summary>Window opacity 0.2-1 of widgets without their own (<see cref="WidgetSettings.Opacity"/> null); 1 keeps true black and ClearType.</summary>
     public double DefaultOpacity { get; set; } = 1.0;
     /// <summary>Scale of widgets that follow the default (<see cref="WidgetSettings.UseDefaultScale"/>), 50-300 %; new widgets follow it.</summary>
-    public double DefaultScale { get; set; } = 1.0;
+    public double DefaultScale { get; set; } = 0.85;
+    /// <summary>Global Size (#233): multiplies every widget's own size, 0.5-1.5; clamped per window to 50-300 % of the manifest size.</summary>
+    public double Size { get; set; } = 1.0;
 
     /// <summary>Draw the hairline border around widget windows (#61).</summary>
     public bool BorderEnabled { get; set; } = true;

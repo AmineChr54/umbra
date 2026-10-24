@@ -106,6 +106,21 @@ public class PrefsTests
     }
 
     [Fact]
+    public void Size_is_validated_and_new_installs_start_at_085()
+    {
+        var g = new GeneralSettings();
+        Assert.Equal(0.85, g.DefaultScale);
+        Assert.Equal(1.0, g.Size);
+        Prefs.ApplyGeneral(JsonNode.Parse("""{"size":1.25}""")!.AsObject(), g);
+        Assert.Equal(1.25, g.Size);
+        Assert.Throws<Control.CommandException>(() => Prefs.ApplyGeneral(JsonNode.Parse("""{"size":2}""")!.AsObject(), g));
+        Assert.Equal(0.5, Prefs.ClampSize(0));
+        Assert.Equal(1.0, Prefs.ClampSize(double.NaN));
+        var old = Settings.FromJson(JsonNode.Parse("""{"general":{"defaultScale":1}}""")!);
+        Assert.Equal(1.0, old.General.DefaultScale); // an upgraded profile keeps what it had
+    }
+
+    [Fact]
     public void Old_settings_keep_their_values_as_overrides()
     {
         var old = Settings.FromJson(JsonNode.Parse("""{"widgets":{"a":{"scale":1.4,"opacity":0.9,"notifications":true}}}""")!);

@@ -57,6 +57,7 @@ static class Backup
             s.General.PeekSeconds = Math.Clamp(s.General.PeekSeconds, 1, 60);
             s.General.DefaultOpacity = Prefs.ClampOpacity(s.General.DefaultOpacity);
             s.General.DefaultScale = WidgetSettings.ClampScale(s.General.DefaultScale);
+            s.General.Size = Prefs.ClampSize(s.General.Size);
             if (!Regex.IsMatch(s.General.Theme ?? "", @"^[a-z0-9][a-z0-9-]{0,39}$")) s.General.Theme = Theme.DefaultId;
             foreach (var id in s.Widgets.Keys)
                 if (!InstanceId.IsValid(id)) throw new InvalidDataException($"Invalid widget id '{id}'");

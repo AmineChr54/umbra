@@ -86,7 +86,7 @@ static void PrintHelp()
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
           general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]
-                  [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--default-scale 0.5-3] [--default-opacity 0.2-1] [--default-notifications on|off]
+                  [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--size 0.5-1.5|150%] [--default-scale 0.5-3] [--default-opacity 0.2-1] [--default-notifications on|off]
                   [--log-level errors|normal|verbose] [--developer-mode on|off] [--hardware-acceleration on|off]
                   [--startup-delay 0-300] [--proxy system|none|https://host:port]
                   [--snap on|off] [--snap-grid 0-200] [--snap-edges on|off] [--snap-gap 0-100]
