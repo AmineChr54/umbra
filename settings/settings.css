@@ -598,3 +598,14 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .gmenu button:hover, .gmenu button:focus-visible { background: rgba(255, 255, 255, 0.08); }
 .gmenu button.on { color: var(--accent-strong); }
 [data-motion="off"] .ghead .fold .ico { transition: none; }
+
+/* ---------- My widgets: sections, filter, disabled one-liners, install more (#236) ---------- */
+.sechead { display: flex; align-items: baseline; gap: 8px; margin: 14px 2px 2px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.sechead:first-child { margin-top: 0; }
+#mySearchBox[hidden], #installMore[hidden] { display: none; }
+.install-more { margin-top: 16px; display: flex; justify-content: center; }
+.wcard.off .wdesc, .wcard.off .wmeta, .wcard.off .fold, .wcard.off .gbadge { display: none; }
+.wcard.off .wcard-main { align-items: center; }
+.wcard.off .thumb { width: 44px; height: 30px; }
+.wcard.off .btn.small { height: 28px; }
