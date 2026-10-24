@@ -441,6 +441,7 @@ sealed class WidgetWindow : Form
     void FinishHandResize()
     {
         _app.NoteHandScale(Instance);
+        Ws.UseDefaultScale = false; // a size picked by hand is the widget's own
         RememberPosition();
         PushSettings();
         SaveSoon();
@@ -873,7 +874,7 @@ sealed class WidgetWindow : Form
         var tag = msg["tag"] is JsonValue g && g.GetValueKind() == JsonValueKind.String ? Notifier.CleanTag(g.GetValue<string>()) : null;
         var actions = Notifier.ParseActions(msg["actions"], out var actionError);
         if (!Manifest.Permissions.Notifications) error = "This widget has no permissions.notifications";
-        else if (!(Alive && Ws.Enabled) || !Ws.Notifications) error = "Notifications are off for this widget (Settings)";
+        else if (!(Alive && Ws.Enabled) || !Prefs.EffectiveNotifications(Ws, _app.Settings.General)) error = "Notifications are off for this widget (Settings)";
         else if (title.Length == 0) error = "A title is required";
         else if (url is not null && !Manifest.AllowsUrl(url)) error = "url must be HTTPS on a host in permissions.hosts";
         else if (actions is null) error = actionError;
@@ -1018,7 +1019,7 @@ sealed class WidgetWindow : Form
     public void PushSettings()
     {
         ApplyBounds();
-        Opacity = Ws.Opacity is double o ? Prefs.ClampOpacity(o, _app.Settings.General.ReduceTransparency) : 1.0;
+        Opacity = Prefs.EffectiveOpacity(Ws, _app.Settings.General);
         if (_ready) Post(new JsonObject { ["type"] = "settings", ["settings"] = SettingsPayload() });
     }
 

@@ -83,7 +83,8 @@ sealed class Control(App app)
                 if (a["x"] is JsonNode x) ws.X = Int(x, "x");
                 if (a["y"] is JsonNode y) ws.Y = Int(y, "y");
                 if (a["x"] is not null || a["y"] is not null) { ws.Monitor = null; ws.RelX = ws.RelY = null; } // an absolute spot replaces the recorded monitor
-                if (a["scale"] is JsonNode sc) { ws.Scale = CheckScale(sc); ws.Width = ws.Height = null; } // a scale replaces a free size
+                if (a["scale"] is JsonNode sc) { ws.Scale = CheckScale(sc); ws.Width = ws.Height = null; ws.UseDefaultScale = false; } // a scale replaces a free size
+                else if (a.ContainsKey("scale")) { ws.UseDefaultScale = true; Prefs.FollowDefaultScale(app.Settings); } // null = follow the default
                 Prefs.ApplyWidget(a, ws);
                 if (a["options"] is JsonObject opts)
                     foreach (var (key, value) in opts) ws.Options[key] = CheckOption(m, key, value);
@@ -116,6 +117,7 @@ sealed class Control(App app)
                     g.PeekSeconds = secs;
                 }
                 Prefs.ApplyGeneral(a, g);
+                Prefs.FollowDefaultScale(app.Settings);
                 if (a["snapEdges"] is JsonNode se) g.SnapEdges = Bool(se, "snapEdges");
                 if (a["snapGap"] is JsonNode sgp)
                 {
@@ -549,8 +551,10 @@ sealed class Control(App app)
             ["locked"] = !app.EditMode, // the global lock (#234)
             ["monitor"] = ws.Monitor,
             ["scale"] = ws.Scale,
+            ["useDefaultScale"] = ws.UseDefaultScale,
             ["refreshSeconds"] = ws.RefreshSeconds,
             ["opacity"] = ws.Opacity,
+            ["notifications"] = ws.Notifications,
             ["startHidden"] = ws.StartHidden,
             ["showWhen"] = ws.ShowWhen is { } sw ? new JsonObject { ["from"] = sw.From, ["to"] = sw.To, ["onAc"] = sw.OnAc, ["monitor"] = sw.Monitor } : null,
             ["open"] = win is not null,

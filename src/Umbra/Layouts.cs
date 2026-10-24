@@ -164,7 +164,7 @@ public sealed class Layouts
         foreach (var (id, e) in layout)
         {
             if (!settings.Widgets.TryGetValue(id, out var ws)) continue;
-            ws.Enabled = e.Enabled; ws.X = e.X; ws.Y = e.Y; ws.Monitor = e.Monitor; ws.RelX = e.RelX; ws.RelY = e.RelY; ws.Scale = e.Scale; ws.Width = e.Width; ws.Height = e.Height;
+            ws.Enabled = e.Enabled; ws.X = e.X; ws.Y = e.Y; ws.Monitor = e.Monitor; ws.RelX = e.RelX; ws.RelY = e.RelY; ws.UseDefaultScale &= ws.Scale == e.Scale; ws.Scale = e.Scale; ws.Width = e.Width; ws.Height = e.Height;
             n++;
         }
         return n;

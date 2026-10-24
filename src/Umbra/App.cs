@@ -932,6 +932,7 @@ sealed class App : ApplicationContext
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
         incoming.General.LockAll = Settings.General.LockAll; // owned by SetEditMode
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
+        Prefs.FollowDefaultScale(incoming);
         Settings = incoming;
         SaveSettings();
         SyncWindows();
