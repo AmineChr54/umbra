@@ -401,6 +401,48 @@ sealed class SettingsWindow : Form
                 });
                 break;
 
+            case "installLocal":
+            {
+                // The page only says "file" or "folder": the path comes from a host-drawn picker, never from the page.
+                string? path = null;
+                if (msg["kind"]?.GetValue<string>() == "folder")
+                {
+                    using var dlg = new FolderBrowserDialog { Description = "Pick the widget folder (the one with widget.json)", UseDescriptionForTitle = true };
+                    if (dlg.ShowDialog(this) == DialogResult.OK) path = dlg.SelectedPath;
+                }
+                else
+                {
+                    using var dlg = new OpenFileDialog { Filter = "Umbra widget (*.zip;*.umbrawidget)|*.zip;*.umbrawidget", Title = "Install a widget from file" };
+                    if (dlg.ShowDialog(this) == DialogResult.OK) path = dlg.FileName;
+                }
+                if (path is null) break;
+                try
+                {
+                    // Reading and checking the files runs off the UI thread; the await comes back here for the prompts and the commit.
+                    using var pending = await Task.Run(() => Community.PrepareLocal(path));
+                    var wid = pending.Manifest.Id;
+                    if (_app.Manifests.Any(m => m.Id == wid && m.Source == WidgetSource.BuiltIn))
+                        throw new InvalidOperationException($"'{wid}' is the id of a built-in widget");
+                    // Host-drawn, so the page can't accept access on the user's behalf. Cancel leaves nothing behind.
+                    if (pending.NeedsApproval && !ConfirmNewAccess(pending)) break;
+                    if (pending.IsUpdate && !pending.NeedsApproval && MessageBox.Show(this, $"Replace the installed {pending.Manifest.Name} with version {pending.Manifest.Version} from this file?", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) break;
+                    _app.CloseWidget(wid);
+                    pending.Commit();
+                    _app.ReloadWidgets();
+                    _app.SettingsChangedElsewhere();
+                    Post(new JsonObject { ["type"] = "notice", ["text"] = $"Installed {pending.Manifest.Name}" });
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    // Broad on purpose: this runs in an async void message handler, where an escaped exception would end Umbra.
+                    Log.Write($"Install from file failed: {ex.Message}");
+                    Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Not installed: {ex.Message}" });
+                }
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
+
             case "updateAll":
             {
                 UpdateAllResult? result = null;
@@ -456,10 +498,10 @@ sealed class SettingsWindow : Form
     /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
     bool ConfirmNewAccess(Community.PendingInstall p)
     {
-        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants new access:\n\n"
+        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants {(p.IsUpdate ? "new " : "")}access:\n\n"
             + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
             + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
-            + "\n\nUpdate and allow this?";
+            + (p.IsUpdate ? "\n\nUpdate and allow this?" : "\n\nInstall and allow this?");
         return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
     }
 
@@ -591,6 +633,7 @@ sealed class SettingsWindow : Form
             copy["builtin"] = installed?.IsPermanent == true;
             copy["installedVersion"] = installed?.Version;
             copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+            copy["local"] = installed is not null && Community.IsLocalInstall(wid); // installed from a file: no catalog updates
             copy["previewUrl"] = previews.FirstOrDefault(x => x.wid == wid).Item2;
             list.Add(copy);
         }

@@ -125,6 +125,7 @@ The installer puts `umbractl` on your PATH. Every command prints JSON and starts
 ```powershell
 umbractl list                          # widgets, their settings, option schema and window bounds
 umbractl install weather               # install from the community catalog
+umbractl install-local .\my-widget.zip # or a folder; one that declares hosts, system, media, notifications or commands needs --accept-permissions (no MCP tool)
 umbractl set sp500 symbol ^IXIC        # change an option; it applies instantly
 umbractl configure sp500 --scale 1.5   # 150 % size and zoom
 umbractl layouts save Work             # then: umbractl layouts apply Work

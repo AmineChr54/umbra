@@ -404,7 +404,26 @@ public class ScaffoldTests
     }
 
     // Commands reachable only through "umbractl send" or without an MCP tool, on purpose.
-    static readonly string[] NoMcpTool = { "quit" };
+    static readonly string[] NoMcpTool = { "quit", "install-local" };
+
+    [Fact]
+    public void Install_local_is_never_an_mcp_tool()
+    {
+        // An agent must not install a local widget (or accept its access); only the person at the keyboard does.
+        Assert.DoesNotContain("install-local", McpServer.ToolCommands);
+        Assert.DoesNotContain(McpServer.ToolNames, n => n.Contains("local", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Install_local_maps_to_a_full_path_and_the_accept_flag()
+    {
+        var (cmd, a) = await CommandLine.TranslateAsync(new[] { "install-local", "my-widget.zip", "--accept-permissions" }, (_, _) => Task.FromResult(new System.Text.Json.Nodes.JsonObject()));
+        Assert.Equal("install-local", cmd);
+        Assert.Equal(Path.GetFullPath("my-widget.zip"), a!["path"]!.GetValue<string>());
+        Assert.True(a["acceptPermissions"]!.GetValue<bool>());
+        var (_, b) = await CommandLine.TranslateAsync(new[] { "install-local", @"C:\w\clock" }, (_, _) => Task.FromResult(new System.Text.Json.Nodes.JsonObject()));
+        Assert.Null(b!["acceptPermissions"]);
+    }
     static readonly string[] NoVerb = { "set-general", "create-widget", "open-settings" };
 
     [Fact]

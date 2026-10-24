@@ -361,3 +361,17 @@ Through MCP (`claude mcp add umbra -- umbractl mcp`) an agent does the same with
 Open a pull request that adds only `widgets/<id>/` to https://github.com/AmineChr54/umbra. CI validates it
 (`node scripts/catalog.mjs --check`), so run `node scripts/catalog.mjs` and commit the regenerated `widgets/index.json` with your widget. Once merged it appears in everyone's Browse page.
 See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+### Share without the catalog (install from file)
+
+Zip the widget folder (or its contents; a `.umbrawidget` file is the same zip renamed) and send it. The recipient uses
+Settings > Browse > **Install from file...** (or **From folder...**), or `umbractl install-local <folder|zip>`. Umbra applies the
+catalog rules before writing anything: relative paths only (no `..`, absolute paths, drive letters or links), allowed file
+types, 5 MB, and the folder name (or the zip's single top folder) must equal the `id`; a zip with `widget.json` at its top
+has no folder name, so only the `id` pattern applies. A widget that declares hosts, system, media, notifications or commands
+is installed only after the user accepts that access (`--accept-permissions` on the CLI; there is no MCP tool for this).
+
+A file install replaces an installed widget with the same id (catalog or local) and inherits its command approvals, which
+are stored per widget id and command hash: an unchanged command stays approved, a changed one is asked again. A widget
+installed from a file is never offered a catalog update (`update --all` skips it); installing the catalog widget with the
+same id explicitly replaces it and switches it back to catalog updates. To update it, install the newer zip or folder again.

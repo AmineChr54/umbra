@@ -137,6 +137,14 @@ static class CommandLine
                 if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
                 return ("install", o);
             }
+            case "install-local":
+            {
+                // A folder or .zip on this PC; Umbra runs elsewhere, so the path is made absolute here.
+                var path = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing path to a widget folder or .zip. Run umbractl help.");
+                var o = O(("path", Path.GetFullPath(path)));
+                if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                return ("install-local", o);
+            }
             case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "hotkeys":

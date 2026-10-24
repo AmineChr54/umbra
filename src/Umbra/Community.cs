@@ -214,6 +214,188 @@ static class Community
         }
     }
 
+    /// <summary>File types "Install from file" accepts besides a folder (.umbrawidget is a renamed .zip).</summary>
+    public static readonly string[] PackageExtensions = { ".zip", ".umbrawidget" };
+
+    const int MaxWidgetFiles = 1000;
+
+    /// <summary>
+    /// Reads a widget folder or a .zip / .umbrawidget into a temp staging folder and validates it with the catalog rules
+    /// (safe relative paths, allowed types, 5 MB, widget.json id = folder, entry file present). Zip entries that would land
+    /// outside the widget (zip-slip: "..", absolute paths, drive letters, symlinks) are refused, and so are links in a folder.
+    /// Nothing is written to the widgets folder: call <see cref="PendingInstall.Require"/> then <see cref="PendingInstall.Commit"/>.
+    /// Any access the widget declares needs the user's accept, even on a fresh install.
+    /// </summary>
+    public static PendingInstall PrepareLocal(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) throw new InvalidOperationException("Pick a widget folder or a .zip file");
+        var staging = Path.Combine(Path.GetTempPath(), $"umbra-local-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(staging);
+        try
+        {
+            string? expectedId;
+            if (Directory.Exists(path)) expectedId = StageFolder(path, staging);
+            else if (File.Exists(path) && PackageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)) expectedId = StageZip(path, staging);
+            else throw new InvalidOperationException($"'{Path.GetFileName(path)}' is not a widget folder or a .zip / .umbrawidget file");
+
+            var manifestPath = Path.Combine(staging, "widget.json");
+            if (!File.Exists(manifestPath)) throw new InvalidOperationException("No widget.json found at the top of the widget");
+            WidgetManifest manifest;
+            try { manifest = WidgetManifest.Parse(File.ReadAllText(manifestPath)); }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException) { throw new InvalidOperationException($"widget.json is invalid: {ex.Message}"); }
+            if (!WidgetManifest.IdPattern().IsMatch(manifest.Id)) throw new InvalidOperationException($"Invalid widget id '{manifest.Id}': use 2-40 lowercase letters, digits and dashes");
+            if (expectedId is not null && manifest.Id != expectedId)
+                throw new InvalidOperationException($"widget.json id is '{manifest.Id}' but the folder is '{expectedId}'; they must match");
+            if (!File.Exists(Path.Combine(staging, manifest.Entry.Replace('/', Path.DirectorySeparatorChar))))
+                throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing");
+
+            var installed = InstalledManifest(manifest.Id);
+            return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null, local: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException or ArgumentException)
+        {
+            // A corrupt zip, a locked file or an odd path: one clear refusal type for the callers.
+            try { Directory.Delete(staging, recursive: true); } catch { }
+            throw new InvalidOperationException($"Could not read the widget: {ex.Message}", ex);
+        }
+        catch
+        {
+            try { Directory.Delete(staging, recursive: true); } catch { }
+            throw;
+        }
+    }
+
+    static readonly object LocalInstallsLock = new();
+    static string LocalInstallsFile => Path.Combine(AppPaths.DataDir, "local-installs.json");
+
+    /// <summary>
+    /// True when the installed copy came from a file or folder (Install from file, umbractl install-local, create-widget)
+    /// rather than the catalog. Such a copy is never offered a catalog update and update-all skips it.
+    /// </summary>
+    public static bool IsLocalInstall(string id) => LocalInstalls().Contains(id);
+
+    static HashSet<string> LocalInstalls()
+    {
+        lock (LocalInstallsLock)
+        {
+            try
+            {
+                return File.Exists(LocalInstallsFile)
+                    ? new HashSet<string>(JsonSerializer.Deserialize<string[]>(File.ReadAllText(LocalInstallsFile)) ?? Array.Empty<string>(), StringComparer.Ordinal)
+                    : new HashSet<string>(StringComparer.Ordinal);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return new HashSet<string>(StringComparer.Ordinal); }
+        }
+    }
+
+    /// <summary>Records where the installed copy of <paramref name="id"/> came from (false = catalog or removed).</summary>
+    internal static void MarkLocalInstall(string id, bool local)
+    {
+        lock (LocalInstallsLock)
+        {
+            var set = LocalInstalls();
+            if (!(local ? set.Add(id) : set.Remove(id))) return;
+            try
+            {
+                Directory.CreateDirectory(AppPaths.DataDir);
+                File.WriteAllText(LocalInstallsFile, JsonSerializer.Serialize(set.Order(StringComparer.Ordinal).ToArray()));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Write($"Could not save local-installs.json: {ex.Message}"); }
+        }
+    }
+
+    /// <summary>Copies a widget folder into staging; returns the folder name, which widget.json's id must equal. Links are refused.</summary>
+    static string StageFolder(string folder, string staging)
+    {
+        var root = Path.GetFullPath(folder).TrimEnd('\\', '/');
+        if (new DirectoryInfo(root).Attributes.HasFlag(FileAttributes.ReparsePoint)) throw new InvalidOperationException("The widget folder is a link; pick the real folder");
+        long total = 0;
+        var count = 0;
+        var dirs = new Stack<string>();
+        dirs.Push(root);
+        while (dirs.Count > 0)
+        {
+            var dir = dirs.Pop();
+            foreach (var sub in Directory.GetDirectories(dir))
+            {
+                if (new DirectoryInfo(sub).Attributes.HasFlag(FileAttributes.ReparsePoint)) throw new InvalidOperationException($"Links are not allowed: '{Path.GetRelativePath(root, sub)}'");
+                dirs.Push(sub);
+            }
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                var rel = Path.GetRelativePath(root, file).Replace('\\', '/');
+                if (new FileInfo(file).Attributes.HasFlag(FileAttributes.ReparsePoint)) throw new InvalidOperationException($"Links are not allowed: '{rel}'");
+                if (++count > MaxWidgetFiles) throw new InvalidOperationException($"Too many files (more than {MaxWidgetFiles})");
+                using var s = File.OpenRead(file);
+                StageFile(staging, rel, s, ref total);
+            }
+        }
+        return Path.GetFileName(root);
+    }
+
+    /// <summary>
+    /// Extracts a zip into staging, entry by entry, never trusting the entry names. A zip whose files all sit in one top folder
+    /// (what "Send to > Compressed folder" makes) has that folder stripped, and widget.json's id must equal it. Returns that
+    /// folder name, or null when widget.json is at the top of the zip.
+    /// </summary>
+    static string? StageZip(string zipPath, string staging)
+    {
+        using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
+        var entries = new List<(string Name, System.IO.Compression.ZipArchiveEntry Entry)>();
+        foreach (var e in zip.Entries)
+        {
+            // Some Windows tools write backslashes; normalize first, so "..\x" is caught by the same checks as "../x".
+            var name = e.FullName.Replace('\\', '/');
+            const int S_IFMT = 0xF000, S_IFLNK = 0xA000;
+            if (((e.ExternalAttributes >> 16) & S_IFMT) == S_IFLNK) throw new InvalidOperationException($"Links are not allowed in a widget zip: '{name}'");
+            if (name.EndsWith('/') && e.Length == 0) continue; // a folder entry
+            if (entries.Count >= MaxWidgetFiles) throw new InvalidOperationException($"Too many files (more than {MaxWidgetFiles})");
+            entries.Add((name, e));
+        }
+
+        string? prefix = null;
+        if (!entries.Any(x => x.Name == "widget.json"))
+        {
+            var top = entries.Select(x => x.Name.Split('/')[0]).Distinct(StringComparer.Ordinal).ToList();
+            if (top.Count == 1 && WidgetManifest.IdPattern().IsMatch(top[0]) && entries.Any(x => x.Name == top[0] + "/widget.json"))
+                prefix = top[0];
+        }
+
+        long total = 0;
+        foreach (var (name, e) in entries)
+        {
+            // A file named exactly like the top folder (or "folder/" with data) has no path inside the widget.
+            if (prefix is not null && (name.Length <= prefix.Length + 1 || !name.StartsWith(prefix + "/", StringComparison.Ordinal)))
+                throw new InvalidOperationException($"Unsafe or disallowed file '{name}' (relative paths and widget file types only)");
+            var rel = prefix is null ? name : name[(prefix.Length + 1)..];
+            using var s = e.Open();
+            StageFile(staging, rel, s, ref total);
+        }
+        return prefix;
+    }
+
+    /// <summary>Writes one file into staging after the path, type, duplicate and size checks. Reads at most what the 5 MB budget allows.</summary>
+    static void StageFile(string staging, string rel, Stream source, ref long total)
+    {
+        if (!IsSafeRelativePath(rel)) throw new InvalidOperationException($"Unsafe or disallowed file '{rel}' (relative paths and widget file types only)");
+        var root = Path.GetFullPath(staging).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var dest = Path.GetFullPath(Path.Combine(root, rel.Replace('/', Path.DirectorySeparatorChar)));
+        if (!dest.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException($"Unsafe file path '{rel}'");
+        if (File.Exists(dest)) throw new InvalidOperationException($"'{rel}' is in the widget twice");
+        Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+
+        // Counts real bytes (a zip's declared sizes can lie), and stops at the first chunk past the limit.
+        var buffer = new byte[81920];
+        using var output = new FileStream(dest, FileMode.CreateNew, FileAccess.Write);
+        int n;
+        while ((n = source.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            total += n;
+            if (total > MaxWidgetBytes) throw new InvalidOperationException("Widget is larger than 5 MB");
+            output.Write(buffer, 0, n);
+        }
+    }
+
     /// <summary>The community copy on disk, or null when the widget is not installed (or its widget.json does not load, so it holds no access).</summary>
     static WidgetManifest? InstalledManifest(string id)
     {
@@ -235,13 +417,19 @@ static class Community
 
         readonly bool _isUpdate;
 
-        internal PendingInstall(string staging, WidgetManifest manifest, PermissionDiff added, bool isUpdate)
+        /// <summary>From a file or folder the user picked (not the reviewed catalog): any declared access needs an accept.</summary>
+        public bool IsLocal { get; }
+
+        /// <summary>True when an installed copy already exists (the commit replaces it).</summary>
+        public bool IsUpdate => _isUpdate;
+
+        internal PendingInstall(string staging, WidgetManifest manifest, PermissionDiff added, bool isUpdate, bool local = false)
         {
-            _staging = staging; Manifest = manifest; Added = added; _isUpdate = isUpdate;
+            _staging = staging; Manifest = manifest; Added = added; _isUpdate = isUpdate; IsLocal = local;
         }
 
-        /// <summary>True when an installed copy would gain access: the user must accept it first.</summary>
-        public bool NeedsApproval => _isUpdate && !Added.IsEmpty;
+        /// <summary>True when the widget would gain access (an update, or any local install): the user must accept it first.</summary>
+        public bool NeedsApproval => (_isUpdate || IsLocal) && !Added.IsEmpty;
 
         /// <summary>Throws <see cref="PermissionsChangedException"/> when approval is needed and <paramref name="accepted"/> is false.</summary>
         public void Require(bool accepted)
@@ -253,7 +441,8 @@ static class Community
         public void Commit()
         {
             Community.Commit(_staging, Manifest.Id);
-            Log.Write($"Installed community widget {Manifest.Id} {Manifest.Version}");
+            MarkLocalInstall(Manifest.Id, IsLocal);
+            Log.Write($"Installed {(IsLocal ? "local" : "community")} widget {Manifest.Id} {Manifest.Version}");
         }
 
         public void Dispose()
@@ -301,6 +490,7 @@ static class Community
                 File.WriteAllBytes(dest, data);
             }
             Commit(staging, id);
+            MarkLocalInstall(id, true);
             Log.Write($"Wrote local widget {id} ({files.Count} files)");
             return target;
         }
@@ -356,6 +546,7 @@ static class Community
         }
         WidgetStore.DeleteAll(id);
         CommandApprovals.Shared.Revoke(id);
+        // The local-install mark stays, so Undo from the trash keeps it; every install path rewrites it anyway.
         // Working folders of every copy ("sp500" and "sp500__2", ...).
         var runRoot = Path.Combine(AppPaths.DataDir, "data", "run");
         if (Directory.Exists(runRoot))
@@ -383,9 +574,13 @@ static class Community
         }
     }
 
-    /// <summary>True when the catalog entry is newer than the installed community copy (built-in widgets never update from the catalog).</summary>
+    /// <summary>
+    /// True when the catalog entry is newer than the installed community copy. Built-in widgets and copies installed from a
+    /// file (<see cref="IsLocalInstall"/>) never update from the catalog, so update-all skips them too.
+    /// </summary>
     public static bool IsUpdate(JsonNode? entry, WidgetManifest? installed) =>
         installed is { Source: WidgetSource.Community }
+        && !IsLocalInstall(installed.Id)
         && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
 
     /// <summary>The catalog entries that would update an installed widget, in catalog order.</summary>
