@@ -94,7 +94,7 @@
     if (!fields) return;
     const cur = () => state.settings.widgets[w.id];
     const ws = cur();
-    const box = el(`<div class="prefs-widget" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;align-items:center">
+    const box = el(`<div class="prefs-widget" style="display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:6px;align-items:center">
       <label>Refresh (s) <input type="number" class="pw-refresh" min="30" max="600" step="10" style="width:72px" placeholder="global" aria-label="Own refresh interval seconds"></label>
       <label>Opacity (%) <input type="number" class="pw-opacity" min="20" max="100" step="5" style="width:72px" aria-label="Opacity percent"></label>
       <label><input type="checkbox" class="pw-hidden"> Start hidden</label>

@@ -119,6 +119,8 @@
         "type": { "enum": ["text", "number", "select", "toggle"] },
         "default": {},
         "hint": { "type": "string", "description": "Help text under the field." },
+        "group": { "type": "string", "minLength": 1, "maxLength": 40, "description": "Settings folds options with the same group into one collapsed section titled with it." },
+        "advanced": { "type": "boolean", "description": "true folds this option into a collapsed \"Advanced\" section (unless it has a group)." },
         "choices": {
           "type": "array",
           "items": {

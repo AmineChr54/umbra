@@ -61,7 +61,7 @@ Nothing ships inside the app; every widget, including S&P 500, is installed from
 | `permissions.system` | Optional: any of `"cpu"`, `"memory"`, `"network"`. Needed for `umbra.system()`; Browse shows them as "Reads cpu usage" etc. |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
 | `permissions.commands` | Local programs the widget may start with `umbra.run`. Empty by default. See [Running local commands](#running-local-commands) |
-| `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle` |
+| `options` | Settings form shown in **My widgets**, in this order. Types: `text`, `number` (`min`/`max`/`step`), `select` (needs `choices`), `toggle`. Optional `hint` (text under the field), `group` (options with the same group fold into one collapsed section titled with it) and `advanced: true` (folds into a collapsed "Advanced" section); use them when a widget has many options |
 
 The JSON Schema is in [`schemas/widget.schema.json`](../schemas/widget.schema.json).
 

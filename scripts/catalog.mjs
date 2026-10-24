@@ -140,6 +140,9 @@ for (const id of readdirSync(widgetsDir).sort()) {
   for (const [key, spec] of Object.entries(m.options ?? {})) {
     if (!OPTION_TYPES.has(spec?.type)) fail(id, `option "${key}" has unknown type "${spec?.type}"`);
     if (spec?.type === "select" && !Array.isArray(spec.choices)) fail(id, `select option "${key}" needs "choices"`);
+    if (spec?.group !== undefined && (typeof spec.group !== "string" || !spec.group.trim() || spec.group.length > 40))
+      fail(id, `option "${key}": "group" must be a non-empty string of at most 40 characters`);
+    if (spec?.advanced !== undefined && typeof spec.advanced !== "boolean") fail(id, `option "${key}": "advanced" must be true or false`);
   }
 
   const files = walk(dir).map((p) => relative(dir, p).split(sep).join("/")).sort();
