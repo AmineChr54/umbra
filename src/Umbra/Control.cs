@@ -333,6 +333,34 @@ sealed class Control(App app)
                 return Describe(app.Manifests.First(m => m.Id == id), id);
             }
 
+            case "install-local":
+            {
+                // A widget folder or .zip on this PC. Same staging and checks as the catalog, plus zip-slip protection; any
+                // access it declares needs acceptPermissions (umbractl --accept-permissions). No MCP tool maps here on purpose.
+                var path = Str(a, "path");
+                if (!Path.IsPathFullyQualified(path)) throw new CommandException("path must be a full path to a widget folder or .zip");
+                Community.PendingInstall pending;
+                try { pending = Community.PrepareLocal(path); }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or InvalidDataException)
+                { throw new CommandException($"Not installed: {ex.Message}"); }
+                using (pending)
+                {
+                    var id = pending.Manifest.Id;
+                    if (app.Manifests.Any(m => m.Id == id && m.Source == WidgetSource.BuiltIn))
+                        throw new CommandException($"'{id}' is the id of a built-in widget; pick another id");
+                    try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
+                    catch (PermissionsChangedException ex)
+                    {
+                        throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install-local \"{path}\" --accept-permissions (or use Settings > Browse > Install from file).");
+                    }
+                    app.CloseWidget(id);
+                    pending.Commit();
+                    app.ReloadWidgets();
+                    app.SettingsChangedElsewhere();
+                    return Describe(app.Manifests.First(m => m.Id == id), id);
+                }
+            }
+
             case "remove":
             {
                 var (m, _) = Target(a);

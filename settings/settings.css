@@ -269,7 +269,10 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-strong); }
 .hero h2 { margin: 8px 0 8px; font-family: var(--font-display); font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
 .hero p { margin: 0; color: var(--text-2); line-height: 1.55; }
-.hero-actions { display: flex; gap: 10px; margin-top: 18px; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.howto { margin: 0 0 16px; color: var(--text-2); line-height: 1.55; }
+.howto summary { cursor: pointer; color: var(--text); }
+.howto ol { margin: 8px 0 0; padding-left: 20px; }
 .hero-art { position: absolute; right: 44px; top: 50%; width: 150px; height: 150px; transform: translateY(-50%); }
 @media (max-width: 900px) { .hero-art { opacity: 0.35; right: -30px; } }
 .hero-text { margin-right: 190px; }
