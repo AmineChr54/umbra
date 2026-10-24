@@ -240,6 +240,32 @@
       ]
     },
     {
+      "id": "hearth",
+      "name": "Hearth",
+      "description": "A cozy shared space for two people on two PCs. Pair once with a code, then add copies of this widget as an Overview strip, a drawing Board or a Pet. Needs the Umbra relay.",
+      "author": "Yacine-DH",
+      "version": "1.0.0",
+      "preview": null,
+      "icon": "icon.png",
+      "hosts": [
+        "umbra-buddy-relay.umbra-server.workers.dev"
+      ],
+      "notifications": true,
+      "files": [
+        "board-logic.js",
+        "board.css",
+        "board.js",
+        "hearth-core.js",
+        "hearth.css",
+        "hearth.js",
+        "icon.png",
+        "index.html",
+        "mascot.css",
+        "mascot.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "internships",
       "name": "Internships",
       "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
