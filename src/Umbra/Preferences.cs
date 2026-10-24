@@ -17,6 +17,10 @@ static class Prefs
     public static readonly string[] LogLevels = { "errors", "normal", "verbose" };
     public const int MaxStartupDelay = 300;
     public const double MinOpacity = 0.2;
+    public const double MinSize = 0.5, MaxSize = 1.5;
+
+    /// <summary>The global Size multiplier within <see cref="MinSize"/>-<see cref="MaxSize"/>, rounded to whole percent; anything not a number is 1.</summary>
+    public static double ClampSize(double v) => double.IsFinite(v) ? Math.Round(Math.Clamp(v, MinSize, MaxSize), 2) : 1.0;
     /// <summary>Interface fonts (plain family names, so they are safe inside the generated :root rule).</summary>
     public static readonly string[] Fonts = { "default", "Segoe UI", "Arial", "Verdana", "Tahoma", "Georgia", "Consolas" };
     public const double MinFontScale = 0.8, MaxFontScale = 1.4;
@@ -249,6 +253,22 @@ static class Prefs
 
     public static int EffectiveRefresh(WidgetSettings ws, GeneralSettings g) => ws.RefreshSeconds ?? g.RefreshSeconds;
 
+    /// <summary>Whether the user allows this widget's notifications: its own choice, else the global default.</summary>
+    public static bool EffectiveNotifications(WidgetSettings ws, GeneralSettings g) => ws.Notifications ?? g.DefaultNotifications;
+
+    /// <summary>The window opacity to apply: its own, else the global default; 1 with Reduce transparency.</summary>
+    public static double EffectiveOpacity(WidgetSettings ws, GeneralSettings g) => ClampOpacity(ws.Opacity ?? g.DefaultOpacity, g.ReduceTransparency);
+
+    /// <summary>Gives every widget that follows the default scale the current <see cref="GeneralSettings.DefaultScale"/> (and drops a free size).</summary>
+    public static void FollowDefaultScale(Settings s)
+    {
+        foreach (var ws in s.Widgets.Values.Where(w => w.UseDefaultScale))
+        {
+            ws.Scale = s.General.DefaultScale;
+            ws.Width = ws.Height = null;
+        }
+    }
+
     public static double ClampOpacity(double v, bool reduceTransparency = false) => reduceTransparency ? 1.0 : double.IsFinite(v) ? Math.Round(Math.Clamp(v, MinOpacity, 1.0), 2) : 1.0;
 
     /// <summary>Applies the appearance/advanced fields of a set-general call; throws <see cref="CommandException"/> on bad values.</summary>
@@ -256,7 +276,10 @@ static class Prefs
     {
         if (a["cornerRadius"] is JsonNode cr) g.CornerRadius = OneOf(cr, "cornerRadius", CornerRadii);
         if (a["animationSpeed"] is JsonNode asp) g.AnimationSpeed = OneOf(asp, "animationSpeed", AnimationSpeeds);
+        if (a["defaultNotifications"] is JsonNode dn) g.DefaultNotifications = Flag(dn, "defaultNotifications");
+        if (a["defaultOpacity"] is JsonNode dop) g.DefaultOpacity = Opacity(dop, "defaultOpacity");
         if (a["defaultScale"] is JsonNode ds) g.DefaultScale = WidgetSettings.ClampScale(Num(ds, "defaultScale"));
+        if (a["size"] is JsonNode sz) g.Size = Size(sz);
         if (a["logLevel"] is JsonNode ll) g.LogLevel = OneOf(ll, "logLevel", LogLevels);
         if (a["borderEnabled"] is JsonNode be) g.BorderEnabled = Flag(be, "borderEnabled");
         if (a["borderColor"] is JsonNode bc) g.BorderColor = Color(bc, "borderColor");
@@ -290,7 +313,7 @@ static class Prefs
         }
     }
 
-    /// <summary>Applies per-widget refreshSeconds (null clears the override) and opacity (null or 1 = opaque).</summary>
+    /// <summary>Applies per-widget refreshSeconds, opacity and notifications; null clears the override (the global default applies).</summary>
     public static void ApplyWidget(JsonObject a, WidgetSettings ws)
     {
         if (a.ContainsKey("refreshSeconds"))
@@ -324,16 +347,20 @@ static class Prefs
             }
             else throw new Control.CommandException("\"showWhen\" must be an object {from?, to?, onAc?, monitor?} or null");
         }
-        if (a.ContainsKey("opacity"))
-        {
-            if (a["opacity"] is null) ws.Opacity = null;
-            else
-            {
-                var n = Num(a["opacity"]!, "opacity");
-                if (n < MinOpacity || n > 1) throw new Control.CommandException($"opacity must be between {MinOpacity} and 1");
-                ws.Opacity = n >= 1 ? null : Math.Round(n, 2);
-            }
-        }
+        if (a.ContainsKey("notifications")) ws.Notifications = a["notifications"] is JsonNode nt ? Flag(nt, "notifications") : null;
+        if (a.ContainsKey("opacity")) ws.Opacity = a["opacity"] is JsonNode op ? Opacity(op, "opacity") : null;
+    }
+
+    static double Size(JsonNode n)
+    {
+        var v = Num(n, "size");
+        return v >= MinSize && v <= MaxSize ? Math.Round(v, 2) : throw new Control.CommandException($"size must be between {MinSize} and {MaxSize}");
+    }
+
+    static double Opacity(JsonNode n, string name)
+    {
+        var v = Num(n, name);
+        return v >= MinOpacity && v <= 1 ? Math.Round(v, 2) : throw new Control.CommandException($"{name} must be between {MinOpacity} and 1");
     }
 
     static string Color(JsonNode n, string name) =>

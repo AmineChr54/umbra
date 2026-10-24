@@ -78,11 +78,60 @@ public class PrefsTests
         Prefs.ApplyWidget(JsonNode.Parse("""{"refreshSeconds":120,"opacity":0.8}""")!.AsObject(), ws);
         Assert.Equal(120, Prefs.EffectiveRefresh(ws, new GeneralSettings { RefreshSeconds = 60 }));
         Assert.Equal(0.8, ws.Opacity);
-        Prefs.ApplyWidget(JsonNode.Parse("""{"refreshSeconds":null,"opacity":1}""")!.AsObject(), ws);
+        Prefs.ApplyWidget(JsonNode.Parse("""{"refreshSeconds":null,"opacity":null}""")!.AsObject(), ws);
         Assert.Null(ws.RefreshSeconds);
         Assert.Null(ws.Opacity);
         Assert.ThrowsAny<Exception>(() => Prefs.ApplyWidget(JsonNode.Parse("""{"opacity":0.05}""")!.AsObject(), ws));
         Assert.ThrowsAny<Exception>(() => Prefs.ApplyWidget(JsonNode.Parse("""{"refreshSeconds":5}""")!.AsObject(), ws));
+    }
+
+    [Fact]
+    public void Global_defaults_apply_until_a_widget_overrides_them()
+    {
+        var s = new Settings();
+        Prefs.ApplyGeneral(JsonNode.Parse("""{"defaultOpacity":0.7,"defaultNotifications":true,"defaultScale":0.85}""")!.AsObject(), s.General);
+        var ws = s.For(new WidgetManifest { Id = "demo" });
+        Prefs.FollowDefaultScale(s);
+        Assert.Equal(0.85, ws.Scale);
+        Assert.Equal(0.7, Prefs.EffectiveOpacity(ws, s.General));
+        Assert.True(Prefs.EffectiveNotifications(ws, s.General));
+        Prefs.ApplyWidget(JsonNode.Parse("""{"opacity":0.5,"notifications":false}""")!.AsObject(), ws);
+        Assert.Equal(0.5, Prefs.EffectiveOpacity(ws, s.General));
+        Assert.False(Prefs.EffectiveNotifications(ws, s.General));
+        ws.UseDefaultScale = false; // picked by hand
+        s.General.DefaultScale = 1.5;
+        Prefs.FollowDefaultScale(s);
+        Assert.Equal(0.85, ws.Scale);
+        Assert.Throws<Control.CommandException>(() => Prefs.ApplyGeneral(JsonNode.Parse("""{"defaultOpacity":0.01}""")!.AsObject(), s.General));
+    }
+
+    [Fact]
+    public void Size_is_validated_and_new_installs_start_at_085()
+    {
+        var g = new GeneralSettings();
+        Assert.Equal(0.85, g.DefaultScale);
+        Assert.Equal(1.0, g.Size);
+        Prefs.ApplyGeneral(JsonNode.Parse("""{"size":1.25}""")!.AsObject(), g);
+        Assert.Equal(1.25, g.Size);
+        Assert.Throws<Control.CommandException>(() => Prefs.ApplyGeneral(JsonNode.Parse("""{"size":2}""")!.AsObject(), g));
+        Assert.Equal(0.5, Prefs.ClampSize(0));
+        Assert.Equal(1.0, Prefs.ClampSize(double.NaN));
+        var old = Settings.FromJson(JsonNode.Parse("""{"general":{"defaultScale":1}}""")!);
+        Assert.Equal(1.0, old.General.DefaultScale); // an upgraded profile keeps what it had
+    }
+
+    [Fact]
+    public void Old_settings_keep_their_values_as_overrides()
+    {
+        var old = Settings.FromJson(JsonNode.Parse("""{"widgets":{"a":{"scale":1.4,"opacity":0.9,"notifications":true}}}""")!);
+        var ws = old.Widgets["a"];
+        Assert.False(ws.UseDefaultScale);
+        Prefs.FollowDefaultScale(old);
+        Assert.Equal(1.4, ws.Scale);
+        Assert.Equal(0.9, ws.Opacity);
+        Assert.True(ws.Notifications);
+        Assert.Equal(1.0, old.General.DefaultOpacity);
+        Assert.False(Settings.FromJson(old.ToJson()).Widgets["a"].UseDefaultScale);
     }
 
     [Theory]

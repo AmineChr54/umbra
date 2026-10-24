@@ -24,7 +24,10 @@
     const row = (title, sub, control) => el(`<div class="row"><div class="row-text"><div class="row-title">${title}</div><div class="row-sub">${sub}</div></div>${control}</div>`);
     for (const [title, sub, key, list] of rows)
       group.append(row(title, sub, `<select id="pf-${key}" aria-label="${title}"></select>`));
-    group.append(row("Default size for new widgets", "Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
+    group.append(row("Default opacity", "Window opacity of widgets without their own. Percent; 20 to 100.", `<input type="number" id="pf-defaultOpacity" min="20" max="100" step="5" style="width:72px" aria-label="Default opacity percent">`));
+    group.append(row("Allow notifications", "Default for widgets that can show notifications; each widget can override it.", `<label class="switch"><input type="checkbox" id="pf-defaultNotifications"><span></span></label>`));
+    group.append(row("Size", "Scales every widget on top of its own size. Percent; 50 to 150.", `<span class="pf-size"><input type="range" class="range" id="pf-size" min="50" max="150" step="5" aria-label="Size of all widgets"><output id="pf-sizeVal"></output></span>`));
+    group.append(row("Default size", "Size of widgets without their own, and of new ones. Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
     group.append(row("Interface text size", "Percent; 80 to 140. Affects widgets that size text from the design tokens.", `<input type="number" id="pf-fontScale" min="80" max="140" step="5" style="width:72px" aria-label="Interface text size">`));
     group.append(row("Window border", "The hairline around widget windows.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-borderColor" aria-label="Border color"><label class="switch"><input type="checkbox" id="pf-borderEnabled"><span></span></label></span>`));
     group.append(row("Match Windows accent", "Follows the accent color of Windows and updates when it changes. Dark accents are lightened to stay readable.", `<label class="switch"><input type="checkbox" id="pf-accentWindows"><span></span></label>`));
@@ -44,6 +47,12 @@
     };
     for (const [, , key] of rows) bind(key, null, (gen, i) => (gen[key] = i.value));
     bind("defaultScale", null, (gen, i) => { const v = Math.max(50, Math.min(300, Math.round(Number(i.value) || 100))); i.value = v; gen.defaultScale = v / 100; });
+    const sizeIn = sec.querySelector("#pf-size");
+    const showSize = () => { sec.querySelector("#pf-sizeVal").textContent = sizeIn.value + "%"; sizeIn.style.setProperty("--p", sizeIn.value - 50 + "%"); };
+    sizeIn.addEventListener("input", showSize);
+    bind("size", null, (gen, i) => { gen.size = Number(i.value) / 100; showSize(); });
+    bind("defaultOpacity", null, (gen, i) => { const v = Math.max(20, Math.min(100, Math.round(Number(i.value) || 100))); i.value = v; gen.defaultOpacity = v / 100; });
+    bind("defaultNotifications", null, (gen, i) => (gen.defaultNotifications = i.checked));
     bind("fontScale", null, (gen, i) => { const v = Math.max(80, Math.min(140, Math.round(Number(i.value) || 100))); i.value = v; gen.fontScale = v / 100; });
     bind("borderEnabled", null, (gen, i) => (gen.borderEnabled = i.checked));
     bind("borderColor", null, (gen, i) => (gen.borderColor = i.value));
@@ -72,6 +81,9 @@
     }
     const set = (id, fn) => { const i = document.getElementById("pf-" + id); if (i && document.activeElement !== i) fn(i); };
     set("defaultScale", (i) => (i.value = Math.round((gen.defaultScale || 1) * 100)));
+    set("size", (i) => { i.value = Math.round((gen.size || 1) * 100); document.getElementById("pf-sizeVal").textContent = i.value + "%"; i.style.setProperty("--p", i.value - 50 + "%"); });
+    set("defaultOpacity", (i) => (i.value = Math.round((gen.defaultOpacity || 1) * 100)));
+    set("defaultNotifications", (i) => (i.checked = !!gen.defaultNotifications));
     set("fontScale", (i) => (i.value = Math.round((gen.fontScale || 1) * 100)));
     set("borderEnabled", (i) => (i.checked = gen.borderEnabled !== false));
     set("borderColor", (i) => (i.value = gen.borderColor || "#26282e"));
@@ -95,14 +107,19 @@
     const cur = () => state.settings.widgets[w.id];
     const ws = cur();
     const box = el(`<div class="prefs-widget" style="display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:6px;align-items:center">
-      <label>Refresh (s) <input type="number" class="pw-refresh" min="30" max="600" step="10" style="width:72px" placeholder="global" aria-label="Own refresh interval seconds"></label>
-      <label>Opacity (%) <input type="number" class="pw-opacity" min="20" max="100" step="5" style="width:72px" aria-label="Opacity percent"></label>
+      <label>Refresh (s) <input type="number" class="pw-refresh" min="30" max="600" step="10" style="width:72px" placeholder="default" aria-label="Own refresh interval seconds"></label>
+      <label>Opacity (%) <input type="number" class="pw-opacity" min="20" max="100" step="5" style="width:72px" placeholder="default" aria-label="Own opacity percent"></label>
+      <label class="pw-notif-l" hidden>Notifications <select class="pw-notif" aria-label="Notifications"><option value="">default</option><option value="on">allowed</option><option value="off">blocked</option></select></label>
       <label><input type="checkbox" class="pw-hidden"> Start hidden</label>
       <label>Show only from <input type="time" class="pw-from" aria-label="Show from"> to <input type="time" class="pw-to" aria-label="Show until"></label>
       <label>Power <select class="pw-ac" aria-label="Power condition"><option value="">any</option><option value="ac">only on AC</option><option value="battery">only on battery</option></select></label></div>`);
     const r = box.querySelector(".pw-refresh"), o = box.querySelector(".pw-opacity");
     r.value = ws.refreshSeconds || "";
-    o.value = Math.round((ws.opacity || 1) * 100);
+    o.value = ws.opacity ? Math.round(ws.opacity * 100) : "";
+    const nl = box.querySelector(".pw-notif-l"), nt = box.querySelector(".pw-notif");
+    nl.hidden = !w.notifications;
+    nt.value = ws.notifications === true ? "on" : ws.notifications === false ? "off" : "";
+    nt.addEventListener("change", () => { cur().notifications = nt.value === "" ? null : nt.value === "on"; save(true); });
     r.addEventListener("change", () => {
       const v = r.value === "" ? null : Math.max(30, Math.min(600, Math.round(Number(r.value) || 60)));
       r.value = v === null ? "" : v;
@@ -110,9 +127,9 @@
       save(true);
     });
     o.addEventListener("change", () => {
-      const v = Math.max(20, Math.min(100, Math.round(Number(o.value) || 100)));
-      o.value = v;
-      cur().opacity = v >= 100 ? null : v / 100;
+      const v = o.value === "" ? null : Math.max(20, Math.min(100, Math.round(Number(o.value) || 100)));
+      o.value = v === null ? "" : v;
+      cur().opacity = v === null ? null : v / 100;
       save(true);
     });
     const hid = box.querySelector(".pw-hidden"), from = box.querySelector(".pw-from"), to = box.querySelector(".pw-to"), ac = box.querySelector(".pw-ac");

@@ -139,6 +139,6 @@ public static class Groups
     {
         to.X = from.X; to.Y = from.Y;
         to.Monitor = from.Monitor; to.RelX = from.RelX; to.RelY = from.RelY;
-        to.Scale = from.Scale; to.Width = from.Width; to.Height = from.Height;
+        to.Scale = from.Scale; to.Width = from.Width; to.Height = from.Height; to.UseDefaultScale = from.UseDefaultScale;
     }
 }

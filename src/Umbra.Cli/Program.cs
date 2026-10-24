@@ -76,7 +76,7 @@ static void PrintHelp()
           enable|disable <id>            show or hide a widget (<id> is a widget id or a copy like sp500#2)
           lock-all|unlock-all            lock every widget (default) or unlock them to arrange (same as edit-mode off/on)
           move <id> <x> <y>              position in physical pixels
-          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--x N] [--y N] [--monitor N|primary] [--refresh 30-600|default] [--opacity 0.2-1|opaque]
+          configure <id> [--scale 0.5-3|150%] [--enabled on|off] [--x N] [--y N] [--monitor N|primary] [--refresh 30-600|default] [--opacity 0.2-1|opaque|default] [--notifications on|off|default]
                                          change several widget settings at once (scale = size and zoom)
           peek [seconds]                 raise widgets above other windows for a few seconds (never takes focus)
           safe-mode [on|off]             community widgets off (not saved); no argument = show the state
@@ -86,7 +86,7 @@ static void PrintHelp()
           edit-mode [on|off]            move/resize/zoom widgets by hand; no argument = show the state
           set <id> <option> <value>      change a widget option (typed by its schema)
           general [--refresh 30-600] [--animations on|off] [--startup on|off] [--updates on|off] [--hide-fullscreen on|off] [--energy-saver on|off] [--peek-seconds 1-60]
-                  [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--default-scale 0.5-3]
+                  [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--size 0.5-1.5|150%] [--default-scale 0.5-3] [--default-opacity 0.2-1] [--default-notifications on|off]
                   [--log-level errors|normal|verbose] [--developer-mode on|off] [--hardware-acceleration on|off]
                   [--startup-delay 0-300] [--proxy system|none|https://host:port]
                   [--snap on|off] [--snap-grid 0-200] [--snap-edges on|off] [--snap-gap 0-100]

@@ -497,19 +497,22 @@ function renderInstalled() {
       scale.style.setProperty("--p", `${((pct - 50) / 250) * 100}%`);
     };
     // The slider sets a proportional size, so it replaces a free width/height dragged by hand.
-    const setScale = (pct) => { cur().scale = pct / 100; cur().width = cur().height = null; scale.value = pct; showScale(pct); save(true); };
+    const setScale = (pct) => { cur().scale = pct / 100; cur().useDefaultScale = false; cur().width = cur().height = null; scale.value = pct; showScale(pct); save(true); };
     scale.setAttribute("aria-label", `${w.name} size`);
-    scaleVal.setAttribute("aria-label", `Reset ${w.name} size to 100%`);
+    scaleVal.setAttribute("aria-label", `Reset ${w.name} size to the default`);
     scale.value = Math.round((ws.scale || 1) * 100);
     showScale((ws.scale || 1) * 100);
     scale.addEventListener("input", () => showScale(Number(scale.value)));
     scale.addEventListener("change", () => setScale(Number(scale.value)));
     // Let go of focus after a mouse drag so later updates from the desktop can re-render this list.
     scale.addEventListener("pointerup", () => setTimeout(() => scale.blur()));
-    scaleVal.addEventListener("click", () => { setScale(100); scaleVal.blur(); });
+    scaleVal.addEventListener("click", () => { // back to the default size (General)
+      const d = Math.round((state.settings.general.defaultScale || 1) * 100);
+      setScale(d); cur().useDefaultScale = true; scaleVal.blur();
+    });
 
     const notif = $(".notif", card);
-    notif.parentElement.hidden = !w.notifications;
+    notif.parentElement.hidden = true; // the tri-state default/allowed/blocked select in prefs.js replaces it
     notif.checked = !!ws.notifications;
     notif.addEventListener("change", () => { cur().notifications = notif.checked; save(true); });
 

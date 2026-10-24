@@ -23,10 +23,11 @@ static class CommandLine
             case "configure":
             {
                 var o = O(("id", Arg(a, 1, "widget id")));
-                if (Flag(a, "--scale") is string sc) o["scale"] = Scale(sc);
+                if (Flag(a, "--scale") is string sc) o["scale"] = sc == "default" ? null : Scale(sc);
                 if (Flag(a, "--enabled") is string en) o["enabled"] = OnOff(en);
                 if (Flag(a, "--refresh") is string wr) o["refreshSeconds"] = wr == "default" ? null : int.Parse(wr, CultureInfo.InvariantCulture);
-                if (Flag(a, "--opacity") is string op) o["opacity"] = op == "opaque" ? null : double.Parse(op, CultureInfo.InvariantCulture);
+                if (Flag(a, "--opacity") is string op) o["opacity"] = op == "default" ? null : op == "opaque" ? 1.0 : double.Parse(op, CultureInfo.InvariantCulture);
+                if (Flag(a, "--notifications") is string nf) o["notifications"] = nf == "default" ? null : OnOff(nf);
                 if (Flag(a, "--start-hidden") is string sh) o["startHidden"] = OnOff(sh);
                 var (from, to, ac, sm) = (Flag(a, "--show-from"), Flag(a, "--show-to"), Flag(a, "--show-on-ac"), Flag(a, "--show-monitor"));
                 if (from == "always") o["showWhen"] = null;
@@ -110,6 +111,9 @@ static class CommandLine
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
                 if (Flag(a, "--corner-radius") is string cr) o["cornerRadius"] = cr;
                 if (Flag(a, "--animation-speed") is string asp) o["animationSpeed"] = asp;
+                if (Flag(a, "--default-notifications") is string dn) o["defaultNotifications"] = OnOff(dn);
+                if (Flag(a, "--default-opacity") is string dop) o["defaultOpacity"] = double.Parse(dop, CultureInfo.InvariantCulture);
+                if (Flag(a, "--size") is string sz) o["size"] = Scale(sz);
                 if (Flag(a, "--default-scale") is string ds) o["defaultScale"] = Scale(ds);
                 if (Flag(a, "--log-level") is string ll) o["logLevel"] = ll;
                 if (Flag(a, "--developer-mode") is string dm) o["developerMode"] = OnOff(dm);

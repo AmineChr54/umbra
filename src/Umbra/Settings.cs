@@ -29,8 +29,14 @@ public sealed class GeneralSettings
     public string CornerRadius { get; set; } = "default";
     /// <summary>"normal", "calm" (--motion-scale 2) or "off".</summary>
     public string AnimationSpeed { get; set; } = "normal";
-    /// <summary>Scale given to widgets the first time they are set up (50-300 %).</summary>
-    public double DefaultScale { get; set; } = 1.0;
+    /// <summary>Allow notifications for every widget that declares them and has no own choice (<see cref="WidgetSettings.Notifications"/> null).</summary>
+    public bool DefaultNotifications { get; set; }
+    /// <summary>Window opacity 0.2-1 of widgets without their own (<see cref="WidgetSettings.Opacity"/> null); 1 keeps true black and ClearType.</summary>
+    public double DefaultOpacity { get; set; } = 1.0;
+    /// <summary>Scale of widgets that follow the default (<see cref="WidgetSettings.UseDefaultScale"/>), 50-300 %; new widgets follow it.</summary>
+    public double DefaultScale { get; set; } = 0.85;
+    /// <summary>Global Size (#233): multiplies every widget's own size, 0.5-1.5; clamped per window to 50-300 % of the manifest size.</summary>
+    public double Size { get; set; } = 1.0;
 
     /// <summary>Draw the hairline border around widget windows (#61).</summary>
     public bool BorderEnabled { get; set; } = true;
@@ -104,8 +110,8 @@ public sealed class WidgetSettings
     /// <summary>Legacy per-widget lock, replaced by <see cref="GeneralSettings.LockAll"/> (#234): still read from old files, ignored and never written.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Locked { get => false; set { } }
-    /// <summary>The user allows this widget to show notifications (umbra.notify). Off until switched on.</summary>
-    public bool Notifications { get; set; }
+    /// <summary>The user allows (true) or blocks (false) notifications (umbra.notify) for this widget; null = <see cref="GeneralSettings.DefaultNotifications"/>.</summary>
+    public bool? Notifications { get; set; }
     /// <summary>Tab-strip icon chosen by the user (a name from shared/tabicons); null = the widget's own icon or a letter.</summary>
     public string? TabIcon { get; set; }
 
@@ -122,10 +128,15 @@ public sealed class WidgetSettings
     /// </summary>
     public int? Width { get; set; }
     public int? Height { get; set; }
+    /// <summary>
+    /// <see cref="Scale"/> follows <see cref="GeneralSettings.DefaultScale"/> (#232): set for new widgets, cleared by any size the
+    /// user picks. Missing in older files, so their stored scales stay as the user's own.
+    /// </summary>
+    public bool UseDefaultScale { get; set; }
 
     /// <summary>Own refresh interval in seconds (30-600) overriding the global one; null = global.</summary>
     public int? RefreshSeconds { get; set; }
-    /// <summary>Window opacity 0.2-1; null = fully opaque (the default keeps true black and ClearType).</summary>
+    /// <summary>Own window opacity 0.2-1; null = <see cref="GeneralSettings.DefaultOpacity"/> (fully opaque unless changed).</summary>
     public double? Opacity { get; set; }
     /// <summary>Not shown at launch; revealed with the toggle-widgets hotkey or by configure startHidden=false (#66).</summary>
     public bool StartHidden { get; set; }
@@ -216,7 +227,7 @@ public sealed class Settings
         instance ??= m.Id;
         if (InstanceId.WidgetOf(instance) != m.Id) throw new ArgumentException($"'{instance}' is not a copy of '{m.Id}'");
         if (!Widgets.TryGetValue(instance, out var ws))
-            Widgets[instance] = ws = new WidgetSettings { Scale = General.DefaultScale };
+            Widgets[instance] = ws = new WidgetSettings { Scale = General.DefaultScale, UseDefaultScale = true };
         foreach (var (key, value) in m.DefaultOptions())
             if (!ws.Options.ContainsKey(key)) ws.Options[key] = value?.DeepClone();
         General.RefreshSeconds = Math.Clamp(General.RefreshSeconds, 30, 600);
