@@ -81,7 +81,7 @@
   }
 
   /**
-   * Reads a response of /v1/calendarByCity/{year}/{month} (or /v1/calendar) into the compact form we cache:
+   * Reads a response of /v1/calendar/{year}/{month} (by coordinates) into the compact form we cache:
    * { tz, days: { "YYYY-MM-DD": { t: { Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha }, h: hijri|null } } }.
    * Days that are malformed are skipped; throws when nothing usable is left.
    */
@@ -253,9 +253,104 @@
     return out;
   }
 
+  // ---- requests and errors ----
+
+  const ALADHAN = "https://api.aladhan.com/v1/calendar";
+  const GEOCODER = "https://geocoding-api.open-meteo.com/v1/search";
+
+  /**
+   * Aladhan month calendar by coordinates: place = { lat, lon, tz? }. Coordinates are rounded to 4 decimals (about
+   * 10 m); the zone is passed when known so Aladhan does not have to look it up.
+   */
+  function calendarUrl(y, m, place, method, school) {
+    const q = new URLSearchParams({
+      latitude: (+place.lat).toFixed(4), longitude: (+place.lon).toFixed(4),
+      method: String(clampInt(method, 0, 99, 3)), school: String(clampInt(school, 0, 1)),
+    });
+    if (validTz(place.tz)) q.set("timezonestring", place.tz);
+    return `${ALADHAN}/${clampInt(y, 1, 9999)}/${clampInt(m, 1, 12, 1)}?${q}`;
+  }
+
+  /** Open-Meteo geocoding search, limited to one country when its ISO code is known. */
+  function geocodeUrl(name, cc, count = 10) {
+    const q = new URLSearchParams({ name: String(name || "").trim(), count: String(count), language: "en", format: "json" });
+    if (/^[A-Z]{2}$/i.test(cc || "")) q.set("countryCode", cc.toUpperCase());
+    return `${GEOCODER}?${q}`;
+  }
+
+  /**
+   * Open-Meteo results -> [{ name, region, country, cc, lat, lon, tz }]. Drops entries without coordinates and other
+   * countries when `cc` is given. Populated places (feature code PPL*) first, otherwise the API's order.
+   */
+  function parseGeocode(json, cc) {
+    const list = json && Array.isArray(json.results) ? json.results : [];
+    const want = /^[A-Z]{2}$/i.test(cc || "") ? cc.toUpperCase() : null;
+    const out = [];
+    for (const r of list) {
+      if (!r || typeof r.name !== "string") continue;
+      const lat = Number(r.latitude), lon = Number(r.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) continue;
+      const code = typeof r.country_code === "string" ? r.country_code.toUpperCase() : "";
+      if (want && code !== want) continue;
+      out.push({
+        name: r.name, region: typeof r.admin1 === "string" ? r.admin1 : "", country: typeof r.country === "string" ? r.country : "",
+        cc: code, lat, lon, tz: validTz(r.timezone) ? r.timezone : null, ppl: /^PPL/.test(r.feature_code || ""),
+      });
+    }
+    const ppl = out.filter((r) => r.ppl);
+    return (ppl.length ? [...ppl, ...out.filter((r) => !r.ppl)] : out).map(({ ppl: _, ...r }) => r);
+  }
+
+  /**
+   * What went wrong, from the Error umbra.fetchJson rejected with (the host passes .NET's message through):
+   * { kind: "notfound" | "rate" | "http" | "offline" | "timeout" | "other", status?, detail? }.
+   * `online` is navigator.onLine; false always means offline.
+   */
+  function classifyError(err, online = true) {
+    if (err && err.code === "notfound") return { kind: "notfound" };
+    const msg = String((err && err.message) || err || "");
+    const s = /status code[^\d]*(\d{3})|\bHTTP\s*(\d{3})\b/i.exec(msg);
+    const status = s ? Number(s[1] || s[2]) : 0;
+    if (status === 429) return { kind: "rate", status };
+    if (status >= 400) return { kind: "http", status };
+    if (online === false || /offline|no such host|name.*(resolv|not known)|network|unreachable|connect|socket|ssl|host is down/i.test(msg)) return { kind: "offline" };
+    if (/timed? ?out|timeout|cancel/i.test(msg)) return { kind: "timeout" };
+    return { kind: "other", detail: msg.slice(0, 120) };
+  }
+
+  /**
+   * One actionable sentence for an error. e = classifyError(...); o = { service, retryAt (formatted time or ""),
+   * city, country }. service is "The prayer time service" (default) or "City search".
+   */
+  function errorMessage(e, o = {}) {
+    const svc = o.service || "The prayer time service";
+    const retry = o.retryAt ? ` Retrying at ${o.retryAt}.` : "";
+    switch (e && e.kind) {
+      case "notfound": return `City not found: "${o.city}"${o.country ? ` in ${o.country}` : ""}. Check the spelling in the widget options.`;
+      case "offline": return "You're offline. Prayer times will load when you're back online.";
+      case "rate": return `Rate limited by ${svc === "City search" ? "city search" : "the prayer time service"}.${retry}`;
+      case "http": return e.status >= 500 ? `${svc} is having trouble (HTTP ${e.status}).${retry}` : `${svc} refused the request (HTTP ${e.status}). Check the widget options.`;
+      case "timeout": return `${svc} didn't answer.${retry}`;
+      default: return `${svc} failed${e && e.detail ? `: ${e.detail}` : ""}.${retry}`;
+    }
+  }
+
+  /** Short header label while saved times are shown despite an error. */
+  function errorLabel(e) {
+    switch (e && e.kind) {
+      case "offline": return "offline";
+      case "rate": return "rate limited";
+      case "http": return `HTTP ${e.status}`;
+      case "timeout": return "no answer";
+      case "notfound": return "city not found";
+      default: return "not updated";
+    }
+  }
+
   const api = {
     PRAYERS, NAMES, validTz, tzOffsetMs, dateKey, shiftKey, zonedToUtc, parseHM, parseCalendar, dayEvents, schedule,
     formatCountdown, formatTime, formatDate, formatHijri, resolveHour12, monthsNeeded, notifyDue, pruneNotified, clampInt,
+    calendarUrl, geocodeUrl, parseGeocode, classifyError, errorMessage, errorLabel,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PrayerTimes = api;
 })(typeof window !== "undefined" ? window : globalThis);
