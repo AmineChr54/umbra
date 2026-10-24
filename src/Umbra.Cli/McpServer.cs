@@ -85,6 +85,12 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
             Schema(Obj(("id", IdProp.DeepClone()),
                 ("files", Obj(("type", "object"), ("description", "{\"widget.json\": \"...\", \"index.html\": \"...\", \"main.js\": \"...\"}"), ("additionalProperties", Obj(("type", "string"))))),
                 ("overwrite", P("boolean", "Replace an existing widget with this id"))), "id", "files")),
+        new("validate_widget", "validate-widget",
+            "Read-only check of a widget folder (or .zip/.umbrawidget) at a full path on this PC without installing it: returns ok, errors and warnings (install rules, widget.json rules, lints such as chrome.webview or tiny fonts). Call it after writing files to disk and before packing.",
+            Schema(Obj(("path", P("string", "Full path to the widget folder or package"))), "path")),
+        new("pack_widget", "pack-widget",
+            "Validate a widget folder and write it as a deterministic .umbrawidget package (a zip with widget.json at its root) for sharing. It always writes <folder>.umbrawidget next to the widget folder and refuses to replace an existing file (the person chooses another location or overwrites with umbractl pack -o file --force). Installing the package still needs the person's permission review in Settings, so nothing is installed or accepted here.",
+            Schema(Obj(("path", P("string", "Full path to the widget folder"))), "path")),
         new("widget_data", "data",
             "Read or change a widget's saved data (what the widget stores with umbra.store, e.g. a todo list). op: get (default; all keys, or one key), set (key + value, any JSON), remove (key) or clear. " +
             "An open widget is notified and re-renders. Use list_widgets for ids.",
@@ -354,6 +360,9 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
 
         // Accepting new widget access is the user's decision (Settings, or umbractl at their keyboard), never a tool argument.
         args.Remove("acceptPermissions");
+        // Packing from MCP may only write <folder>.umbrawidget next to the widget folder and never replace a file: the person
+        // picks another location or replaces a file with umbractl pack -o ... --force.
+        if (tool.Command == "pack-widget") { args.Remove("out"); args.Remove("overwrite"); }
 
         JsonObject reply;
         try { reply = await send(tool.Command, args); }

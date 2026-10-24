@@ -31,6 +31,13 @@ try
                 await new McpServer((cmd, a) => UmbraClient.SendAsync(cmd, a)).RunAsync(stdin, stdout);
             return 0;
 
+        case "dev":
+        {
+            using var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+            return await DevLoop.RunAsync(CommandLine.PathArg(args), args.Contains("--accept-permissions"), (c, a) => UmbraClient.SendAsync(c, a), Console.Out, cts.Token);
+        }
+
         case "new":
         {
             var id = Arg(1, "widget id");
@@ -52,6 +59,8 @@ try
         Console.Error.WriteLine($"umbractl: {reply["error"]?.GetValue<string>() ?? "error"}");
         return 1;
     }
+    // validate prints its report and fails when the widget has errors, so it works in scripts and CI.
+    if (cmd == "validate-widget") { Console.WriteLine(reply["result"]?.ToJsonString(pretty)); return reply["result"]?["ok"]?.GetValue<bool>() == true ? 0 : 1; }
     // A text result (diagnostics) is printed as it is so it can be piped to the clipboard or pasted.
     Console.WriteLine(reply["result"] is JsonValue { } v && v.TryGetValue<string>(out var text) ? text : reply["result"]?.ToJsonString(pretty) ?? "ok");
     return 0;
@@ -106,7 +115,10 @@ static void PrintHelp()
           hotkeys [action keys|off|reset]  global hotkeys (edit-mode, refresh-all, toggle-widgets, peek, open-settings), e.g. hotkeys edit-mode Ctrl+Alt+E
           install-theme|remove-theme <id>  install/update or uninstall a community theme
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
-          create <folder>                load a widget folder from disk (e.g. widgets/my-widget in the repo)
+          validate [folder|file]         check a widget without installing it (install rules, widget.json rules, lints); exit 1 on errors
+          pack [folder] [-o out.umbrawidget] [--force]  validate, then write the shareable package (a zip with widget.json at the root, deterministic); replaces an existing file only with --force
+          dev [folder] [--accept-permissions]  load the folder, reload on every save, print blocked requests and errors live
+          create <folder>               load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
                                          PNG of a widget or Settings page (general|widgets|layouts|browse|themes|hotkeys|privacy|about)
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key

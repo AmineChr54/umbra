@@ -1325,6 +1325,7 @@ function renderPrivacy(list) {
       ...(w.camera?.declared ? [sub(`Camera: timelapses (${w.camera.approved ? "approved" : "not approved yet"})`)] : []),
       sub(w.commands.length ? "Commands: " + w.commands.map((c) => `${c.line} (${c.status})`).join("; ") : "Runs no commands"),
       sub(`Saved data: ${fmt(w.data.bytes)}` + (w.blocked.count ? ` \u00b7 ${w.blocked.count} blocked request(s), latest ${w.blocked.recent[w.blocked.recent.length - 1]}` : "")));
+    if (w.incompatible) text.append(sub(w.incompatible));
     if (w.crashes?.stopped) text.append(sub("Stopped working: its page kept crashing, so Umbra stopped reloading it. Use Reload on the widget."));
     else if (w.crashes?.count) text.append(sub(`Crashed ${w.crashes.count} time(s) recently (see umbra.log); Umbra reloaded it.`));
     const del = document.createElement("button");

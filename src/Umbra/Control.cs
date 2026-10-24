@@ -371,6 +371,20 @@ sealed class Control(App app)
                 }
             }
 
+            case "validate-widget":
+            {
+                var path = Str(a, "path");
+                if (!Path.IsPathFullyQualified(path)) throw new CommandException("path must be a full path to a widget folder or .zip/.umbrawidget");
+                return (await Task.Run(() => WidgetLint.Run(path))).ToJson();
+            }
+
+            case "pack-widget":
+            {
+                // Writes one file and nothing else: no install, no permission is granted by packing.
+                try { return await Task.Run(() => WidgetLint.Pack(Str(a, "path"), a["out"]?.GetValue<string>(), a["overwrite"] is JsonNode ow && Bool(ow, "overwrite"))); }
+                catch (InvalidOperationException ex) { throw new CommandException(ex.Message); }
+            }
+
             case "remove":
             {
                 var (m, _) = Target(a);

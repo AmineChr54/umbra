@@ -146,6 +146,17 @@ static class CommandLine
                 if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
                 return ("install-local", o);
             }
+            case "validate" or "validate-widget":
+                // umbractl validate [folder|file]: check without installing (default: the current folder).
+                return ("validate-widget", O(("path", Path.GetFullPath(PathArg(a)))));
+            case "pack" or "pack-widget":
+            {
+                // umbractl pack [folder] [-o out.umbrawidget]
+                var o = O(("path", Path.GetFullPath(PathArg(a))));
+                if ((Flag(a, "-o") ?? Flag(a, "--out")) is string outPath) o["out"] = Path.GetFullPath(outPath);
+                if (a.Contains("--force")) o["overwrite"] = true;
+                return ("pack-widget", o);
+            }
             case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
                 return (a[0], O(("id", Arg(a, 1, "widget id"))));
             case "hotkeys":
@@ -246,6 +257,17 @@ static class CommandLine
     };
 
     public static string Arg(string[] a, int i, string what) => i < a.Length ? a[i] : throw new ArgumentException($"Missing {what}. Run umbractl help.");
+
+    /// <summary>The first positional argument after the command (not a flag or a flag's value), or "." for the current folder.</summary>
+    public static string PathArg(string[] a)
+    {
+        for (var i = 1; i < a.Length; i++)
+        {
+            if (a[i] is "-o" or "--out") { i++; continue; }
+            if (!a[i].StartsWith('-')) return a[i];
+        }
+        return ".";
+    }
 
     public static string? Flag(string[] a, string name)
     {

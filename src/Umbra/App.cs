@@ -853,7 +853,8 @@ sealed class App : ApplicationContext
     /// </summary>
     void ForgetOrphans()
     {
-        var known = Manifests.Select(m => m.Id).ToList();
+        // A widget skipped because it needs a newer Umbra is still on disk: its copies, settings and data must survive.
+        var known = Manifests.Select(m => m.Id).Concat(WidgetManifest.Skipped.Select(s => s.Id)).ToList();
         foreach (var key in Restore.Orphans(Settings.Widgets.Keys.Where(InstanceId.IsExtra), known, _restoring))
         {
             CloseWidget(key);
