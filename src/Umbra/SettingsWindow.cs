@@ -193,7 +193,7 @@ sealed class SettingsWindow : Form
                     var inst = S("id") ?? "";
                     switch (S("op"))
                     {
-                        case "create": _app.CreateGroup(S("name") ?? "Group", inst); break;
+                        case "create": _app.CreateGroup(S("name") ?? "Group", inst.Length == 0 ? null : inst); break;
                         case "join": _app.JoinGroup(group, inst); break;
                         case "leave": _app.LeaveGroup(inst); break;
                         case "activate": _app.ActivateTab(group, inst); break;

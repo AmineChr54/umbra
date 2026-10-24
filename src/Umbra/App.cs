@@ -335,7 +335,7 @@ sealed class App : ApplicationContext
     }
 
     /// <summary>Starts a group with one widget copy; returns the group id.</summary>
-    public string CreateGroup(string name, string instance)
+    public string CreateGroup(string name, string? instance = null)
     {
         var id = "";
         ChangeGroups(s => id = Groups.Create(s, name, instance));

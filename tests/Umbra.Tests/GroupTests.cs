@@ -30,7 +30,7 @@ public class GroupTests
         var g1 = Groups.Create(s, "One", "a");
         var g2 = Groups.Create(s, "Two", "b");
         Groups.Join(s, g2, "a");
-        Assert.False(s.Groups.ContainsKey(g1)); // emptied, so removed
+        Assert.Empty(s.Groups[g1].Members); // emptied but kept: the user made it
         Assert.Equal(new[] { "b", "a" }, s.Groups[g2].Members);
     }
 
@@ -63,7 +63,7 @@ public class GroupTests
     }
 
     [Fact]
-    public void Prune_drops_missing_members_empty_groups_and_repairs_active()
+    public void Prune_drops_missing_members_keeps_empty_groups_and_repairs_active()
     {
         var s = With("a", "b");
         var g = Groups.Create(s, "G", "a");
@@ -74,7 +74,24 @@ public class GroupTests
         Assert.Equal("b", s.Groups[g].Active);
         s.Widgets.Remove("b");
         Groups.Prune(s);
-        Assert.Empty(s.Groups);
+        Assert.Empty(s.Groups[g].Members);
+        Assert.Null(s.Groups[g].Active);
+    }
+
+    [Fact]
+    public void Groups_can_be_created_empty_and_survive_losing_their_last_member()
+    {
+        var s = With("a", "b");
+        var g = Groups.Create(s, "Work");
+        Assert.Empty(s.Groups[g].Members);
+        Groups.Join(s, g, "a");
+        Groups.Join(s, g, "b");
+        Assert.Equal("a", Groups.ActiveOf(s.Groups[g]));
+        Groups.Leave(s, "a");
+        Groups.Leave(s, "b");
+        Assert.Empty(s.Groups[g].Members);
+        Assert.False(Groups.Prune(s));
+        Assert.Null(Groups.GroupOf(s, "a"));
     }
 
     [Fact]

@@ -139,16 +139,31 @@
             <label class="switch"><input type="checkbox" id="editMode" aria-label="Arrange widgets: unlock to move and resize"><span></span></label>
           </div>
         </header>
-        <div class="group" id="groupBox" hidden>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Tab groups</div>
-              <div class="row-sub">Widgets in a group share one spot on the desktop and show one at a time. Switch tabs from the strip that appears when you hover the widget, or from its right-click menu. Add a widget to a group from its card below.</div>
-            </div>
+        <div class="gstrip" id="groupStrip" role="region" aria-label="Tab groups">
+          <div class="gstrip-main">
+            <span class="gstrip-title" title="Widgets in a group share one spot on the desktop and show one at a time. Switch tabs from the strip that appears when you hover the widget, or from its right-click menu.">Groups</span>
+            <div class="gstrip-chips" id="groupChips"></div>
+            <button class="btn small" id="newGroupBtn" aria-expanded="false"><span class="ico" data-icon="plus"></span>New group</button>
+            <button class="btn small ghost" id="selectBtn" aria-pressed="false">Select widgets</button>
           </div>
-          <div id="groupList"></div>
+          <form class="gstrip-form" id="newGroupForm" hidden>
+            <input type="text" class="input" id="newGroupName" maxlength="40" placeholder="Group name" aria-label="New group name" spellcheck="false">
+            <button class="btn small primary" type="submit">Create</button>
+            <button class="btn small ghost" type="button" id="newGroupCancel">Cancel</button>
+          </form>
+          <div class="gstrip-form" id="bulkBar" hidden>
+            <span id="bulkCount"></span>
+            <select id="bulkGroup" aria-label="Group to add the selected widgets to"></select>
+            <button class="btn small primary" id="bulkAdd">Add to group</button>
+          </div>
+          <div class="gstrip-hint">Create a group, then add widgets with a card's badge, by dragging a card onto it, or with Select widgets.</div>
+        </div>
+        <div class="search" id="mySearchBox">
+          <span class="ico" data-icon="search"></span>
+          <input id="mySearch" placeholder="Filter my widgets" aria-label="Filter my widgets" autocomplete="off" spellcheck="false">
         </div>
         <div class="stack" id="installed"></div>
+        <div class="install-more" id="installMore"><button class="btn" id="goBrowseMore"><span class="ico" data-icon="plus"></span>Install more widgets</button></div>
       </section>
 
       <!-- Layouts -->
@@ -296,9 +311,10 @@
   <template id="tpl-installed">
     <article class="wcard">
       <div class="wcard-main">
+        <input type="checkbox" class="sel" hidden>
         <div class="thumb"></div>
         <div class="wcard-text">
-          <div class="wcard-title"><span class="wname"></span><span class="badge"></span></div>
+          <div class="wcard-title"><span class="wname"></span><span class="badge"></span><button class="gbadge" type="button" aria-haspopup="menu"></button></div>
           <div class="wmeta"></div>
           <div class="wdesc"></div>
         </div>

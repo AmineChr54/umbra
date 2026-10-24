@@ -422,7 +422,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 #layoutName { width: 200px; }
 #layoutList:empty { display: none; }
 #layoutList .row, #groupList .row { gap: 12px; }
-.grouprow { display: flex; align-items: center; gap: 12px; padding: 0 0 4px; color: var(--muted, inherit); font-size: 13px; }
+
 .tabchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tabchip { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .tabchip.on { border-color: var(--accent, currentColor); }
@@ -559,3 +559,53 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .iconcell:hover, .iconcell:focus-visible { background: var(--line); outline: none; }
 .iconcell.wide { grid-column: 1 / -1; height: 28px; font-size: 12px; }
 .iconcell img { width: 20px; height: 20px; }
+
+/* ---------- Groups strip, group headers and badge (#235) ---------- */
+.gstrip { margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-l); background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
+.gstrip-main { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.gstrip-title { font-weight: 600; margin-right: 4px; cursor: help; }
+.gstrip-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+.gstrip-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.gstrip-form[hidden] { display: none; }
+.gstrip-form .input { width: 220px; height: 30px; }
+.gstrip-hint { margin-top: 6px; font-size: 12px; color: var(--text-3); }
+.gchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 0; font: inherit; font-size: 13px; color: inherit; cursor: pointer;
+  background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px var(--line); }
+.gchip:hover { background: rgba(255, 255, 255, 0.09); }
+.gcount { font-size: 12px; color: var(--text-3); }
+.gchip.over, .ghead.over { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(139, 147, 255, 0.12); }
+.ghead { padding: 8px 12px; border-radius: var(--radius-l); background: rgba(139, 147, 255, 0.06); box-shadow: inset 0 0 0 1px var(--line); margin-top: 6px; }
+.ghead-top { display: flex; align-items: center; gap: 10px; }
+.ghead .name { flex: 1; min-width: 0; max-width: 280px; height: 30px; font-weight: 600; }
+.ghead .fold .ico { transition: transform 0.15s; }
+.ghead.folded .fold .ico { transform: rotate(-90deg); }
+.ghead-top .gcount { flex: 1; }
+.ghead-empty { margin-top: 6px; font-size: 12.5px; color: var(--text-3); }
+.ghead .tabchips { margin-top: 6px; }
+.wcard.ingroup { margin-left: 18px; }
+.wcard[hidden] { display: none; }
+.wcard.dragging { opacity: 0.5; }
+.wcard .sel { width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
+.wcard .sel[hidden] { display: none; }
+.gbadge { border: 0; font: inherit; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; cursor: pointer; color: var(--accent-strong);
+  background: rgba(139, 147, 255, 0.14); }
+.gbadge.none { color: var(--text-3); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+.gbadge:hover { background: rgba(139, 147, 255, 0.24); }
+.gmenu { position: absolute; z-index: 20; display: flex; flex-direction: column; min-width: 170px; padding: 4px; margin-top: 4px; border-radius: 10px;
+  background: #15151a; box-shadow: inset 0 0 0 1px var(--line-strong), 0 12px 30px rgba(0, 0, 0, 0.5); }
+.wcard-title { position: relative; }
+.gmenu button { text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.gmenu button:hover, .gmenu button:focus-visible { background: rgba(255, 255, 255, 0.08); }
+.gmenu button.on { color: var(--accent-strong); }
+[data-motion="off"] .ghead .fold .ico { transition: none; }
+
+/* ---------- My widgets: sections, filter, disabled one-liners, install more (#236) ---------- */
+.sechead { display: flex; align-items: baseline; gap: 8px; margin: 14px 2px 2px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-2); }
+.sechead:first-child { margin-top: 0; }
+#mySearchBox[hidden], #installMore[hidden] { display: none; }
+.install-more { margin-top: 16px; display: flex; justify-content: center; }
+.wcard.off .wdesc, .wcard.off .wmeta, .wcard.off .fold, .wcard.off .gbadge { display: none; }
+.wcard.off .wcard-main { align-items: center; }
+.wcard.off .thumb { width: 44px; height: 30px; }
+.wcard.off .btn.small { height: 28px; }
