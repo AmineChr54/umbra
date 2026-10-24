@@ -424,7 +424,7 @@ public class ScaffoldTests
     }
 
     // Commands reachable only through "umbractl send" or without an MCP tool, on purpose.
-    static readonly string[] NoMcpTool = { "quit", "install-local" };
+    static readonly string[] NoMcpTool = { "quit", "install-local", "install-url" };
 
     [Fact]
     public void Install_local_is_never_an_mcp_tool()

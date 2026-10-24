@@ -20,6 +20,27 @@ static class PackageInstall
         return MessageBox.Show(owner, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
     }
 
+    /// <summary>A small host-drawn box asking for an https:// address. Returns the checked address, or null on cancel (a bad address is explained and cancels).</summary>
+    public static string? AskUrl(IWin32Window? owner)
+    {
+        using var form = new Form
+        {
+            Text = "Install a widget from a web address", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent,
+            MaximizeBox = false, MinimizeBox = false, ClientSize = new Size(520, 110), ShowInTaskbar = false,
+            BackColor = Color.FromArgb(24, 24, 24), ForeColor = Color.White,
+        };
+        var label = new Label { Text = "Address of a .umbrawidget (or .zip) file, https:// only:", Left = 12, Top = 12, Width = 496, AutoSize = false, Height = 20 };
+        var box = new TextBox { Left = 12, Top = 36, Width = 496 };
+        var ok = new Button { Text = "Download and review", Left = 292, Top = 72, Width = 150, DialogResult = DialogResult.OK };
+        var cancel = new Button { Text = "Cancel", Left = 448, Top = 72, Width = 60, DialogResult = DialogResult.Cancel };
+        form.Controls.AddRange(new System.Windows.Forms.Control[] { label, box, ok, cancel });
+        form.AcceptButton = ok; form.CancelButton = cancel;
+        if (form.ShowDialog(owner) != DialogResult.OK) return null;
+        var url = box.Text.Trim();
+        if (Community.CheckDownloadUrl(url) is { } bad) { MessageBox.Show(owner, bad, "Umbra", MessageBoxButtons.OK, MessageBoxIcon.Warning); return null; }
+        return url;
+    }
+
     /// <summary>The review text for a widget that asks for no access: who made it, where it came from, and that it replaces an installed copy.</summary>
     internal static string PlainReview(Community.PendingInstall p, string source) =>
         $"{(p.IsUpdate ? "Replace the installed" : "Install")} {p.Manifest.Name} {p.Manifest.Version}"

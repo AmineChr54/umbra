@@ -20,9 +20,14 @@ static class Program
 
         var restart = args.Contains(Tray.RestartArg, StringComparer.OrdinalIgnoreCase);
 
+        // Double-click on a .umbrawidget (the installer registers Umbra.exe "%1" for it).
+        var package = args.Where(x => !x.StartsWith("--") && x.EndsWith(Community.PackageExtension, StringComparison.OrdinalIgnoreCase))
+            .Select(x => { try { return Path.GetFullPath(x); } catch (ArgumentException) { return null; } }).FirstOrDefault(x => x is not null);
+
         using var instance = new SingleInstance(waitForPrevious: restart);
         if (!instance.IsFirst)
         {
+            if (package is not null) { SingleInstance.SignalFirst(Control.OpenPackagePrefix + package); return; }
             if (safe)
             {
                 // Already running: switch it to safe mode through the control pipe.
@@ -56,6 +61,7 @@ static class Program
         var app = new App(openSettings: !background && firstRun, background, safe);
         app.SaveSettings();
         instance.Listen(new Control(app).HandleLineAsync);
+        if (package is not null) _ = app.OnUi(async () => await app.OpenPackageAsync(package)); // queued until the message loop runs
         Application.Run(app);
     }
 }

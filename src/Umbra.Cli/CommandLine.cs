@@ -146,6 +146,13 @@ static class CommandLine
                 if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
                 return ("install-local", o);
             }
+            case "install-url":
+            {
+                var url = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing https:// address of a .umbrawidget. Run umbractl help.");
+                var o = O(("url", url));
+                if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                return ("install-url", o);
+            }
             case "validate" or "validate-widget":
                 // umbractl validate [folder|file]: check without installing (default: the current folder).
                 return ("validate-widget", O(("path", Path.GetFullPath(PathArg(a)))));
