@@ -32,7 +32,7 @@ public static class Protocol
         ("unlock-all", "Unlock every widget to arrange it by hand: edit mode on"),
         ("safe-mode", "Safe mode: community widgets stay closed, nothing is deleted or disabled in settings: {on?}. Not saved; the next normal start restores everything (also Umbra.exe --safe)"),
         ("layouts", "Named layouts (positions, sizes, enabled widgets): {op?: list|save|apply|rename|delete, name, to? (new name, for rename)}; no op = list. Saving pins a layout to the current monitor setup"),
-        ("groups", "Tab groups: widget copies that share one screen slot, one visible at a time: {op?: list|create|join|leave|activate|next|previous|reorder|configure|icon|delete, group? (id like g1), id? (widget copy), name?, index? (reorder), cycleSeconds? (configure; 0 = off, else 5-3600), icon? (icon op: a name from shared/tabicons, empty = default)}; create makes a group from copy id; no op = list"),
+        ("groups", "Tab groups: widget copies that share one screen slot, one visible at a time: {op?: list|create|join|leave|activate|next|previous|reorder|configure|icon|delete, group? (id like g1), id? (widget copy), name?, index? (reorder), cycleSeconds? (configure; 0 = off, else 5-3600), icon? (icon op: a name from shared/tabicons, empty = default)}; create makes a group from copy id, or an empty one without id; no op = list"),
         ("theme", "Read or change the active theme: {id?}; no id = read. Changes apply live to every widget"),
         ("themes", "Installed themes plus the community theme catalog, with installed/updateAvailable flags and the active id"),
         ("install-theme", "Install or update a community theme from the catalog: {id}"),

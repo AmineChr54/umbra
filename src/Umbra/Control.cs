@@ -229,7 +229,7 @@ sealed class Control(App app)
                     switch (op)
                     {
                         case "list": break;
-                        case "create": app.CreateGroup(a["name"] is null ? "Group" : Str(a, "name"), Target(a).Instance); break;
+                        case "create": app.CreateGroup(a["name"] is null ? "Group" : Str(a, "name"), a["id"] is null ? null : Target(a).Instance); break;
                         case "join": app.JoinGroup(Str(a, "group"), Target(a).Instance); break;
                         case "leave": app.LeaveGroup(Target(a).Instance); break;
                         case "activate": app.ActivateTab(Str(a, "group"), Target(a).Instance); break;
