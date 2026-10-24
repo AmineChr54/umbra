@@ -87,7 +87,12 @@ umbractl new my-widget                 # scaffold a working widget and show it o
 umbractl create .\widgets\my-widget    # (re)load the folder you are editing in the repo
 umbractl capture my-widget preview.png # pixel-exact 2x screenshot, ready to commit as preview.png
 umbractl logs                          # load errors and requests blocked by the sandbox
+umbractl dev .\widgets\my-widget       # load the folder and reload on every save, printing blocked requests and errors live
+umbractl validate .\widgets\my-widget  # the checks an install does, plus lints (exit 1 on errors)
+umbractl pack .\widgets\my-widget      # write my-widget.umbrawidget, the shareable package (double-click or Browse > Install from file)
 ```
+
+New here? Follow the [10-minute tutorial](docs/widgets/tutorial.md), copy from the [cookbook](docs/widgets/cookbook.md) (every recipe points at a real widget), or read [coming from browser extensions](docs/widgets/from-browser-extensions.md). `widget.json` has a `manifestVersion` (default 1) and an optional `minUmbraVersion`; run `node scripts/catalog.mjs` and commit the regenerated index before you open the pull request.
 
 Or copy your folder to `%APPDATA%\Umbra\widgets\my-widget\` and run `umbractl reload`. It appears in **My widgets**. The complete API reference is [docs/widget-sdk.md](docs/widget-sdk.md), and editors validate `widget.json` against [schemas/widget.schema.json](schemas/widget.schema.json) when it starts with the `$schema` line.
 
