@@ -180,6 +180,24 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a7b1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
 .select option { background: #111114; }
+/* Bare controls (prefs rows, card extras): same look as .input/.select, sized to content. */
+select:not(.select), input:is([type=number], [type=text], [type=time]):not(.input) {
+  height: 32px; padding: 0 10px; color-scheme: dark;
+  border: 0; border-radius: 8px; outline: none;
+  background-color: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  font-variant-numeric: tabular-nums;
+  transition: box-shadow 160ms, background-color 160ms;
+}
+select:not(.select) { appearance: none; cursor: pointer; padding-right: 30px; max-width: 220px; text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a7b1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; }
+select:not(.select) option { background: #111114; }
+input:is([type=number], [type=text], [type=time]):not(.input) { user-select: text; }
+input[type=number]:not(.input) { text-align: right; }
+input[type=number]:not(.input)::-webkit-inner-spin-button, input[type=number]:not(.input)::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+select:not(.select):hover, input:is([type=number], [type=text], [type=time]):not(.input):hover { background-color: rgba(255, 255, 255, 0.08); }
+select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not(.input):focus { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px rgba(139, 147, 255, 0.2); }
 
 /* ---------- my widgets ---------- */
 .stack { display: flex; flex-direction: column; gap: 14px; }
@@ -485,6 +503,9 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
   .input:hover, .select:hover { border-color: Highlight; }
   .input:focus, .select:focus { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
   .select { appearance: auto; background-image: none; padding-right: 12px; }
+  select:not(.select), input:is([type=number], [type=text], [type=time]):not(.input) { border: 1px solid ButtonText; box-shadow: none; }
+  select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not(.input):focus { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  select:not(.select) { appearance: auto; background-image: none; padding-right: 10px; }
   .search:focus-within { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
 
   .range { background: ButtonText; }
