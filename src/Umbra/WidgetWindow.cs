@@ -43,7 +43,15 @@ sealed class WidgetWindow : Form
     Size ScaledSize(double scale) => WidgetGeometry.ScaledSize(Manifest.Width, Manifest.Height, DeviceDpi, scale);
 
     /// <summary>The window size from this copy's settings: a free size if the user dragged an edge, otherwise manifest x scale.</summary>
-    Size SavedSize(WidgetSettings ws) => WidgetGeometry.WindowSize(Manifest.Width, Manifest.Height, DeviceDpi, ws.Scale, ws.Width, ws.Height);
+    Size SavedSize(WidgetSettings ws)
+    {
+        var k = GlobalSize;
+        return WidgetGeometry.WindowSize(Manifest.Width, Manifest.Height, DeviceDpi, WidgetSettings.ClampScale(ws.Scale * k),
+            ws.Width is int w ? (int)Math.Round(w * k) : null, ws.Height is int h ? (int)Math.Round(h * k) : null);
+    }
+
+    /// <summary>The global Size multiplier (General), applied on top of the widget's own size.</summary>
+    double GlobalSize => Prefs.ClampSize(_app.Settings.General.Size);
 
     /// <summary>The page zoom for a window size at the current DPI (the smaller stretch; the page lays out at window / zoom).</summary>
     double ZoomFor(Size size) => WidgetGeometry.ZoomFor(Manifest.Width, Manifest.Height, DeviceDpi, size.Width, size.Height);
@@ -432,9 +440,10 @@ sealed class WidgetWindow : Form
     void SetSizeByHand()
     {
         var ws = Ws;
-        ws.Width = WidgetGeometry.ToLogical(Width, DeviceDpi);
-        ws.Height = WidgetGeometry.ToLogical(Height, DeviceDpi);
-        ws.Scale = WidgetSettings.ClampScale(ZoomFor(Size));
+        var k = GlobalSize; // the window shows own size x global Size; store the own part
+        ws.Width = (int)Math.Round(WidgetGeometry.ToLogical(Width, DeviceDpi) / k);
+        ws.Height = (int)Math.Round(WidgetGeometry.ToLogical(Height, DeviceDpi) / k);
+        ws.Scale = WidgetSettings.ClampScale(ZoomFor(Size) / k);
         FinishHandResize();
     }
 

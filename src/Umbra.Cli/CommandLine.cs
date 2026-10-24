@@ -113,6 +113,7 @@ static class CommandLine
                 if (Flag(a, "--animation-speed") is string asp) o["animationSpeed"] = asp;
                 if (Flag(a, "--default-notifications") is string dn) o["defaultNotifications"] = OnOff(dn);
                 if (Flag(a, "--default-opacity") is string dop) o["defaultOpacity"] = double.Parse(dop, CultureInfo.InvariantCulture);
+                if (Flag(a, "--size") is string sz) o["size"] = Scale(sz);
                 if (Flag(a, "--default-scale") is string ds) o["defaultScale"] = Scale(ds);
                 if (Flag(a, "--log-level") is string ll) o["logLevel"] = ll;
                 if (Flag(a, "--developer-mode") is string dm) o["developerMode"] = OnOff(dm);

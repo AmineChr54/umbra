@@ -17,6 +17,10 @@ static class Prefs
     public static readonly string[] LogLevels = { "errors", "normal", "verbose" };
     public const int MaxStartupDelay = 300;
     public const double MinOpacity = 0.2;
+    public const double MinSize = 0.5, MaxSize = 1.5;
+
+    /// <summary>The global Size multiplier within <see cref="MinSize"/>-<see cref="MaxSize"/>, rounded to whole percent; anything not a number is 1.</summary>
+    public static double ClampSize(double v) => double.IsFinite(v) ? Math.Round(Math.Clamp(v, MinSize, MaxSize), 2) : 1.0;
     /// <summary>Interface fonts (plain family names, so they are safe inside the generated :root rule).</summary>
     public static readonly string[] Fonts = { "default", "Segoe UI", "Arial", "Verdana", "Tahoma", "Georgia", "Consolas" };
     public const double MinFontScale = 0.8, MaxFontScale = 1.4;
@@ -275,6 +279,7 @@ static class Prefs
         if (a["defaultNotifications"] is JsonNode dn) g.DefaultNotifications = Flag(dn, "defaultNotifications");
         if (a["defaultOpacity"] is JsonNode dop) g.DefaultOpacity = Opacity(dop, "defaultOpacity");
         if (a["defaultScale"] is JsonNode ds) g.DefaultScale = WidgetSettings.ClampScale(Num(ds, "defaultScale"));
+        if (a["size"] is JsonNode sz) g.Size = Size(sz);
         if (a["logLevel"] is JsonNode ll) g.LogLevel = OneOf(ll, "logLevel", LogLevels);
         if (a["borderEnabled"] is JsonNode be) g.BorderEnabled = Flag(be, "borderEnabled");
         if (a["borderColor"] is JsonNode bc) g.BorderColor = Color(bc, "borderColor");
@@ -344,6 +349,12 @@ static class Prefs
         }
         if (a.ContainsKey("notifications")) ws.Notifications = a["notifications"] is JsonNode nt ? Flag(nt, "notifications") : null;
         if (a.ContainsKey("opacity")) ws.Opacity = a["opacity"] is JsonNode op ? Opacity(op, "opacity") : null;
+    }
+
+    static double Size(JsonNode n)
+    {
+        var v = Num(n, "size");
+        return v >= MinSize && v <= MaxSize ? Math.Round(v, 2) : throw new Control.CommandException($"size must be between {MinSize} and {MaxSize}");
     }
 
     static double Opacity(JsonNode n, string name)

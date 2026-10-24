@@ -26,6 +26,7 @@
       group.append(row(title, sub, `<select id="pf-${key}" aria-label="${title}"></select>`));
     group.append(row("Default opacity", "Window opacity of widgets without their own. Percent; 20 to 100.", `<input type="number" id="pf-defaultOpacity" min="20" max="100" step="5" style="width:72px" aria-label="Default opacity percent">`));
     group.append(row("Allow notifications", "Default for widgets that can show notifications; each widget can override it.", `<label class="switch"><input type="checkbox" id="pf-defaultNotifications"><span></span></label>`));
+    group.append(row("Size", "Scales every widget on top of its own size. Percent; 50 to 150.", `<span class="pf-size"><input type="range" class="range" id="pf-size" min="50" max="150" step="5" aria-label="Size of all widgets"><output id="pf-sizeVal"></output></span>`));
     group.append(row("Default size", "Size of widgets without their own, and of new ones. Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
     group.append(row("Interface text size", "Percent; 80 to 140. Affects widgets that size text from the design tokens.", `<input type="number" id="pf-fontScale" min="80" max="140" step="5" style="width:72px" aria-label="Interface text size">`));
     group.append(row("Window border", "The hairline around widget windows.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-borderColor" aria-label="Border color"><label class="switch"><input type="checkbox" id="pf-borderEnabled"><span></span></label></span>`));
@@ -46,6 +47,10 @@
     };
     for (const [, , key] of rows) bind(key, null, (gen, i) => (gen[key] = i.value));
     bind("defaultScale", null, (gen, i) => { const v = Math.max(50, Math.min(300, Math.round(Number(i.value) || 100))); i.value = v; gen.defaultScale = v / 100; });
+    const sizeIn = sec.querySelector("#pf-size");
+    const showSize = () => { sec.querySelector("#pf-sizeVal").textContent = sizeIn.value + "%"; sizeIn.style.setProperty("--p", sizeIn.value - 50 + "%"); };
+    sizeIn.addEventListener("input", showSize);
+    bind("size", null, (gen, i) => { gen.size = Number(i.value) / 100; showSize(); });
     bind("defaultOpacity", null, (gen, i) => { const v = Math.max(20, Math.min(100, Math.round(Number(i.value) || 100))); i.value = v; gen.defaultOpacity = v / 100; });
     bind("defaultNotifications", null, (gen, i) => (gen.defaultNotifications = i.checked));
     bind("fontScale", null, (gen, i) => { const v = Math.max(80, Math.min(140, Math.round(Number(i.value) || 100))); i.value = v; gen.fontScale = v / 100; });
@@ -76,6 +81,7 @@
     }
     const set = (id, fn) => { const i = document.getElementById("pf-" + id); if (i && document.activeElement !== i) fn(i); };
     set("defaultScale", (i) => (i.value = Math.round((gen.defaultScale || 1) * 100)));
+    set("size", (i) => { i.value = Math.round((gen.size || 1) * 100); document.getElementById("pf-sizeVal").textContent = i.value + "%"; i.style.setProperty("--p", i.value - 50 + "%"); });
     set("defaultOpacity", (i) => (i.value = Math.round((gen.defaultOpacity || 1) * 100)));
     set("defaultNotifications", (i) => (i.checked = !!gen.defaultNotifications));
     set("fontScale", (i) => (i.value = Math.round((gen.fontScale || 1) * 100)));
