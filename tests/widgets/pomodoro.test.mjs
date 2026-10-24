@@ -102,3 +102,28 @@ test("valid rejects old pomodoro state", () => {
   assert.equal(S.valid({ phase: "work", cycle: 0, running: false, total: 1500000 }), false);
   assert.equal(S.valid(S.create(90, true)), true);
 });
+
+const T = createRequire(import.meta.url)("../../widgets/pomodoro/timelapse.js");
+
+test("timelapse settings are clamped and stay within 3600 stills", () => {
+  assert.deepEqual(T.clean(null), { on: false, interval: 30, length: 30, fps: 30 });
+  const c = T.clean({ on: true, interval: 0, length: 9999, fps: 60 });
+  assert.equal(c.interval, 1);
+  assert.ok(c.length * c.fps <= T.MAX_STILLS);
+});
+
+test("timelapse estimate follows the session minutes and the length cap", () => {
+  const e = T.estimate({ interval: 30, length: 30, fps: 30 }, 60);
+  assert.equal(e.frames, 120);
+  assert.equal(e.seconds, 4);
+  assert.equal(e.capped, false);
+  const c = T.estimate({ interval: 1, length: 5, fps: 10 }, 60);
+  assert.equal(c.frames, 50);
+  assert.equal(c.capped, true);
+});
+
+test("timelapse errors are put in plain words", () => {
+  assert.match(T.friendly("The user denied camera access"), /not allowed/);
+  assert.match(T.friendly("Camera privacy setting is off"), /Windows is blocking/);
+  assert.equal(T.friendly("odd"), "odd");
+});

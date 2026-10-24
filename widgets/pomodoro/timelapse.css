@@ -1,0 +1,25 @@
+/* Timelapse section of the setup, and its status line in the run view */
+.setup { overflow-y: auto; }
+.setup .pick { flex: 1 0 auto; gap: 6px; }
+.tl { flex: none; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.tl summary { display: flex; align-items: center; height: 30px; padding: 0 10px; font-size: 12.5px; color: var(--text-2); cursor: pointer; list-style: none; }
+.tl summary::-webkit-details-marker { display: none; }
+.tl summary::after { content: "\25BE"; margin-left: 6px; color: var(--text-3); }
+.tl[open] summary::after { content: "\25B4"; }
+.tl summary span:first-child { flex: 1; font-weight: 600; }
+.tl-sum { color: var(--text-3); font-size: 11.5px; }
+.tl-body { display: flex; flex-direction: column; gap: 6px; padding: 2px 10px 10px; }
+.tl-body .check { margin-top: 0; }
+.tl-grid { display: grid; gap: 5px; }
+.tl-grid[hidden] { display: none; }
+.tl-grid label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-2); }
+.tl-grid input { width: 58px; height: 24px; padding: 0 6px; font: inherit; font-size: 12px; color: var(--text); text-align: right; background: var(--surface-3); border: 1px solid var(--line); border-radius: 6px; }
+.tl-grid input:focus { outline: none; border-color: var(--accent); }
+.link { padding: 0; font: inherit; font-size: 12px; color: var(--accent-strong); background: none; border: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.link:hover { color: var(--text); }
+.tl-est { margin: 0; font-size: 11.5px; color: var(--text-3); }
+.tl-msg { margin: 0; font-size: 11.5px; line-height: 1.35; color: var(--down); flex: none; }
+.tl-run { display: flex; justify-content: center; align-items: center; gap: 10px; min-height: 18px; flex: none; }
+.tl-stat { font-size: 11.5px; color: var(--text-2); }
+.tl-stat.rec::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--down); }
+.tl-stat.err { color: var(--down); }

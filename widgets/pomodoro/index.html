@@ -5,6 +5,7 @@
   <title>Pomodoro</title>
   <link rel="stylesheet" href="https://umbra.local/shared/umbra.css">
   <link rel="stylesheet" href="pomodoro.css">
+  <link rel="stylesheet" href="timelapse.css">
 </head>
 <body>
   <main class="pm" id="app">
@@ -30,6 +31,20 @@
           Skip breaks
         </label>
       </div>
+      <details class="tl" id="tl-box" data-no-drag>
+        <summary><span>Timelapse</span><span class="tl-sum num" id="tl-sum">Off</span></summary>
+        <div class="tl-body">
+          <label class="check"><input type="checkbox" id="tl-on"><span class="box" aria-hidden="true"></span>Record a webcam timelapse</label>
+          <div class="tl-grid" id="tl-fields">
+            <label>Photo every <span><input class="num" id="tl-interval" type="number" min="1" max="3600" aria-label="Seconds between photos"> s</span></label>
+            <label>Video up to <span><input class="num" id="tl-length" type="number" min="1" max="3600" aria-label="Maximum video seconds"> s</span></label>
+            <label>Frame rate <span><input class="num" id="tl-fps" type="number" min="1" max="60" aria-label="Frames per second"> fps</span></label>
+            <label>Save to <button type="button" class="link" id="tl-folder">Videos</button></label>
+          </div>
+          <p class="tl-est num" id="tl-est"></p>
+        </div>
+      </details>
+      <p class="tl-msg" id="setup-msg" hidden></p>
       <button class="btn primary wide" id="start" data-no-drag>Start focus session</button>
     </section>
 
@@ -51,6 +66,10 @@
         </div>
       </div>
       <p class="next num" id="next">Up next: 5 min break</p>
+      <div class="tl-run" id="tl-run" data-no-drag hidden>
+        <span class="tl-stat num" id="tl-stat"></span>
+        <button class="link" id="tl-act"></button>
+      </div>
       <div class="ctl" data-no-drag>
         <button class="btn primary" id="toggle">Pause</button>
       </div>
@@ -63,6 +82,7 @@
   </main>
   <script src="https://umbra.local/shared/umbra.js"></script>
   <script src="session.js"></script>
+  <script src="timelapse.js"></script>
   <script src="pomodoro.js"></script>
 </body>
 </html>
