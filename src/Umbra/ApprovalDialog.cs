@@ -51,6 +51,41 @@ sealed class ApprovalDialog : Form
         _allow.Left = 544 - 110 - 10 - 110; _allow.Top = 296;
         _deny.Left = 544 - 110; _deny.Top = 296;
         Controls.AddRange(new System.Windows.Forms.Control[] { heading, line, where, note, said, warn, _allow, _deny });
+        ArmButtons();
+    }
+
+    /// <summary>The one-time camera prompt for <c>permissions.camera</c> (timelapses).</summary>
+    ApprovalDialog(string widgetName)
+    {
+        Text = "Umbra: allow this widget to use your camera?";
+        Icon = App.AppIcon;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = MinimizeBox = false;
+        StartPosition = FormStartPosition.CenterScreen;
+        TopMost = true;
+        ShowInTaskbar = true;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        ClientSize = new Size(560, 200);
+        var heading = new Label
+        {
+            Text = $"The widget \"{Clean(widgetName, 40)}\" wants to record timelapses with your webcam.",
+            Left = 16, Top = 14, Width = 528, Height = 22, UseMnemonic = false, Font = new Font(Font, FontStyle.Bold),
+        };
+        var note = new Label
+        {
+            Text = "Umbra takes the photos itself and saves the video on this PC; the widget never sees the camera or the photos, "
+                   + "and nothing is sent anywhere. Recording only starts when you click the widget, a red dot shows on the widget "
+                   + "and in the tray while the camera is on, and it stops after 12 hours. You can revoke this in Settings > My widgets.",
+            Left = 16, Top = 44, Width = 528, Height = 100,
+        };
+        _allow.Left = 544 - 110 - 10 - 110; _allow.Top = 152;
+        _deny.Left = 544 - 110; _deny.Top = 152;
+        Controls.AddRange(new System.Windows.Forms.Control[] { heading, note, _allow, _deny });
+        ArmButtons();
+    }
+
+    void ArmButtons()
+    {
         AcceptButton = _deny;
         CancelButton = _deny;
         ActiveControl = _deny;
@@ -80,6 +115,13 @@ sealed class ApprovalDialog : Form
     {
         var t = new string(s.Where(c => !char.IsControl(c)).ToArray()).Trim();
         return t.Length > max ? t[..max] + "..." : t;
+    }
+
+    /// <summary>Shows the camera prompt and returns true only when the user clicked Allow.</summary>
+    public static bool AskCamera(string widgetName)
+    {
+        using var dlg = new ApprovalDialog(widgetName);
+        return dlg.ShowDialog() == DialogResult.Yes;
     }
 
     /// <summary>Shows the prompt and returns true only when the user clicked Allow.</summary>

@@ -127,7 +127,7 @@ static class CommandLine
             }
             case "install":
             {
-                // An update that adds hosts, media, notifications or commands is refused (and the new access listed) until
+                // An update that adds hosts, media, notifications, camera or commands is refused (and the new access listed) until
                 // the person at the keyboard repeats it with --accept-permissions.
                 var id = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing widget id. Run umbractl help.");
                 var o = O(("id", id));

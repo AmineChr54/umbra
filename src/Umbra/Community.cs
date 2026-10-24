@@ -143,7 +143,7 @@ static class Community
 
     /// <summary>
     /// Installs or updates one widget. Everything is downloaded to a temp folder and validated first. An update that
-    /// adds permissions (hosts, system, media, notifications, commands) throws <see cref="PermissionsChangedException"/>
+    /// adds permissions (hosts, system, media, notifications, camera, commands) throws <see cref="PermissionsChangedException"/>
     /// unless <paramref name="acceptPermissions"/> is true, which only a user action may set.
     /// </summary>
     public static async Task InstallAsync(JsonNode entry, bool acceptPermissions = false)
@@ -155,7 +155,7 @@ static class Community
 
     /// <summary>
     /// The install used by "update all": downloads and validates first, then refuses (throws, nothing written, the running
-    /// widget untouched) an update that adds hosts, system, media, notifications or commands, naming the new access and how
+    /// widget untouched) an update that adds hosts, system, media, notifications, camera or commands, naming the new access and how
     /// to accept it. <paramref name="beforeCommit"/> gets the widget id just before the folder is replaced (to close its window).
     /// </summary>
     public static async Task UpdateWithoutNewAccessAsync(JsonNode entry, Action<string>? beforeCommit = null, Func<string, Task<byte[]>>? fetch = null)

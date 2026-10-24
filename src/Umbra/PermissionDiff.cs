@@ -1,7 +1,7 @@
 namespace Umbra;
 
 /// <summary>
-/// What an update adds to what is already installed: hosts, system metrics, media access, notifications and
+/// What an update adds to what is already installed: hosts, system metrics, media access, notifications, camera and
 /// commands (new, or changed so their hash differs). Removed permissions are not listed. Pure, so it is unit tested;
 /// <see cref="Community"/> refuses to replace an installed widget until the user accepted a non-empty diff.
 /// </summary>
@@ -11,10 +11,11 @@ public sealed class PermissionDiff
     public IReadOnlyList<string> System { get; init; } = Array.Empty<string>();
     public IReadOnlyList<string> Media { get; init; } = Array.Empty<string>();
     public bool Notifications { get; init; }
+    public bool Camera { get; init; }
     /// <summary>Commands that are new or whose executable, arguments or limits changed (the stored approval no longer matches).</summary>
     public IReadOnlyList<CommandSpec> Commands { get; init; } = Array.Empty<CommandSpec>();
 
-    public bool IsEmpty => Hosts.Count == 0 && System.Count == 0 && Media.Count == 0 && !Notifications && Commands.Count == 0;
+    public bool IsEmpty => Hosts.Count == 0 && System.Count == 0 && Media.Count == 0 && !Notifications && !Camera && Commands.Count == 0;
 
     /// <summary>The permissions of <paramref name="updated"/> that <paramref name="installed"/> does not have. A null installed manifest means everything is new.</summary>
     public static PermissionDiff Compute(WidgetManifest? installed, WidgetManifest updated)
@@ -28,6 +29,7 @@ public sealed class PermissionDiff
             System = Added(old.System, now.System),
             Media = Added(old.Media, now.Media),
             Notifications = now.Notifications && !old.Notifications,
+            Camera = now.Camera && !old.Camera,
             Commands = now.Commands.Where(c => !oldHashes.Contains(c.Hash())).ToList(),
         };
     }
@@ -47,6 +49,7 @@ public sealed class PermissionDiff
         foreach (var m in Media)
             lines.Add(m.Equals("control", StringComparison.OrdinalIgnoreCase) ? "Can control media playback (play, pause, next, previous)" : "Can read what media is playing");
         if (Notifications) lines.Add("Can show notifications");
+        if (Camera) lines.Add("Can record timelapses with your webcam (only after you click it; a red dot shows while recording)");
         foreach (var c in Commands) lines.Add($"Can ask to run a program: {c.DisplayLine()} (you still approve it before it runs)");
         return lines;
     }

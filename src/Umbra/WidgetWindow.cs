@@ -16,6 +16,7 @@ sealed class WidgetWindow : Form
     readonly TaskCompletionSource _renderedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     DateTime _renderedAt;
     long _pressedAt = long.MinValue / 2;
+    long _leftPressAt = long.MinValue / 2, _menuAt = long.MinValue / 2;
     IntPtr _foregroundAtPress;
     bool _resizing;
     long _lastZoomAt = long.MinValue / 2;
@@ -89,6 +90,8 @@ sealed class WidgetWindow : Form
     {
         base.OnVisibleChanged(e);
         if (Visible) DesktopPin.Apply(Handle);
+        // Hidden (group tab, hide hotkey, fullscreen app...): a recording pauses with the camera off until the widget is back.
+        _app.Timelapse.SetPaused(Instance, !Visible);
     }
 
     protected override void WndProc(ref Message m)
@@ -101,6 +104,7 @@ sealed class WidgetWindow : Form
                 break;
             case Native.WM_MOUSEACTIVATE:
                 MarkPressed(); // only real clicks on this window send it
+                if (ClickGate.IsLeftPress(m.LParam) && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
                 m.Result = Native.MA_NOACTIVATE;
                 return;
             case Native.WM_GETMINMAXINFO:
@@ -305,6 +309,7 @@ sealed class WidgetWindow : Form
         try { old.Dispose(); } catch (Exception ex) { Log.Write($"[{Instance}] disposing the crashed WebView2 failed: {ex.Message}"); }
         _view = NewView();
         Controls.Add(_view);
+        _recordingDot?.BringToFront();
         ApplyZoom(ZoomFor(Size));
         await StartViewAsync(url);
     }
@@ -477,6 +482,7 @@ sealed class WidgetWindow : Form
     {
         e.Handled = true; // the Edge menu (back, save as, print...) never shows
         if (IsDisposed) return;
+        _menuAt = System.Environment.TickCount64; // a press that opened the host menu never starts the camera
         BeginInvoke(() =>
         {
             // Deferred, so an exception here would reach the UI thread's unhandled handler: log it instead.
@@ -678,6 +684,10 @@ sealed class WidgetWindow : Form
                 await HandleRun(msg!);
                 break;
 
+            case "timelapse":
+                await HandleTimelapse(msg!);
+                break;
+
             case "exitEdit":
                 // The page saw Esc. Only honoured while this window is the foreground one and Esc is physically down (a page can't fake it).
                 if (_app.EditMode && Native.GetForegroundWindow() == Handle && IsKeyDown(Native.VK_ESCAPE)) _app.SetEditMode(false);
@@ -756,12 +766,16 @@ sealed class WidgetWindow : Form
     /// <summary>Did the user physically press the mouse on this window in the last two seconds? Gates the first-approval prompt.</summary>
     bool RecentUserPress() => System.Environment.TickCount64 - _pressedAt <= 2000;
 
+    /// <summary>The stricter gate for the camera: a left click outside edit mode in the last 2 s, not the host menu (<see cref="ClickGate"/>).</summary>
+    bool RecentLeftClick() => ClickGate.Allows(_leftPressAt, _menuAt, System.Environment.TickCount64, _app.EditMode);
+
     /// <summary>Cancelled when the window closes (widget disabled or removed): running commands are killed.</summary>
     readonly CancellationTokenSource _closing = new();
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
         _closing.Cancel();
+        _app.Timelapse.Stop(Instance); // disabled or removed: the camera goes off and what was captured is rendered
         // Disposed later: this can run inside a click on the menu's own item (Hide, Remove copy).
         if (_menu is { } menu) { _menu = null; SynchronizationContext.Current?.Post(_ => menu.Dispose(), null); }
         CrashRecovery.SetStopped(Instance, false);
@@ -922,6 +936,116 @@ sealed class WidgetWindow : Form
             if (ex is not WidgetCommandException) Log.Write($"[{Manifest.Id}] media failed: {ex.Message}");
         }
         Post(reply);
+    }
+
+    /// <summary>
+    /// umbra.timelapse: start (needs permissions.camera, an enabled visible widget, a physical left click just before and
+    /// the one-time camera approval), stop, cancel, status, and chooseFolder (host folder dialog, also after a click).
+    /// The page never gets a frame or a full path: only the video's file name and the folder's name.
+    /// </summary>
+    async Task HandleTimelapse(JsonNode msg)
+    {
+        var reply = new JsonObject { ["type"] = "timelapseResult", ["id"] = msg["id"]?.DeepClone() };
+        try
+        {
+            if (!Manifest.Permissions.Camera) throw new TimelapseException("This widget has no permissions.camera");
+            var op = msg["op"] is JsonValue o && o.GetValueKind() == JsonValueKind.String ? o.GetValue<string>() : null;
+            switch (op)
+            {
+                case "start":
+                    if (!(Alive && Ws.Enabled && Visible)) throw new TimelapseException("The widget is disabled or hidden");
+                    var plan = TimelapsePlan.Create(Number(msg, "interval"), Number(msg, "length"), Number(msg, "fps"));
+                    await _app.CameraConsent.EnsureAsync(Manifest, RecentLeftClick());
+                    if (!(Alive && Ws.Enabled)) throw new TimelapseException("The widget is disabled");
+                    reply["data"] = _app.Timelapse.Start(Instance, Manifest.Id, plan, TimelapseFolders.Shared.Get(Manifest.Id));
+                    break;
+                case "stop":
+                    _app.Timelapse.Stop(Instance);
+                    reply["data"] = _app.Timelapse.Status(Instance);
+                    break;
+                case "cancel":
+                    _app.Timelapse.Cancel(Instance);
+                    reply["data"] = _app.Timelapse.Status(Instance);
+                    break;
+                case "status":
+                    var status = _app.Timelapse.Status(Instance);
+                    status["folder"] = TimelapseFolders.Label(TimelapseFolders.Shared.Get(Manifest.Id));
+                    status["cameraApproved"] = _app.CameraConsent.Approvals.CameraApproved(Manifest.Id);
+                    reply["data"] = status;
+                    break;
+                case "chooseFolder":
+                    if (!(Alive && Ws.Enabled)) throw new TimelapseException("The widget is disabled");
+                    if (!RecentLeftClick()) throw new TimelapseException("Click the widget first: the folder dialog opens only from a physical click");
+                    reply["data"] = await ChooseTimelapseFolder();
+                    break;
+                default:
+                    throw new TimelapseException("Unknown timelapse operation");
+            }
+            reply["ok"] = true;
+        }
+        catch (Exception ex)
+        {
+            reply["ok"] = false;
+            reply["error"] = ex is TimelapseException ? ex.Message : "Timelapse is not available";
+            Log.Write($"[{Instance}] timelapse {msg["op"]} failed: {ex.Message}");
+        }
+        Post(reply);
+    }
+
+    static double Number(JsonNode msg, string key) =>
+        msg[key] is JsonValue v && v.GetValueKind() == JsonValueKind.Number ? v.GetValue<double>() : throw new TimelapseException($"{key} must be a number");
+
+    /// <summary>The host's own folder picker; the folder is saved per widget id and the page only learns which one was picked.</summary>
+    async Task<JsonObject> ChooseTimelapseFolder()
+    {
+        await Task.Yield(); // let the message handler return before the modal dialog
+        var current = TimelapseFolders.Shared.Get(Manifest.Id);
+        using var dlg = new FolderBrowserDialog
+        {
+            Description = $"Where should \"{ApprovalDialog.Clean(Manifest.Name, 40)}\" save timelapse videos?",
+            UseDescriptionForTitle = true,
+            InitialDirectory = Directory.Exists(current) ? current : System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyVideos),
+            ShowNewFolderButton = true,
+        };
+        if (dlg.ShowDialog() == DialogResult.OK && Path.IsPathFullyQualified(dlg.SelectedPath))
+        {
+            TimelapseFolders.Shared.Set(Manifest.Id, dlg.SelectedPath);
+            return new JsonObject { ["folder"] = TimelapseFolders.Label(dlg.SelectedPath), ["changed"] = true };
+        }
+        return new JsonObject { ["folder"] = TimelapseFolders.Label(current), ["changed"] = false };
+    }
+
+    Panel? _recordingDot;
+
+    /// <summary>
+    /// A timelapse of this copy changed: show or hide the host-drawn red dot (a child window over the page, so the page
+    /// can't hide or fake it, and widget screenshots don't include it) and tell the page (umbra.timelapse.onChange).
+    /// </summary>
+    public void TimelapseChanged(JsonObject state)
+    {
+        if (IsDisposed) return;
+        var recording = state["state"]?.GetValue<string>() == "recording";
+        if (recording && _recordingDot is null)
+        {
+            var d = Math.Max(8, 10 * DeviceDpi / 96);
+            var m = Math.Max(4, 6 * DeviceDpi / 96);
+            _recordingDot = new Panel { Size = new Size(d, d), BackColor = Tray.RecordingColor, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            _recordingDot.Location = new Point(ClientSize.Width - d - m, m);
+            using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                path.AddEllipse(0, 0, d, d);
+                _recordingDot.Region = new Region(path);
+            }
+            Controls.Add(_recordingDot);
+            _recordingDot.BringToFront();
+        }
+        else if (!recording && _recordingDot is not null)
+        {
+            Controls.Remove(_recordingDot);
+            _recordingDot.Dispose();
+            _recordingDot = null;
+        }
+        if (_ready) Post(new JsonObject { ["type"] = "timelapseState", ["state"] = state.DeepClone() });
     }
 
     async Task HandleRun(JsonNode msg)

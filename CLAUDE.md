@@ -79,8 +79,18 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
   user, in the widget's data dir, with a scrubbed environment, a timeout (max 120 s) and a 1 MB output cap, never
   while the widget is disabled. Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
+- Camera (`permissions.camera`, `Timelapse.cs`, `TimelapseService.cs`): only the host touches the webcam (Windows.Media.Capture),
+  the page never gets the stream, a frame, a full path or a write path (it sees the video's file name and the folder's name;
+  the output folder comes from the host's folder dialog). Each widget id needs a one-time host-drawn approval
+  (`CameraConsent`, `ApprovalDialog.AskCamera`, stored in approvals.json under `@camera`): asked only after a physical LEFT
+  click on a visible widget outside edit mode (`ClickGate`: not a right-click, drag or the host menu), rate-limited, never
+  after 3 refusals, revocable in Settings, read-only to automation, and dropped when the manifest stops declaring camera
+  (a manifest that newly adds it is also listed by `PermissionDiff`). One session at a time, a host-drawn red dot on the widget
+  and in the tray, max 3600 stills and 12 h, paused with the camera closed while the widget is hidden, stopped on widget close
+  and on exit, stills deleted after render, on cancel and at startup, disk space checked. No network in the capture path.
+  **No control command, umbractl or MCP tool may start or approve the camera** (tested). Don't loosen without an issue and review.
 - Updating an installed catalog widget never grants new access silently: `Community.PrepareAsync` diffs the downloaded manifest against the
-  installed one (`PermissionDiff`: hosts, system, media, notifications, commands) and `PendingInstall.Require` refuses until the user accepted.
+  installed one (`PermissionDiff`: hosts, system, media, notifications, camera, commands) and `PendingInstall.Require` refuses until the user accepted.
   Settings asks with a host-drawn box (`SettingsWindow.ConfirmNewAccess`), `umbractl install` needs `--accept-permissions`, and the MCP
   server strips that argument. Any new install path (e.g. "Update all") must go through `PrepareAsync`/`InstallAsync` with `acceptPermissions` false by default.
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in

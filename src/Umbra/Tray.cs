@@ -9,10 +9,10 @@ static partial class Tray
     /// <summary>NotifyIcon.Text throws above this many characters.</summary>
     public const int MaxTooltip = 127;
 
-    /// <summary>"Umbra · 6 widgets" plus " · Edit mode", " · Safe mode" and " · Update ready" when they apply.</summary>
-    public static string Tooltip(int widgets, bool editMode, bool safeMode, bool updateReady)
+    /// <summary>"Umbra · 6 widgets" plus " · Edit mode", " · Safe mode" and " · Update ready" when they apply; a timelapse label ("Recording timelapse") comes first so it is never cut.</summary>
+    public static string Tooltip(int widgets, bool editMode, bool safeMode, bool updateReady, string? timelapse = null)
     {
-        var s = $"Umbra · {widgets} widget{(widgets == 1 ? "" : "s")}";
+        var s = (timelapse is null ? "Umbra · " : $"Umbra · {timelapse} · ") + $"{widgets} widget{(widgets == 1 ? "" : "s")}";
         if (editMode) s += " · Edit mode";
         if (safeMode) s += " · Safe mode";
         if (updateReady) s += " · Update ready";
@@ -25,11 +25,16 @@ static partial class Tray
     /// <summary>How long a restarted Umbra waits for the previous instance to exit.</summary>
     public static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(15);
 
+    /// <summary>The "update ready" dot.</summary>
+    public static readonly Color UpdateColor = Color.FromArgb(255, 255, 159, 28);
+    /// <summary>The "camera is recording" dot (a timelapse is running).</summary>
+    public static readonly Color RecordingColor = Color.FromArgb(255, 232, 17, 35);
+
     /// <summary>
-    /// The app icon at the tray's current icon size with a small orange dot in the bottom-right corner. The dark ring
+    /// The app icon at the tray's current icon size with a small dot (orange by default) in the bottom-right corner. The dark ring
     /// keeps the dot visible on light and dark taskbars. Returns an icon the caller owns (dispose it when replaced).
     /// </summary>
-    public static Icon WithBadge(Icon source, Size size)
+    public static Icon WithBadge(Icon source, Size size, Color? color = null)
     {
         using var baseIcon = new Icon(source, size);
         using var bmp = new Bitmap(size.Width, size.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -40,7 +45,7 @@ static partial class Tray
             var d = Math.Max(6, (int)Math.Round(size.Width * 0.46));
             var ring = Math.Max(1f, size.Width / 14f);
             var dot = new RectangleF(size.Width - d - ring / 2, size.Height - d - ring / 2, d, d);
-            using var fill = new SolidBrush(Color.FromArgb(255, 255, 159, 28));
+            using var fill = new SolidBrush(color ?? UpdateColor);
             using var pen = new Pen(Color.FromArgb(255, 24, 24, 28), ring);
             g.FillEllipse(fill, dot);
             g.DrawEllipse(pen, dot);

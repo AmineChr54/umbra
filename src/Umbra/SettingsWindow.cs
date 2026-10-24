@@ -220,6 +220,12 @@ sealed class SettingsWindow : Form
                 SendState();
                 break;
 
+            case "revokeCamera":
+                // Settings can only take the camera away; it is granted by the host prompt after a click on the widget.
+                if (_app.Manifests.FirstOrDefault(w => w.Id == (msg["widget"]?.GetValue<string>() ?? "")) is { } cw) _app.RevokeCamera(cw.Id);
+                SendState();
+                break;
+
             case "approveCommand":
             case "revokeCommand":
             {
@@ -567,6 +573,8 @@ sealed class SettingsWindow : Form
                     : WebHost.CommunityUrl($"{m.Folder}/{m.Preview}"),
                 ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
                 ["notifications"] = m.Permissions.Notifications,
+                ["camera"] = m.Permissions.Camera,
+                ["cameraApproved"] = m.Permissions.Camera && _app.CameraConsent.Approvals.CameraApproved(m.Id),
                 ["media"] = new JsonArray(m.Permissions.Media.Select(h => (JsonNode?)h).ToArray()),
                 ["system"] = new JsonArray(m.Permissions.System.Select(h => (JsonNode?)h).ToArray()),
                 ["commands"] = new JsonArray(m.Permissions.Commands.Select(c => (JsonNode?)new JsonObject

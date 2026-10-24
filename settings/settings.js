@@ -570,6 +570,23 @@ function applyFocus() {
 // Local programs a widget may run. The host re-checks everything: this only shows the exact command line and
 // sends back ids (and the hash it showed, so a command that changed meanwhile is not approved blind).
 function renderCommands(root, w) {
+  if (w.camera) {
+    // Granted only by the host's prompt after a click on the widget; this row can only take it away.
+    const row = Object.assign(document.createElement("div"), { className: "cmd" });
+    const desc = Object.assign(document.createElement("div"), { className: "cmd-desc" });
+    desc.append(Object.assign(document.createElement("span"), {
+      className: `cmd-status ${w.cameraApproved ? "approved" : "pending"}`,
+      textContent: w.cameraApproved ? "Approved" : "Asked on first use",
+    }), "Records webcam timelapses (red dot while recording)");
+    row.append(Object.assign(document.createElement("div"), { className: "cmd-line", textContent: "Camera" }), desc);
+    if (w.cameraApproved) {
+      const btn = Object.assign(document.createElement("button"), { className: "btn small danger", textContent: "Revoke" });
+      btn.setAttribute("aria-label", `Revoke camera access for ${w.name}`);
+      btn.addEventListener("click", () => post({ type: "revokeCamera", widget: w.id }));
+      row.append(btn);
+    }
+    root.append(row);
+  }
   const cmds = w.commands || [];
   if (!cmds.length) return;
   root.append(Object.assign(document.createElement("div"), { className: "cmds-title", textContent: "Runs programs on this PC" }));
@@ -889,6 +906,13 @@ function renderCatalog() {
       c.append("Can show notifications");
       chips.append(c);
     }
+    if (w.camera) {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
+      c.append("Uses your camera (timelapses)");
+      chips.append(c);
+    }
     for (const s of w.system || []) {
       const c = document.createElement("span");
       c.className = "chip";
@@ -1150,6 +1174,7 @@ function renderPrivacy(list) {
     text.append(
       title,
       sub(w.hosts.length ? `Can reach: ${w.hosts.join(", ")}` : "Can reach no internet hosts"),
+      ...(w.camera?.declared ? [sub(`Camera: timelapses (${w.camera.approved ? "approved" : "not approved yet"})`)] : []),
       sub(w.commands.length ? "Commands: " + w.commands.map((c) => `${c.line} (${c.status})`).join("; ") : "Runs no commands"),
       sub(`Saved data: ${fmt(w.data.bytes)}` + (w.blocked.count ? ` \u00b7 ${w.blocked.count} blocked request(s), latest ${w.blocked.recent[w.blocked.recent.length - 1]}` : "")));
     if (w.crashes?.stopped) text.append(sub("Stopped working: its page kept crashing, so Umbra stopped reloading it. Use Reload on the widget."));
