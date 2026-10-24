@@ -58,6 +58,7 @@ Nothing ships inside the app; every widget, including S&P 500, is installed from
 | `private` | Default `false`. `true` marks a widget shared [from a file](#share-without-the-catalog-install-from-file), not the catalog: a Private badge in My widgets, no catalog updates, and a catalog widget with the same id can't replace it. Grants no extra access; refused in the public catalog |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
 | `permissions.notifications` | Optional boolean. Needed for `umbra.notify`; the user must also switch "Allow notifications" on for the widget in Settings (off by default) |
+| `permissions.camera` | Optional boolean. Needed for `umbra.timelapse` (webcam stills rendered to an MP4 by the host). Listed in the update review box |
 | `permissions.media` | Optional: `"read"` (`umbra.media.nowPlaying`) and/or `"control"` (`umbra.media.control`). Browse shows them |
 | `permissions.system` | Optional: any of `"cpu"`, `"memory"`, `"network"`. Needed for `umbra.system()`; Browse shows them as "Reads cpu usage" etc. |
 | `permissions.hosts` | Every HTTPS hostname the widget may reach. **All other requests are blocked** (fetch, XHR, images, scripts, fonts). `[]` for offline widgets |
@@ -112,6 +113,10 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.onNotificationAction(fn)` | `fn({ id, tag })` when the user clicks a toast button: `id` is the action's id, `tag` the toast's tag or `null`. Only fires while the widget is open; a button on a toast from an earlier Umbra session does nothing |
 | `umbra.media.nowPlaying()` | Resolves the current Windows media session `{ title, artist, album, app, status, playing, canPlay, canPause, canNext, canPrevious, art? }` (`art` is a PNG/JPEG data URL, omitted over 512 KB) or `null`. Needs `permissions.media` `"read"` |
 | `umbra.media.control(cmd)` | `play`, `pause`, `toggle`, `next` or `previous`; resolves true when the session accepted it. Needs `"control"` and a physical click on the widget within the last 2 s |
+| `umbra.timelapse.start({ interval, length, fps? })` | Records a webcam timelapse in the host: one still every `interval` seconds (1 to 3600) until there are enough for `length` seconds of video (up to 3600) at `fps` (1 to 60, default 30); recording is refused over 12 h and always stops at 12 h. The host then renders an MP4 (H.264, 720p, Windows' own encoder, no external program) into the user's folder (default `Videos\Umbra Timelapses`) as `Timelapse <date> <time>.mp4` and deletes the stills. The video is `frames / fps` long, exact to 100 ns per still; a session stopped early or at the cap is shorter. Needs `permissions.camera`, an enabled visible widget, the user's one-time camera approval and a left click on it within the last 2 s. One recording at a time across all widgets. A red dot shows on the widget (host-drawn, the page can't hide it) and in the tray while the camera is on. The first start asks the user (once per widget). Resolves the state below |
+| `umbra.timelapse.stop()` / `.cancel()` / `.status()` | `stop` ends recording and renders what was captured; `cancel` deletes the stills without a video; `status` resolves the current or last state `{ state: "idle"\|"recording"\|"rendering", framesCaptured, framesPlanned, startedAt, endsBy, plan, file, error, capReached, cancelled, folder }` |
+| `umbra.timelapse.chooseFolder()` | Opens the host's folder dialog (after a click on the widget) and resolves `{ folder (its name only), changed }`. The page never passes a path |
+| `umbra.timelapse.onChange(fn)` | `fn(state)` on start, each still, rendering and the end (`state: "idle"` with `file` or `error`) |
 | `umbra.run(commandId, params?)` | Runs a command declared in `permissions.commands` and resolves `{ exitCode, stdout, stderr, timedOut, truncated, durationMs }`. Rejects when the command isn't declared, isn't approved yet, or `params` are invalid. See below |
 | `umbra.fetchText(url)` | Like `fetchJson`, but resolves with the response body as a string (up to 2 MB), for Markdown, CSV or HTML |
 | `umbra.status` | Data freshness, tracked from every `fetchJson`/`fetchText`: `state` (`"none"`, `"live"`, `"stale"`, `"offline"`), `lastOk` (Date or `null`), `failures`, `ok(at?)`, `failed(err)`, `onChange(fn)`. See [Freshness and offline](#freshness-and-offline) |
@@ -327,6 +332,20 @@ Rules (checked when the widget loads, by `scripts/catalog.mjs`, and on install; 
   Settings > My widgets"). Users can approve and revoke each command there, and Browse flags widgets that declare commands.
 - Calls fail while the widget is disabled, and a running command is stopped when the widget closes.
 - Automation (`umbractl approvals`, MCP `list_command_approvals`) can only **read** the approval state.
+
+## Webcam timelapse
+
+`permissions.camera` lets a widget ask the host for a timelapse (`umbra.timelapse`). The host opens the default webcam with
+Windows.Media.Capture, keeps the stills in `%APPDATA%\Umbra\data\timelapse\<instance>`, renders them with
+Windows.Media.Editing (MediaComposition) and deletes them. The page only starts, stops and watches: it never receives the
+stream, a frame or a file path, and nothing in the capture path uses the network. The first start per widget shows a host-drawn
+"allow this widget to use your camera?" prompt (revocable in Settings > My widgets). Starting needs a left click on the widget
+(not edit mode, not a right-click) and an approved camera; at most 3600 stills per video; Umbra checks free disk space; a hidden
+widget (group tab, hidden by hotkey) pauses the recording and closes the camera until it is shown again. Recording stops at 12 h, when the widget closes (what was captured is rendered) and when Umbra
+exits (stills deleted, no video). Stills left by a crash are deleted at the next start. If PC sleep or a camera stall outlasts
+a whole interval, the schedule restarts instead of taking a burst of stills, so the video keeps its frame count. Windows must
+allow desktop apps to use the camera (Settings > Privacy & security > Camera). No control command, umbractl or MCP tool can
+start the camera; the tray menu can stop or cancel a recording.
 
 ## Sandbox (what a widget can and cannot do)
 

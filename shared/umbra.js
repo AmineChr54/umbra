@@ -7,7 +7,7 @@
 
   let settings = { refreshSeconds: 60, animations: true, locked: false, scale: 1, locale: "en-US", hour12: false, editMode: false, options: {} };
   let widget = { id: "", instance: "", name: "" }; // instance = id of this copy ("sp500", "sp500#2")
-  const handlers = { settings: [], refresh: [], store: [], status: [], time: [], notification: [] };
+  const handlers = { settings: [], refresh: [], store: [], status: [], time: [], notification: [], timelapse: [] };
   const pending = new Map();
   let nextId = 1;
   let resolveReady;
@@ -76,6 +76,7 @@
       case "systemResult":
       case "notifyResult":
       case "mediaResult":
+      case "timelapseResult":
       case "storeResult": {
         const p = pending.get(m.id);
         if (!p) return;
@@ -86,6 +87,9 @@
       }
       case "notificationAction":
         handlers.notification.forEach((fn) => fn({ id: m.action, tag: m.tag ?? null }));
+        break;
+      case "timelapseState":
+        handlers.timelapse.forEach((fn) => fn(m.state));
         break;
       case "storeChanged":
         handlers.store.forEach((fn) => fn(m.key ?? null));
@@ -211,6 +215,26 @@
     nowPlaying: () => request({ type: "media", action: "get" }, 10000),
     /** command: play | pause | toggle | next | previous. Needs "control" and a click on the widget just before. */
     control: (command) => request({ type: "media", action: "control", command }, 10000),
+  };
+  /**
+   * Webcam timelapse made by the host (needs permissions.camera). The page never sees the camera or a frame: the host takes
+   * a still every `interval` seconds, then renders `length` seconds of MP4 at `fps` into the user's folder and deletes the stills.
+   * start() and chooseFolder() work only right after a left click on the widget; the first start asks the user to allow the camera. Paths are never returned: file is a name, folder a label. A red dot shows on the widget and in the tray while recording.
+   * State: { state: "idle"|"recording"|"paused"|"rendering", framesCaptured, framesPlanned, startedAt, endsBy, plan, file, error, capReached, cancelled }.
+   */
+  const timelapse = {
+    /** { interval (1-3600 s), length (video seconds, up to 3600), fps (1-60) }; recording is capped at 12 h. Resolves with the state. */
+    start: ({ interval, length, fps = 30 }) => request({ type: "timelapse", op: "start", interval, length, fps }, 10000),
+    /** Stop early and render what was captured. */
+    stop: () => request({ type: "timelapse", op: "stop" }, 10000),
+    /** Stop and delete the stills without making a video. */
+    cancel: () => request({ type: "timelapse", op: "cancel" }, 10000),
+    /** The current (or last finished) session's state, plus the output folder. */
+    status: () => request({ type: "timelapse", op: "status" }, 10000),
+    /** Host folder dialog for where videos go (per widget). Resolves { folder, changed }. */
+    chooseFolder: () => request({ type: "timelapse", op: "chooseFolder" }, 600000),
+    /** fn(state) on every change: started, each still, rendering, finished (state "idle" with file or error). */
+    onChange: (fn) => handlers.timelapse.push(fn),
   };
   /** Fetch plain text (up to 2 MB, e.g. Markdown or CSV) through the host, same rules as fetchJson. */
   const fetchText = (url) => tracked(request({ type: "fetchText", url }, 25000));
@@ -425,6 +449,7 @@
     system,
     notify,
     media,
+    timelapse,
     fetchText,
     status,
     store,

@@ -20,6 +20,12 @@ sealed class App : ApplicationContext
     /// <summary>Runs widget-declared local commands behind the approval gate.</summary>
     public CommandService Commands { get; } = new(CommandApprovals.Shared, req => Task.FromResult(ApprovalDialog.Ask(req)));
 
+    /// <summary>Webcam timelapse recordings (umbra.timelapse, permissions.camera). Started only from a widget click, never by automation.</summary>
+    public TimelapseService Timelapse { get; } = new(TimelapseService.DefaultRoot);
+
+    /// <summary>The one-time camera approval per widget (host prompt after a click; stored with the command approvals).</summary>
+    public CameraConsent CameraConsent { get; } = new(CommandApprovals.Shared, name => Task.FromResult(ApprovalDialog.AskCamera(name)));
+
     public Settings Settings { get; private set; }
     public List<WidgetManifest> Manifests { get; private set; }
 
@@ -375,6 +381,9 @@ sealed class App : ApplicationContext
         Log.Write($"Umbra started, {Manifests.Count} widget(s) found");
 
         Updater = new UpdateService(this);
+        _ = Task.Run(Timelapse.PurgeLeftovers);
+        DropStaleCameraApprovals();
+        Timelapse.Changed += (inst, state) => _ui.Post(_ => OnTimelapseChanged(inst, state), null);
         _tray = new NotifyIcon { Icon = AppIcon, Text = "Umbra", Visible = true };
         // One left click, like OneDrive and PowerToys. ShowSettings only focuses an open window, so a double-click never opens two.
         _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowSettings(); };
@@ -500,26 +509,36 @@ sealed class App : ApplicationContext
     }
 
     Icon? _badgedIcon;
-    bool _badged;
+    Color? _badge;
 
-    /// <summary>Refreshes the tray tooltip (widget count, edit/safe mode, update) and shows the update dot while an Umbra update is ready.</summary>
+    /// <summary>
+    /// Refreshes the tray tooltip (widget count, edit/safe mode, update, recording) and the dot: red while a timelapse
+    /// records (the camera is on), otherwise orange while an Umbra update is ready.
+    /// </summary>
     void UpdateTrayStatus()
     {
-        _tray.Text = Tray.Tooltip(_windows.Count, EditMode, SafeMode, Updater.Available is not null);
-        var badge = Updater.Available is not null;
-        if (badge == _badged) return;
-        _badged = badge;
-        if (badge)
+        _tray.Text = Tray.Tooltip(_windows.Count, EditMode, SafeMode, Updater.Available is not null, Timelapse.TrayLabel);
+        Color? badge = Timelapse.Recording ? Tray.RecordingColor : Updater.Available is not null ? Tray.UpdateColor : null;
+        if (badge == _badge) return;
+        _badge = badge;
+        var old = _badgedIcon;
+        _badgedIcon = null;
+        _tray.Icon = AppIcon;
+        old?.Dispose();
+        if (badge is { } color)
         {
-            try { _badgedIcon = Tray.WithBadge(AppIcon, SystemInformation.SmallIconSize); _tray.Icon = _badgedIcon; }
-            catch (Exception ex) { Log.Write($"Tray badge failed: {ex.Message}"); _badged = false; }
+            try { _badgedIcon = Tray.WithBadge(AppIcon, SystemInformation.SmallIconSize, color); _tray.Icon = _badgedIcon; }
+            catch (Exception ex) { Log.Write($"Tray badge failed: {ex.Message}"); _badge = null; }
         }
-        else
-        {
-            _tray.Icon = AppIcon;
-            _badgedIcon?.Dispose();
-            _badgedIcon = null;
-        }
+    }
+
+    /// <summary>A timelapse started, took a still, is rendering or ended: tell its widget (indicator, events) and the tray.</summary>
+    void OnTimelapseChanged(string inst, JsonObject state)
+    {
+        if (_windows.TryGetValue(inst, out var w)) w.TimelapseChanged(state);
+        UpdateTrayStatus();
+        if (state["state"]?.GetValue<string>() == "idle" && state["error"]?.GetValue<string>() is { } error)
+            ShowTrayMessage($"Timelapse stopped: {error}", ToolTipIcon.Warning);
     }
 
     /// <summary>Starts a fresh Umbra that waits for this one to exit, then exits. For settings that only apply on start (GPU, proxy).</summary>
@@ -585,6 +604,15 @@ sealed class App : ApplicationContext
                     ShowTrayMessage($"Widget update failed: {ex.Message}", ToolTipIcon.Error);
                 }
             });
+        }
+        if (Timelapse.ActiveInstance is { } recorder)
+        {
+            UpdateTrayStatus(); // the tooltip's one source while a timelapse runs
+            var label = Manifests.FirstOrDefault(m => m.Id == InstanceId.WidgetOf(recorder)) is { } rm ? InstanceLabel(rm, recorder) : recorder;
+            if (Timelapse.TrayLabel != "Making timelapse video")
+                menu.Items.Add($"Stop timelapse ({label})", null, (_, _) => Timelapse.Stop(recorder)).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
+            menu.Items.Add($"Cancel timelapse ({label})", null, (_, _) => Timelapse.Cancel(recorder));
+            menu.Items.Add(new ToolStripSeparator());
         }
         if (UndoRemoveLabel is { } undo)
         {
@@ -835,10 +863,24 @@ sealed class App : ApplicationContext
             WidgetStore.Delete(inst);
     }
 
+    /// <summary>A widget that no longer declares permissions.camera loses its camera approval, so declaring it again asks again.</summary>
+    void DropStaleCameraApprovals()
+    {
+        CameraConsent.Approvals.RevokeCameraExcept(Manifests.Where(m => m.Permissions.Camera).Select(m => m.Id));
+    }
+
+    /// <summary>Settings revoked the camera for a widget: drop the approval and cancel its recording.</summary>
+    public void RevokeCamera(string widgetId)
+    {
+        CameraConsent.Approvals.RevokeCamera(widgetId);
+        if (Timelapse.ActiveInstance is { } inst && InstanceId.WidgetOf(inst) == widgetId) Timelapse.Cancel(inst);
+    }
+
     /// <summary>Re-scans widget folders after an install/remove and opens/closes windows to match.</summary>
     public void ReloadWidgets()
     {
         Manifests = WidgetManifest.DiscoverAll();
+        DropStaleCameraApprovals();
         ForgetOrphans();
         foreach (var id in _windows.Keys.Where(id => Manifests.All(m => m.Id != InstanceId.WidgetOf(id))).ToList())
             CloseWidget(id);
@@ -1135,6 +1177,7 @@ sealed class App : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        Timelapse.Dispose(); // camera off, stills deleted, nothing rendered
         _tray.Visible = false;
         _tray.Dispose();
         _badgedIcon?.Dispose();

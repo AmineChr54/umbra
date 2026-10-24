@@ -122,6 +122,40 @@ sealed class CommandApprovals(string path)
         }
     }
 
+    /// <summary>The pseudo command id under which a widget's one-time camera approval is stored (command ids can't start with @).</summary>
+    public const string CameraKey = "@camera";
+
+    public bool CameraApproved(string widgetId)
+    {
+        lock (_gate) return Items.Any(x => x.WidgetId == widgetId && x.CommandId == CameraKey);
+    }
+
+    /// <summary>Only the host's camera prompt calls this.</summary>
+    public void ApproveCamera(string widgetId)
+    {
+        lock (_gate)
+        {
+            Items.RemoveAll(x => x.WidgetId == widgetId && x.CommandId == CameraKey);
+            Items.Add(new CommandApproval(widgetId, CameraKey, "camera", DateTime.UtcNow));
+            Save();
+        }
+        Log.Write($"[{widgetId}] camera approved");
+    }
+
+    public int RevokeCamera(string widgetId) => Revoke(widgetId, CameraKey);
+
+    /// <summary>Drops every camera approval whose widget is not in <paramref name="declaring"/> (removed, or no longer declares camera).</summary>
+    public int RevokeCameraExcept(IEnumerable<string> declaring)
+    {
+        var keep = declaring.ToHashSet(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            var n = Items.RemoveAll(x => x.CommandId == CameraKey && !keep.Contains(x.WidgetId));
+            if (n > 0) { Save(); Log.Write($"{n} camera approval(s) dropped (widget removed or no longer declares camera)"); }
+            return n;
+        }
+    }
+
     /// <summary>For the control protocol: every declared command of the given widgets with its approval status (read-only).</summary>
     public JsonArray Describe(IEnumerable<WidgetManifest> manifests, string? onlyWidget = null)
     {

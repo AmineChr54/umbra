@@ -55,6 +55,11 @@ public sealed partial class WidgetManifest
         public List<string> Media { get; set; } = new();
         /// <summary>Local programs the widget may ask to run; each needs the user's approval (see <see cref="CommandSpec"/>).</summary>
         public List<CommandSpec> Commands { get; set; } = new();
+        /// <summary>
+        /// Allows <c>umbra.timelapse</c>: the host takes webcam stills and renders them to a video. Recording starts only
+        /// from a click on the widget, shows a red dot on the widget and in the tray, and the page never sees a frame.
+        /// </summary>
+        public bool Camera { get; set; }
     }
 
     static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };

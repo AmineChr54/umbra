@@ -59,6 +59,7 @@ static partial class WidgetTrash
             try { Directory.Delete(entry, recursive: true); } catch { }
             throw;
         }
+        CommandApprovals.Shared.RevokeCamera(widgetId); // consent is per installed widget: Undo asks again
         Log.Write($"Moved widget {widgetId} to the trash ({token})");
         return token;
     }

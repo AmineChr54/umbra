@@ -142,6 +142,7 @@ for (const id of readdirSync(widgetsDir).sort()) {
   if (!Array.isArray(media)) fail(id, `"permissions.media" must be an array`);
   else for (const s of media) if (!["read", "control"].includes(s)) fail(id, `unknown media permission "${s}" (read, control)`);
   if (m.permissions?.notifications !== undefined && typeof m.permissions.notifications !== "boolean") fail(id, `"permissions.notifications" must be a boolean`);
+  if (m.permissions?.camera !== undefined && typeof m.permissions.camera !== "boolean") fail(id, `"permissions.camera" must be a boolean`);
 
   const commands = validateCommands(id, m.permissions?.commands);
 
@@ -177,6 +178,7 @@ for (const id of readdirSync(widgetsDir).sort()) {
     ...(system.length ? { system } : {}),
     ...(media.length ? { media } : {}),
     ...(m.permissions?.notifications ? { notifications: true } : {}),
+    ...(m.permissions?.camera ? { camera: true } : {}),
     // Only present for widgets that can start programs; Browse flags them so users see it before installing.
     ...(commands.length ? { commands } : {}),
     files,
