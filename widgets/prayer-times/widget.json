@@ -2,9 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "prayer-times",
   "name": "Prayer Times",
-  "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated by coordinates with the Aladhan API (no key); the method follows your country, and per-prayer minutes match your mosque.",
+  "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Pick your city in the widget; times are calculated by coordinates with the Aladhan API (no key) and the method follows your country.",
   "author": "Yacine-DH",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "manifestVersion": 1,
   "entry": "index.html",
   "preview": "preview.png",
@@ -22,137 +22,6 @@
     "notifications": true
   },
   "options": {
-    "city": {
-      "label": "City",
-      "type": "text",
-      "default": "Berlin",
-      "hint": "City name, e.g. Sfax, Paris or Birmingham. Tunisian governorates work offline."
-    },
-    "country": {
-      "label": "Country",
-      "type": "text",
-      "default": "Germany",
-      "hint": "Country name or ISO code, e.g. Tunisia or TN. Also picks the calculation method."
-    },
-    "calcMethod": {
-      "label": "Calculation method",
-      "type": "select",
-      "default": "auto",
-      "choices": [
-        {
-          "value": "auto",
-          "label": "Automatic (by country)"
-        },
-        {
-          "value": "0",
-          "label": "Shia Ithna-Ashari, Qum"
-        },
-        {
-          "value": "1",
-          "label": "University of Islamic Sciences, Karachi"
-        },
-        {
-          "value": "2",
-          "label": "ISNA (North America)"
-        },
-        {
-          "value": "3",
-          "label": "Muslim World League"
-        },
-        {
-          "value": "4",
-          "label": "Umm Al-Qura, Makkah"
-        },
-        {
-          "value": "5",
-          "label": "Egyptian General Authority"
-        },
-        {
-          "value": "7",
-          "label": "Tehran, Geophysics Institute"
-        },
-        {
-          "value": "8",
-          "label": "Gulf Region"
-        },
-        {
-          "value": "9",
-          "label": "Kuwait"
-        },
-        {
-          "value": "10",
-          "label": "Qatar"
-        },
-        {
-          "value": "11",
-          "label": "Singapore (MUIS)"
-        },
-        {
-          "value": "12",
-          "label": "France (UOIF)"
-        },
-        {
-          "value": "13",
-          "label": "Turkey (Diyanet)"
-        },
-        {
-          "value": "14",
-          "label": "Russia (Spiritual Administration)"
-        },
-        {
-          "value": "15",
-          "label": "Moonsighting Committee"
-        },
-        {
-          "value": "16",
-          "label": "Dubai"
-        },
-        {
-          "value": "17",
-          "label": "Malaysia (JAKIM)"
-        },
-        {
-          "value": "18",
-          "label": "Tunisia"
-        },
-        {
-          "value": "19",
-          "label": "Algeria"
-        },
-        {
-          "value": "20",
-          "label": "Indonesia (Kemenag)"
-        },
-        {
-          "value": "21",
-          "label": "Morocco"
-        },
-        {
-          "value": "22",
-          "label": "Lisbon"
-        },
-        {
-          "value": "23",
-          "label": "Jordan"
-        }
-      ],
-      "hint": "Automatic uses the country's official method (Tunisia, Algeria, Morocco, Turkey, France...; Muslim World League elsewhere). Pick one to override."
-    },
-    "school": {
-      "label": "Asr calculation",
-      "type": "select",
-      "default": "0",
-      "choices": [
-        {
-          "value": "0",
-          "label": "Standard (Shafi, Maliki, Hanbali)"
-        },
-        {
-          "value": "1",
-          "label": "Hanafi"
-        }
-      ]
-    },
     "timeFormat": {
       "label": "Time format",
       "type": "select",

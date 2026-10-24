@@ -11,6 +11,9 @@
     <header class="top">
       <div class="city" id="city"></div>
       <div class="stale" id="stale" hidden>offline</div>
+      <button class="gear" id="gear" type="button" data-no-drag title="Location and method" aria-label="Location and method">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.9 1.5h2.2l.35 1.8c.42.15.8.37 1.15.65l1.74-.6 1.1 1.9-1.38 1.2a4.7 4.7 0 0 1 0 1.3l1.38 1.2-1.1 1.9-1.74-.6c-.35.28-.73.5-1.15.65l-.35 1.8H6.9l-.35-1.8a4.6 4.6 0 0 1-1.15-.65l-1.74.6-1.1-1.9 1.38-1.2a4.7 4.7 0 0 1 0-1.3L2.56 5.25l1.1-1.9 1.74.6c.35-.28.73-.5 1.15-.65z"/><circle cx="8" cy="8" r="1.9"/></svg>
+      </button>
     </header>
     <div class="date num" id="date"></div>
     <section class="hero">
@@ -28,7 +31,43 @@
       <span class="upd num" id="upd"></span>
     </footer>
   </main>
-  <div class="msg" id="msg">Loading</div>
+
+  <form class="setup" id="setup" hidden autocomplete="off" data-no-drag>
+    <h1 class="stitle">Prayer times for</h1>
+    <label class="field">
+      <span class="flbl">Country</span>
+      <input id="sCountry" type="text" placeholder="Search a country" spellcheck="false" maxlength="60">
+    </label>
+    <ul class="sugg" id="sCountryList" hidden></ul>
+    <label class="field">
+      <span class="flbl">City</span>
+      <input id="sCity" type="text" placeholder="Search a city" spellcheck="false" maxlength="80">
+    </label>
+    <ul class="sugg" id="sCityList" hidden></ul>
+    <div class="shint" id="sHint"></div>
+    <div class="pair">
+      <label class="field">
+        <span class="flbl">Method</span>
+        <select id="sMethod"></select>
+      </label>
+      <label class="field asr">
+        <span class="flbl">Asr</span>
+        <select id="sSchool">
+          <option value="0">Standard</option>
+          <option value="1">Hanafi</option>
+        </select>
+      </label>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn" id="sCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="sSave">Show times</button>
+    </div>
+  </form>
+
+  <div class="msg" id="msg">
+    <p id="msgText">Loading</p>
+    <button type="button" class="btn" id="msgSetup" data-no-drag hidden>Change location</button>
+  </div>
 
   <script src="https://umbra.local/shared/umbra.js"></script>
   <script src="data/places.js"></script>

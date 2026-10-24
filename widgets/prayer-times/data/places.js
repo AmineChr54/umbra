@@ -24,6 +24,16 @@
   };
   const DEFAULT_METHOD = 3;
 
+  /** Aladhan calculation methods offered in the setup screen ([number, label]). */
+  const METHODS = [
+    [3, "Muslim World League"], [2, "ISNA (North America)"], [5, "Egyptian General Authority"], [4, "Umm Al-Qura, Makkah"],
+    [1, "Karachi (Islamic Sciences)"], [7, "Tehran (Geophysics)"], [0, "Shia Ithna-Ashari, Qum"], [8, "Gulf Region"],
+    [9, "Kuwait"], [10, "Qatar"], [16, "Dubai"], [11, "Singapore (MUIS)"], [17, "Malaysia (JAKIM)"],
+    [20, "Indonesia (Kemenag)"], [12, "France (UOIF)"], [13, "Turkey (Diyanet)"], [14, "Russia"],
+    [15, "Moonsighting Committee"], [18, "Tunisia"], [19, "Algeria"], [21, "Morocco"], [22, "Lisbon"], [23, "Jordan"],
+  ];
+  const methodName = (n) => (METHODS.find(([m]) => m === Number(n)) || [0, `Method ${n}`])[1];
+
   /** Common names Intl does not give (English short forms, local names). Keys are normalized. */
   const ALIASES = {
     uk: "GB", england: "GB", scotland: "GB", wales: "GB", "great britain": "GB", "united kingdom": "GB", britain: "GB",
@@ -93,6 +103,66 @@
     return null;
   }
 
-  const api = { CODES, METHOD_BY_COUNTRY, DEFAULT_METHOD, TUNISIA, norm, countryName, countries, findCountry, methodFor, presets, findPreset };
+  /** Countries matching what the user typed: name prefix first, then a word prefix, then the ISO code. At most `max`. */
+  function searchCountries(text, max = 6) {
+    const n = norm(text);
+    if (!n) return [];
+    const all = countries();
+    const score = (c) => {
+      const name = norm(c.name);
+      if (name.startsWith(n)) return 0;
+      if (name.split(" ").some((w) => w.startsWith(n))) return 1;
+      if (c.code.toLowerCase() === n || ALIASES[n] === c.code) return 2;
+      return 9;
+    };
+    return all.map((c) => [score(c), c]).filter(([s]) => s < 9).sort((a, b) => a[0] - b[0]).slice(0, max).map(([, c]) => c);
+  }
+
+  /** Bundled places whose name (or another spelling) starts with `text`; all of them when `text` is empty. */
+  function searchPresets(code, text) {
+    const n = norm(text);
+    return presets(code).filter((p) => !n || [p.name, ...p.alt].some((x) => norm(x).startsWith(n)))
+      .map((p) => ({ name: p.name, region: "", country: countryName(p.cc), cc: p.cc, lat: p.lat, lon: p.lon, tz: p.tz }));
+  }
+
+  const PRAYERS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+  const clamp = (v, min, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : 0; };
+
+  /** Per-prayer minutes, clamped: adjust -30..30, iqama 0..90. Missing values are 0. */
+  function cleanOffsets(x) {
+    const adjust = {}, iqama = {};
+    for (const p of PRAYERS) {
+      adjust[p] = clamp(x && x.adjust && x.adjust[p], -30, 30);
+      iqama[p] = clamp(x && x.iqama && x.iqama[p], 0, 90);
+    }
+    return { adjust, iqama };
+  }
+
+  /**
+   * The setup that versions before 1.2 kept in widget options (city, country, method/calcMethod, school, adjustX,
+   * iqamaX; Umbra keeps option values a manifest no longer declares). null when there is no city.
+   * method: "auto" or a method number as a string. 1.0 stored its default "3" for everyone, so "3" means auto.
+   */
+  function legacyConfig(o) {
+    const city = String((o && o.city) || "").trim();
+    if (!city) return null;
+    const country = String(o.country || "").trim();
+    const num = (v) => (/^\d{1,2}$/.test(String(v ?? "")) ? String(Number(v)) : null);
+    let method = "auto";
+    if (num(o.calcMethod)) method = num(o.calcMethod);
+    else if (num(o.method) && num(o.method) !== "3") method = num(o.method); // same rule as 1.1
+    const adjust = {}, iqama = {};
+    for (const p of PRAYERS) { adjust[p] = o["adjust" + p]; iqama[p] = o["iqama" + p]; }
+    return { city, country, cc: findCountry(country), method, school: String(o.school) === "1" ? 1 : 0, offsets: cleanOffsets({ adjust, iqama }) };
+  }
+
+  /** "auto" or a number -> the Aladhan method to request for a country. */
+  const resolveMethod = (method, code) => (String(method ?? "auto") === "auto" ? methodFor(code) : clamp(method, 0, 99));
+
+  const api = {
+    PRAYERS, cleanOffsets, legacyConfig, resolveMethod,
+    CODES, METHOD_BY_COUNTRY, DEFAULT_METHOD, METHODS, TUNISIA, norm, countryName, countries, findCountry, methodFor,
+    methodName, presets, findPreset, searchCountries, searchPresets,
+  };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PrayerPlaces = api;
 })(typeof window !== "undefined" ? window : globalThis);
