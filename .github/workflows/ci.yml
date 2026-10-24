@@ -30,6 +30,8 @@ jobs:
         run: dotnet test Umbra.slnx -c Release --no-build --logger "console;verbosity=normal"
       - name: Widget parser tests
         run: node --test tests/widgets/*.test.mjs
+      - name: Relay tests
+        run: node --test tests/relay/*.test.mjs
       - name: Version consistency
         run: node scripts/check-versions.mjs
       - name: Validate widgets

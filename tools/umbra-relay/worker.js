@@ -1,18 +1,27 @@
-// Umbra Buddy relay: a tiny Cloudflare Worker + Durable Object that pairs two people with a
-// one-time code and tells each whether the other has sent a heartbeat recently.
-// It stores random ids, secrets and timestamps only: no names, no accounts.
+// Umbra relay: a tiny Cloudflare Worker + Durable Object behind two widgets. It pairs two people with a one-time
+// code (Buddy and Hearth share that), tells each Buddy whether the other has sent a heartbeat recently, and keeps
+// the small shared state of a Hearth couple. It stores random ids, secrets, timestamps and what the couple
+// typed or drew: no accounts, no location.
 //
+// Buddy (unchanged since it shipped; the deployed Buddy widget depends on exactly this):
 //   GET /pair?new=1                     -> { code, room, me:"a", key, ttl }      (start a pairing)
 //   GET /pair?code=ABCD2345             -> { room, me:"b", key }                 (join; the code dies)
 //   GET /beat?room=R&me=a|b&key=K&iv=60 -> { paired, peerSeen, peerIv, now }     (heartbeat + read peer)
 //   GET /unpair?room=R&me=a|b&key=K     -> { ok }                                (peer sees paired:false)
 //
+// Hearth (see README.md for every parameter and response):
+//   GET /hearth/sync|stroke|undo|clear|unclear|tap|care|set|unpair|reinvite?room=R&me=a|b&key=K&...
+//
 // GET only, because widgets can only fetch with GET. Every response is JSON with status 200, errors as { error }
 // (the host's fetch throws away the body of a non-2xx answer).
+
+import { GRACE_MS, handleHearth } from "./hearth.js";
 
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no I, L, O, 0, 1
 const CODE_TTL_MS = 10 * 60 * 1000;
 const ROOM_IDLE_MS = 30 * 24 * 60 * 60 * 1000; // a room nobody has beaten for 30 days is deleted
+const MAX_HEARTH_URL = 6000; // a stroke batch is kept under ~4 KB by the client; anything near the edge limit is refused
+const HEARTH_ROUTES = new Set(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite"]);
 
 const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
 const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -37,12 +46,34 @@ export default {
       const code = q.get("code").toUpperCase().replace(/[^A-Z0-9]/g, "");
       if (code.length !== 8) return json({ error: "bad code" });
       const r = await call(room("c:" + code), "claim", {});
-      return r.room ? json({ room: r.room, me: "b", key: r.kb }) : json({ error: "unknown or expired code" });
+      // Buddy codes always join as "b"; a Hearth reinvite code names the side it rebinds.
+      return r.room ? json({ room: r.room, me: r.side || "b", key: r.kb }) : json({ error: "unknown or expired code" });
     }
     if (u.pathname === "/beat" || u.pathname === "/unpair") {
       const id = q.get("room") || "", me = q.get("me");
       if (!/^[0-9a-f]{32}$/.test(id) || (me !== "a" && me !== "b")) return json({ error: "bad request" });
       return json(await call(room("r:" + id), u.pathname.slice(1), { me, key: q.get("key") || "", iv: q.get("iv") || "60" }));
+    }
+    if (u.pathname.startsWith("/hearth/")) {
+      // Never a non-2xx here: whatever goes wrong is a JSON { error }.
+      try {
+        const name = u.pathname.slice("/hearth/".length);
+        if (!HEARTH_ROUTES.has(name)) return json({ error: "not found" });
+        if (req.method !== "GET" && req.method !== "HEAD") return json({ error: "GET only" });
+        if (req.url.length > MAX_HEARTH_URL) return json({ error: "too long" });
+        const id = q.get("room") || "", me = q.get("me");
+        if (!/^[0-9a-f]{32}$/.test(id) || (me !== "a" && me !== "b")) return json({ error: "bad request" });
+        if (name === "reinvite") {
+          const code = newCode(), nk = hex(rand(16));
+          const r = await call(room("r:" + id), "hearth/reinvite", { me, key: q.get("key") || "", nk });
+          if (!r.ok) return json(r); // unknown room, wrong key, or this side left: { paired:false, ... }
+          await call(room("c:" + code), "hold", { room: id, kb: nk, side: r.side });
+          return json({ code, ttl: CODE_TTL_MS / 1000, rebinds: r.side });
+        }
+        return json(await call(room("r:" + id), "hearth/" + name, q));
+      } catch {
+        return json({ error: "server error" });
+      }
     }
     return json({ error: "not found" }, 404);
   },
@@ -50,31 +81,37 @@ export default {
 
 /** One Durable Object per pairing code and per room. Both kinds share this class. */
 export class Room {
-  constructor(state) {
+  constructor(state, env) {
     this.state = state;
     this.s = state.storage;
+    this.env = env || {};
+    this.clock = typeof this.env.clock === "function" ? this.env.clock : Date.now; // env.clock is a test hook only
   }
 
   async fetch(req) {
     const u = new URL(req.url);
     const q = u.searchParams;
-    const now = Date.now();
+    const now = this.clock();
+    if (u.pathname.startsWith("/hearth/")) {
+      return Response.json(await handleHearth(this.s, u.pathname.slice("/hearth/".length), q, this.env, now));
+    }
     switch (u.pathname) {
       case "/init":
         await this.s.put({ ka: q.get("ka"), kb: q.get("kb"), seenA: 0, seenB: 0, ivA: 60, ivB: 60, gone: false });
         await this.s.setAlarm(now + ROOM_IDLE_MS);
         return Response.json({ ok: true });
 
-      case "/hold": // a pairing code: valid once, for 10 minutes
+      case "/hold": // a pairing code: valid once, for 10 minutes. `side` (Hearth reinvite only) is the side it rebinds.
         await this.s.put({ room: q.get("room"), kb: q.get("kb"), exp: now + CODE_TTL_MS });
+        if (q.get("side")) await this.s.put("side", q.get("side"));
         await this.s.setAlarm(now + CODE_TTL_MS);
         return Response.json({ ok: true });
 
       case "/claim": {
-        const c = await this.s.get(["room", "kb", "exp"]);
+        const c = await this.s.get(["room", "kb", "exp", "side"]);
         await this.s.deleteAll();
         if (!c.get("room") || c.get("exp") < now) return Response.json({});
-        return Response.json({ room: c.get("room"), kb: c.get("kb") });
+        return Response.json({ room: c.get("room"), kb: c.get("kb"), side: c.get("side") });
       }
 
       case "/beat":
@@ -97,12 +134,19 @@ export class Room {
     return Response.json({}, { status: 404 });
   }
 
-  /** Expired codes and abandoned rooms clean themselves up. */
+  /**
+   * Expired codes, abandoned rooms and rooms past their Hearth unpair grace period clean themselves up.
+   * A room is abandoned after 30 days without a Buddy beat or a Hearth call.
+   */
   async alarm() {
-    const v = await this.s.get(["seenA", "seenB", "ka"]);
+    const now = this.clock();
+    const v = await this.s.get(["seenA", "seenB", "ka", "h"]);
     if (v.get("ka")) {
-      const last = Math.max(v.get("seenA") || 0, v.get("seenB") || 0);
-      if (Date.now() - last < ROOM_IDLE_MS && last) return void (await this.s.setAlarm(last + ROOM_IDLE_MS));
+      const h = v.get("h");
+      const last = Math.max(v.get("seenA") || 0, v.get("seenB") || 0, (h && h.seen) || 0);
+      const idleAt = last ? last + ROOM_IDLE_MS : 0;
+      const goneAt = h && h.gone ? h.gone.at + GRACE_MS : Infinity;
+      if (now < idleAt && now < goneAt) return void (await this.s.setAlarm(Math.min(idleAt, goneAt)));
     }
     await this.s.deleteAll();
   }

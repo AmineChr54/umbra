@@ -1,4 +1,4 @@
-// Buddy: two stars. Heartbeat to a tiny relay (tools/buddy-relay); a star glows while that person is online.
+// Buddy: two stars. Heartbeat to a tiny relay (tools/umbra-relay); a star glows while that person is online.
 // After deploying the relay, set RELAY here and the same host in widget.json permissions.hosts.
 const RELAY = "umbra-buddy-relay.umbra-server.workers.dev";
 

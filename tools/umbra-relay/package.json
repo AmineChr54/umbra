@@ -1,0 +1,6 @@
+{
+  "name": "umbra-relay",
+  "private": true,
+  "type": "module",
+  "description": "Umbra relay: Cloudflare Worker + Durable Object behind the Buddy and Hearth widgets. Deploy with wrangler; see README.md."
+}
