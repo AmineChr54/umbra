@@ -496,6 +496,32 @@ sealed class App : ApplicationContext
         return tcs.Task;
     }
 
+    /// <summary>
+    /// Opens a double-clicked .umbrawidget: the full install checks, then the host-drawn review. Only an existing, fully qualified
+    /// path ending in .umbrawidget is accepted. Runs on the UI thread.
+    /// </summary>
+    public async Task<bool> OpenPackageAsync(string path)
+    {
+        path = path.Trim().Trim('"');
+        if (!Path.IsPathFullyQualified(path) || !path.EndsWith(Community.PackageExtension, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+        {
+            Log.Write($"Ignored open-package request for '{path}'");
+            return false;
+        }
+        try
+        {
+            var done = await PackageInstall.RunAsync(this, () => Task.Run(() => Community.PrepareLocal(path)), $"the file {Path.GetFileName(path)}");
+            if (done is not null) _tray?.ShowBalloonTip(3000, "Umbra", done, ToolTipIcon.Info);
+            return done is not null;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            Log.Write($"Open package failed: {ex.Message}");
+            MessageBox.Show($"Not installed: {ex.Message}", "Umbra", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+    }
+
     public WidgetWindow? Window(string id) => _windows.GetValueOrDefault(id);
 
     public IEnumerable<WidgetWindow> OpenWindows => _windows.Values;
@@ -853,7 +879,8 @@ sealed class App : ApplicationContext
     /// </summary>
     void ForgetOrphans()
     {
-        var known = Manifests.Select(m => m.Id).ToList();
+        // A widget skipped because it needs a newer Umbra is still on disk: its copies, settings and data must survive.
+        var known = Manifests.Select(m => m.Id).Concat(WidgetManifest.Skipped.Select(s => s.Id)).ToList();
         foreach (var key in Restore.Orphans(Settings.Widgets.Keys.Where(InstanceId.IsExtra), known, _restoring))
         {
             CloseWidget(key);

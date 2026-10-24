@@ -65,6 +65,23 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task Pack_widget_over_mcp_cannot_choose_the_output_or_overwrite()
+    {
+        await Server().HandleAsync(Call("tools/call", new JsonObject
+        {
+            ["name"] = "pack_widget",
+            ["arguments"] = new JsonObject { ["path"] = @"C:\w\clock", ["out"] = @"C:\Windows\x.umbrawidget", ["overwrite"] = true },
+        }));
+        var (cmd, args) = Assert.Single(_sent);
+        Assert.Equal("pack-widget", cmd);
+        Assert.Equal(@"C:\w\clock", args["path"]!.GetValue<string>());
+        Assert.Null(args["out"]);
+        Assert.Null(args["overwrite"]);
+        Assert.DoesNotContain("install-local", McpServer.ToolCommands);
+        Assert.DoesNotContain("install-url", McpServer.ToolCommands);
+    }
+
+    [Fact]
     public async Task Notifications_get_no_reply()
     {
         var note = new JsonObject { ["jsonrpc"] = "2.0", ["method"] = "notifications/initialized" };
@@ -407,7 +424,7 @@ public class ScaffoldTests
     }
 
     // Commands reachable only through "umbractl send" or without an MCP tool, on purpose.
-    static readonly string[] NoMcpTool = { "quit", "install-local" };
+    static readonly string[] NoMcpTool = { "quit", "install-local", "install-url" };
 
     [Fact]
     public void Install_local_is_never_an_mcp_tool()

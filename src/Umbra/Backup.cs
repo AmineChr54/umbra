@@ -154,6 +154,16 @@ static class Backup
                 ["crashes"] = new JsonObject { ["count"] = crashes.GetValueOrDefault(m.Id), ["stopped"] = CrashRecovery.IsStopped(m.Id) },
             });
         }
+        // Widgets this Umbra can't run (made for a newer Umbra) stay on disk with their data; say so here.
+        foreach (var (id, name, why) in WidgetManifest.Skipped.Where(s => onlyWidget is null || s.Id == onlyWidget))
+            result.Add(new JsonObject
+            {
+                ["widget"] = id, ["name"] = name, ["incompatible"] = $"Not loaded: {why}.",
+                ["hosts"] = new JsonArray(), ["commands"] = new JsonArray(),
+                ["data"] = new JsonObject { ["bytes"] = 0, ["copies"] = new JsonArray() },
+                ["blocked"] = new JsonObject { ["count"] = 0, ["recent"] = new JsonArray() },
+                ["crashes"] = new JsonObject { ["count"] = 0, ["stopped"] = false },
+            });
         return result;
     }
 }

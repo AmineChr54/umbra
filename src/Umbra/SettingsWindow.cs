@@ -407,6 +407,26 @@ sealed class SettingsWindow : Form
                 });
                 break;
 
+            case "installUrl":
+            {
+                // The address is typed into a host-drawn box, never taken from the page.
+                var url = PackageInstall.AskUrl(this);
+                if (url is null) break;
+                try
+                {
+                    var done = await PackageInstall.RunAsync(_app, () => Community.PrepareUrlAsync(url), url, this);
+                    if (done is not null) Post(new JsonObject { ["type"] = "notice", ["text"] = done });
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    Log.Write($"Install from URL failed: {ex.Message}");
+                    Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Not installed: {ex.Message}" });
+                }
+                SendState();
+                await SendCatalog(refetch: false);
+                break;
+            }
+
             case "installLocal":
             {
                 // The page only says "file" or "folder": the path comes from a host-drawn picker, never from the page.
@@ -502,14 +522,7 @@ sealed class SettingsWindow : Form
     }
 
     /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
-    bool ConfirmNewAccess(Community.PendingInstall p)
-    {
-        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants {(p.IsUpdate ? "new " : "")}access:\n\n"
-            + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
-            + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
-            + (p.IsUpdate ? "\n\nUpdate and allow this?" : "\n\nInstall and allow this?");
-        return MessageBox.Show(this, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
-    }
+    bool ConfirmNewAccess(Community.PendingInstall p) => PackageInstall.ConfirmNewAccess(this, p);
 
     async Task RunJob(string id, Func<Task> job, Func<string?>? undo = null)
     {

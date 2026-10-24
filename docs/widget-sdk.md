@@ -376,6 +376,31 @@ umbractl diagnostics                 # Markdown block for bug reports (no option
 Through MCP (`claude mcp add umbra -- umbractl mcp`) an agent does the same with `create_widget`,
 `configure_widget`, `widget_data`, `capture` and `read_logs`.
 
+### validate, pack, dev
+
+```powershell
+umbractl validate [folder|file]            # check without installing; exit code 1 when there are errors
+umbractl pack [folder] [-o out.umbrawidget] [--force]   # validate, then write the package
+umbractl dev [folder] [--accept-permissions]            # load the folder and reload on every save
+```
+
+- **validate** runs everything an install checks (safe relative paths, allowed file types, 5 MB, `id` equals the folder name,
+  the entry file exists, `permissions` and `options` rules, `manifestVersion` / `minUmbraVersion`) plus the catalog's manifest
+  rules (unknown keys, option types, host names, `icon` file name) and lints. Errors block `pack`; warnings do not: no
+  `preview`, `chrome.webview` in your code (a widget only talks to the host through `window.umbra`), `font-size` under 11px,
+  `http://` resources, missing `description` / `author`, options without `label` / `default`.
+- **pack** writes a `.umbrawidget`: a zip with `widget.json` at its root (no wrapper folder), entries sorted by path with a fixed
+  time, so packing the same files twice gives the same bytes, and pack, install, pack gives an equivalent file. By default it
+  writes `<folder>.umbrawidget` next to the folder; it never replaces an existing file unless you pass `--force`.
+- **dev** installs the folder like `install-local`, reloads it about half a second after the last save, and prints that
+  widget's blocked requests and errors from `umbra.log` as they happen (like `web-ext run`). If the widget declares hosts,
+  system, media, notifications or commands, `dev` needs `--accept-permissions` once: that flag is the human saying yes.
+  It survives Umbra restarting. `dev` is a terminal loop built from `install-local` and `logs`, so it has no Control command or MCP
+  tool: an agent writes files, calls `validate_widget`, `create_widget`, `read_logs` and `capture` itself.
+
+Through MCP an agent can call `validate_widget` and `pack_widget`. `pack_widget` always writes next to the widget folder and
+refuses to replace a file; installing a package (and accepting the access it asks for) stays a human action.
+
 ## Publish
 
 Open a pull request that adds only `widgets/<id>/` to https://github.com/AmineChr54/umbra. CI validates it

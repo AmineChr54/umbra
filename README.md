@@ -157,6 +157,11 @@ umbractl configure sp500 --start-hidden on --show-from 08:00 --show-to 18:00 --s
 umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --font-scale 1.1 --border off --reduce-transparency on
 umbractl check-update                 # is a newer Umbra on GitHub? (install it from the tray menu or Settings > About)
 umbractl install clock                # community catalog: catalog, install, remove (an update that adds hosts, media, notifications or commands is refused until you repeat it with --accept-permissions)
+umbractl validate [folder]          # check a widget without installing it (exit 1 on errors; warnings are lints)
+umbractl pack [folder] [-o out.umbrawidget] [--force]   # validate, then write the shareable package (a zip with widget.json at its root, deterministic; never replaces a file without --force)
+umbractl dev [folder]               # load a folder, reload on every save, print blocked requests and errors live (terminal loop over install-local + logs: no Control command or MCP tool; add --accept-permissions if the widget declares access)
+umbractl install-url https://github.com/.../clock.umbrawidget   # HTTPS only, 5 MB, same checks as install-local; access it declares needs --accept-permissions. Double-clicking a .umbrawidget (the installer registers it) opens the same review. No MCP tool for either
+# `catalog` entries carry `manifestVersion` / `minUmbraVersion` and an `incompatible` field: null, or why this Umbra cannot install the widget (made for a newer Umbra; Browse greys it out and `install` refuses it).
 umbractl update --all                 # update every community widget that has a newer version (failures listed, the rest still update; an update that adds hosts, media, notifications or commands is skipped and listed, accept it per widget with install --accept-permissions or in Settings)
 umbractl themes                       # installed and community themes; theme <id> switches live
 umbractl install-theme ember          # also remove-theme; then: umbractl theme ember
@@ -184,7 +189,7 @@ Then ask, for example, *"add a widget that shows the weather in Berlin under my 
 <details>
 <summary><b>What the MCP server exposes</b></summary>
 
-- **Tools:** `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `groups`, `capture`, `install_widget`, `update_all_widgets`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more.
+- **Tools:** `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `validate_widget`, `pack_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `groups`, `capture`, `install_widget`, `update_all_widgets`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more.
 - **Resources:** every installed widget's files, read-only, as `umbra://widgets/<id>/<file>` (same path and extension rules as agent-written files, 5 MB cap), so an agent can read a widget before editing it.
 - **Prompts:** `new_widget`, `fix_widget` and `restyle_widget`, which walk the agent through `widget_authoring_guide`, `create_widget` and `capture`.
 
