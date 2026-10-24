@@ -46,7 +46,7 @@ public static class Groups
         return id is null || ActiveOf(s.Groups[id]) == instance;
     }
 
-    /// <summary>Removes members that no longer exist, repairs Active and drops empty groups. Returns true if anything changed.</summary>
+    /// <summary>Removes members that no longer exist and repairs Active. Empty groups stay (the user made them, #235). Returns true if anything changed.</summary>
     public static bool Prune(Settings s)
     {
         var changed = false;
@@ -55,7 +55,6 @@ public static class Groups
         {
             var kept = g.Members.Where(m => s.Widgets.ContainsKey(m) && seen.Add(m)).Take(MaxMembers).ToList();
             if (kept.Count != g.Members.Count) { g.Members = kept; changed = true; }
-            if (kept.Count == 0) { s.Groups.Remove(id); changed = true; continue; }
             var active = ActiveOf(g);
             if (g.Active != active) { g.Active = active; changed = true; }
             var cycle = g.CycleSeconds == 0 ? 0 : Math.Clamp(g.CycleSeconds, MinCycle, MaxCycle);
@@ -64,15 +63,17 @@ public static class Groups
         return changed;
     }
 
-    /// <summary>Creates a group holding <paramref name="instance"/> and returns its id.</summary>
-    public static string Create(Settings s, string name, string instance)
+    /// <summary>Creates a group holding <paramref name="instance"/> (empty when null) and returns its id.</summary>
+    public static string Create(Settings s, string name, string? instance = null)
     {
         if (s.Groups.Count >= MaxGroups) throw new InvalidOperationException($"At most {MaxGroups} groups");
-        Leave(s, instance);
+        if (instance is not null) Leave(s, instance);
         var n = 1;
         while (s.Groups.ContainsKey("g" + n)) n++;
         var id = "g" + n;
-        s.Groups[id] = new WidgetGroup { Name = CleanName(name), Members = { instance }, Active = instance };
+        s.Groups[id] = instance is null
+            ? new WidgetGroup { Name = CleanName(name) }
+            : new WidgetGroup { Name = CleanName(name), Members = { instance }, Active = instance };
         return id;
     }
 
@@ -89,15 +90,14 @@ public static class Groups
         if (slot is not null) CopySlot(s.Widgets[slot], s.Widgets[instance]);
     }
 
-    /// <summary>Takes an instance out of its group (it keeps the slot's position). Empty groups disappear.</summary>
+    /// <summary>Takes an instance out of its group (it keeps the slot's position). The group stays, even when empty.</summary>
     public static void Leave(Settings s, string instance)
     {
         var id = GroupOf(s, instance);
         if (id is null) return;
         var g = s.Groups[id];
         g.Members.Remove(instance);
-        if (g.Members.Count == 0) s.Groups.Remove(id);
-        else g.Active = ActiveOf(g);
+        g.Active = ActiveOf(g);
     }
 
     /// <summary>Makes a member the visible tab; the outgoing tab's position and size move to it.</summary>

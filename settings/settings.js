@@ -406,6 +406,7 @@ function renderInstalled() {
     $("#goBrowse").addEventListener("click", () => show("browse"));
     return;
   }
+  const cards = new Map();
   for (const w of state.widgets) {
     const ws = state.settings.widgets[w.id];
     const card = $("#tpl-installed").content.firstElementChild.cloneNode(true);
@@ -432,25 +433,24 @@ function renderInstalled() {
       save(true);
     });
 
-    // Tab group: widgets in one group share a spot and show one at a time.
+    // Group badge (click to change or remove) replaces the old per-card dropdown (#235).
     {
       const here = (state.groups || []).find((g) => g.members.includes(w.id));
-      const sel = document.createElement("select");
-      sel.className = "select";
-      sel.setAttribute("aria-label", `${w.name} tab group`);
-      sel.append(new Option("No group", ""));
-      for (const g of state.groups || []) sel.append(new Option(g.name, "g:" + g.id));
-      sel.append(new Option("New group…", "new"));
-      sel.value = here ? "g:" + here.id : "";
-      sel.addEventListener("change", () => {
-        if (sel.value === "") post({ type: "group", op: "leave", id: w.id });
-        else if (sel.value === "new") post({ type: "group", op: "create", name: w.name, id: w.id });
-        else post({ type: "group", op: "join", group: sel.value.slice(2), id: w.id });
-      });
-      const row = document.createElement("label");
-      row.className = "grouprow";
-      row.append(Object.assign(document.createElement("span"), { textContent: "Tab group" }), sel);
-      $(".fields", card).before(row);
+      const gb = $(".gbadge", card);
+      gb.textContent = here ? here.name : "+ Group";
+      gb.classList.toggle("none", !here);
+      gb.setAttribute("aria-label", here ? `${w.name} is in group ${here.name}. Change group` : `Add ${w.name} to a group`);
+      gb.addEventListener("click", () => openGroupMenu(gb, w, here));
+      const sel = $(".sel", card);
+      sel.hidden = !selectMode;
+      sel.checked = selected.has(w.id);
+      sel.setAttribute("aria-label", `Select ${w.name}`);
+      sel.addEventListener("change", () => { sel.checked ? selected.add(w.id) : selected.delete(w.id); renderGroups(); });
+      const main = $(".wcard-main", card);
+      main.draggable = true;
+      main.addEventListener("dragstart", (e) => { e.dataTransfer.setData("text/plain", w.id); e.dataTransfer.effectAllowed = "move"; card.classList.add("dragging"); });
+      main.addEventListener("dragend", () => card.classList.remove("dragging"));
+      if (here) card.classList.add("ingroup");
     }
 
     // Fold/unfold the options. Remembered per widget in this browser profile.
@@ -544,8 +544,22 @@ function renderInstalled() {
 
     icons(card);
     labelRows(card);
-    list.append(card);
+    cards.set(w.id, card);
   }
+  // Grouped cards sit together under a collapsible group header (tab order); the rest follow.
+  const placed = new Set();
+  for (const g of state.groups || []) {
+    list.append(groupHeader(g));
+    const folded = foldedGroups().has(g.id);
+    for (const id of g.members) {
+      const card = cards.get(id);
+      if (!card) continue;
+      placed.add(id);
+      card.hidden = folded;
+      list.append(card);
+    }
+  }
+  for (const [id, card] of cards) if (!placed.has(id)) list.append(card);
   applyFocus();
 }
 
@@ -630,75 +644,206 @@ function showArrange(on) {
 }
 
 // ---------- Layouts ----------
-function renderGroups() {
-  const list = $("#groupList");
-  list.replaceChildren();
-  $("#groupBox").hidden = !(state.groups || []).length;
-  const label = (inst) => (state.widgets.find((x) => x.id === inst) || { name: inst }).name;
-  for (const g of state.groups || []) {
-    const row = document.createElement("div");
-    row.className = "row grouprow-full";
-    const text = document.createElement("div");
-    text.className = "row-text";
-    const name = document.createElement("input");
-    name.className = "input name";
-    name.value = g.name;
-    name.maxLength = 40;
-    name.spellcheck = false;
-    name.setAttribute("aria-label", "Group name");
-    name.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, name: name.value }));
-    name.addEventListener("keydown", (e) => { if (e.key === "Enter") name.blur(); });
+// ---------- Groups (#235) ----------
+let selectMode = false;
+const selected = new Set();
+const foldedGroups = () => { try { return new Set(JSON.parse(localStorage.getItem("foldedGroups") || "[]")); } catch { return new Set(); } };
+const setGroupFolded = (id, folded) => {
+  try {
+    const set = foldedGroups();
+    if (folded) set.add(id); else set.delete(id);
+    localStorage.setItem("foldedGroups", JSON.stringify([...set]));
+  } catch { /* storage unavailable */ }
+};
+const widgetLabel = (inst) => (state.widgets.find((x) => x.id === inst) || { name: inst }).name;
 
+// Dropping a card on a group chip or header adds it to that group.
+function dropTarget(el, g) {
+  el.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; el.classList.add("over"); });
+  el.addEventListener("dragleave", () => el.classList.remove("over"));
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    el.classList.remove("over");
+    const id = e.dataTransfer.getData("text/plain");
+    if (id && state.widgets.some((w) => w.id === id)) { post({ type: "group", op: "join", group: g.id, id }); toast(`Added ${widgetLabel(id)} to ${g.name}`); }
+  });
+}
+
+// The strip at the top of My widgets: one chip per group (a drop target) plus New group and multi-select.
+function renderGroups() {
+  const chips = $("#groupChips");
+  chips.replaceChildren();
+  for (const g of state.groups || []) {
+    const chip = Object.assign(document.createElement("button"), { className: "gchip", type: "button" });
+    chip.append(g.name, Object.assign(document.createElement("span"), { className: "gcount", textContent: String(g.members.length) }));
+    chip.title = `Go to ${g.name}`;
+    chip.addEventListener("click", () => $$("#installed .ghead").find((h) => h.dataset.group === g.id)?.scrollIntoView({ block: "center" }));
+    dropTarget(chip, g);
+    chips.append(chip);
+  }
+  $("#selectBtn").setAttribute("aria-pressed", String(selectMode));
+  $("#selectBtn").textContent = selectMode ? "Done selecting" : "Select widgets";
+  for (const id of [...selected]) if (!state.widgets.some((w) => w.id === id)) selected.delete(id);
+  $("#bulkBar").hidden = !selectMode;
+  $("#bulkCount").textContent = `${selected.size} selected`;
+  const pick = $("#bulkGroup");
+  const keep = pick.value;
+  pick.replaceChildren(...(state.groups || []).map((g) => new Option(g.name, g.id)));
+  if ((state.groups || []).some((g) => g.id === keep)) pick.value = keep;
+  $("#bulkAdd").disabled = !selected.size || !(state.groups || []).length;
+  $("#newGroupBtn").disabled = (state.groups || []).length >= 20;
+  icons($("#groupStrip"));
+}
+
+$("#newGroupBtn").addEventListener("click", () => {
+  const form = $("#newGroupForm");
+  form.hidden = !form.hidden;
+  $("#newGroupBtn").setAttribute("aria-expanded", String(!form.hidden));
+  if (!form.hidden) $("#newGroupName").focus();
+});
+$("#newGroupCancel").addEventListener("click", () => {
+  $("#newGroupForm").hidden = true;
+  $("#newGroupBtn").setAttribute("aria-expanded", "false");
+  $("#newGroupBtn").focus();
+});
+$("#newGroupForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#newGroupName").value.trim();
+  if (!name) { $("#newGroupName").focus(); return; }
+  post({ type: "group", op: "create", name }); // empty first: widgets are added afterwards
+  $("#newGroupName").value = "";
+  $("#newGroupForm").hidden = true;
+  $("#newGroupBtn").setAttribute("aria-expanded", "false");
+  toast(`Group ${name} created. Add widgets with a card's badge or by dragging.`);
+});
+$("#selectBtn").addEventListener("click", () => {
+  selectMode = !selectMode;
+  if (!selectMode) selected.clear();
+  renderInstalled();
+  renderGroups();
+});
+$("#bulkAdd").addEventListener("click", () => {
+  const group = $("#bulkGroup").value;
+  if (!group || !selected.size) return;
+  for (const id of selected) post({ type: "group", op: "join", group, id });
+  toast(`Added ${selected.size} widget${selected.size === 1 ? "" : "s"} to ${((state.groups || []).find((g) => g.id === group) || {}).name}`);
+  selected.clear();
+});
+
+// Badge menu: move a widget to another group, remove it from its group, or start a new one.
+function openGroupMenu(anchor, w, here) {
+  document.querySelector(".gmenu")?.remove();
+  const menu = document.createElement("div");
+  menu.className = "gmenu";
+  menu.setAttribute("role", "menu");
+  const close = (refocus) => { menu.remove(); document.removeEventListener("mousedown", away, true); if (refocus) anchor.focus(); };
+  const away = (e) => { if (!menu.contains(e.target) && e.target !== anchor) close(false); };
+  const item = (text, run, on) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", textContent: text });
+    b.setAttribute("role", "menuitem");
+    if (on) b.classList.add("on");
+    b.addEventListener("click", () => { close(false); run(); });
+    menu.append(b);
+  };
+  for (const g of state.groups || []) item(g.name, () => post({ type: "group", op: "join", group: g.id, id: w.id }), here && here.id === g.id);
+  if (here) item("Remove from group", () => post({ type: "group", op: "leave", id: w.id }));
+  item("New group...", () => {
+    $("#newGroupForm").hidden = false;
+    $("#newGroupBtn").setAttribute("aria-expanded", "true");
+    $("#newGroupName").focus();
+    $("#newGroupName").scrollIntoView({ block: "center" });
+  });
+  menu.addEventListener("keydown", (e) => {
+    const items = $$("button", menu);
+    const i = items.indexOf(document.activeElement);
+    if (e.key === "Escape") { e.preventDefault(); close(true); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+  });
+  anchor.after(menu);
+  document.addEventListener("mousedown", away, true);
+  menu.querySelector("button")?.focus();
+}
+
+// A group's header in the list: fold, rename, tabs (activate, reorder, icon, remove), cycle and delete.
+function groupHeader(g) {
+  const folded = foldedGroups().has(g.id);
+  const head = document.createElement("section");
+  head.className = "ghead" + (folded ? " folded" : "");
+  head.dataset.group = g.id;
+  head.setAttribute("aria-label", `Group ${g.name}`);
+  const top = document.createElement("div");
+  top.className = "ghead-top";
+  const fold = Object.assign(document.createElement("button"), { className: "fold", type: "button" });
+  fold.innerHTML = '<span class="ico" data-icon="chevron"></span>';
+  fold.setAttribute("aria-expanded", String(!folded));
+  fold.setAttribute("aria-label", `${folded ? "Show" : "Hide"} widgets of ${g.name}`);
+  fold.addEventListener("click", () => { setGroupFolded(g.id, !folded); renderInstalled(); });
+  const name = document.createElement("input");
+  name.className = "input name";
+  name.value = g.name;
+  name.maxLength = 40;
+  name.spellcheck = false;
+  name.setAttribute("aria-label", "Group name");
+  name.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, name: name.value }));
+  name.addEventListener("keydown", (e) => { if (e.key === "Enter") name.blur(); });
+  const count = Object.assign(document.createElement("span"), { className: "gcount", textContent: `${g.members.length} widget${g.members.length === 1 ? "" : "s"}` });
+  const cycle = document.createElement("input");
+  cycle.className = "input";
+  cycle.type = "number";
+  cycle.min = 0;
+  cycle.max = 3600;
+  cycle.value = g.cycleSeconds || "";
+  cycle.placeholder = "Cycle (s)";
+  cycle.title = "Switch to the next tab every this many seconds (5-3600); empty = off";
+  cycle.setAttribute("aria-label", "Cycle every seconds");
+  cycle.style.width = "92px";
+  cycle.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, cycleSeconds: Math.max(0, Math.round(Number(cycle.value) || 0)) }));
+  const del = document.createElement("button");
+  del.className = "btn small danger";
+  del.type = "button";
+  del.title = "Delete group (the widgets stay)";
+  del.setAttribute("aria-label", `Delete group ${g.name}`);
+  del.innerHTML = '<span class="ico" data-icon="trash"></span>';
+  del.addEventListener("click", () => post({ type: "group", op: "delete", group: g.id }));
+  top.append(fold, name, count, cycle, del);
+  head.append(top);
+
+  if (!g.members.length) {
+    head.append(Object.assign(document.createElement("div"), { className: "ghead-empty", textContent: "Empty. Drop a widget card here, or use a card's badge." }));
+  } else if (!folded) {
     const tabs = document.createElement("div");
     tabs.className = "tabchips";
     g.members.forEach((inst, i) => {
       const chip = document.createElement("span");
       chip.className = "tabchip" + (inst === g.active ? " on" : "");
-      const pick = Object.assign(document.createElement("button"), { className: "tabpick", textContent: label(inst) });
+      const pick = Object.assign(document.createElement("button"), { className: "tabpick", textContent: widgetLabel(inst) });
       pick.title = "Show this tab";
       pick.addEventListener("click", () => post({ type: "group", op: "activate", group: g.id, id: inst }));
       const ic = Object.assign(document.createElement("button"), { className: "tabicon", title: "Choose tab icon" });
-      ic.setAttribute("aria-label", `Choose tab icon for ${label(inst)}`);
-      const cur = (g.icons || {})[inst];
-      if (cur) ic.append(Object.assign(document.createElement("img"), { src: ICON_BASE + cur + ".png", alt: "" }));
+      ic.setAttribute("aria-label", `Choose tab icon for ${widgetLabel(inst)}`);
+      const curIcon = (g.icons || {})[inst];
+      if (curIcon) ic.append(Object.assign(document.createElement("img"), { src: ICON_BASE + curIcon + ".png", alt: "" }));
       else ic.textContent = "◇";
       ic.addEventListener("click", () => openIconPicker(inst, ic));
       chip.append(ic, pick);
       if (i > 0) {
         const left = Object.assign(document.createElement("button"), { textContent: "‹", title: "Move earlier" });
-        left.setAttribute("aria-label", `Move ${label(inst)} earlier`);
+        left.setAttribute("aria-label", `Move ${widgetLabel(inst)} earlier`);
         left.addEventListener("click", () => post({ type: "group", op: "reorder", group: g.id, id: inst, index: i - 1 }));
         chip.append(left);
       }
       const out = Object.assign(document.createElement("button"), { textContent: "×", title: "Remove from group" });
-      out.setAttribute("aria-label", `Remove ${label(inst)} from group`);
+      out.setAttribute("aria-label", `Remove ${widgetLabel(inst)} from group`);
       out.addEventListener("click", () => post({ type: "group", op: "leave", id: inst }));
       chip.append(out);
       tabs.append(chip);
     });
-    text.append(name, tabs);
-
-    const cycle = document.createElement("input");
-    cycle.className = "input";
-    cycle.type = "number";
-    cycle.min = 0;
-    cycle.max = 3600;
-    cycle.value = g.cycleSeconds || "";
-    cycle.placeholder = "Cycle (s)";
-    cycle.title = "Switch to the next tab every this many seconds (5–3600); empty = off";
-    cycle.setAttribute("aria-label", "Cycle every seconds");
-    cycle.style.width = "92px";
-    cycle.addEventListener("change", () => post({ type: "group", op: "configure", group: g.id, cycleSeconds: Math.max(0, Math.round(Number(cycle.value) || 0)) }));
-
-    const del = document.createElement("button");
-    del.className = "btn small danger";
-    del.title = "Ungroup (the widgets stay)";
-    del.innerHTML = '<span class="ico" data-icon="trash"></span>';
-    del.addEventListener("click", () => post({ type: "group", op: "delete", group: g.id }));
-    row.append(text, cycle, del);
-    list.append(row);
+    head.append(tabs);
   }
-  icons(list);
+  dropTarget(head, g);
+  icons(head);
+  return head;
 }
 
 // ---------- Tab icon picker ----------
@@ -1103,7 +1248,7 @@ bridge && bridge.addEventListener("message", (e) => {
       { const a = document.activeElement; if (!(a && a.tagName === "INPUT" && $("#layoutList").contains(a))) renderLayouts(); }
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
-      { const a = document.activeElement; if (!(a && a.tagName === "INPUT" && $("#groupList").contains(a))) renderGroups(); }
+      renderGroups();
       break;
     case "privacy":
       renderPrivacy(m.widgets);
