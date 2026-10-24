@@ -313,6 +313,100 @@ static class Community
         }
     }
 
+    const int MaxRedirects = 5;
+
+    /// <summary>
+    /// Why <paramref name="url"/> can't be downloaded as a widget package, or null: HTTPS only, a plain host name (no IP
+    /// address, localhost or .local), no user name or password, the standard port, at most 2048 characters.
+    /// </summary>
+    public static string? CheckDownloadUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || url.Length > 2048 || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var u)) return "That is not a valid web address";
+        if (u.Scheme != Uri.UriSchemeHttps) return "Only https:// addresses are allowed";
+        if (u.UserInfo.Length > 0) return "Addresses with a user name or password are not allowed";
+        if (!u.IsDefaultPort) return "Only the standard https port is allowed";
+        var host = u.Host;
+        if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out _) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase) || !host.Contains('.'))
+            return "Only public web sites are allowed (no IP addresses, localhost or local names)";
+        return null;
+    }
+
+    static HttpMessageHandler NoRedirectHandler()
+    {
+        var h = Prefs.CreateHandler();
+        if (h is SocketsHttpHandler s) s.AllowAutoRedirect = false; // every hop is checked below
+        return h;
+    }
+
+    /// <summary>
+    /// Downloads a package to a new temp file: every hop (the URL and each redirect, at most 5) must pass
+    /// <see cref="CheckDownloadUrl"/>, no credentials or cookies are sent, at most 5 MB are read and the whole thing
+    /// has 60 seconds. Returns the temp file (named .umbrawidget when the URL says so, else .zip); the caller deletes it.
+    /// <paramref name="handler"/> replaces the network (tests).
+    /// </summary>
+    public static async Task<string> DownloadPackageAsync(string url, HttpMessageHandler? handler = null, CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(60));
+        using var client = new HttpClient(handler ?? NoRedirectHandler(), disposeHandler: handler is null) { Timeout = TimeSpan.FromSeconds(60) };
+        var current = new Uri(url.Trim());
+        var ext = current.AbsolutePath.EndsWith(PackageExtension, StringComparison.OrdinalIgnoreCase) ? PackageExtension : ".zip";
+        for (var hop = 0; hop <= MaxRedirects; hop++)
+        {
+            if (CheckDownloadUrl(current.AbsoluteUri) is { } bad) throw new InvalidOperationException(hop == 0 ? bad : $"A redirect was refused: {bad}");
+            using var request = new HttpRequestMessage(HttpMethod.Get, current);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            if ((int)response.StatusCode is 301 or 302 or 303 or 307 or 308)
+            {
+                var next = response.Headers.Location ?? throw new InvalidOperationException("The server redirected without saying where");
+                current = next.IsAbsoluteUri ? next : new Uri(current, next);
+                continue;
+            }
+            if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"The download failed: HTTP {(int)response.StatusCode}");
+            if (response.Content.Headers.ContentLength > MaxWidgetBytes) throw new InvalidOperationException("The file is larger than 5 MB");
+
+            var path = Path.Combine(Path.GetTempPath(), $"umbra-dl-{Guid.NewGuid():N}{ext}");
+            try
+            {
+                await using var input = await response.Content.ReadAsStreamAsync(cts.Token);
+                await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
+                var buffer = new byte[81920];
+                long total = 0;
+                int n;
+                while ((n = await input.ReadAsync(buffer, cts.Token)) > 0)
+                {
+                    total += n;
+                    if (total > MaxWidgetBytes) throw new InvalidOperationException("The file is larger than 5 MB");
+                    await output.WriteAsync(buffer.AsMemory(0, n), cts.Token);
+                }
+                return path;
+            }
+            catch
+            {
+                try { File.Delete(path); } catch { }
+                throw;
+            }
+        }
+        throw new InvalidOperationException($"Too many redirects (more than {MaxRedirects})");
+    }
+
+    /// <summary>
+    /// "Install from URL": downloads (<see cref="DownloadPackageAsync"/>), then runs the exact checks of an install from a file
+    /// (<see cref="PrepareLocal"/>). Like any file install it is local: any access it declares needs the user's accept.
+    /// </summary>
+    public static async Task<PendingInstall> PrepareUrlAsync(string url, HttpMessageHandler? handler = null, CancellationToken ct = default)
+    {
+        string file;
+        try { file = await DownloadPackageAsync(url, handler, ct); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            throw new InvalidOperationException($"Could not download the widget: {ex.Message}", ex);
+        }
+        try { return await Task.Run(() => PrepareLocal(file), ct); }
+        finally { try { File.Delete(file); } catch { } }
+    }
+
     static readonly object LocalInstallsLock = new();
     static string LocalInstallsFile => Path.Combine(AppPaths.DataDir, "local-installs.json");
 
