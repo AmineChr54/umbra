@@ -650,7 +650,13 @@ static class Community
     /// </summary>
     public static string? CatalogIncompatibility(JsonNode? entry)
     {
-        var mv = entry?["manifestVersion"] is JsonValue v && v.TryGetValue<int>(out var n) ? n : 1;
+        // Missing means 1; a present but malformed value is invalid, never silently 1.
+        var mv = 1;
+        if (entry is JsonObject o && o.TryGetPropertyValue("manifestVersion", out var node))
+        {
+            if (node is JsonValue v && v.TryGetValue<int>(out var n) && n >= 1) mv = n;
+            else return "its manifestVersion is invalid";
+        }
         var min = entry?["minUmbraVersion"] is JsonValue s && s.TryGetValue<string>(out var t) ? t : null;
         return WidgetManifest.Incompatibility(mv, min);
     }
