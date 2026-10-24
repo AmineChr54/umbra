@@ -2,22 +2,21 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "pomodoro",
   "name": "Pomodoro",
-  "description": "A focus timer with a progress ring: Pomodoro with breaks or a plain countdown, times editable right in the widget, and a daily and weekly tally of focus minutes with a 7-day chart. Survives restarts.",
+  "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Survives restarts.",
   "author": "AmineChr54",
-  "version": "1.1.1",
+  "version": "2.0.0",
+  "changelog": "Focus sessions: set the total minutes, breaks off by default or 22-33 min blocks with 5 min breaks, ring with ticks, pause and a ... menu (skip, +5 min, end), toasts at phase changes. The focus/break minute options are gone; the daily log is kept.",
   "entry": "index.html",
   "preview": "preview.png",
   "icon": "icon.png",
   "width": 300,
   "height": 340,
   "defaultPosition": { "x": 24, "y": 24 },
-  "permissions": { "hosts": [] },
+  "permissions": { "hosts": [], "notifications": true },
   "options": {
-    "work": { "label": "Focus minutes", "type": "number", "default": 25, "min": 1, "max": 180, "step": 1 },
-    "shortBreak": { "label": "Short break minutes", "type": "number", "default": 5, "min": 1, "max": 60, "step": 1 },
-    "longBreak": { "label": "Long break minutes", "type": "number", "default": 15, "min": 1, "max": 90, "step": 1 },
-    "longEvery": { "label": "Long break after", "type": "number", "default": 4, "min": 2, "max": 10, "step": 1,
-                   "hint": "Number of focus sessions before a long break." },
-    "autoStart": { "label": "Start next session automatically", "type": "toggle", "default": false }
+    "autoStart": { "label": "Start the next phase automatically", "type": "toggle", "default": true,
+                   "hint": "Off: the session waits for you at each break and focus period." },
+    "notify": { "label": "Notify at each phase change", "type": "toggle", "default": true,
+                "hint": "Also switch on Allow notifications for this widget in Settings." }
   }
 }

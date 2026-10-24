@@ -1,148 +1,190 @@
-// Pomodoro: state in umbra.store ("state"), focus minutes per day in "log". Stores the end time, so it survives reloads.
+// Pomodoro focus session (Windows Focus style). Rules live in session.js (FocusSession); this file is the UI.
+// umbra.store keys: "session" (the running session, see session.js; survives restarts), "setup" ({ minutes, breaks }),
+// "log" ({ "YYYY-MM-DD": focus minutes }, unchanged from 1.x). The 1.x keys "state" and "config" are left alone and ignored.
+// Session events go through emit(); other features (the timelapse, #240) subscribe with Pomodoro.on(fn).
+const S = window.FocusSession;
 const q = (id) => document.getElementById(id);
-const app = q("app"), arc = q("arc"), CIRC = 2 * Math.PI * 52;
-const LABEL = { work: "Focus", short: "Short break", long: "Long break" };
-let st = null, log = {}, timer = null;
+const app = q("app"), arc = q("arc");
+const R = 54, CIRC = 2 * Math.PI * R, MIN = 60000;
+const LIVE_MS = 60000; // a phase change older than this (caught up after a restart) gets no toast
 
-// cfg holds what the user edited in the widget; a null field falls back to the widget option.
-let cfg = { breaks: true, work: null, short: null, long: null, every: null };
-const o = () => umbra.options;
-const pick = (k, opt) => Math.max(1, Number(cfg[k] ?? o()[opt]) || 1);
-const mins = (p) => (p === "work" ? pick("work", "work") : p === "short" ? pick("short", "shortBreak") : pick("long", "longBreak"));
-const every = () => Math.max(2, pick("every", "longEvery"));
-const totalMs = (p) => mins(p) * 60000;
+let session = null, setup = { minutes: 60, breaks: false }, log = {}, timer = null, menuOpen = false;
+
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const fmtMin = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m}m`);
-const fresh = (phase, cycle) => ({ phase, cycle, running: false, endsAt: 0, remaining: totalMs(phase), total: totalMs(phase), done: false });
-const save = () => { umbra.store.set("state", st).catch(() => {}); };
-const saveLog = () => {
-  const keep = Object.keys(log).sort().slice(-60);
-  log = Object.fromEntries(keep.map((k) => [k, log[k]]));
-  umbra.store.set("log", log).catch(() => {});
+const fmtClock = (ms) => {
+  const s = Math.ceil(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${String(m).padStart(2, "0")}:${ss}`;
 };
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const auto = () => umbra.options.autoStart !== false;
+const store = (k, v) => umbra.store.set(k, v).catch(() => {});
 
-function credit(ms) {
-  const m = Math.floor(ms / 60000);
-  if (m > 0) { const k = dayKey(); log[k] = (log[k] || 0) + m; saveLog(); }
+// ---- events: the one place session changes fan out (log, toasts, future hooks) ----
+const listeners = [];
+window.Pomodoro = { on: (fn) => listeners.push(fn), get session() { return session; } };
+
+function emit(events) {
+  for (const e of events) {
+    if (e.type === "phaseEnd" && e.focusMs > 0) credit(e.focusMs, e.at);
+    for (const fn of listeners) { try { fn(e, session); } catch (err) { console.error(err); } }
+  }
+  const last = events.filter((e) => e.type === "phaseStart" || e.type === "done").at(-1);
+  if (last && Date.now() - last.at < LIVE_MS) notify(last);
 }
 
-function next(skipped) {
-  const wasWork = st.phase === "work";
-  const cycle = wasWork ? st.cycle + 1 : st.cycle;
-  let phase = "work", c = cycle;
-  if (!cfg.breaks) c = 0;
-  else if (wasWork) { phase = cycle >= every() ? "long" : "short"; }
-  else if (st.phase === "long") c = 0;
-  st = fresh(phase, c);
-  if (!skipped && o().autoStart) start();
-  else st.done = !skipped;
-  save();
+function apply(r) {
+  session = r.s;
+  store("session", session);
+  emit(r.events);
+  render();
 }
 
-function start() { st.running = true; st.done = false; st.endsAt = Date.now() + st.remaining; save(); }
-function pause() { st.remaining = Math.max(0, st.endsAt - Date.now()); st.running = false; save(); }
+function credit(ms, at) {
+  const m = Math.round(ms / MIN);
+  if (m <= 0) return;
+  const k = dayKey(new Date(at));
+  log[k] = (log[k] || 0) + m;
+  const keep = Object.keys(log).sort().slice(-60);
+  log = Object.fromEntries(keep.map((d) => [d, log[d]]));
+  store("log", log);
+}
 
+function phaseTitle(s, i = s.idx) {
+  const { n, of } = S.focusIndex({ ...s, idx: i });
+  return s.phases[i].kind === "focus" ? `Focus period ${n} of ${of}` : `${s.phases[i].min} min break`;
+}
+
+function notify(e) {
+  if (umbra.options.notify === false || !session) return;
+  let title, body;
+  if (e.type === "done") { title = "Focus session complete"; body = `You focused for ${fmtMin(Math.round((session.focused || 0) / MIN))}.`; }
+  else {
+    const p = session.phases[e.idx], nxt = session.phases[e.idx + 1];
+    title = p.kind === "break" ? "Time for a break" : phaseTitle(session, e.idx);
+    body = p.kind === "break" ? `${p.min} minutes. Then ${phaseTitle(session, e.idx + 1).toLowerCase()}.`
+      : `${p.min} minutes of focus.${nxt ? ` Up next: ${nxt.min} min break.` : " Last one."}`;
+    if (!e.auto) body += " Start it from the widget.";
+  }
+  umbra.notify?.({ title, body, tag: "pomodoro-phase" })?.catch?.(() => {});
+}
+
+// ---- actions ----
+const now = () => Date.now();
+function startSession() {
+  setup.minutes = S.clampTotal(setup.minutes);
+  store("setup", setup);
+  apply(S.start(S.create(setup.minutes, setup.breaks), now()));
+}
+function toggle() {
+  if (!session) return;
+  if (session.done) { session = null; umbra.store.remove("session").catch(() => {}); render(); return; }
+  apply(session.running ? S.pause(session, now()) : S.start(session, now()));
+}
 function tick() {
-  if (st.running && Date.now() >= st.endsAt) {
-    if (st.phase === "work") credit(st.total);
-    next(false);
+  if (session && session.running) {
+    const r = S.advance(session, now(), auto());
+    if (r.events.length) { apply(r); return; }
   }
   render();
+}
+
+// ---- render ----
+function renderTicks() {
+  const g = q("ticks");
+  let out = "";
+  for (let i = 0; i < 60; i++) {
+    const a = (i / 60) * 2 * Math.PI, major = i % 5 === 0, r1 = major ? 44 : 46, r2 = 49;
+    const p = (r) => `${(60 + r * Math.cos(a)).toFixed(2)}`, t = (r) => `${(60 + r * Math.sin(a)).toFixed(2)}`;
+    out += `<line${major ? ' class="major"' : ""} x1="${p(r1)}" y1="${t(r1)}" x2="${p(r2)}" y2="${t(r2)}"/>`;
+  }
+  g.innerHTML = out;
+  arc.style.strokeDasharray = String(CIRC);
+}
+
+function renderSetup() {
+  const inp = q("minutes");
+  if (document.activeElement !== inp) inp.value = setup.minutes;
+  q("minus").disabled = setup.minutes <= S.MIN_TOTAL;
+  q("plus").disabled = setup.minutes >= S.MAX_TOTAL;
+  q("skip-breaks").checked = !setup.breaks;
+  const k = S.breakCount(setup.minutes, true);
+  q("breaks-hint").textContent = !setup.breaks ? "You'll have no breaks"
+    : k ? `You'll have ${plural(k, "break")}` : "Too short for a break";
+}
+
+function renderRun() {
+  const s = session, t = now();
+  const p = s.phases[s.idx], left = S.remaining(s, t), total = p.min * MIN;
+  const paused = !s.running && !s.done && left < total;
+  const waiting = !s.running && !s.done && left === total;
+  app.classList.toggle("brk", !s.done && p.kind === "break");
+  app.classList.toggle("paused", paused);
+  app.classList.toggle("done", s.done);
+  q("phase").textContent = s.done ? "Session complete" : phaseTitle(s);
+  q("time").textContent = s.done ? fmtMin(Math.round((s.focused || 0) / MIN)) : fmtClock(left);
+  q("sub").textContent = s.done ? "focused" : paused ? "Paused" : waiting ? (p.kind === "break" ? "Break ready" : "Ready") : p.kind === "break" ? "Break" : "Focus";
+  arc.style.strokeDashoffset = String(s.done ? 0 : CIRC * (1 - left / total));
+  const nxt = S.nextPhase(s);
+  q("next").textContent = s.done ? `of ${fmtMin(s.total)} planned` : nxt
+    ? (nxt.kind === "break" ? `Up next: ${nxt.min} min break` : `Up next: ${phaseTitle(s, s.idx + 1).toLowerCase()}`)
+    : "Last focus period";
+  q("toggle").textContent = s.done ? "New session" : s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start";
+  q("more").hidden = s.done;
+  q("m-skip").textContent = p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now";
+  q("menu").hidden = !menuOpen || s.done;
+  q("more").setAttribute("aria-expanded", String(menuOpen && !s.done));
 }
 
 function render() {
-  const left = st.running ? Math.max(0, st.endsAt - Date.now()) : st.remaining;
-  const s = Math.ceil(left / 1000);
-  q("time").textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-  arc.style.strokeDashoffset = String(CIRC * (1 - left / st.total));
-  app.classList.toggle("brk", st.phase !== "work");
-  app.classList.toggle("done", st.done && !st.running);
-  q("phase").textContent = LABEL[st.phase];
-  q("sub").textContent = st.running ? (st.phase === "work" ? "Focusing" : "Resting") : st.done ? "Session complete" : left < st.total ? "Paused" : "Ready";
-  q("toggle").textContent = st.running ? "Pause" : left < st.total ? "Resume" : "Start";
-  q("dots").innerHTML = cfg.breaks ? Array.from({ length: every() }, (_, i) => `<i class="${i < st.cycle ? "on" : ""}"></i>`).join("") : "";
-  renderStats();
-  renderCfg();
-  if (timer) clearInterval(timer);
-  timer = st.running ? setInterval(tick, 1000) : null;
+  q("today").textContent = fmtMin(log[dayKey()] || 0);
+  q("setup").hidden = !!session;
+  q("run").hidden = !session;
+  if (session) renderRun(); else { app.classList.remove("brk", "paused", "done"); renderSetup(); }
+  schedule();
 }
 
-function renderStats() {
-  const days = [];
-  for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d); }
-  const vals = days.map((d) => log[dayKey(d)] || 0);
-  const max = Math.max(30, ...vals);
-  q("today").textContent = fmtMin(vals[6]);
-  q("week").textContent = fmtMin(vals.reduce((a, b) => a + b, 0));
-  q("chart").innerHTML = days.map((d, i) =>
-    `<div class="bar${i === 6 ? " today" : ""}" title="${fmtMin(vals[i])}"><i style="height:${Math.round(vals[i] / max * 34)}px"></i><em>${d.toLocaleDateString([], { weekday: "narrow" })}</em></div>`).join("");
+// One timer per second, only while a phase runs and the PC is awake.
+function schedule() {
+  const want = !!(session && session.running) && !umbra.settings.paused;
+  if (want && !timer) timer = setInterval(tick, 1000);
+  if (!want && timer) { clearInterval(timer); timer = null; }
 }
 
-const saveCfg = () => { umbra.store.set("config", cfg).catch(() => {}); };
-// Rebuild an idle, untouched timer so a changed duration or mode shows at once; a running one keeps its time.
-function reapply() {
-  if (st && !st.running && st.remaining === st.total) {
-    const phase = cfg.breaks ? st.phase : "work";
-    st = fresh(phase, cfg.breaks ? st.cycle : 0);
-    save();
-  }
-  render();
-}
+// ---- inputs ----
+const setMinutes = (v) => { setup.minutes = S.clampTotal(v); store("setup", setup); render(); };
+q("minus").onclick = () => setMinutes(Math.ceil(setup.minutes / 5) * 5 - 5);
+q("plus").onclick = () => setMinutes(Math.floor(setup.minutes / 5) * 5 + 5);
+q("minutes").onfocus = () => umbra.requestFocus?.();
+q("minutes").onchange = () => setMinutes(q("minutes").value);
+q("minutes").onkeydown = (e) => { if (e.key === "Enter") q("minutes").blur(); };
+q("skip-breaks").onchange = () => { setup.breaks = !q("skip-breaks").checked; store("setup", setup); render(); };
+q("start").onclick = startSession;
+q("toggle").onclick = toggle;
+q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
+document.addEventListener("pointerdown", (e) => { if (menuOpen && !e.target.closest("#menu, #more")) { menuOpen = false; render(); } });
+const menuAction = (fn) => () => { menuOpen = false; if (session && !session.done) apply(fn(session, now())); };
+q("m-skip").onclick = menuAction((s, t) => S.skip(s, t, auto()));
+q("m-add").onclick = menuAction((s, t) => S.extend(s, 5, t));
+q("m-end").onclick = menuAction((s, t) => S.end(s, t));
 
-function renderCfg() {
-  q("cfg").hidden = !cfgOpen;
-  q("stats").hidden = cfgOpen;
-  app.classList.toggle("cfg-open", cfgOpen);
-  for (const b of q("mode").children) b.classList.toggle("on", (b.dataset.breaks === "1") === cfg.breaks);
-  for (const l of document.querySelectorAll("[data-brk]")) l.hidden = !cfg.breaks;
-  const set = (id, v) => { const e = q(id); if (document.activeElement !== e) e.value = v; };
-  set("in-work", mins("work")); set("in-short", mins("short")); set("in-long", mins("long")); set("in-every", every());
-}
-
-let cfgOpen = false;
-q("gear").onclick = () => { cfgOpen = !cfgOpen; render(); };
-q("mode").onclick = (e) => {
-  const b = e.target.closest("button");
-  if (!b) return;
-  cfg.breaks = b.dataset.breaks === "1";
-  saveCfg(); reapply();
-};
-for (const [id, key] of [["in-work", "work"], ["in-short", "short"], ["in-long", "long"], ["in-every", "every"]]) {
-  q(id).oninput = () => {
-    const v = Math.round(Number(q(id).value));
-    if (!(v >= 1)) return;
-    cfg[key] = Math.min(v, Number(q(id).max));
-    saveCfg(); reapply();
-  };
-  q(id).onfocus = () => umbra.requestFocus?.();
-}
-
-q("toggle").onclick = () => { if (!st) return; st.running ? pause() : start(); render(); };
-q("skip").onclick = () => {
-  if (!st) return;
-  if (st.phase === "work") credit(st.total - (st.running ? Math.max(0, st.endsAt - Date.now()) : st.remaining));
-  next(true); render();
-};
-
-umbra.onSettings(() => {
-  if (!st) return;
-  if (!st.running && !st.done && st.remaining === st.total) st = fresh(st.phase, st.cycle);
-  render();
-});
+umbra.onSettings(() => tick());
+umbra.onTimeChanged?.(() => tick());
+document.addEventListener("visibilitychange", () => tick());
 umbra.store.onChange?.(async (k) => {
-  if (k && k !== "config") return;
-  const c = await umbra.store.get("config", null);
-  if (c) { cfg = { ...cfg, ...c }; render(); }
+  if (!k || k === "log") log = await umbra.store.get("log", {});
+  if (!k || k === "setup") setup = { ...setup, ...(await umbra.store.get("setup", {})) };
+  if (!k || k === "session") { const s = await umbra.store.get("session", null); session = S.valid(s) ? s : null; }
+  tick();
 });
-umbra.store.onChange?.(async () => { log = await umbra.store.get("log", {}); renderStats(); });
-document.addEventListener("visibilitychange", () => { if (st) tick(); });
 
 (async () => {
   await umbra.ready;
+  renderTicks();
   log = await umbra.store.get("log", {});
-  cfg = { ...cfg, ...(await umbra.store.get("config", null) || {}) };
-  st = await umbra.store.get("state", null);
-  if (!st || !LABEL[st.phase] || typeof st.total !== "number") st = fresh("work", 0);
-  tick();
+  setup = { ...setup, ...(await umbra.store.get("setup", {})) };
+  const s = await umbra.store.get("session", null);
+  session = S.valid(s) ? s : null;
+  tick(); // catches up on phases that ended while Umbra was closed
   umbra.rendered();
 })();
