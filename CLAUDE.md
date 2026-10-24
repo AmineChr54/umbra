@@ -97,7 +97,7 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   goes through `Community.PrepareLocal` (or `PrepareUrlAsync`, which downloads then calls it) and a host-drawn review (`PackageInstall`);
   access it declares is always accepted by the user, never by a tool argument. `install-local`, `install-url` and the `open-package` pipe line
   (the double-click hand-off, not a control command) have no MCP tool; the MCP server strips `acceptPermissions`, and `pack_widget`'s `out`/`overwrite`.
-  URL downloads: HTTPS only, no IP literals/localhost/.local, no credentials or odd ports, at most 5 redirects each re-checked, 5 MB, 60 s.
+  URL downloads: HTTPS only, no IP literals/localhost/local names (trailing dot included), no credentials or odd ports, at most 5 redirects each re-checked, a connect step that refuses private/loopback/link-local addresses (DNS rebinding included), no cookies or decompression, 5 MB, 60 s; `install-url` refuses to replace an installed or catalog id without `--overwrite` (CLI only).
 - Themes are data only: token names come from `Theme.Allowed`, values must match the color/length patterns (mirrored in
   `scripts/catalog.mjs` and `schemas/theme.schema.json`), and catalog tokens are re-validated before Settings draws them.
 - The control pipe uses `PipeOptions.CurrentUserOnly`. Never add a network listener.

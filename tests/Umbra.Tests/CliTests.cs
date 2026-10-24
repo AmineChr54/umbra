@@ -65,6 +65,23 @@ public class McpServerTests
     }
 
     [Fact]
+    public async Task Install_url_maps_the_flags_and_has_no_mcp_tool()
+    {
+        var empty = (string _, JsonObject __) => Task.FromResult(new JsonObject());
+        var (cmd, a) = await CommandLine.TranslateAsync(new[] { "install-url", "https://github.com/x/w.umbrawidget" }, empty);
+        Assert.Equal("install-url", cmd);
+        Assert.Equal("https://github.com/x/w.umbrawidget", a!["url"]!.GetValue<string>());
+        Assert.Null(a["acceptPermissions"]);
+        Assert.Null(a["overwrite"]);
+        var (_, b) = await CommandLine.TranslateAsync(new[] { "install-url", "--overwrite", "https://github.com/x/w.umbrawidget", "--accept-permissions" }, empty);
+        Assert.True(b!["overwrite"]!.GetValue<bool>());
+        Assert.True(b["acceptPermissions"]!.GetValue<bool>());
+        Assert.DoesNotContain("install-url", McpServer.ToolCommands);
+        Assert.DoesNotContain(McpServer.ToolNames, n => n.Contains("url", StringComparison.OrdinalIgnoreCase));
+        await Assert.ThrowsAsync<ArgumentException>(() => CommandLine.TranslateAsync(new[] { "install-url" }, empty));
+    }
+
+    [Fact]
     public async Task Pack_widget_over_mcp_cannot_choose_the_output_or_overwrite()
     {
         await Server().HandleAsync(Call("tools/call", new JsonObject

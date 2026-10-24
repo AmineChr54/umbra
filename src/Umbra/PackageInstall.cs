@@ -11,10 +11,11 @@ static class PackageInstall
     static int _open;
 
     /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
-    public static bool ConfirmNewAccess(IWin32Window? owner, Community.PendingInstall p)
+    public static bool ConfirmNewAccess(IWin32Window? owner, Community.PendingInstall p, string? source = null)
     {
         var text = $"{p.Manifest.Name} {p.Manifest.Version} wants {(p.IsUpdate ? "new " : "")}access:\n\n"
             + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
+            + (source is null ? "" : $"\n\nFrom: {source}")
             + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
             + (p.IsUpdate ? "\n\nUpdate and allow this?" : "\n\nInstall and allow this?");
         return MessageBox.Show(owner, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
@@ -62,7 +63,7 @@ static class PackageInstall
             if (app.Manifests.Any(m => m.Id == id && m.Source == WidgetSource.BuiltIn))
                 throw new InvalidOperationException($"'{id}' is the id of a built-in widget");
             var accepted = pending.NeedsApproval
-                ? ConfirmNewAccess(owner, pending)
+                ? ConfirmNewAccess(owner, pending, source)
                 : MessageBox.Show(owner, PlainReview(pending, source), "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
             if (!accepted) return null;
             app.CloseWidget(id);

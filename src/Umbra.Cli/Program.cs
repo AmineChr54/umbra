@@ -108,7 +108,7 @@ static void PrintHelp()
           catalog                        community widgets on GitHub
           install <id> [--accept-permissions]  install/update a community widget; an update that adds permissions needs the flag
           install-local <folder|zip> [--accept-permissions]  install a widget from a folder or .zip/.umbrawidget; one that declares hosts, system, media, notifications or commands needs the flag
-          install-url <https://...> [--accept-permissions]  download a .umbrawidget (HTTPS only, 5 MB) and install it with the same checks; access it declares needs the flag
+          install-url <https://...> [--accept-permissions] [--overwrite]  download a .umbrawidget (HTTPS only, 5 MB) and install it with the same checks; access it declares needs the flag; an existing widget with that id is kept unless --overwrite
           remove <id>                    uninstall a community widget
           update --all                   update every installed community widget that has a newer version (failures are listed, the rest still update; updates that add permissions are skipped and listed)
           theme [id]                     show the active theme, or switch to an installed one (live)

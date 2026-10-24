@@ -151,6 +151,7 @@ static class CommandLine
                 var url = a.Skip(1).FirstOrDefault(x => !x.StartsWith("--")) ?? throw new ArgumentException("Missing https:// address of a .umbrawidget. Run umbractl help.");
                 var o = O(("url", url));
                 if (a.Contains("--accept-permissions")) o["acceptPermissions"] = true;
+                if (a.Contains("--overwrite")) o["overwrite"] = true; // replace an installed widget with the same id
                 return ("install-url", o);
             }
             case "validate" or "validate-widget":

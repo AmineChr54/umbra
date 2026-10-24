@@ -315,9 +315,13 @@ static class Community
 
     const int MaxRedirects = 5;
 
+    static readonly string[] BlockedHostSuffixes = { ".local", ".localhost", ".lan", ".internal", ".intranet", ".home", ".corp", ".localdomain", ".home.arpa" };
+
     /// <summary>
-    /// Why <paramref name="url"/> can't be downloaded as a widget package, or null: HTTPS only, a plain host name (no IP
-    /// address, localhost or .local), no user name or password, the standard port, at most 2048 characters.
+    /// Why <paramref name="url"/> can't be downloaded as a widget package, or null: HTTPS only, a public-looking host name (no IP
+    /// address, localhost, single-label or local-network name, with or without a trailing dot), no user name or password, the
+    /// standard port, at most 2048 characters. Names that resolve to a private address are refused at connect time
+    /// (<see cref="CreateDownloadHandler"/>).
     /// </summary>
     public static string? CheckDownloadUrl(string url)
     {
@@ -325,36 +329,84 @@ static class Community
         if (u.Scheme != Uri.UriSchemeHttps) return "Only https:// addresses are allowed";
         if (u.UserInfo.Length > 0) return "Addresses with a user name or password are not allowed";
         if (!u.IsDefaultPort) return "Only the standard https port is allowed";
-        var host = u.Host;
-        if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out _) || host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase) || !host.Contains('.'))
-            return "Only public web sites are allowed (no IP addresses, localhost or local names)";
+        var host = u.IdnHost.Trim('[', ']').TrimEnd('.').ToLowerInvariant();
+        if (host.Length == 0 || System.Net.IPAddress.TryParse(host, out _) || host == "localhost" || !host.Contains('.')
+            || BlockedHostSuffixes.Any(s => host.EndsWith(s, StringComparison.Ordinal)))
+            return "Only public web sites are allowed (no IP addresses, localhost or local network names)";
         return null;
     }
 
-    static HttpMessageHandler NoRedirectHandler()
+    /// <summary>True for loopback, private, link-local, unique-local, carrier-grade NAT, multicast and other non-public addresses (IPv4-mapped IPv6 included).</summary>
+    internal static bool IsBlockedAddress(System.Net.IPAddress a)
     {
-        var h = Prefs.CreateHandler();
-        if (h is SocketsHttpHandler s) s.AllowAutoRedirect = false; // every hop is checked below
-        return h;
+        if (a.IsIPv4MappedToIPv6) a = a.MapToIPv4();
+        if (System.Net.IPAddress.IsLoopback(a) || a.Equals(System.Net.IPAddress.Any) || a.Equals(System.Net.IPAddress.IPv6Any) || a.Equals(System.Net.IPAddress.None)) return true;
+        var b = a.GetAddressBytes();
+        if (a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+            return a.IsIPv6LinkLocal || a.IsIPv6SiteLocal || a.IsIPv6Multicast || (b[0] & 0xFE) == 0xFC /* fc00::/7 */ || a.IsIPv6Teredo;
+        return b[0] == 0 || b[0] == 10 || b[0] >= 224
+            || (b[0] == 100 && b[1] is >= 64 and <= 127)
+            || (b[0] == 169 && b[1] == 254)
+            || (b[0] == 172 && b[1] is >= 16 and <= 31)
+            || (b[0] == 192 && b[1] == 168)
+            || (b[0] == 192 && b[1] == 0 && b[2] == 0)
+            || (b[0] == 198 && b[1] is 18 or 19);
+    }
+
+    /// <summary>
+    /// The handler for package downloads: no automatic redirects (every hop is checked by the caller), no cookies, no
+    /// decompression (the 5 MB cap counts the bytes on the wire), and a connect step that resolves the name itself and refuses
+    /// any non-public address, so it also covers redirects and DNS rebinding. When the request goes through a proxy
+    /// (<paramref name="viaProxy"/>) the proxy makes the connection and only the name checks apply.
+    /// <paramref name="resolve"/> and <paramref name="useProxy"/> exist for tests.
+    /// </summary>
+    internal static SocketsHttpHandler CreateDownloadHandler(Func<bool>? viaProxy = null, Func<string, CancellationToken, Task<System.Net.IPAddress[]>>? resolve = null, bool useProxy = true)
+    {
+        var handler = useProxy && Prefs.CreateHandler() is SocketsHttpHandler s ? s : new SocketsHttpHandler { UseProxy = false };
+        handler.AllowAutoRedirect = false;
+        handler.UseCookies = false;
+        handler.AutomaticDecompression = System.Net.DecompressionMethods.None;
+        resolve ??= async (host, ct) => await System.Net.Dns.GetHostAddressesAsync(host, ct);
+        handler.ConnectCallback = async (context, ct) =>
+        {
+            var host = context.DnsEndPoint.Host;
+            var addresses = System.Net.IPAddress.TryParse(host, out var literal) ? new[] { literal } : await resolve(host, ct);
+            if (viaProxy?.Invoke() != true && addresses.Any(IsBlockedAddress))
+                throw new HttpRequestException($"'{host}' points to a private or local address, which widget downloads never use");
+            Exception? last = null;
+            foreach (var address in addresses)
+            {
+                var socket = new System.Net.Sockets.Socket(System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp) { NoDelay = true };
+                try
+                {
+                    await socket.ConnectAsync(new System.Net.IPEndPoint(address, context.DnsEndPoint.Port), ct);
+                    return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
+                }
+                catch (Exception ex) when (ex is System.Net.Sockets.SocketException) { socket.Dispose(); last = ex; }
+            }
+            throw new HttpRequestException($"Could not connect to '{host}'", last);
+        };
+        return handler;
     }
 
     /// <summary>
     /// Downloads a package to a new temp file: every hop (the URL and each redirect, at most 5) must pass
-    /// <see cref="CheckDownloadUrl"/>, no credentials or cookies are sent, at most 5 MB are read and the whole thing
-    /// has 60 seconds. Returns the temp file (named .umbrawidget when the URL says so, else .zip); the caller deletes it.
-    /// <paramref name="handler"/> replaces the network (tests).
+    /// <see cref="CheckDownloadUrl"/> and connect to a public address, no credentials or cookies are sent, at most 5 MB are read
+    /// and the whole thing has 60 seconds. The body must start like a zip. Returns the temp file (named .umbrawidget when the
+    /// final URL says so, else .zip); the caller deletes it. <paramref name="handler"/> replaces the network (tests).
     /// </summary>
     public static async Task<string> DownloadPackageAsync(string url, HttpMessageHandler? handler = null, CancellationToken ct = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(60));
-        using var client = new HttpClient(handler ?? NoRedirectHandler(), disposeHandler: handler is null) { Timeout = TimeSpan.FromSeconds(60) };
         var current = new Uri(url.Trim());
-        var ext = current.AbsolutePath.EndsWith(PackageExtension, StringComparison.OrdinalIgnoreCase) ? PackageExtension : ".zip";
+        var proxied = false;
+        var own = handler is null ? CreateDownloadHandler(() => proxied) : null;
+        using var client = new HttpClient(handler ?? own!, disposeHandler: handler is null) { Timeout = TimeSpan.FromSeconds(60) };
         for (var hop = 0; hop <= MaxRedirects; hop++)
         {
             if (CheckDownloadUrl(current.AbsoluteUri) is { } bad) throw new InvalidOperationException(hop == 0 ? bad : $"A redirect was refused: {bad}");
+            proxied = own is { UseProxy: true, Proxy: { } px } && !px.IsBypassed(current);
             using var request = new HttpRequestMessage(HttpMethod.Get, current);
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
             if ((int)response.StatusCode is 301 or 302 or 303 or 307 or 308)
@@ -366,20 +418,27 @@ static class Community
             if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"The download failed: HTTP {(int)response.StatusCode}");
             if (response.Content.Headers.ContentLength > MaxWidgetBytes) throw new InvalidOperationException("The file is larger than 5 MB");
 
+            var ext = current.AbsolutePath.EndsWith(PackageExtension, StringComparison.OrdinalIgnoreCase) || new Uri(url.Trim()).AbsolutePath.EndsWith(PackageExtension, StringComparison.OrdinalIgnoreCase) ? PackageExtension : ".zip";
             var path = Path.Combine(Path.GetTempPath(), $"umbra-dl-{Guid.NewGuid():N}{ext}");
             try
             {
                 await using var input = await response.Content.ReadAsStreamAsync(cts.Token);
-                await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
-                var buffer = new byte[81920];
-                long total = 0;
-                int n;
-                while ((n = await input.ReadAsync(buffer, cts.Token)) > 0)
+                await using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write))
                 {
-                    total += n;
-                    if (total > MaxWidgetBytes) throw new InvalidOperationException("The file is larger than 5 MB");
-                    await output.WriteAsync(buffer.AsMemory(0, n), cts.Token);
+                    var buffer = new byte[81920];
+                    long total = 0;
+                    int n;
+                    while ((n = await input.ReadAsync(buffer, cts.Token)) > 0)
+                    {
+                        total += n;
+                        if (total > MaxWidgetBytes) throw new InvalidOperationException("The file is larger than 5 MB");
+                        await output.WriteAsync(buffer.AsMemory(0, n), cts.Token);
+                    }
                 }
+                var head = new byte[4];
+                await using (var check = File.OpenRead(path)) _ = await check.ReadAsync(head, cts.Token);
+                if (!(head[0] == 'P' && head[1] == 'K' && head[2] == 3 && head[3] == 4))
+                    throw new InvalidOperationException($"{current.Host} did not send a {PackageExtension} or .zip file (the address may be a web page, not the file itself)");
                 return path;
             }
             catch
@@ -401,10 +460,24 @@ static class Community
         try { file = await DownloadPackageAsync(url, handler, ct); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
         {
-            throw new InvalidOperationException($"Could not download the widget: {ex.Message}", ex);
+            throw new InvalidOperationException($"Could not download the widget: {(ex.InnerException is { } inner && ex.Message.StartsWith("An error occurred", StringComparison.Ordinal) ? inner.Message : ex.Message)}", ex);
         }
         try { return await Task.Run(() => PrepareLocal(file), ct); }
         finally { try { File.Delete(file); } catch { } }
+    }
+
+    /// <summary>
+    /// For install-url over the control pipe: null when <paramref name="id"/> is free (or <paramref name="overwrite"/> is set), else a sentence
+    /// naming what would be replaced. An installed copy and a catalog widget with that id both count.
+    /// </summary>
+    public static string? ReplacementWarning(string id, WidgetManifest? installed, bool installedFromFile, bool inCatalog, bool overwrite)
+    {
+        if (overwrite) return null;
+        if (installed is not null)
+            return $"'{id}' is already installed ({installed.Name} v{installed.Version}, {(installedFromFile ? "from a file" : "from the catalog")}); this download would replace it. Repeat with --overwrite to replace it";
+        if (inCatalog)
+            return $"'{id}' is the id of a widget in the community catalog; this download would take its place. Repeat with --overwrite if that is what you want";
+        return null;
     }
 
     static readonly object LocalInstallsLock = new();

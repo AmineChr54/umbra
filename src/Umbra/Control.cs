@@ -396,6 +396,17 @@ sealed class Control(App app)
                     var id = pending.Manifest.Id;
                     if (app.Manifests.Any(m => m.Id == id && m.Source == WidgetSource.BuiltIn))
                         throw new CommandException($"'{id}' is the id of a built-in widget; pick another id");
+                    // A download must not silently replace a widget the user already has, or take a catalog widget's id.
+                    var overwrite = a["overwrite"] is JsonNode ov && Bool(ov, "overwrite");
+                    var installed = app.Manifests.FirstOrDefault(m => m.Id == id);
+                    var inCatalog = false;
+                    if (!overwrite && installed is null)
+                    {
+                        try { inCatalog = (await Community.FetchCatalogAsync()).Any(w => w?["id"]?.GetValue<string>() == id); }
+                        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or JsonException) { /* offline: the installed check still applies */ }
+                    }
+                    if (Community.ReplacementWarning(id, installed, installed is not null && Community.IsLocalInstall(id), inCatalog, overwrite) is { } replace)
+                        throw new CommandException($"{replace}. Nothing was changed.");
                     try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
                     catch (PermissionsChangedException ex)
                     {
