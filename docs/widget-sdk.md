@@ -132,6 +132,11 @@ Plain `fetch()` also works for declared hosts if the server allows CORS; `umbra.
 example two stock tickers. Each copy is a separate window with its own options, position, size and `umbra.store` data, so a widget
 needs no extra code: read `umbra.options` and `umbra.store` as usual. Don't use `localStorage` for per-widget state, since
 copies share it. Use `umbra.widget.instance` only if you need to tell copies apart.
+Example: `widgets/hearth` is one widget id with a `view` select option, so users add one copy per view and group them as
+tabs. It is also an example of a widget that syncs through a small server (a relay) with GET-only `umbra.fetchJson`
+calls and adaptive polling (`umbra.settings.refreshSeconds` when idle, faster only while the user is drawing, nothing
+while `umbra.settings.paused`). Because `umbra.store` is per copy, its copies share one pairing through a
+`BroadcastChannel` with a user approval; see [its README](../widgets/hearth/README.md).
 
 **Time changes.** Windows tells Umbra when the clock is set or the time zone changes, and Umbra tells every widget
 (within about half a second). `new Date()` already returns the new time, but anything you computed earlier
