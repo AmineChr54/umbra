@@ -397,10 +397,16 @@ function thumb(el, w) {
   else { el.classList.add("fallback"); el.textContent = (w.name || "?").trim()[0]; }
 }
 
-function renderInstalled() {
+// Lists are sorted (#236): Active first, then Not enabled, each by name; grouped widgets stay together under their group header.
+// `refocus` = a widget copy whose switch had focus: it gets it back after the rebuild.
+let myFilter = "";
+function renderInstalled(refocus) {
   const list = $("#installed");
+  const scroller = $(".content");
+  const top = scroller ? scroller.scrollTop : 0;
   list.textContent = "";
   $("#count").textContent = state.widgets.length || "";
+  $("#mySearchBox").hidden = $("#installMore").hidden = !state.widgets.length;
   if (!state.widgets.length) {
     list.innerHTML = '<div class="empty">No widgets yet.<br><br><button class="btn primary" id="goBrowse">Browse widgets</button></div>';
     $("#goBrowse").addEventListener("click", () => show("browse"));
@@ -429,8 +435,8 @@ function renderInstalled() {
     card.classList.toggle("off", !ws.enabled);
     enabled.addEventListener("change", () => {
       cur().enabled = enabled.checked;
-      card.classList.toggle("off", !enabled.checked);
       save(true);
+      renderInstalled(w.id); // moves the card between Active and Not enabled right away
     });
 
     // Group badge (click to change or remove) replaces the old per-card dropdown (#235).
@@ -542,24 +548,55 @@ function renderInstalled() {
     if (w.source === "builtin" || extra) remove.remove();
     else remove.addEventListener("click", () => job(w.widget, "remove", remove));
 
+    // A disabled card is a one-liner: name, switch and Remove.
+    if (!ws.enabled) {
+      const sw = $(".switch", card);
+      for (const b of $$(".remove, .removecopy", card)) sw.before(b);
+    }
     icons(card);
     labelRows(card);
     cards.set(w.id, card);
   }
-  // Grouped cards sit together under a collapsible group header (tab order); the rest follow.
+  const q = myFilter.trim().toLowerCase();
+  const nameOf = (id) => (state.widgets.find((x) => x.id === id) || { name: id }).name;
+  const match = (id) => !q || nameOf(id).toLowerCase().includes(q);
+  const isOn = (id) => !!(state.settings.widgets[id] || {}).enabled;
+  const byName = (x, y) => nameOf(x).localeCompare(nameOf(y), undefined, { sensitivity: "base" });
+  const section = (title, count) => {
+    const el = Object.assign(document.createElement("div"), { className: "sechead" });
+    el.append(Object.assign(document.createElement("span"), { textContent: title }), Object.assign(document.createElement("span"), { className: "gcount", textContent: String(count) }));
+    return el;
+  };
+  const active = [...cards.keys()].filter((id) => isOn(id) && match(id));
+  const off = [...cards.keys()].filter((id) => !isOn(id) && match(id)).sort(byName);
   const placed = new Set();
+  const body = [];
+  // Active: groups first (header + enabled members in tab order), then the rest alphabetically.
   for (const g of state.groups || []) {
-    list.append(groupHeader(g));
+    const members = g.members.filter((id) => cards.has(id) && isOn(id) && match(id));
+    if (q && !members.length) continue; // while filtering, only groups with a hit
+    body.push(groupHeader(g));
     const folded = foldedGroups().has(g.id);
-    for (const id of g.members) {
-      const card = cards.get(id);
-      if (!card) continue;
+    for (const id of members) {
       placed.add(id);
+      const card = cards.get(id);
       card.hidden = folded;
-      list.append(card);
+      body.push(card);
     }
   }
-  for (const [id, card] of cards) if (!placed.has(id)) list.append(card);
+  for (const id of active.filter((id) => !placed.has(id)).sort(byName)) body.push(cards.get(id));
+  const activeCount = active.length;
+  if (activeCount || (state.groups || []).length) list.append(section("Active", activeCount));
+  list.append(...body);
+  if (off.length) {
+    list.append(section("Not enabled", off.length));
+    for (const id of off) list.append(cards.get(id));
+  }
+  if (!activeCount && !off.length) {
+    list.append(Object.assign(document.createElement("div"), { className: "empty", textContent: `No widget matches "${myFilter.trim()}".` }));
+  }
+  if (scroller) { scroller.style.scrollBehavior = "auto"; scroller.scrollTop = top; scroller.style.scrollBehavior = ""; }
+  if (refocus) cards.get(refocus)?.querySelector(".enabled")?.focus({ preventScroll: true });
   applyFocus();
 }
 
@@ -694,6 +731,14 @@ function renderGroups() {
   $("#newGroupBtn").disabled = (state.groups || []).length >= 20;
   icons($("#groupStrip"));
 }
+
+$("#mySearch").addEventListener("input", (e) => {
+  myFilter = e.target.value;
+  const keep = e.target;
+  renderInstalled();
+  keep.focus();
+});
+$("#goBrowseMore").addEventListener("click", () => show("browse"));
 
 $("#newGroupBtn").addEventListener("click", () => {
   const form = $("#newGroupForm");
