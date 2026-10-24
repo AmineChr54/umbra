@@ -17,7 +17,7 @@ static partial class WidgetLint
         "icon", "width", "height", "themeable", "private", "defaultPosition", "permissions", "options",
     };
 
-    static readonly HashSet<string> PermissionKeys = new(StringComparer.Ordinal) { "hosts", "system", "notifications", "media", "commands" };
+    static readonly HashSet<string> PermissionKeys = new(StringComparer.Ordinal) { "hosts", "system", "notifications", "media", "commands", "camera" };
     static readonly HashSet<string> OptionTypes = new(StringComparer.Ordinal) { "text", "number", "select", "toggle" };
 
     [GeneratedRegex(@"^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$", RegexOptions.IgnoreCase)]
@@ -39,6 +39,35 @@ static partial class WidgetLint
             ["bytes"] = Bytes,
             ["errors"] = new JsonArray(Errors.Select(e => (JsonNode?)e).ToArray()),
             ["warnings"] = new JsonArray(Warnings.Select(w => (JsonNode?)w).ToArray()),
+        };
+    }
+
+    /// <summary>
+    /// Validates a widget folder and writes the .umbrawidget package. <paramref name="output"/> defaults to the folder path plus
+    /// ".umbrawidget"; it must be a full path with that extension, outside the folder. An existing file is only replaced when
+    /// <paramref name="overwrite"/> is true (the CLI sets it; the MCP server strips it). Throws <see cref="InvalidOperationException"/>.
+    /// </summary>
+    public static JsonObject Pack(string folder, string? output, bool overwrite)
+    {
+        if (!Path.IsPathFullyQualified(folder) || !Directory.Exists(folder)) throw new InvalidOperationException("path must be the full path of a widget folder");
+        var trimmed = Path.GetFullPath(folder).TrimEnd('\\', '/');
+        output ??= trimmed + Community.PackageExtension;
+        if (!Path.IsPathFullyQualified(output) || !output.EndsWith(Community.PackageExtension, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"out must be a full path ending in {Community.PackageExtension}");
+        output = Path.GetFullPath(output); // resolves any ".." in a full path
+        if (output.StartsWith(trimmed + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("out must be outside the widget folder (the package would contain itself)");
+        var lint = Run(trimmed);
+        if (!lint.Ok) throw new InvalidOperationException($"Not packed, fix these first: {string.Join("; ", lint.Errors)}");
+        if (File.Exists(output) && !overwrite) throw new InvalidOperationException($"'{output}' already exists; delete it or pass --force to replace it");
+        Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+        var manifest = Community.WritePackage(trimmed, output);
+        var bytes = File.ReadAllBytes(output);
+        return new JsonObject
+        {
+            ["path"] = output, ["id"] = manifest.Id, ["version"] = manifest.Version, ["bytes"] = bytes.Length,
+            ["sha256"] = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant(),
+            ["warnings"] = new JsonArray(lint.Warnings.Select(w => (JsonNode?)w).ToArray()),
         };
     }
 
@@ -87,7 +116,8 @@ static partial class WidgetLint
         if (m.Width is < 80 or > 1200 || m.Height is < 80 or > 1200) errors.Add("\"width\" and \"height\" must be between 80 and 1200");
         if (m.Preview is null) warnings.Add("no \"preview\": add a 2x screenshot (umbractl capture <id> preview.png) for Browse");
         else if (!files.Contains(m.Preview)) errors.Add($"preview \"{m.Preview}\" not found");
-        if (m.Icon is not null && !files.Contains(m.Icon)) errors.Add($"icon \"{m.Icon}\" not found");
+        if (m.Icon is not null && !Regex.IsMatch(m.Icon, @"^[A-Za-z0-9_-]+\.png$")) errors.Add("\"icon\" must be a .png in the widget folder (letters, digits, - or _)");
+        else if (m.Icon is not null && !files.Contains(m.Icon)) errors.Add($"icon \"{m.Icon}\" not found");
 
         foreach (var h in m.Permissions.Hosts)
         {

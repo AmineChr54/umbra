@@ -70,7 +70,7 @@ public sealed partial class WidgetManifest
     /// <summary>The running Umbra version ("1.8.0"), from the assembly (Directory.Build.props).</summary>
     public static string AppVersion { get; } =
         (System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(WidgetManifest).Assembly)?.InformationalVersion
-         ?? typeof(WidgetManifest).Assembly.GetName().Version?.ToString(3) ?? "999.0.0").Split('+')[0];
+         ?? typeof(WidgetManifest).Assembly.GetName().Version!.ToString(3)).Split('+')[0];
 
     [GeneratedRegex(@"^\d+\.\d+\.\d+$")]
     private static partial Regex SemVer();

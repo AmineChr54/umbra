@@ -125,7 +125,9 @@ public class PackageTests : IDisposable
         var first = Path.Combine(_dir, "first" + Community.PackageExtension);
         var again = Path.Combine(_dir, "again" + Community.PackageExtension);
         Community.WritePackage(folder, first);
-
+        // A different mtime on every file must not change the bytes.
+        foreach (var f in Directory.GetFiles(folder, "*", SearchOption.AllDirectories)) File.SetLastWriteTimeUtc(f, DateTime.UtcNow.AddDays(-400));
+        Thread.Sleep(20);
         Community.WritePackage(folder, again);
         Assert.Equal(File.ReadAllBytes(first), File.ReadAllBytes(again));
 
@@ -309,9 +311,74 @@ public class PackageTests : IDisposable
         Assert.True(DevLoop.IsRelevant("12:00 [clock#2] blocked fetch: https://x.com", "clock"));
         Assert.False(DevLoop.IsRelevant("12:00 [clock-two] sandbox blocked https://evil.com/", "clock"));
         Assert.False(DevLoop.IsRelevant("12:00 [clock] notify: hi", "clock"));
-        var lines = new[] { "a", "b", "c" };
-        Assert.Equal(new[] { "c" }, DevLoop.After(lines, "b"));
-        Assert.Empty(DevLoop.After(lines, "c"));
-        Assert.Equal(lines, DevLoop.After(lines, "gone"));
+        // The first read replays no history; later reads give only lines past the overlap with the previous window (also after rotation).
+        Assert.Empty(DevLoop.Fresh(null, new[] { "a", "b" }));
+        Assert.Equal(new[] { "c" }, DevLoop.Fresh(new[] { "a", "b" }, new[] { "a", "b", "c" }));
+        Assert.Equal(new[] { "d" }, DevLoop.Fresh(new[] { "a", "b", "c" }, new[] { "b", "c", "d" }));
+        Assert.Empty(DevLoop.Fresh(new[] { "a", "b" }, new[] { "a", "b" }));
+        Assert.Equal(new[] { "x", "y" }, DevLoop.Fresh(new[] { "a", "b" }, new[] { "x", "y" }));
+    }
+
+    [Fact]
+    public async Task Dev_loop_survives_an_unreachable_umbra()
+    {
+        var calls = 0;
+        var output = new StringWriter();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(2500));
+        var folder = Folder("dev-retry", Manifest("dev-retry"));
+        await DevLoop.RunAsync(folder, false, (c, a) =>
+        {
+            calls++;
+            if (calls <= 2) throw new TimeoutException("pipe gone");
+            return Task.FromResult(new JsonObject { ["ok"] = true, ["result"] = new JsonArray() });
+        }, output, cts.Token);
+        var text = output.ToString();
+        Assert.Contains("not reachable", text);
+        Assert.Contains("Umbra is back", text);
+        Assert.Equal(1, text.Split("not reachable").Length - 1); // reported once
+    }
+
+    [Fact]
+    public void Camera_widgets_lint_clean_and_system_media_icon_values_are_checked()
+    {
+        var cam = WidgetLint.Run(Folder("cam-w", Manifest("cam-w", ", \"description\": \"d\", \"author\": \"a\", \"permissions\": { \"camera\": true }")));
+        Assert.DoesNotContain(cam.Errors, e => e.Contains("unknown permission"));
+        var bad = WidgetLint.Run(Folder("enum-w", Manifest("enum-w", ", \"icon\": \"../x.png\", \"permissions\": { \"system\": [\"gpu\"], \"media\": [\"record\"] }")));
+        Assert.False(bad.Ok);
+        Assert.Contains(bad.Errors, e => e.Contains("gpu"));
+        var bad2 = WidgetLint.Run(Folder("enum-x", Manifest("enum-x", ", \"permissions\": { \"media\": [\"record\"] }")));
+        Assert.Contains(bad2.Errors, e => e.Contains("record"));
+        var icon = WidgetLint.Run(Folder("icon-w", Manifest("icon-w", ", \"icon\": \"a b.png\"")));
+        Assert.Contains(icon.Errors, e => e.Contains("icon"));
+    }
+
+    [Fact]
+    public void Pack_widget_refuses_bad_requests_and_never_replaces_without_overwrite()
+    {
+        var id = "pack-ctl";
+        var folder = Folder(id, Manifest(id));
+        // relative paths and wrong extensions
+        Assert.Contains("full path", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack("pack-ctl", null, false)).Message);
+        Assert.Contains(".umbrawidget", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack(folder, Path.Combine(_dir, "x.zip"), false)).Message);
+        Assert.Contains(".umbrawidget", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack(folder, "rel.umbrawidget", false)).Message);
+        // output inside the folder
+        Assert.Contains("outside", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack(folder, Path.Combine(folder, "self.umbrawidget"), false)).Message);
+        Assert.False(File.Exists(Path.Combine(folder, "self.umbrawidget")));
+        // existing file: kept unless overwrite
+        var outPath = Path.Combine(_dir, "keep.umbrawidget");
+        File.WriteAllText(outPath, "precious");
+        Assert.Contains("already exists", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack(folder, outPath, false)).Message);
+        Assert.Equal("precious", File.ReadAllText(outPath));
+        var ok = WidgetLint.Pack(folder, outPath, true);
+        Assert.Equal(id, ok["id"]!.GetValue<string>());
+        Assert.True(WidgetLint.Run(outPath).Ok);
+        // default output sits next to the folder
+        var def = WidgetLint.Pack(folder, null, false);
+        Assert.Equal(folder + ".umbrawidget", def["path"]!.GetValue<string>());
+        // failing lint writes nothing
+        var broken = Folder("pack-broken", Manifest("pack-broken", ", \"bogus\": 1"));
+        var brokenOut = Path.Combine(_dir, "broken.umbrawidget");
+        Assert.Contains("fix these first", Assert.Throws<InvalidOperationException>(() => WidgetLint.Pack(broken, brokenOut, false)).Message);
+        Assert.False(File.Exists(brokenOut));
     }
 }

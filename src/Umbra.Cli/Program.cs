@@ -116,7 +116,7 @@ static void PrintHelp()
           install-theme|remove-theme <id>  install/update or uninstall a community theme
           new <id> [--name N] [--dir D]  scaffold a widget (default: the community folder, loaded at once)
           validate [folder|file]         check a widget without installing it (install rules, widget.json rules, lints); exit 1 on errors
-          pack [folder] [-o out.umbrawidget]  validate, then write the shareable package (a zip with widget.json at the root, deterministic)
+          pack [folder] [-o out.umbrawidget] [--force]  validate, then write the shareable package (a zip with widget.json at the root, deterministic); replaces an existing file only with --force
           dev [folder] [--accept-permissions]  load the folder, reload on every save, print blocked requests and errors live
           create <folder>               load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]

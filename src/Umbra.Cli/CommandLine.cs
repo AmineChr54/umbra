@@ -154,6 +154,7 @@ static class CommandLine
                 // umbractl pack [folder] [-o out.umbrawidget]
                 var o = O(("path", Path.GetFullPath(PathArg(a))));
                 if ((Flag(a, "-o") ?? Flag(a, "--out")) is string outPath) o["out"] = Path.GetFullPath(outPath);
+                if (a.Contains("--force")) o["overwrite"] = true;
                 return ("pack-widget", o);
             }
             case "reset-position" or "remove" or "add-instance" or "remove-instance" or "install-theme" or "remove-theme":
