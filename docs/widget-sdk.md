@@ -5,6 +5,21 @@ true-black, desktop-pinned window (WebView2, the Edge engine) and gives it a tin
 This file is the complete reference, for both people and AI agents. It ships with Umbra, and the MCP
 tool `widget_authoring_guide` returns it.
 
+**More:** [Tutorial: your first widget in 10 minutes](widgets/tutorial.md) ·
+[Cookbook of recipes linked to real widgets](widgets/cookbook.md) ·
+[Coming from browser extensions (comparison and manifest field index)](widgets/from-browser-extensions.md).
+
+## Contents
+
+- [Folder layout](#folder-layout) · [widget.json](#widgetjson) · [The page](#the-page)
+- [JavaScript API](#javascript-api-windowumbra) · [Freshness and offline](#freshness-and-offline)
+- [umbra.css tokens](#umbracss-tokens) · [Themes](#themes) · [Design rules](#design-rules)
+- [Running local commands](#running-local-commands) · [Webcam timelapse](#webcam-timelapse) · [Sandbox](#sandbox-what-a-widget-can-and-cannot-do)
+- [Develop with umbractl](#develop-with-umbractl-or-an-ai-agent) (validate, pack, dev) · [Publish and share](#publish)
+- Manifest versioning: `manifestVersion` (default 1) is the widget.json format; `minUmbraVersion` is the oldest Umbra that runs the widget.
+  An app that is too old refuses to install or load it with an "Update Umbra" message and Browse greys it out. The per-field
+  "since" list is in the [manifest field index](widgets/from-browser-extensions.md#manifest-field-index).
+
 ## Folder layout
 
 ```
@@ -407,10 +422,15 @@ Open a pull request that adds only `widgets/<id>/` to https://github.com/AmineCh
 (`node scripts/catalog.mjs --check`), so run `node scripts/catalog.mjs` and commit the regenerated `widgets/index.json` with your widget. Once merged it appears in everyone's Browse page.
 See [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-### Share without the catalog (install from file)
+### Share without the catalog (the `.umbrawidget` package)
 
-Zip the widget folder (or its contents; a `.umbrawidget` file is the same zip renamed) and send it. The recipient uses
-Settings > Browse > **Install from file...** (or **From folder...**), or `umbractl install-local <folder|zip>`. Umbra applies the
+The standard package is `.umbrawidget`: a zip with `widget.json` at its root (no wrapper folder). Make one with
+`umbractl pack`. The recipient double-clicks it (the installer registers the type), or uses Settings > Browse > **Install from
+file...**, **From folder...** or **From URL...**, or `umbractl install-local <folder|file>` / `umbractl install-url <https-link>`.
+A plain `.zip` of the folder (Send to > Compressed folder, one top folder named like the id) is still accepted; a `.umbrawidget`
+must have `widget.json` at its root. URL installs are HTTPS only (no IP addresses, local names, credentials or odd ports), follow
+at most 5 redirects (each re-checked), stop at 5 MB or 60 s, and then go through exactly the same checks and review as a file.
+Umbra applies the
 catalog rules before writing anything: relative paths only (no `..`, absolute paths, drive letters or links), allowed file
 types, 5 MB, and the folder name (or the zip's single top folder) must equal the `id`; a zip with `widget.json` at its top
 has no folder name, so only the `id` pattern applies. A widget that declares hosts, system, media, notifications or commands

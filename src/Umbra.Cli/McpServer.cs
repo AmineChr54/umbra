@@ -385,7 +385,8 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
             var path = Path.Combine(AppContext.BaseDirectory, rel);
             return File.Exists(path) ? File.ReadAllText(path) : $"({rel} not found next to umbractl.exe; see https://github.com/AmineChr54/umbra/blob/main/{rel.Replace('\\', '/')})";
         }
-        return $"> {SafetyNote}\n\n{Read(Path.Combine("docs", "widget-sdk.md"))}\n\n## widget.json JSON Schema\n\n```json\n{Read(Path.Combine("schemas", "widget.schema.json"))}\n```\n";
+        // The reference first, then the cookbook (recipes tied to real widgets) and the manifest field index; the tutorial is for people.
+        return $"> {SafetyNote}\n\n{Read(Path.Combine("docs", "widget-sdk.md"))}\n\n{Read(Path.Combine("docs", "widgets", "cookbook.md"))}\n\n{Read(Path.Combine("docs", "widgets", "from-browser-extensions.md"))}\n\nWorkflow for an agent: widget_authoring_guide, create_widget, validate_widget, capture, read_logs, then pack_widget to make a .umbrawidget for the person to share. Installing a package and accepting its access is the person's decision.\n\n## widget.json JSON Schema\n\n```json\n{Read(Path.Combine("schemas", "widget.schema.json"))}\n```\n";
     }
 
     static JsonObject Text(string text, bool isError = false)

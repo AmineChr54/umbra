@@ -226,7 +226,7 @@ A small C# host (.NET 10, WinForms + WebView2) opens one borderless window per e
 
 Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr54/projects/5) tracks what's next, and every new issue lands there automatically.
 
-- **Build a widget:** [CONTRIBUTING.md](CONTRIBUTING.md) and the [widget SDK](docs/widget-sdk.md). `umbractl new my-widget` scaffolds one that already runs.
+- **Build a widget:** start with the [10-minute tutorial](docs/widgets/tutorial.md), then the [widget SDK](docs/widget-sdk.md), the [cookbook](docs/widgets/cookbook.md) and [CONTRIBUTING.md](CONTRIBUTING.md). `umbractl new my-widget` scaffolds one that already runs, `umbractl pack` makes a shareable `.umbrawidget`, and anyone can install one by double-click or from a link (Browse > Install from file / From URL).
 - **Make a theme:** a single `theme.json` with colors and corner radius, no code. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - **Work on the app:** pick a [`good first issue`](https://github.com/AmineChr54/umbra/labels/good%20first%20issue) and read [CLAUDE.md](CLAUDE.md) for the architecture and security rules (AI coding agents read it too).
 - **Found a bug?** [Open an issue](https://github.com/AmineChr54/umbra/issues/new/choose). About > **Copy diagnostics** gives you everything to paste. For security problems, see [SECURITY.md](SECURITY.md).
