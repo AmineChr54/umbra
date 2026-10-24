@@ -1,0 +1,226 @@
+/* Hearth, "Meadow" look: soft green, butter and pink with a brown outline on a light card.
+   The window itself stays true black; the card sits inside it with a few pixels of black around it. */
+
+:root {
+  --hm-green: #DDF0C8;
+  --hm-butter: #FFF3B0;
+  --hm-pink: #F7A8C4;
+  --hm-brown: #6B4F3A;
+  --hm-card: #FFFDF2;
+  --hm-ink: #4A3426;      /* text on pink and butter (contrast 6+) */
+  --hm-soft: #7A5F4C;     /* secondary text on the card (contrast 5+) */
+  --hm-alert: #FDE1EA;
+  --hm-pink-deep: #E5648F;
+
+  /* TODO(font): bundle Nunito or Quicksand (SIL OFL 1.1) as a .woff2 in this folder, add its licence file
+     (OFL.txt) next to it, and put an @font-face for it here, e.g.
+       @font-face { font-family: "Nunito"; src: url("Nunito-VariableFont_wght.woff2") format("woff2"); font-weight: 200 1000; font-display: swap; }
+     Until then the stack falls back to whichever of these the PC has installed, then to Segoe UI (system-ui). */
+  --hm-font: "Nunito", "Quicksand", "Varela Round", system-ui, sans-serif;
+
+  --hm-t: calc(160ms * var(--motion-scale, 1));
+}
+
+html, body { height: 100%; background: #000; }
+body { margin: 0; padding: 5px; overflow: hidden; font-family: var(--hm-font); }
+
+.card {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  overflow: hidden;
+  container: card / size;
+  border: 2px solid var(--hm-brown);
+  border-radius: 20px;
+  background: var(--hm-card);
+  color: var(--hm-brown);
+  font: 600 1rem/1.3 var(--hm-font);
+}
+.card, .card * { user-select: none; }
+.card input { user-select: text; }
+.muted { color: var(--hm-soft); }
+.num { font-variant-numeric: tabular-nums; }
+html[data-stale] .body { opacity: 0.72; transition: opacity var(--hm-t); }
+
+/* ---------- header ---------- */
+
+.top { flex: none; display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.brand { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; letter-spacing: 0.02em; }
+.brand svg { width: 16px; height: 15px; }
+.grow { flex: 1; }
+.chip {
+  padding: 0 8px;
+  border: 1.5px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-green);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chip.off { background: var(--hm-butter); }
+.card umbra-status { color: var(--hm-soft); }
+.icon-btn {
+  flex: none;
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 2px solid var(--hm-brown);
+  border-radius: 50%;
+  background: var(--hm-butter);
+  color: var(--hm-brown);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform var(--hm-t), background var(--hm-t);
+}
+.icon-btn:hover { background: var(--hm-pink); }
+
+/* ---------- buttons and fields ---------- */
+
+.btn {
+  font: inherit;
+  font-weight: 800;
+  padding: 4px 14px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  cursor: pointer;
+  transition: transform var(--hm-t), filter var(--hm-t);
+}
+.btn.primary { background: var(--hm-pink); }
+.btn.quiet { border-color: transparent; background: transparent; text-decoration: underline; padding-inline: 6px; }
+.btn:hover:not([disabled]) { filter: brightness(1.05); }
+.btn:active:not([disabled]) { transform: translateY(1px); }
+.btn[disabled] { opacity: 0.55; cursor: default; }
+.btn:focus-visible, .icon-btn:focus-visible, input:focus-visible { outline: 2px dashed var(--hm-brown); outline-offset: 2px; }
+input {
+  min-width: 0;
+  padding: 4px 12px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--hm-ink);
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+input::placeholder { color: var(--hm-soft); opacity: 0.8; text-transform: none; letter-spacing: 0.04em; font-weight: 600; }
+
+/* ---------- body ---------- */
+
+.body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 12px; }
+.art { flex: none; width: 64px; height: 64px; }
+.art svg { width: 100%; height: 100%; }
+.col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.col > p { margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 100%; }
+.lead, .msg { font-weight: 700; }
+form.join { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
+form.join input { flex: 1 1 120px; width: 120px; }
+
+.invite-card { flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6px; }
+.invite-card p { margin: 0; }
+.code {
+  padding: 2px 14px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 14px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.invite-card.expired .code { opacity: 0.5; }
+
+/* placeholders: clearly marked, replaced by #210 (Overview), #212 (Board) and #214 (Pet) */
+.ph {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1.5px dashed var(--hm-brown);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--hm-soft);
+}
+.ov { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 2px; }
+.ov .names { font-size: 1.4rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.ov .bow { color: var(--hm-pink-deep); }
+.ov .days { font-size: 1.05rem; }
+.ov .days b { font-size: 1.5rem; }
+.ov .ph { margin-top: 2px; }
+
+.square-wrap { flex: 1; min-height: 0; display: grid; place-items: center; container-type: size; }
+.square { width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); position: relative; }
+.board-stub {
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px;
+  padding: 8px;
+  text-align: center;
+  border: 2px dashed var(--hm-brown);
+  border-radius: 16px;
+  background: repeating-linear-gradient(0deg, var(--hm-green), var(--hm-green) 14px, #E8F5D6 14px, #E8F5D6 28px);
+}
+.board-stub .ph { background: var(--hm-card); }
+.board-stub p { margin: 0; }
+.pet-stub { border-radius: 16px; overflow: hidden; border: 2px solid var(--hm-brown); background: #FFF8DC; }
+.pet-stub .ph { position: absolute; left: 8px; bottom: 6px; background: var(--hm-card); }
+
+/* ---------- notices, link requests, settings panel ---------- */
+
+.toasts { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3; display: flex; flex-direction: column; gap: 4px; }
+.toast {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px 3px 12px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 14px;
+  background: var(--hm-butter);
+  color: var(--hm-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.toast.error { background: var(--hm-alert); }
+.toast.link { background: var(--hm-green); }
+.toast span { flex: 1; min-width: 0; }
+.toast .btn { padding: 1px 10px; font-size: 0.92rem; }
+
+.panel {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px;
+  background: var(--hm-card);
+}
+.panel h2 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+.panel p { margin: 0; }
+
+/* ---------- sizes: a small strip (300 x 120) versus a roomy square ---------- */
+
+@container card (max-height: 170px) {
+  .top { min-height: 20px; }
+  .col { gap: 4px; }
+  .ov .names { font-size: 1.25rem; }
+  .ov .days b { font-size: 1.3rem; }
+  .btn { padding: 1px 12px; }
+  .art { width: 52px; height: 52px; }
+  .lead { display: none; }
+  .code { font-size: 1.5rem; }
+  .panel { padding: 8px 12px; gap: 4px; }
+  .panel .hint { display: none; }
+}
+@container card (min-height: 171px) {
+  .body { flex-direction: column; justify-content: center; text-align: center; }
+  .col { align-items: center; }
+  .art { width: 96px; height: 96px; }
+  .row { justify-content: center; }
+}
+@container card (max-width: 230px) {
+  .body { flex-direction: column; justify-content: center; text-align: center; }
+  .col { align-items: center; }
+  .row { justify-content: center; }
+  .brand { font-size: 0.95rem; }
+}
