@@ -243,6 +243,55 @@ public class LocalInstallTests : IDisposable
         Community.Remove(id);
     }
 
+    // ---------- "private": true (#229) ----------
+
+    [Fact]
+    public void The_private_flag_is_parsed_and_defaults_to_false()
+    {
+        Assert.True(WidgetManifest.Parse("""{ "id": "p1", "name": "P", "private": true }""").Private);
+        Assert.False(WidgetManifest.Parse("""{ "id": "p1", "name": "P" }""").Private);
+    }
+
+    [Fact]
+    public void A_private_widget_is_never_offered_a_catalog_update()
+    {
+        var entry = new System.Text.Json.Nodes.JsonObject { ["id"] = "p1", ["version"] = "9.0.0" };
+        var priv = WidgetManifest.Parse("""{ "id": "p1", "name": "P", "version": "1.0.0", "private": true }""");
+        priv.Source = WidgetSource.Community;
+        var pub = WidgetManifest.Parse("""{ "id": "p1", "name": "P", "version": "1.0.0" }""");
+        pub.Source = WidgetSource.Community;
+        Assert.False(Community.IsUpdate(entry, priv));
+        Assert.True(Community.IsUpdate(entry, pub));
+        Assert.Empty(Community.Outdated(new[] { entry }, new[] { priv }));
+    }
+
+    [Fact]
+    public async Task A_catalog_widget_cannot_replace_a_private_one()
+    {
+        var id = "local-private";
+        var zip = Zip(("widget.json", """{ "id": "local-private", "name": "Mine", "version": "1.0.0", "private": true }"""), ("index.html", "mine"));
+        using (var p = Community.PrepareLocal(zip)) p.Commit();
+
+        var entry = new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["files"] = new System.Text.Json.Nodes.JsonArray("widget.json", "index.html") };
+        Func<string, Task<byte[]>> catalog = rel => Task.FromResult(Encoding.UTF8.GetBytes(rel.EndsWith("widget.json") ? """{ "id": "local-private", "name": "Theirs", "version": "2.0.0" }""" : "theirs"));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => Community.PrepareAsync(entry, catalog));
+        Assert.Contains("private", ex.Message);
+        Assert.Equal("mine", File.ReadAllText(Path.Combine(Installed(id), "index.html")));
+        Community.Remove(id);
+    }
+
+    [Fact]
+    public void The_private_buddy_widget_in_the_repo_installs_from_its_folder()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null && !Directory.Exists(Path.Combine(dir, "private-widgets"))) dir = Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        using var p = Community.PrepareLocal(Path.Combine(dir!, "private-widgets", "buddy"));
+        Assert.Equal("buddy", p.Manifest.Id);
+        Assert.True(p.Manifest.Private);
+        Assert.True(p.NeedsApproval, "its relay host needs the user's accept");
+    }
+
     [Fact]
     public void Declared_access_needs_an_accept_even_on_a_fresh_install()
     {

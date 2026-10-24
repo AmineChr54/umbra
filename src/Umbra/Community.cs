@@ -205,6 +205,8 @@ static class Community
                 throw new InvalidOperationException("widget.json id does not match the catalog");
 
             var installed = InstalledManifest(id);
+            if (installed is { Private: true })
+                throw new InvalidOperationException($"'{id}' is a private widget installed from a file; the catalog widget with the same id can't replace it. Remove it first to install the catalog one.");
             return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null);
         }
         catch
@@ -575,11 +577,11 @@ static class Community
     }
 
     /// <summary>
-    /// True when the catalog entry is newer than the installed community copy. Built-in widgets and copies installed from a
-    /// file (<see cref="IsLocalInstall"/>) never update from the catalog, so update-all skips them too.
+    /// True when the catalog entry is newer than the installed community copy. Built-in widgets, private widgets and copies
+    /// installed from a file (<see cref="IsLocalInstall"/>) never update from the catalog, so update-all skips them too.
     /// </summary>
     public static bool IsUpdate(JsonNode? entry, WidgetManifest? installed) =>
-        installed is { Source: WidgetSource.Community }
+        installed is { Source: WidgetSource.Community, Private: false }
         && !IsLocalInstall(installed.Id)
         && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
 

@@ -411,8 +411,8 @@ function renderInstalled() {
     thumb($(".thumb", card), w);
     $(".wname", card).textContent = w.name; // "Name (2)" for extra copies
     const badge = $(".badge", card);
-    badge.textContent = w.source === "builtin" ? "Built-in" : "Community";
-    badge.classList.add(w.source);
+    badge.textContent = w.source === "builtin" ? "Built-in" : w.private ? "Private" : "Community";
+    badge.classList.add(w.private && w.source !== "builtin" ? "private" : w.source);
     $(".wmeta", card).textContent = [w.author && `by ${w.author}`, `v${w.version}`].filter(Boolean).join("  ·  ");
     $(".wdesc", card).textContent = w.description;
 

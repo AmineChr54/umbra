@@ -32,6 +32,7 @@
     "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },
     "height": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 180, "description": "Logical (96-DPI) pixels." },
     "themeable": { "type": "boolean", "default": true, "description": "Set false to keep the widget's own look: the user's theme is not applied to it." },
+    "private": { "type": "boolean", "default": false, "description": "A widget shared outside the catalog and installed from a file (Settings > Browse > Install from file). Shows a Private badge, is never updated from the catalog, and a catalog widget with the same id can't replace it. Not allowed in the public catalog." },
     "defaultPosition": {
       "type": "object",
       "description": "Offset from the top-left of the primary work area, in logical pixels. Omit to start at the top right.",

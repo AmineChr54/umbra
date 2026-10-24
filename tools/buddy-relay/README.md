@@ -12,8 +12,8 @@ npx wrangler login
 npx wrangler deploy        # prints https://umbra-buddy-relay.<your-subdomain>.workers.dev
 ```
 
-Then put that host in `widgets/buddy/main.js` (`RELAY`) and `widgets/buddy/widget.json` (`permissions.hosts`), bump the
-widget version, and run `node scripts/catalog.mjs`. Both friends need the widget version that points at the same relay.
+Then put that host in `private-widgets/buddy/main.js` (`RELAY`) and `private-widgets/buddy/widget.json` (`permissions.hosts`), bump the
+widget version and reinstall it from the folder (see `private-widgets/README.md`; Buddy is not in the public catalog). Both friends need the widget version that points at the same relay.
 
 ## Try it locally
 

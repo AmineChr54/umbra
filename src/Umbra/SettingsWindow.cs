@@ -561,6 +561,7 @@ sealed class SettingsWindow : Form
                 ["author"] = m.Author,
                 ["version"] = m.Version,
                 ["source"] = m.IsPermanent ? "builtin" : "community",
+                ["private"] = m.Private,
                 ["preview"] = m.Preview is null ? null
                     : m.Source == WidgetSource.BuiltIn ? WebHost.Url($"widgets/{m.Folder}/{m.Preview}")
                     : WebHost.CommunityUrl($"{m.Folder}/{m.Preview}"),

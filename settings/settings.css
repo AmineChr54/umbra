@@ -224,6 +224,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .badge { font-size: 10.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; }
 .badge.builtin { color: var(--accent-strong); background: var(--accent-soft); }
 .badge.community { color: #6fe0b0; background: rgba(47, 213, 139, 0.12); }
+.badge.private { color: #e0b46f; background: rgba(213, 160, 47, 0.12); }
 .wmeta { color: var(--text-3); font-size: 12px; margin-top: 1px; }
 .wdesc { color: var(--text-2); font-size: 12.5px; margin-top: 2px; line-height: 1.35; }
 
