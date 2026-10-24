@@ -86,6 +86,24 @@ public sealed partial class WidgetManifest
         return clean.Length == 0 ? null : clean;
     }
 
+    /// <summary>
+    /// Checks the optional layout hints of each option: <c>group</c> (non-empty string, max 40 chars) and
+    /// <c>advanced</c> (bool). Settings folds those options into collapsed sections. Throws <see cref="JsonException"/>.
+    /// </summary>
+    public static void ValidateOptionLayout(JsonObject options)
+    {
+        foreach (var (key, spec) in options)
+        {
+            if (spec is not JsonObject o) continue;
+            if (o.TryGetPropertyValue("group", out var g)
+                && !(g is JsonValue gv && gv.TryGetValue<string>(out var s) && s.Trim().Length > 0 && s.Length <= 40))
+                throw new JsonException($"option '{key}': \"group\" must be a non-empty string of at most 40 characters");
+            if (o.TryGetPropertyValue("advanced", out var a)
+                && !(a is JsonValue av && av.GetValueKind() is JsonValueKind.True or JsonValueKind.False))
+                throw new JsonException($"option '{key}': \"advanced\" must be true or false");
+        }
+    }
+
     /// <summary>Parses widget.json text. Throws on invalid JSON; does not check the id.</summary>
     public static WidgetManifest Parse(string text)
     {
@@ -100,6 +118,7 @@ public sealed partial class WidgetManifest
                 && perms.TryGetProperty("commands", out var cmds))
                 CommandSpec.CheckKeys(cmds);
         }
+        ValidateOptionLayout(m.Options);
         m.Changelog = SanitizeChangelog(m.Changelog);
         CommandSpec.ValidateAll(m.Permissions.Commands);
         SystemMetrics.Validate(m.Permissions.System);

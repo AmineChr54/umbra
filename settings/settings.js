@@ -368,6 +368,29 @@ function field(wid, key, spec, value) {
   return wrap;
 }
 
+// A collapsed section for options with the same `group` (or `advanced: true`). <details> gives keyboard
+// folding for free; which sections are open is remembered per widget copy in this browser profile.
+function optionSection(wid, name, els) {
+  const key = `${wid}\n${name}`;
+  let open = [];
+  try { open = JSON.parse(localStorage.getItem("openOptionSections") || "[]"); } catch { /* ignore */ }
+  const box = Object.assign(document.createElement("details"), { className: "optsection", open: open.includes(key) });
+  const summary = Object.assign(document.createElement("summary"), { textContent: name });
+  summary.prepend(Object.assign(document.createElement("span"), { className: "ico" }));
+  summary.firstChild.dataset.icon = "chevron";
+  const body = Object.assign(document.createElement("div"), { className: "optsection-body" });
+  body.append(...els);
+  box.append(summary, body);
+  box.addEventListener("toggle", () => {
+    try {
+      const set = new Set(JSON.parse(localStorage.getItem("openOptionSections") || "[]"));
+      if (box.open) set.add(key); else set.delete(key);
+      localStorage.setItem("openOptionSections", JSON.stringify([...set]));
+    } catch { /* storage unavailable */ }
+  });
+  return box;
+}
+
 function thumb(el, w) {
   if (w.preview) el.style.backgroundImage = `url("${w.preview}")`;
   else { el.classList.add("fallback"); el.textContent = (w.name || "?").trim()[0]; }
@@ -452,7 +475,17 @@ function renderInstalled() {
 
     const fields = $(".fields", card);
     const order = w.optionOrder && w.optionOrder.length ? w.optionOrder : Object.keys(w.options || {});
-    for (const key of order) if (w.options[key]) fields.append(field(w.id, key, w.options[key], ws.options[key]));
+    const sections = new Map(); // `group` (or "Advanced") -> its fields, in order of first appearance
+    for (const key of order) {
+      const spec = w.options[key];
+      if (!spec) continue;
+      const el = field(w.id, key, spec, ws.options[key]);
+      const name = typeof spec.group === "string" && spec.group.trim() ? spec.group.trim() : spec.advanced === true ? "Advanced" : null;
+      if (!name) { fields.append(el); continue; }
+      if (!sections.has(name)) sections.set(name, []);
+      sections.get(name).push(el);
+    }
+    for (const [name, els] of sections) fields.append(optionSection(w.id, name, els));
 
     // Size: 50-300 %. Locked widgets keep their size here too.
     const scale = $(".scale", card);

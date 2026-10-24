@@ -4,7 +4,7 @@
   "name": "Prayer Times",
   "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated times from the Aladhan API (no key); tune the method and per-prayer minutes to match your mosque.",
   "author": "Yacine-DH",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 300,
@@ -171,7 +171,7 @@
       "type": "toggle",
       "default": true
     },
-    "adjustFajr": {
+    "adjustFajr": { "group": "Time adjustments",
       "label": "Fajr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -180,7 +180,7 @@
       "step": 1,
       "hint": "Minutes added to the calculated time to match your mosque. Negative = earlier."
     },
-    "adjustDhuhr": {
+    "adjustDhuhr": { "group": "Time adjustments",
       "label": "Dhuhr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -188,7 +188,7 @@
       "max": 30,
       "step": 1
     },
-    "adjustAsr": {
+    "adjustAsr": { "group": "Time adjustments",
       "label": "Asr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -196,7 +196,7 @@
       "max": 30,
       "step": 1
     },
-    "adjustMaghrib": {
+    "adjustMaghrib": { "group": "Time adjustments",
       "label": "Maghrib adjustment (min)",
       "type": "number",
       "default": 0,
@@ -204,7 +204,7 @@
       "max": 30,
       "step": 1
     },
-    "adjustIsha": {
+    "adjustIsha": { "group": "Time adjustments",
       "label": "Isha adjustment (min)",
       "type": "number",
       "default": 0,
@@ -212,7 +212,7 @@
       "max": 30,
       "step": 1
     },
-    "iqamaFajr": {
+    "iqamaFajr": { "group": "Iqama delays",
       "label": "Fajr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -221,7 +221,7 @@
       "step": 1,
       "hint": "Minutes from adhan to iqama (jama’ah). 0 hides the iqama time."
     },
-    "iqamaDhuhr": {
+    "iqamaDhuhr": { "group": "Iqama delays",
       "label": "Dhuhr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -229,7 +229,7 @@
       "max": 90,
       "step": 1
     },
-    "iqamaAsr": {
+    "iqamaAsr": { "group": "Iqama delays",
       "label": "Asr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -237,7 +237,7 @@
       "max": 90,
       "step": 1
     },
-    "iqamaMaghrib": {
+    "iqamaMaghrib": { "group": "Iqama delays",
       "label": "Maghrib iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -245,7 +245,7 @@
       "max": 90,
       "step": 1
     },
-    "iqamaIsha": {
+    "iqamaIsha": { "group": "Iqama delays",
       "label": "Isha iqama delay (min)",
       "type": "number",
       "default": 0,

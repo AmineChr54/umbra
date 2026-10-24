@@ -54,7 +54,7 @@
       "name": "Claude waker",
       "description": "Sends a tiny \"Hello\" to the Claude CLI when you log in or your PC wakes from sleep, so your 5-hour usage window starts as early as possible. Or wake it with one click.",
       "author": "AmineChr54",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "preview": "preview.png",
       "hosts": [],
       "commands": [
@@ -244,7 +244,7 @@
       "name": "Internships",
       "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
       "author": "AmineChr54",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [
         "raw.githubusercontent.com"
@@ -321,7 +321,7 @@
       "name": "Prayer Times",
       "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated times from the Aladhan API (no key); tune the method and per-prayer minutes to match your mosque.",
       "author": "Yacine-DH",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "preview": "preview.png",
       "hosts": [
         "api.aladhan.com"
