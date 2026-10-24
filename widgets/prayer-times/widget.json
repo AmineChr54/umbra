@@ -2,9 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "prayer-times",
   "name": "Prayer Times",
-  "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated times from the Aladhan API (no key); tune the method and per-prayer minutes to match your mosque.",
+  "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Calculated by coordinates with the Aladhan API (no key); the method follows your country, and per-prayer minutes match your mosque.",
   "author": "Yacine-DH",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "entry": "index.html",
   "preview": "preview.png",
   "width": 300,
@@ -15,7 +15,8 @@
   },
   "permissions": {
     "hosts": [
-      "api.aladhan.com"
+      "api.aladhan.com",
+      "geocoding-api.open-meteo.com"
     ],
     "notifications": true
   },
@@ -24,19 +25,23 @@
       "label": "City",
       "type": "text",
       "default": "Berlin",
-      "hint": "City name in English, e.g. Paris or Birmingham"
+      "hint": "City name, e.g. Sfax, Paris or Birmingham. Tunisian governorates work offline."
     },
     "country": {
       "label": "Country",
       "type": "text",
       "default": "Germany",
-      "hint": "Country name or ISO code, e.g. France or FR"
+      "hint": "Country name or ISO code, e.g. Tunisia or TN. Also picks the calculation method."
     },
-    "method": {
+    "calcMethod": {
       "label": "Calculation method",
       "type": "select",
-      "default": "3",
+      "default": "auto",
       "choices": [
+        {
+          "value": "auto",
+          "label": "Automatic (by country)"
+        },
         {
           "value": "0",
           "label": "Shia Ithna-Ashari, Qum"
@@ -130,7 +135,7 @@
           "label": "Jordan"
         }
       ],
-      "hint": "Use the method your mosque follows."
+      "hint": "Automatic uses the country's official method (Tunisia, Algeria, Morocco, Turkey, France...; Muslim World League elsewhere). Pick one to override."
     },
     "school": {
       "label": "Asr calculation",
@@ -171,7 +176,8 @@
       "type": "toggle",
       "default": true
     },
-    "adjustFajr": { "group": "Time adjustments",
+    "adjustFajr": {
+      "group": "Time adjustments",
       "label": "Fajr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -180,7 +186,8 @@
       "step": 1,
       "hint": "Minutes added to the calculated time to match your mosque. Negative = earlier."
     },
-    "adjustDhuhr": { "group": "Time adjustments",
+    "adjustDhuhr": {
+      "group": "Time adjustments",
       "label": "Dhuhr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -188,7 +195,8 @@
       "max": 30,
       "step": 1
     },
-    "adjustAsr": { "group": "Time adjustments",
+    "adjustAsr": {
+      "group": "Time adjustments",
       "label": "Asr adjustment (min)",
       "type": "number",
       "default": 0,
@@ -196,7 +204,8 @@
       "max": 30,
       "step": 1
     },
-    "adjustMaghrib": { "group": "Time adjustments",
+    "adjustMaghrib": {
+      "group": "Time adjustments",
       "label": "Maghrib adjustment (min)",
       "type": "number",
       "default": 0,
@@ -204,7 +213,8 @@
       "max": 30,
       "step": 1
     },
-    "adjustIsha": { "group": "Time adjustments",
+    "adjustIsha": {
+      "group": "Time adjustments",
       "label": "Isha adjustment (min)",
       "type": "number",
       "default": 0,
@@ -212,7 +222,8 @@
       "max": 30,
       "step": 1
     },
-    "iqamaFajr": { "group": "Iqama delays",
+    "iqamaFajr": {
+      "group": "Iqama delays",
       "label": "Fajr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -221,7 +232,8 @@
       "step": 1,
       "hint": "Minutes from adhan to iqama (jama’ah). 0 hides the iqama time."
     },
-    "iqamaDhuhr": { "group": "Iqama delays",
+    "iqamaDhuhr": {
+      "group": "Iqama delays",
       "label": "Dhuhr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -229,7 +241,8 @@
       "max": 90,
       "step": 1
     },
-    "iqamaAsr": { "group": "Iqama delays",
+    "iqamaAsr": {
+      "group": "Iqama delays",
       "label": "Asr iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -237,7 +250,8 @@
       "max": 90,
       "step": 1
     },
-    "iqamaMaghrib": { "group": "Iqama delays",
+    "iqamaMaghrib": {
+      "group": "Iqama delays",
       "label": "Maghrib iqama delay (min)",
       "type": "number",
       "default": 0,
@@ -245,7 +259,8 @@
       "max": 90,
       "step": 1
     },
-    "iqamaIsha": { "group": "Iqama delays",
+    "iqamaIsha": {
+      "group": "Iqama delays",
       "label": "Isha iqama delay (min)",
       "type": "number",
       "default": 0,

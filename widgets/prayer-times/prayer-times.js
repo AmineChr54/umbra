@@ -1,24 +1,29 @@
-// Prayer Times: month of calculated times from the Aladhan API, cached in umbra.store, so it works offline and
-// the API is called about once a month. Minute adjustments and iqama delays are applied locally (times.js).
+// Prayer Times: the city is resolved to coordinates (bundled Tunisia governorates first, then Open-Meteo geocoding),
+// then a month of calculated times comes from the Aladhan API by coordinates, cached in umbra.store, so it works offline
+// and each API is called about once a month. Minute adjustments and iqama delays are applied locally (times.js).
 (() => {
   const T = window.PrayerTimes;
+  const P = window.PrayerPlaces;
   const $ = (id) => document.getElementById(id);
-  const API = "https://api.aladhan.com/v1/calendarByCity";
   const RETRY_MS = 5 * 60000;           // after a failed download, wait before trying again
+  const OFFLINE_RETRY_MS = 60000;       // offline: try again soon (the "online" event also retries at once)
   const PRAYERS = T.PRAYERS;
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  let cache = null;        // { key, months: { "2026-10": { tz, days, fetchedAt } } } for the current city/method/school
+  // { key, place: { name, lat, lon, tz, cc } | null, months: { "2026-10": { tz, days, fetchedAt } } } for the current
+  // city/country/method/school. The resolved place is kept, so the geocoder is asked once per city.
+  let cache = null;
   let data = null;         // cache.months merged: { tz, days }
   let notified = {};       // "2026-10-17|Fajr" -> ms, so each prayer is announced once
-  let fetching = false, lastFail = 0, errorText = "";
+  let fetching = false;
+  let failure = null;      // { e: classifyError(...), service, retryAt } of the last failed attempt
   let rendered = false, lastRows = "", tickTimer = null;
 
   const init = (async () => {
     await umbra.ready;
     cache = await umbra.store.get("cache", null);
     notified = (await umbra.store.get("notified", null)) || {};
-    if (!cache || typeof cache.months !== "object") cache = null;
+    if (!cache || typeof cache.months !== "object" || !cache.months) cache = null;
     merge();
   })();
 
@@ -33,13 +38,19 @@
     // umbra.hour12 / umbra.locale only exist on newer hosts; without them "auto" means 24-hour.
     const hour12 = pref === "12" ? true : pref === "24" ? false : T.resolveHour12(umbra.hour12, umbra.locale);
     const locale = typeof umbra.locale === "string" && umbra.locale ? umbra.locale : undefined;
+    const country = String(o.country || "").trim();
+    const cc = P.findCountry(country);
+    // "auto" follows the country; any number is the user's override and sticks. 1.0 stored its old default "3" as
+    // `method` for everyone, so only a method someone actually picked there (not "3") carries over as an override.
+    const legacy = o.method != null && String(o.method) !== "3" ? String(o.method) : "auto";
+    const m = String(o.calcMethod ?? "auto") === "auto" ? legacy : String(o.calcMethod);
+    const method = m === "auto" || m === "" ? P.methodFor(cc) : T.clampInt(m, 0, 99, 3);
     return {
-      city: String(o.city || "").trim(), country: String(o.country || "").trim(),
-      method: T.clampInt(o.method, 0, 99, 3), school: T.clampInt(o.school, 0, 1),
-      hijri: o.hijri !== false, notify: !!o.notify, adjust, iqama, hour12, locale,
+      city: String(o.city || "").trim(), country, cc, method, autoMethod: m === "auto" || m === "",
+      school: T.clampInt(o.school, 0, 1), hijri: o.hijri !== false, notify: !!o.notify, adjust, iqama, hour12, locale,
     };
   }
-  const locKey = (o) => [o.city.toLowerCase(), o.country.toLowerCase(), o.method, o.school].join("|");
+  const locKey = (o) => [P.norm(o.city), o.cc || P.norm(o.country), o.method, o.school].join("|");
 
   function merge() {
     data = null;
@@ -53,30 +64,50 @@
 
   // ---- data ----
 
+  /** City + country -> { name, lat, lon, tz, cc }: a bundled preset needs no network; otherwise Open-Meteo. */
+  async function resolvePlace(o) {
+    const preset = P.findPreset(o.cc, o.city);
+    if (preset) return preset;
+    let list = T.parseGeocode(await umbra.fetchJson(T.geocodeUrl(o.city, o.cc)), o.cc);
+    // A country Umbra doesn't recognise: match Open-Meteo's own country name instead of guessing.
+    if (!o.cc && o.country) list = list.filter((r) => P.norm(r.country) === P.norm(o.country));
+    if (!list.length) throw Object.assign(new Error("City not found"), { code: "notfound" });
+    const r = list[0];
+    return { name: r.name, lat: r.lat, lon: r.lon, tz: r.tz, cc: r.cc };
+  }
+
   async function ensure() {
     await init;
     const o = opts();
-    if (!o.city || !o.country || fetching) return;
+    if (!o.city || fetching) return;
     const key = locKey(o);
-    if (!cache || cache.key !== key) { cache = { key, months: {} }; merge(); }
+    if (!cache || cache.key !== key) { cache = { key, place: null, months: {} }; merge(); }
     const missing = T.monthsNeeded(Date.now(), data && data.tz).filter((m) => !cache.months[m.id]);
-    if (!missing.length || Date.now() - lastFail < RETRY_MS) return;
+    if (cache.place && !missing.length) return;
+    if (failure && Date.now() < failure.retryAt) return;
     fetching = true;
     render();
+    let service = "City search";
     try {
+      if (!cache.place) {
+        const place = await resolvePlace(o);
+        if (!cache || cache.key !== key) return;            // the user changed city/method meanwhile
+        cache.place = place;
+      }
+      service = "The prayer time service";
       for (const m of missing) {
-        const url = `${API}/${m.y}/${m.m}?city=${encodeURIComponent(o.city)}&country=${encodeURIComponent(o.country)}&method=${encodeURIComponent(o.method)}&school=${encodeURIComponent(o.school)}`;
-        const parsed = T.parseCalendar(await umbra.fetchJson(url));
-        if (!cache || cache.key !== key) return;            // the user changed city/method meanwhile; this answer is stale
+        const parsed = T.parseCalendar(await umbra.fetchJson(T.calendarUrl(m.y, m.m, cache.place, o.method, o.school)));
+        if (!cache || cache.key !== key) return;            // this answer is for an old city/method
         cache.months[m.id] = { ...parsed, fetchedAt: Date.now() };
       }
       // keep three months at most
       const ids = Object.keys(cache.months).sort();
       for (const id of ids.slice(0, Math.max(0, ids.length - 3))) delete cache.months[id];
-      errorText = ""; lastFail = 0;
-    } catch (e) {
-      lastFail = Date.now();
-      errorText = /geocode|400|BAD/i.test(String(e && e.message)) ? "No match for this city. Check city and country in the widget options." : "Can't reach the prayer time service.";
+      failure = null;
+    } catch (err) {
+      const e = T.classifyError(err, navigator.onLine);
+      const wait = e.kind === "notfound" ? Infinity : e.kind === "offline" ? OFFLINE_RETRY_MS : RETRY_MS;
+      failure = { e, service, retryAt: Date.now() + wait };
     } finally {
       fetching = false;
       merge();
@@ -101,30 +132,36 @@
     requestAnimationFrame(() => umbra.rendered());
   }
 
-  function setStatus(stale) {
-    try { umbra.status?.(stale ? "offline" : "ok"); } catch { /* optional newer-host API */ }
+  function failureText(o) {
+    if (!failure) return "";
+    const at = Number.isFinite(failure.retryAt) && failure.e.kind !== "offline"
+      ? T.formatTime(failure.retryAt, Intl.DateTimeFormat().resolvedOptions().timeZone, { hour12: o.hour12, locale: o.locale }) : "";
+    return T.errorMessage(failure.e, { service: failure.service, retryAt: at, city: o.city, country: o.cc ? P.countryName(o.cc) : o.country });
   }
 
   function render() {
     const o = opts();
-    if (!o.city || !o.country) return message("Set a city and country in the widget options");
+    if (!o.city) return message("Set a city and country in the widget options");
     const now = Date.now();
     const st = data && cache && cache.key === locKey(o) ? T.schedule(data, now, o) : null;
     if (!st || !st.hasToday) {
-      if (errorText && !fetching) return message(errorText);
-      return fetching || !lastFail ? message("Loading prayer times", true) : message(errorText || "No times for today yet");
+      if (failure && !fetching) return message(failureText(o));
+      return message("Loading prayer times", true);
     }
     const f = { hour12: o.hour12, locale: o.locale };
     const time = (ts) => T.formatTime(ts, st.tz, f);
 
     $("msg").hidden = true;
     $("app").hidden = false;
-    $("city").textContent = `${o.city}, ${o.country}`;
+    const place = cache.place;
+    const country = place && place.cc ? P.countryName(place.cc) : o.country;
+    $("city").textContent = [place ? place.name : o.city, country].filter(Boolean).join(", ");
     const hijri = o.hijri ? T.formatHijri(st.hijri) : "";
     $("date").textContent = T.formatDate(now, st.tz, o.locale) + (hijri ? `  ·  ${hijri}` : "");
-    const stale = !!errorText;
+    const stale = !!failure;
     $("stale").hidden = !stale;
-    setStatus(stale);
+    $("stale").textContent = stale ? T.errorLabel(failure.e) : "";
+    $("stale").title = stale ? failureText(o) + " Showing saved times." : "";
 
     if (st.next) {
       $("nname").textContent = st.next.name;
@@ -154,7 +191,7 @@
 
     const months = cache ? Object.values(cache.months) : [];
     const at = months.reduce((a, m) => Math.max(a, m.fetchedAt || 0), 0);
-    $("upd").textContent = at ? `${stale ? "Last updated " : "Updated "}${T.formatDate(at, st.tz, o.locale)}` : "";
+    $("upd").textContent = at ? `${stale ? "Saved " : "Updated "}${T.formatDate(at, st.tz, o.locale)}` : "";
     firstFrame();
   }
 
@@ -175,7 +212,8 @@
     // Only the latest one if several were missed; rejects (switch off, rate limit) are fine.
     const e = due[due.length - 1];
     const f = { hour12: o.hour12, locale: o.locale };
-    umbra.notify({ title: `${e.name} time`, body: `${T.formatTime(e.ts, st.tz, f)} in ${o.city}` }).catch(() => {});
+    const where = cache && cache.place ? cache.place.name : o.city;
+    umbra.notify({ title: `${e.name} time`, body: `${T.formatTime(e.ts, st.tz, f)} in ${where}` }).catch(() => {});
   }
 
   // ---- timers ----
@@ -190,6 +228,9 @@
     if (document.visibilityState === "visible") { render(); startTick(); } else stopTick();
   });
   setInterval(checkNotify, 20000);
+  window.addEventListener("online", () => {
+    if (failure && failure.e.kind !== "notfound") { failure.retryAt = 0; ensure(); }
+  });
 
   $("credit").onclick = () => umbra.openUrl("https://aladhan.com");
 
@@ -201,7 +242,7 @@
     lastRows = "";
     if (key !== lastLoc) {
       lastLoc = key;
-      lastFail = 0; errorText = "";
+      failure = null;
       if (cache && cache.key !== key) { cache = null; merge(); }
       render();
       await ensure();
