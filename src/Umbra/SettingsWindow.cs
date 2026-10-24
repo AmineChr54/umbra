@@ -418,7 +418,8 @@ sealed class SettingsWindow : Form
                 if (path is null) break;
                 try
                 {
-                    using var pending = Community.PrepareLocal(path);
+                    // Reading and checking the files runs off the UI thread; the await comes back here for the prompts and the commit.
+                    using var pending = await Task.Run(() => Community.PrepareLocal(path));
                     var wid = pending.Manifest.Id;
                     if (_app.Manifests.Any(m => m.Id == wid && m.Source == WidgetSource.BuiltIn))
                         throw new InvalidOperationException($"'{wid}' is the id of a built-in widget");
@@ -428,10 +429,12 @@ sealed class SettingsWindow : Form
                     _app.CloseWidget(wid);
                     pending.Commit();
                     _app.ReloadWidgets();
+                    _app.SettingsChangedElsewhere();
                     Post(new JsonObject { ["type"] = "notice", ["text"] = $"Installed {pending.Manifest.Name}" });
                 }
-                catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or InvalidDataException)
+                catch (Exception ex) when (ex is not OutOfMemoryException)
                 {
+                    // Broad on purpose: this runs in an async void message handler, where an escaped exception would end Umbra.
                     Log.Write($"Install from file failed: {ex.Message}");
                     Post(new JsonObject { ["type"] = "commandError", ["error"] = $"Not installed: {ex.Message}" });
                 }
@@ -630,6 +633,7 @@ sealed class SettingsWindow : Form
             copy["builtin"] = installed?.IsPermanent == true;
             copy["installedVersion"] = installed?.Version;
             copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+            copy["local"] = installed is not null && Community.IsLocalInstall(wid); // installed from a file: no catalog updates
             copy["previewUrl"] = previews.FirstOrDefault(x => x.wid == wid).Item2;
             list.Add(copy);
         }

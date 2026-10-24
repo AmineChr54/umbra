@@ -166,6 +166,83 @@ public class LocalInstallTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => Community.PrepareLocal(Path.Combine(_dir, "missing.zip")));
     }
 
+    [Theory]
+    [InlineData("local-pfx")]
+    [InlineData("local-pfx/")]
+    public void A_file_named_like_the_top_folder_is_refused(string odd)
+    {
+        var id = "local-pfx";
+        var zip = ZipWith(new[]
+        {
+            ($"{id}/widget.json", Encoding.UTF8.GetBytes(Manifest(id)), 0),
+            ($"{id}/index.html", Encoding.UTF8.GetBytes(""), 0),
+            (odd, Encoding.UTF8.GetBytes("x"), 0), // has data, so it is not a plain folder entry
+        });
+        AssertRejected(zip, id, "unsafe");
+    }
+
+    [Fact]
+    public void A_single_entry_that_expands_past_5_MB_is_refused()
+    {
+        var id = "local-bomb";
+        var zip = ZipWith(new[] { ("widget.json", Encoding.UTF8.GetBytes(Manifest(id)), 0), ("index.html", Encoding.UTF8.GetBytes(""), 0), ("big.png", new byte[6 * 1024 * 1024], 0) });
+        Assert.True(new FileInfo(zip).Length < 100_000, "the zip itself is small");
+        AssertRejected(zip, id, "5 MB");
+    }
+
+    [Fact]
+    public void A_corrupt_zip_is_refused_cleanly()
+    {
+        var path = Path.Combine(_dir, "broken.zip");
+        File.WriteAllText(path, "not a zip");
+        var ex = Assert.Throws<InvalidOperationException>(() => Community.PrepareLocal(path));
+        Assert.Contains("Could not read", ex.Message);
+    }
+
+    [Fact]
+    public void A_folder_containing_a_junction_is_refused()
+    {
+        var id = "local-junction";
+        var folder = Path.Combine(_dir, id);
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "widget.json"), Manifest(id));
+        File.WriteAllText(Path.Combine(folder, "index.html"), "");
+        var outside = Path.Combine(_dir, "outside");
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "secret.txt"), "s");
+        // A junction needs no admin rights or developer mode, unlike a symlink.
+        using (var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{Path.Combine(folder, "lib")}\" \"{outside}\"") { CreateNoWindow = true, UseShellExecute = false })!)
+            p.WaitForExit();
+        Assert.True(Directory.Exists(Path.Combine(folder, "lib")), "junction was created");
+        AssertRejected(folder, id, "links are not allowed");
+    }
+
+    [Fact]
+    public void A_local_install_is_recorded_and_never_offered_a_catalog_update()
+    {
+        var id = "local-src";
+        using (var p = Community.PrepareLocal(Zip(("widget.json", Manifest(id)), ("index.html", "")))) p.Commit();
+        Assert.True(Community.IsLocalInstall(id));
+        var installed = WidgetManifest.Parse(File.ReadAllText(Path.Combine(Installed(id), "widget.json")));
+        installed.Source = WidgetSource.Community;
+        var newer = new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["version"] = "9.0.0" };
+        Assert.False(Community.IsUpdate(newer, installed));
+        Assert.Empty(Community.Outdated(new[] { newer }, new[] { installed }));
+        Community.Remove(id);
+    }
+
+    [Fact]
+    public async Task An_explicit_catalog_install_switches_a_local_copy_back_to_catalog_updates()
+    {
+        var id = "local-back";
+        using (var p = Community.PrepareLocal(Zip(("widget.json", Manifest(id)), ("index.html", "")))) p.Commit();
+        var entry = new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["files"] = new System.Text.Json.Nodes.JsonArray("widget.json", "index.html") };
+        Func<string, Task<byte[]>> catalog = rel => Task.FromResult(Encoding.UTF8.GetBytes(rel.EndsWith("widget.json") ? Manifest(id) : "catalog"));
+        using (var p = await Community.PrepareAsync(entry, catalog)) p.Commit();
+        Assert.False(Community.IsLocalInstall(id));
+        Community.Remove(id);
+    }
+
     [Fact]
     public void Declared_access_needs_an_accept_even_on_a_fresh_install()
     {

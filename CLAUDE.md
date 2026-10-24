@@ -65,6 +65,8 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   id equals folder, all staged in temp and validated before `Commit` (`Community.cs`). "Install from file" (`Community.PrepareLocal`,
   Settings > Browse, `umbractl install-local`) applies the same rules to a folder or zip, refuses zip-slip entries and links, and
   needs the user's accept for any declared access even on a fresh install. It has no MCP tool, and the path comes from a host-drawn picker, never the page.
+  A flat zip (widget.json at its top) has no folder name, so only the id pattern applies there. Installing over an existing id
+  inherits its command approvals (per id + command hash). Local installs are recorded in `local-installs.json` and never get catalog updates.
 - Widget windows never activate themselves. They get keyboard focus only right after a physical mouse press on them
   (`WidgetWindow.TakeKeyboardFocus`), so a widget can't pull focus while the user types elsewhere.
 - A widget can't resize or zoom itself: the page's `resize` and `zoom` messages are honoured only in edit mode, for an

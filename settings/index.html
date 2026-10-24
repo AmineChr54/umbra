@@ -198,7 +198,7 @@
           <ol>
             <li>A widget is a folder with a <code>widget.json</code> and an <code>index.html</code>; the folder name must equal the <code>id</code> in <code>widget.json</code>. Start one with <code>umbractl new &lt;id&gt;</code> or copy one from the catalog.</li>
             <li>To share it, zip the folder (right-click, Send to, Compressed folder). A <code>.umbrawidget</code> file is the same zip, renamed.</li>
-            <li>Click <b>Install from file…</b> for a zip or <b>From folder…</b> for a folder. Umbra checks every file first (widget file types only, 5 MB at most) and asks before giving the widget access to websites, media, notifications or commands.</li>
+            <li>Click <b>Install from file…</b> for a zip or <b>From folder…</b> for a folder. Umbra checks every file first (widget file types only, 5 MB at most) and asks before giving the widget access to websites, system info, media, notifications or commands. A file install replaces an installed widget with the same id and keeps the commands you already approved for it.</li>
             <li>It is copied to <code>widgets\&lt;id&gt;</code> in your Umbra data folder and shows up in My widgets. To update it, install the newer zip or folder again.</li>
           </ol>
         </details>

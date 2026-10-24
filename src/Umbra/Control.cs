@@ -299,6 +299,8 @@ sealed class Control(App app)
                     copy["builtin"] = installed?.IsPermanent == true;
                     copy["installedVersion"] = installed?.Version;
                     copy["updateAvailable"] = Community.IsUpdate(copy, installed);
+                    // Installed from a file with the same id: never updated from the catalog; "install" would replace it.
+                    copy["local"] = installed is not null && Community.IsLocalInstall(installed.Id);
                     list.Add(copy);
                 }
                 return list;
@@ -340,9 +342,8 @@ sealed class Control(App app)
                 var path = Str(a, "path");
                 if (!Path.IsPathFullyQualified(path)) throw new CommandException("path must be a full path to a widget folder or .zip");
                 Community.PendingInstall pending;
-                try { pending = Community.PrepareLocal(path); }
-                catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or InvalidDataException)
-                { throw new CommandException($"Not installed: {ex.Message}"); }
+                try { pending = await Task.Run(() => Community.PrepareLocal(path)); } // reading and checking files stays off the UI thread
+                catch (InvalidOperationException ex) { throw new CommandException($"Not installed: {ex.Message}"); }
                 using (pending)
                 {
                     var id = pending.Manifest.Id;

@@ -252,10 +252,55 @@ static class Community
             var installed = InstalledManifest(manifest.Id);
             return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null, local: true);
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException or ArgumentException)
+        {
+            // A corrupt zip, a locked file or an odd path: one clear refusal type for the callers.
+            try { Directory.Delete(staging, recursive: true); } catch { }
+            throw new InvalidOperationException($"Could not read the widget: {ex.Message}", ex);
+        }
         catch
         {
             try { Directory.Delete(staging, recursive: true); } catch { }
             throw;
+        }
+    }
+
+    static readonly object LocalInstallsLock = new();
+    static string LocalInstallsFile => Path.Combine(AppPaths.DataDir, "local-installs.json");
+
+    /// <summary>
+    /// True when the installed copy came from a file or folder (Install from file, umbractl install-local, create-widget)
+    /// rather than the catalog. Such a copy is never offered a catalog update and update-all skips it.
+    /// </summary>
+    public static bool IsLocalInstall(string id) => LocalInstalls().Contains(id);
+
+    static HashSet<string> LocalInstalls()
+    {
+        lock (LocalInstallsLock)
+        {
+            try
+            {
+                return File.Exists(LocalInstallsFile)
+                    ? new HashSet<string>(JsonSerializer.Deserialize<string[]>(File.ReadAllText(LocalInstallsFile)) ?? Array.Empty<string>(), StringComparer.Ordinal)
+                    : new HashSet<string>(StringComparer.Ordinal);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return new HashSet<string>(StringComparer.Ordinal); }
+        }
+    }
+
+    /// <summary>Records where the installed copy of <paramref name="id"/> came from (false = catalog or removed).</summary>
+    internal static void MarkLocalInstall(string id, bool local)
+    {
+        lock (LocalInstallsLock)
+        {
+            var set = LocalInstalls();
+            if (!(local ? set.Add(id) : set.Remove(id))) return;
+            try
+            {
+                Directory.CreateDirectory(AppPaths.DataDir);
+                File.WriteAllText(LocalInstallsFile, JsonSerializer.Serialize(set.Order(StringComparer.Ordinal).ToArray()));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Write($"Could not save local-installs.json: {ex.Message}"); }
         }
     }
 
@@ -319,6 +364,9 @@ static class Community
         long total = 0;
         foreach (var (name, e) in entries)
         {
+            // A file named exactly like the top folder (or "folder/" with data) has no path inside the widget.
+            if (prefix is not null && (name.Length <= prefix.Length + 1 || !name.StartsWith(prefix + "/", StringComparison.Ordinal)))
+                throw new InvalidOperationException($"Unsafe or disallowed file '{name}' (relative paths and widget file types only)");
             var rel = prefix is null ? name : name[(prefix.Length + 1)..];
             using var s = e.Open();
             StageFile(staging, rel, s, ref total);
@@ -393,7 +441,8 @@ static class Community
         public void Commit()
         {
             Community.Commit(_staging, Manifest.Id);
-            Log.Write($"Installed community widget {Manifest.Id} {Manifest.Version}");
+            MarkLocalInstall(Manifest.Id, IsLocal);
+            Log.Write($"Installed {(IsLocal ? "local" : "community")} widget {Manifest.Id} {Manifest.Version}");
         }
 
         public void Dispose()
@@ -441,6 +490,7 @@ static class Community
                 File.WriteAllBytes(dest, data);
             }
             Commit(staging, id);
+            MarkLocalInstall(id, true);
             Log.Write($"Wrote local widget {id} ({files.Count} files)");
             return target;
         }
@@ -496,6 +546,7 @@ static class Community
         }
         WidgetStore.DeleteAll(id);
         CommandApprovals.Shared.Revoke(id);
+        // The local-install mark stays, so Undo from the trash keeps it; every install path rewrites it anyway.
         // Working folders of every copy ("sp500" and "sp500__2", ...).
         var runRoot = Path.Combine(AppPaths.DataDir, "data", "run");
         if (Directory.Exists(runRoot))
@@ -523,9 +574,13 @@ static class Community
         }
     }
 
-    /// <summary>True when the catalog entry is newer than the installed community copy (built-in widgets never update from the catalog).</summary>
+    /// <summary>
+    /// True when the catalog entry is newer than the installed community copy. Built-in widgets and copies installed from a
+    /// file (<see cref="IsLocalInstall"/>) never update from the catalog, so update-all skips them too.
+    /// </summary>
     public static bool IsUpdate(JsonNode? entry, WidgetManifest? installed) =>
         installed is { Source: WidgetSource.Community }
+        && !IsLocalInstall(installed.Id)
         && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
 
     /// <summary>The catalog entries that would update an installed widget, in catalog order.</summary>
