@@ -144,6 +144,18 @@ sealed class CommandApprovals(string path)
 
     public int RevokeCamera(string widgetId) => Revoke(widgetId, CameraKey);
 
+    /// <summary>Drops every camera approval whose widget is not in <paramref name="declaring"/> (removed, or no longer declares camera).</summary>
+    public int RevokeCameraExcept(IEnumerable<string> declaring)
+    {
+        var keep = declaring.ToHashSet(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            var n = Items.RemoveAll(x => x.CommandId == CameraKey && !keep.Contains(x.WidgetId));
+            if (n > 0) { Save(); Log.Write($"{n} camera approval(s) dropped (widget removed or no longer declares camera)"); }
+            return n;
+        }
+    }
+
     /// <summary>For the control protocol: every declared command of the given widgets with its approval status (read-only).</summary>
     public JsonArray Describe(IEnumerable<WidgetManifest> manifests, string? onlyWidget = null)
     {

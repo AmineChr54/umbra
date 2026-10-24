@@ -358,6 +358,32 @@ public class TimelapseTests : IDisposable
     }
 
     [Fact]
+    public void Camera_approval_is_dropped_for_removed_or_non_declaring_widgets()
+    {
+        Directory.CreateDirectory(_root);
+        var a = new CommandApprovals(Path.Combine(_root, "ap2.json"));
+        foreach (var id in new[] { "keep", "gone", "nocam" }) a.ApproveCamera(id);
+        Assert.Equal(2, a.RevokeCameraExcept(["keep"]));
+        Assert.True(a.CameraApproved("keep"));
+        Assert.False(a.CameraApproved("gone"));
+        Assert.False(a.CameraApproved("nocam"));
+    }
+
+    [Fact]
+    public void Moving_a_widget_to_the_trash_revokes_its_camera_approval()
+    {
+        const string id = "cam-trash-test";
+        var dir = Path.Combine(AppPaths.CommunityDir, id);
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "widget.json"), "{}");
+        CommandApprovals.Shared.ApproveCamera(id);
+        var token = WidgetTrash.Move(new Settings(), id);
+        Assert.NotNull(token);
+        Assert.False(CommandApprovals.Shared.CameraApproved(id));
+        try { Directory.Delete(Path.Combine(AppPaths.DataDir, "trash", token!), true); } catch (IOException) { }
+    }
+
+    [Fact]
     public void Camera_approval_persists_and_is_not_listed_as_a_command()
     {
         Directory.CreateDirectory(_root);

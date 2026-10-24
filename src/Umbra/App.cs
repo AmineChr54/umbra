@@ -866,7 +866,7 @@ sealed class App : ApplicationContext
     /// <summary>A widget that no longer declares permissions.camera loses its camera approval, so declaring it again asks again.</summary>
     void DropStaleCameraApprovals()
     {
-        foreach (var m in Manifests.Where(m => !m.Permissions.Camera)) CameraConsent.Approvals.RevokeCamera(m.Id);
+        CameraConsent.Approvals.RevokeCameraExcept(Manifests.Where(m => m.Permissions.Camera).Select(m => m.Id));
     }
 
     /// <summary>Settings revoked the camera for a widget: drop the approval and cancel its recording.</summary>

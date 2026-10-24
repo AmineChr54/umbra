@@ -157,7 +157,7 @@ sealed class CameraConsent(CommandApprovals approvals, Func<string, Task<bool>> 
         if (!allowed)
         {
             Log.Write($"[{m.Id}] camera refused by the user");
-            throw new TimelapseException("The camera was not allowed (refused or the prompt timed out)");
+            throw new TimelapseException("The camera was not allowed (refused, or no answer within 2 minutes)");
         }
         approvals.ApproveCamera(m.Id);
     }
