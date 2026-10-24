@@ -203,6 +203,7 @@ static class Community
             var manifest = WidgetManifest.Parse(await File.ReadAllTextAsync(Path.Combine(staging, "widget.json")));
             if (manifest.Id != id)
                 throw new InvalidOperationException("widget.json id does not match the catalog");
+            manifest.RequireCompatible();
 
             var installed = InstalledManifest(id);
             if (installed is { Private: true })
@@ -216,8 +217,51 @@ static class Community
         }
     }
 
-    /// <summary>File types "Install from file" accepts besides a folder (.umbrawidget is a renamed .zip).</summary>
-    public static readonly string[] PackageExtensions = { ".zip", ".umbrawidget" };
+    /// <summary>
+    /// The standard widget package: a zip with widget.json at its root (no wrapper folder), the same file rules as a
+    /// catalog widget (allowed types, safe relative paths, 5 MB, 1000 files). <see cref="WritePackage"/> makes one,
+    /// <see cref="PrepareLocal"/> reads one.
+    /// </summary>
+    public const string PackageExtension = ".umbrawidget";
+
+    /// <summary>File types "Install from file" accepts besides a folder. A plain .zip may also hold one wrapper folder named like the id.</summary>
+    public static readonly string[] PackageExtensions = { ".zip", PackageExtension };
+
+    /// <summary>Fixed entry time in every package (the zip format's earliest date), so packing the same files twice gives the same bytes.</summary>
+    static readonly DateTimeOffset PackageTime = new(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>
+    /// Packs a widget folder into a <see cref="PackageExtension"/> file. The folder is checked exactly like an install
+    /// (<see cref="PrepareLocal"/>: links, paths, types, size, id = folder, entry file, manifest, compatibility) before
+    /// anything is written. Entries are sorted by path with a fixed time, so the output is deterministic and
+    /// pack, install, pack gives the same file. Returns the manifest.
+    /// </summary>
+    public static WidgetManifest WritePackage(string folder, string outPath)
+    {
+        if (!Directory.Exists(folder)) throw new InvalidOperationException($"'{folder}' is not a folder");
+        using var pending = PrepareLocal(folder);
+        var tmp = outPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using (var stream = new FileStream(tmp, FileMode.CreateNew, FileAccess.Write))
+            using (var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+                foreach (var rel in pending.Files())
+                {
+                    var e = zip.CreateEntry(rel, System.IO.Compression.CompressionLevel.Optimal);
+                    e.LastWriteTime = PackageTime;
+                    using var o = e.Open();
+                    using var i = File.OpenRead(pending.PathOf(rel));
+                    i.CopyTo(o);
+                }
+            File.Move(tmp, outPath, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(tmp); } catch { }
+            throw;
+        }
+        return pending.Manifest;
+    }
 
     const int MaxWidgetFiles = 1000;
 
@@ -237,7 +281,8 @@ static class Community
         {
             string? expectedId;
             if (Directory.Exists(path)) expectedId = StageFolder(path, staging);
-            else if (File.Exists(path) && PackageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase)) expectedId = StageZip(path, staging);
+            else if (File.Exists(path) && PackageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+                expectedId = StageZip(path, staging, allowWrapper: !string.Equals(Path.GetExtension(path), PackageExtension, StringComparison.OrdinalIgnoreCase));
             else throw new InvalidOperationException($"'{Path.GetFileName(path)}' is not a widget folder or a .zip / .umbrawidget file");
 
             var manifestPath = Path.Combine(staging, "widget.json");
@@ -250,6 +295,7 @@ static class Community
                 throw new InvalidOperationException($"widget.json id is '{manifest.Id}' but the folder is '{expectedId}'; they must match");
             if (!File.Exists(Path.Combine(staging, manifest.Entry.Replace('/', Path.DirectorySeparatorChar))))
                 throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing");
+            manifest.RequireCompatible();
 
             var installed = InstalledManifest(manifest.Id);
             return new PendingInstall(staging, manifest, PermissionDiff.Compute(installed, manifest), isUpdate: installed is not null, local: true);
@@ -338,9 +384,10 @@ static class Community
     /// <summary>
     /// Extracts a zip into staging, entry by entry, never trusting the entry names. A zip whose files all sit in one top folder
     /// (what "Send to > Compressed folder" makes) has that folder stripped, and widget.json's id must equal it. Returns that
-    /// folder name, or null when widget.json is at the top of the zip.
+    /// folder name, or null when widget.json is at the top of the zip. A <see cref="PackageExtension"/> file
+    /// (<paramref name="allowWrapper"/> false) must have widget.json at the top.
     /// </summary>
-    static string? StageZip(string zipPath, string staging)
+    static string? StageZip(string zipPath, string staging, bool allowWrapper)
     {
         using var zip = System.IO.Compression.ZipFile.OpenRead(zipPath);
         var entries = new List<(string Name, System.IO.Compression.ZipArchiveEntry Entry)>();
@@ -358,6 +405,7 @@ static class Community
         string? prefix = null;
         if (!entries.Any(x => x.Name == "widget.json"))
         {
+            if (!allowWrapper) throw new InvalidOperationException($"No widget.json found at the top of the {PackageExtension} file (a package has no wrapper folder)");
             var top = entries.Select(x => x.Name.Split('/')[0]).Distinct(StringComparer.Ordinal).ToList();
             if (top.Count == 1 && WidgetManifest.IdPattern().IsMatch(top[0]) && entries.Any(x => x.Name == top[0] + "/widget.json"))
                 prefix = top[0];
@@ -425,6 +473,15 @@ static class Community
         /// <summary>True when an installed copy already exists (the commit replaces it).</summary>
         public bool IsUpdate => _isUpdate;
 
+        /// <summary>Every staged file as a forward-slash relative path, sorted ordinally.</summary>
+        internal IEnumerable<string> Files() =>
+            Directory.GetFiles(_staging, "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(_staging, f).Replace('\\', '/'))
+                .Order(StringComparer.Ordinal);
+
+        /// <summary>Full path of a staged file (a relative path from <see cref="Files"/>).</summary>
+        internal string PathOf(string rel) => Path.Combine(_staging, rel.Replace('/', Path.DirectorySeparatorChar));
+
         internal PendingInstall(string staging, WidgetManifest manifest, PermissionDiff added, bool isUpdate, bool local = false)
         {
             _staging = staging; Manifest = manifest; Added = added; _isUpdate = isUpdate; IsLocal = local;
@@ -473,6 +530,7 @@ static class Community
         var manifest = WidgetManifest.Parse(files["widget.json"]);
         if (manifest.Id != id) throw new InvalidOperationException($"widget.json id is '{manifest.Id}', expected '{id}'");
         if (!files.ContainsKey(manifest.Entry)) throw new InvalidOperationException($"Entry file '{manifest.Entry}' is missing from files");
+        manifest.RequireCompatible();
 
         var staging = Path.Combine(Path.GetTempPath(), $"umbra-{id}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(staging);
@@ -583,7 +641,19 @@ static class Community
     public static bool IsUpdate(JsonNode? entry, WidgetManifest? installed) =>
         installed is { Source: WidgetSource.Community, Private: false }
         && !IsLocalInstall(installed.Id)
-        && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0;
+        && CompareVersions(entry?["version"]?.GetValue<string>() ?? "0", installed.Version) > 0
+        && CatalogIncompatibility(entry) is null;
+
+    /// <summary>
+    /// Why this Umbra can't install a catalog entry (its manifestVersion or minUmbraVersion is too new), or null.
+    /// Browse greys such an entry out with this text, and it is never offered as an update.
+    /// </summary>
+    public static string? CatalogIncompatibility(JsonNode? entry)
+    {
+        var mv = entry?["manifestVersion"] is JsonValue v && v.TryGetValue<int>(out var n) ? n : 1;
+        var min = entry?["minUmbraVersion"] is JsonValue s && s.TryGetValue<string>(out var t) ? t : null;
+        return WidgetManifest.Incompatibility(mv, min);
+    }
 
     /// <summary>The catalog entries that would update an installed widget, in catalog order.</summary>
     public static List<JsonNode> Outdated(IEnumerable<JsonNode?> catalog, IEnumerable<WidgetManifest> installed)

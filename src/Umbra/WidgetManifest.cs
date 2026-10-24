@@ -15,6 +15,10 @@ public sealed partial class WidgetManifest
     public string Description { get; set; } = "";
     public string Author { get; set; } = "";
     public string Version { get; set; } = "1.0.0";
+    /// <summary>The widget.json format this widget is written for (missing = 1). A newer one than <see cref="SupportedManifestVersion"/> is refused.</summary>
+    public int ManifestVersion { get; set; } = 1;
+    /// <summary>Oldest Umbra release the widget works on ("1.9.0"), or null. A newer one than the running app is refused.</summary>
+    public string? MinUmbraVersion { get; set; }
     /// <summary>What changed in this version (max 500 characters); shown when an update asks for new access.</summary>
     public string? Changelog { get; set; }
     public string Entry { get; set; } = "index.html";
@@ -54,6 +58,40 @@ public sealed partial class WidgetManifest
     }
 
     static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>Highest widget.json <c>manifestVersion</c> this build understands. Raise it only with a format change.</summary>
+    public const int SupportedManifestVersion = 1;
+
+    /// <summary>The running Umbra version ("1.8.0"), from the assembly (Directory.Build.props).</summary>
+    public static string AppVersion { get; } =
+        (System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(WidgetManifest).Assembly)?.InformationalVersion
+         ?? "0.0.0").Split('+')[0];
+
+    [GeneratedRegex(@"^\d+\.\d+\.\d+$")]
+    private static partial Regex SemVer();
+
+    /// <summary>
+    /// Why this Umbra can't run a widget with these manifest fields (a clear "update Umbra" sentence), or null when it can.
+    /// <paramref name="appVersion"/> defaults to <see cref="AppVersion"/>.
+    /// </summary>
+    public static string? Incompatibility(int manifestVersion, string? minUmbraVersion, string? appVersion = null)
+    {
+        appVersion ??= AppVersion;
+        if (manifestVersion > SupportedManifestVersion)
+            return $"it uses widget format {manifestVersion}, newer than this Umbra (v{appVersion}) understands. Update Umbra to use it";
+        if (minUmbraVersion is { Length: > 0 } min && Community.CompareVersions(min, appVersion) > 0)
+            return $"it needs Umbra {min} or newer and this is v{appVersion}. Update Umbra to use it";
+        return null;
+    }
+
+    /// <summary>Same as <see cref="Incompatibility(int, string?, string?)"/> for this manifest.</summary>
+    public string? Incompatibility(string? appVersion = null) => Incompatibility(ManifestVersion, MinUmbraVersion, appVersion);
+
+    /// <summary>Throws <see cref="InvalidOperationException"/> naming the widget when this Umbra can't run it.</summary>
+    public void RequireCompatible(string? appVersion = null)
+    {
+        if (Incompatibility(appVersion) is { } why) throw new InvalidOperationException($"Can't install {(Name.Length > 0 ? Name : Id)}: {why}.");
+    }
 
     /// <summary>Lowercase letters, digits and dashes; also used as the folder name.</summary>
     [GeneratedRegex("^[a-z0-9][a-z0-9-]{1,39}$")]
@@ -124,6 +162,8 @@ public sealed partial class WidgetManifest
                 CommandSpec.CheckKeys(cmds);
         }
         ValidateOptionLayout(m.Options);
+        if (m.ManifestVersion < 1) throw new JsonException("\"manifestVersion\" must be 1 or higher");
+        if (m.MinUmbraVersion is not null && !SemVer().IsMatch(m.MinUmbraVersion)) throw new JsonException("\"minUmbraVersion\" must look like 1.9.0");
         m.Changelog = SanitizeChangelog(m.Changelog);
         CommandSpec.ValidateAll(m.Permissions.Commands);
         SystemMetrics.Validate(m.Permissions.System);
@@ -143,6 +183,8 @@ public sealed partial class WidgetManifest
             {
                 var m = Parse(File.ReadAllText(file));
                 if (!IdPattern().IsMatch(m.Id)) continue;
+                // A widget for a newer Umbra stays on disk untouched and loads again once Umbra is updated.
+                if (m.Incompatibility() is { } why) { Log.Write($"Skipping widget {m.Id}: {why}"); continue; }
                 m.Folder = Path.GetFileName(dir);
                 m.Source = source;
                 list.Add(m);
