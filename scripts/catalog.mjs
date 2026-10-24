@@ -21,7 +21,7 @@ const ALLOWED = new Set([".json", ".html", ".css", ".js", ".mjs", ".svg", ".png"
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_CHANGELOG = 500;
 const OPTION_TYPES = new Set(["text", "number", "select", "toggle"]);
-const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "icon", "width", "height", "themeable", "defaultPosition", "permissions", "options"]);
+const KNOWN_KEYS = new Set(["$schema", "id", "name", "description", "author", "version", "changelog", "entry", "preview", "icon", "width", "height", "themeable", "private", "defaultPosition", "permissions", "options"]);
 
 const errors = [];
 const fail = (id, msg) => errors.push(`widgets/${id}: ${msg}`);
@@ -114,6 +114,8 @@ for (const id of readdirSync(widgetsDir).sort()) {
   if (m.version && !SEMVER.test(m.version)) fail(id, `"version" must look like 1.2.3`);
   if (m.changelog !== undefined && (typeof m.changelog !== "string" || !m.changelog.trim() || m.changelog.length > MAX_CHANGELOG))
     fail(id, `"changelog" must be a non-empty string of at most ${MAX_CHANGELOG} characters (what changed in this version)`);
+  if (m.private !== undefined && typeof m.private !== "boolean") fail(id, `"private" must be true or false`);
+  if (m.private === true) fail(id, `"private" widgets are installed from a file, not published in the catalog (see docs/widget-sdk.md)`);
   const entry = m.entry || "index.html";
   if (!existsSync(join(dir, entry))) fail(id, `entry file "${entry}" not found`);
   if (m.preview && !existsSync(join(dir, m.preview))) fail(id, `preview "${m.preview}" not found`);

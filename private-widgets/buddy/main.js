@@ -10,7 +10,7 @@ const api = async (path, params) => {
   return r;
 };
 
-let pair = null;        // { room, me, key, code?, codeExp? } saved in umbra.store
+let pair = null;        // { room, me, key, side, code?, codeExp? } saved in umbra.store
 let peer = null;        // { online, seen } from the last good beat
 let error = "";
 let offline = false;
@@ -18,12 +18,17 @@ let busy = false;
 
 const unconfigured = RELAY.includes("CHANGE-ME");
 
+// Which star is me on this PC. Pairings made before 1.2.0 have no side and keep the old picture (me on the left).
+const side = () => (pair?.side === "right" ? "right" : "left");
+
 async function save(p) {
   pair = p;
   if (p) await umbra.store.set("pair", p); else await umbra.store.remove("pair");
 }
 
-// The two stars are the user's own drawings (star1.png = you, star2.png = friend), white on transparent.
+// The two stars are the owners' own drawings, white on transparent. star1.png is always the left star and star2.png the
+// right one, so both PCs show the same picture; pair.side says which of them is "me" here. Whoever creates the code starts
+// as the left star and whoever joins as the right one; "I'm the left/right star" in the menu swaps it on this PC.
 const star = (cls, src, tip) => `<img class="star ${cls}" src="${src}" alt="${esc(tip)}" title="${esc(tip)}" draggable="false">`;
 
 let names = null;       // { you, friend } overrides saved from the menu; options are the fallback
@@ -37,7 +42,9 @@ function render() {
   const meOn = !!pair && !offline && !unconfigured;
   const friendOn = !!pair && !!peer?.online;
   const waiting = pair?.code && peer && !peer.seen && Date.now() < pair.codeExp;
-  let html = star(meOn ? "on" : "", "star1.png", you) + star(friendOn ? "on" : "", "star2.png", friend);
+  const left = side() === "left" ? [meOn, you] : [friendOn, friend];
+  const right = side() === "left" ? [friendOn, friend] : [meOn, you];
+  let html = star(left[0] ? "on" : "", "star1.png", left[1]) + star(right[0] ? "on" : "", "star2.png", right[1]);
   if (unconfigured) toast = "Relay not configured";
   const note = error || toast || (waiting ? `${pair.code.slice(0, 4)}-${pair.code.slice(4)}` : "");
   if (note && !pop) html += `<div class="toast${waiting && !error && !toast ? " code" : ""}" data-no-drag>${esc(note)}</div>`;
@@ -52,7 +59,7 @@ function popup() {
   if (pop.type === "join") return `<div class="pop" style="${pos}" data-no-drag><input id="code" maxlength="9" placeholder="Friend's code" spellcheck="false" autocomplete="off"><button id="go">Join</button></div>`;
   if (pop.type === "names") { const n = nm(); return `<div class="pop col" style="${pos}" data-no-drag><input id="n-you" maxlength="24" value="${esc(n.you)}" placeholder="Your name"><input id="n-friend" maxlength="24" value="${esc(n.friend)}" placeholder="Friend's name"><button id="go">Save</button></div>`; }
   const items = pair
-    ? [["names", "Edit names"], ["unpair", "Unpair"]]
+    ? [["side", side() === "left" ? "I'm the right star" : "I'm the left star"], ["names", "Edit names"], ["unpair", "Unpair"]]
     : [["new", "Create code"], ["join", "Enter code"], ["names", "Edit names"]];
   return `<div class="pop menu" style="${pos}" data-no-drag>${items.filter(Boolean).map(([k, t]) => `<button data-act="${k}">${t}</button>`).join("")}</div>`;
 }
@@ -81,6 +88,7 @@ function act(k) {
   else if (k === "join") { pop = { type: "join", ...at }; render(); }
   else if (k === "names") { pop = { type: "names", ...at }; render(); }
   else if (k === "unpair") unpair();
+  else if (k === "side") save({ ...pair, side: side() === "left" ? "right" : "left" }).then(render);
   else render();
 }
 
@@ -97,7 +105,7 @@ async function createPair() {
   if (busy) return; busy = true; error = "";
   try {
     const r = await api("pair", { new: 1 });
-    await save({ room: r.room, me: r.me, key: r.key, code: r.code, codeExp: Date.now() + r.ttl * 1000 });
+    await save({ room: r.room, me: r.me, key: r.key, side: "left", code: r.code, codeExp: Date.now() + r.ttl * 1000 });
     peer = { online: false, seen: 0 };
     await beat();
   } catch (e) { error = "Could not reach the relay"; }
@@ -109,7 +117,7 @@ async function joinPair() {
   const code = document.getElementById("code").value.trim();
   try {
     const r = await api("pair", { code });
-    await save({ room: r.room, me: r.me, key: r.key });
+    await save({ room: r.room, me: r.me, key: r.key, side: "right" });
     pop = null;
     await beat();
   } catch (e) { error = /unknown|bad/.test(e.message) ? "Unknown or expired code" : "Could not reach the relay"; pop = null; }

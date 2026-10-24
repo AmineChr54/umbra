@@ -25,6 +25,11 @@ public sealed partial class WidgetManifest
     public int Height { get; set; } = 180;
     /// <summary>False opts the widget out of themes (it keeps the default look).</summary>
     public bool Themeable { get; set; } = true;
+    /// <summary>
+    /// A widget shared outside the catalog and installed from a file (Settings > Browse > Install from file). It shows a Private
+    /// badge, is never offered a catalog update, and a catalog widget with the same id cannot replace it. Grants no extra trust.
+    /// </summary>
+    public bool Private { get; set; }
     public PointSpec? DefaultPosition { get; set; }
     public PermissionSpec Permissions { get; set; } = new();
     /// <summary>Option schema shown in Settings: key -> {label, type, default, choices?}.</summary>

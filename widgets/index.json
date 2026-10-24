@@ -2,28 +2,6 @@
   "schema": 1,
   "widgets": [
     {
-      "id": "buddy",
-      "name": "Buddy",
-      "description": "Pair with a friend using a one-time code and see a glowing star when they are online. Right-click to pair, unpair or edit names. Needs the small relay in tools/buddy-relay.",
-      "author": "AmineChr54",
-      "version": "1.1.1",
-      "preview": "preview.png",
-      "icon": "icon.png",
-      "hosts": [
-        "umbra-buddy-relay.umbra-server.workers.dev"
-      ],
-      "files": [
-        "icon.png",
-        "index.html",
-        "main.js",
-        "preview.png",
-        "star1.png",
-        "star2.png",
-        "style.css",
-        "widget.json"
-      ]
-    },
-    {
       "id": "calendar-glance",
       "name": "Calendar glance",
       "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
