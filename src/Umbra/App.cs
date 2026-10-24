@@ -314,6 +314,9 @@ sealed class App : ApplicationContext
         ["icons"] = new System.Text.Json.Nodes.JsonObject(kv.Value.Members
             .Where(m => Settings.Widgets.TryGetValue(m, out var w) && w.TabIcon is not null)
             .Select(m => KeyValuePair.Create(m, (System.Text.Json.Nodes.JsonNode?)System.Text.Json.Nodes.JsonValue.Create(Settings.Widgets[m].TabIcon)))),
+        ["suggestedIcons"] = new System.Text.Json.Nodes.JsonObject(kv.Value.Members
+            .Where(m => Settings.Widgets.TryGetValue(m, out var w) && w.SuggestedTabIcon is not null)
+            .Select(m => KeyValuePair.Create(m, (System.Text.Json.Nodes.JsonNode?)System.Text.Json.Nodes.JsonValue.Create(Settings.Widgets[m].SuggestedTabIcon)))),
     }).ToArray());
 
     /// <summary>Sets (or with null/empty clears) the tab icon of a widget copy; the strip redraws at once.</summary>
@@ -323,6 +326,19 @@ sealed class App : ApplicationContext
         if (string.IsNullOrEmpty(icon)) icon = null;
         else if (Groups.IconPath(icon) is null) throw new ArgumentException($"Unknown tab icon '{icon}'");
         ws.TabIcon = icon;
+        SaveSettings();
+        foreach (var id in _tabStrips.Keys.ToList()) _tabStrips[id].Redraw();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>
+    /// Stores the tab icon a widget copy suggested (already validated; null clears it). It never touches the user's own choice, which wins in the strip.
+    /// Saved only when it changed, then the strip redraws at once.
+    /// </summary>
+    public void SuggestTabIcon(string instance, string? icon)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws) || ws.SuggestedTabIcon == icon) return;
+        ws.SuggestedTabIcon = icon;
         SaveSettings();
         foreach (var id in _tabStrips.Keys.ToList()) _tabStrips[id].Redraw();
         SettingsChangedElsewhere();

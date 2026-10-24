@@ -32,6 +32,26 @@ public static class Groups
         return File.Exists(path) ? path : null;
     }
 
+    /// <summary>
+    /// A widget's suggested tab icon, validated: a well-formed name that exists in shared/tabicons, else null.
+    /// <paramref name="exists"/> replaces the file check (for tests); the name is never used as a path before it passed <see cref="IsIconName"/>.
+    /// </summary>
+    public static string? CleanSuggestion(string? name, Func<string, bool>? exists = null) =>
+        IsIconName(name) && (exists ?? (n => IconPath(n) is not null))(name!) ? name : null;
+
+    /// <summary>The tab icon name to draw: the user's own choice if it is usable, else the widget's suggestion if usable, else null (the widget's icon.png or a letter).</summary>
+    public static string? ChooseIcon(string? userChoice, string? suggestion, Func<string, bool>? exists = null) =>
+        CleanSuggestion(userChoice, exists) ?? CleanSuggestion(suggestion, exists);
+
+    /// <summary>Whether a widget may change its suggestion now: at most <paramref name="max"/> changes per <paramref name="windowMs"/>. Records the call when allowed.</summary>
+    public static bool AllowSuggestion(Queue<long> calls, long nowMs, int max = 12, long windowMs = 60_000)
+    {
+        while (calls.Count > 0 && nowMs - calls.Peek() >= windowMs) calls.Dequeue();
+        if (calls.Count >= max) return false;
+        calls.Enqueue(nowMs);
+        return true;
+    }
+
     public static string? GroupOf(Settings s, string instance) =>
         s.Groups.FirstOrDefault(g => g.Value.Members.Contains(instance)).Key;
 

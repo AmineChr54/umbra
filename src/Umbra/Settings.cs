@@ -101,6 +101,8 @@ public sealed class WidgetSettings
     public bool Notifications { get; set; }
     /// <summary>Tab-strip icon chosen by the user (a name from shared/tabicons); null = the widget's own icon or a letter.</summary>
     public string? TabIcon { get; set; }
+    /// <summary>Tab-strip icon the widget copy itself suggested with <c>umbra.setTabIcon</c> (validated by <see cref="Groups.CleanSuggestion"/>); only used while <see cref="TabIcon"/> is unset or unusable.</summary>
+    public string? SuggestedTabIcon { get; set; }
 
     /// <summary>Size multiplier for the window and the page zoom, kept within 50-300 % and rounded to whole percent.</summary>
     public double Scale
