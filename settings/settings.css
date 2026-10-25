@@ -242,9 +242,17 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .wcard.folded .fold .ico { transform: rotate(-90deg); }
 [data-motion="off"] .fold .ico { transition: none; }
 .wcard.off .thumb { opacity: 0.4; filter: grayscale(1); }
-.wcard-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; }
-.fields:empty + .wcard-actions { margin-top: 0; }
-.spacer { flex: 1; }
+.wcard-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; }
+.hostopts { margin-top: 6px; }
+.hostopts .field { min-height: 28px; }
+.hostopts .field + .field { margin-top: 4px; }
+.hostopts .optsection .field + .field { margin-top: 4px; }
+.fields:empty + .hostopts { margin-top: 0; }
+.flabel { color: var(--text-2); font-size: 12.5px; font-weight: 500; }
+.input.num { width: 96px; }
+.timepair { display: inline-flex; align-items: center; gap: 8px; color: var(--text-3); font-size: 12.5px; }
+.timepair .input { width: 110px; }
+.muted-id { color: var(--text-3); font-weight: 400; font-size: 12.5px; }
 /* Inside a card: shorter fields, rows and buttons so a card takes less height (#231). */
 .wcard .field { grid-template-columns: 150px 1fr; gap: 2px 12px; }
 .wcard .field + .field { margin-top: 4px; }
@@ -277,7 +285,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .arrange.on .arrange-ico { color: var(--accent); }
 
 /* size (scale) slider: the filled part of the track follows --p */
-.size { display: inline-flex; align-items: center; gap: 10px; margin-left: 14px; color: var(--text-2); font-size: 12.5px; }
+.size { display: inline-flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 12.5px; }
 .range {
   --p: 20%;
   appearance: none; width: 110px; height: 4px; margin: 0; border-radius: 2px; outline: none; cursor: pointer;
@@ -570,7 +578,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .gstrip-title { font-weight: 600; margin-right: 4px; cursor: help; }
 .gstrip-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
 .gstrip-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.gstrip-form[hidden] { display: none; }
+.gstrip-form[hidden], .field[hidden], .btn[hidden] { display: none; }
 .gstrip-form .input { width: 220px; height: 30px; }
 .gstrip-hint { margin-top: 6px; font-size: 12px; color: var(--text-3); }
 .gchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 0; font: inherit; font-size: 13px; color: inherit; cursor: pointer;
@@ -601,6 +609,11 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .gmenu button { text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 .gmenu button:hover, .gmenu button:focus-visible { background: rgba(255, 255, 255, 0.08); }
 .gmenu button.on { color: var(--accent-strong); }
+.gmenu.up { margin: 0 0 4px; bottom: 100%; white-space: nowrap; }
+.hero-actions { position: relative; align-items: center; }
+.btn.icon { width: 36px; padding: 0; justify-content: center; color: var(--text-2); }
+.btn .caret { width: 12px; height: 12px; margin-left: -2px; }
+#installMenu[aria-expanded="true"] { background: rgba(255, 255, 255, 0.1); }
 [data-motion="off"] .ghead .fold .ico { transition: none; }
 
 /* ---------- My widgets: sections, filter, disabled one-liners, install more (#236) ---------- */

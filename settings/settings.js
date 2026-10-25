@@ -377,8 +377,8 @@ function field(wid, key, spec, value) {
 
 // A collapsed section for options with the same `group` (or `advanced: true`). <details> gives keyboard
 // folding for free; which sections are open is remembered per widget copy in this browser profile.
-function optionSection(wid, name, els) {
-  const key = `${wid}\n${name}`;
+function optionSection(wid, name, els, store = name) {
+  const key = `${wid}\n${store}`;
   let open = [];
   try { open = JSON.parse(localStorage.getItem("openOptionSections") || "[]"); } catch { /* ignore */ }
   const box = Object.assign(document.createElement("details"), { className: "optsection", open: open.includes(key) });
@@ -523,14 +523,9 @@ function renderInstalled(refocus) {
       setScale(d); cur().useDefaultScale = true; scaleVal.blur();
     });
 
-    const notif = $(".notif", card);
-    notif.parentElement.hidden = true; // the tri-state default/allowed/blocked select in prefs.js replaces it
-    notif.checked = !!ws.notifications;
-    notif.addEventListener("change", () => { cur().notifications = notif.checked; save(true); });
-
     const mon = $(".monitor", card);
     const mons = state.monitors || [];
-    mon.parentElement.hidden = mons.length < 2;
+    mon.closest(".field").hidden = mons.length < 2;
     for (const m of mons) mon.append(new Option(m.label, m.name));
     if (w.monitor && mons.some((m) => m.name === w.monitor)) mon.value = w.monitor;
     else mon.selectedIndex = Math.max(0, mons.findIndex((m) => /primary/.test(m.label)));
@@ -783,33 +778,45 @@ $("#bulkAdd").addEventListener("click", () => {
 
 // Badge menu: move a widget to another group, remove it from its group, or start a new one.
 function openGroupMenu(anchor, w, here) {
+  const items = (state.groups || []).map((g) => ({ text: g.name, run: () => post({ type: "group", op: "join", group: g.id, id: w.id }), on: !!here && here.id === g.id }));
+  if (here) items.push({ text: "Remove from group", run: () => post({ type: "group", op: "leave", id: w.id }) });
+  items.push({ text: "New group...", run: () => {
+    $("#newGroupForm").hidden = false;
+    $("#newGroupBtn").setAttribute("aria-expanded", "true");
+    $("#newGroupName").focus();
+    $("#newGroupName").scrollIntoView({ block: "center" });
+  } });
+  popupMenu(anchor, items);
+}
+
+// A small keyboard-accessible menu under (or, with `up`, above) a button: arrows move, Enter picks, Esc and outside clicks close.
+function popupMenu(anchor, items, { up = false } = {}) {
   document.querySelector(".gmenu")?.remove();
   const menu = document.createElement("div");
-  menu.className = "gmenu";
+  menu.className = "gmenu" + (up ? " up" : "");
   menu.setAttribute("role", "menu");
-  const close = (refocus) => { menu.remove(); document.removeEventListener("mousedown", away, true); if (refocus) anchor.focus(); };
-  const away = (e) => { if (!menu.contains(e.target) && e.target !== anchor) close(false); };
-  const item = (text, run, on) => {
+  if (up) menu.style.left = anchor.offsetLeft + "px";
+  anchor.setAttribute("aria-expanded", "true");
+  const close = (refocus) => {
+    menu.remove();
+    document.removeEventListener("mousedown", away, true);
+    anchor.setAttribute("aria-expanded", "false");
+    if (refocus) anchor.focus();
+  };
+  const away = (e) => { if (!menu.contains(e.target) && !anchor.contains(e.target)) close(false); };
+  for (const { text, run, on } of items) {
     const b = Object.assign(document.createElement("button"), { type: "button", textContent: text });
     b.setAttribute("role", "menuitem");
     if (on) b.classList.add("on");
     b.addEventListener("click", () => { close(false); run(); });
     menu.append(b);
-  };
-  for (const g of state.groups || []) item(g.name, () => post({ type: "group", op: "join", group: g.id, id: w.id }), here && here.id === g.id);
-  if (here) item("Remove from group", () => post({ type: "group", op: "leave", id: w.id }));
-  item("New group...", () => {
-    $("#newGroupForm").hidden = false;
-    $("#newGroupBtn").setAttribute("aria-expanded", "true");
-    $("#newGroupName").focus();
-    $("#newGroupName").scrollIntoView({ block: "center" });
-  });
+  }
   menu.addEventListener("keydown", (e) => {
-    const items = $$("button", menu);
-    const i = items.indexOf(document.activeElement);
-    if (e.key === "Escape") { e.preventDefault(); close(true); }
-    else if (e.key === "ArrowDown") { e.preventDefault(); items[(i + 1) % items.length].focus(); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    const list = $$("button", menu);
+    const i = list.indexOf(document.activeElement);
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(true); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
   });
   anchor.after(menu);
   document.addEventListener("mousedown", away, true);
@@ -1369,7 +1376,9 @@ function renderPrivacy(list) {
     row.className = "row";
     const text = document.createElement("div");
     text.className = "row-text";
-    const title = Object.assign(document.createElement("div"), { className: "row-title", textContent: w.widget });
+    const label = w.name || w.widget; // display name, like everywhere else; the id stays as a muted suffix (#286)
+    const title = Object.assign(document.createElement("div"), { className: "row-title", textContent: label });
+    title.append(Object.assign(document.createElement("span"), { className: "muted-id", textContent: ` ${w.widget}` }));
     const sub = (t) => Object.assign(document.createElement("div"), { className: "row-sub", textContent: t });
     text.append(
       title,
@@ -1383,8 +1392,9 @@ function renderPrivacy(list) {
     const del = document.createElement("button");
     del.className = "btn small danger";
     del.textContent = "Delete data";
-    del.setAttribute("aria-label", `Delete saved data of ${w.widget}`);
+    del.setAttribute("aria-label", `Delete saved data of ${label}`);
     del.disabled = !w.data.bytes;
+    del.title = w.data.bytes ? "" : "Nothing saved";
     del.addEventListener("click", () => post({ type: "deleteData", widget: w.widget }));
     row.append(text, del);
     root.append(row);
@@ -1394,9 +1404,15 @@ function renderPrivacy(list) {
 $("#exportBackup").addEventListener("click", () => post({ type: "exportBackup" }));
 $("#importBackup").addEventListener("click", () => post({ type: "importBackup" }));
 // The host shows the picker and the access prompt; the page never passes a path.
-$("#installFile").addEventListener("click", () => post({ type: "installLocal", kind: "file" }));
-$("#installUrl").addEventListener("click", () => post({ type: "installUrl" }));
-$("#installFolder").addEventListener("click", () => post({ type: "installLocal", kind: "folder" }));
+$("#installMenu").addEventListener("click", (e) => {
+  const btn = e.currentTarget;
+  if (btn.getAttribute("aria-expanded") === "true") { document.querySelector(".gmenu")?.remove(); btn.setAttribute("aria-expanded", "false"); return; }
+  popupMenu(btn, [
+    { text: "File (.zip or .umbrawidget)…", run: () => post({ type: "installLocal", kind: "file" }) },
+    { text: "Folder…", run: () => post({ type: "installLocal", kind: "folder" }) },
+    { text: "URL…", run: () => post({ type: "installUrl" }) },
+  ], { up: true });
+});
 $("#openDataFolder").addEventListener("click", () => post({ type: "openDataFolder" }));
 $("#openLogBtn").addEventListener("click", () => post({ type: "openLog" }));
 $("#resetAll").addEventListener("click", () => post({ type: "resetAll" }));
