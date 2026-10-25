@@ -2,15 +2,15 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "calendar-glance",
   "name": "Calendar glance",
-  "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
+  "description": "Upcoming events (1 day to 1 month, default 1 week) from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
   "author": "AmineChr54",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "manifestVersion": 1,
   "entry": "index.html",
   "preview": "preview.png",
   "icon": "icon.png",
   "width": 320,
-  "height": 340,
+  "height": 440,
   "defaultPosition": { "x": 24, "y": 24 },
   "permissions": {
     "hosts": [
@@ -29,8 +29,11 @@
       "default": "demo",
       "hint": "Secret .ics link (webcal:// is fine) on calendar.google.com, outlook.office365.com, outlook.live.com, calendar.zoho.com, calendar.proton.me or raw.githubusercontent.com. Type demo to see sample events. Click the i in the widget for a step-by-step guide."
     },
-    "showTomorrow": { "label": "Show tomorrow", "type": "toggle", "default": true },
-    "maxRows": { "label": "Max rows", "type": "number", "default": 8, "min": 3, "max": 12, "step": 1 },
+    "lookAhead": {
+      "label": "Look ahead", "type": "select", "default": "7",
+      "choices": [{ "value": "1", "label": "1 day" }, { "value": "3", "label": "3 days" }, { "value": "7", "label": "1 week" }, { "value": "30", "label": "1 month" }]
+    },
+    "maxRows": { "label": "Max rows", "type": "number", "default": 8, "min": 3, "max": 40, "step": 1 },
     "showLocation": { "label": "Show location", "type": "toggle", "default": true },
     "clock": {
       "label": "Time format", "type": "select", "default": "auto",
