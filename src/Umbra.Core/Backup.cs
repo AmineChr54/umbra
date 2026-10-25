@@ -141,7 +141,7 @@ static class Backup
             var b = blocked.GetValueOrDefault(m.Id) ?? new();
             result.Add(new JsonObject
             {
-                ["widget"] = m.Id,
+                ["widget"] = m.Id, ["name"] = m.Name.Length > 0 ? m.Name : m.Id,
                 ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
                 ["commands"] = app.Commands.Approvals.Describe(new[] { m }),
                 ["camera"] = new JsonObject { ["declared"] = m.Permissions.Camera, ["approved"] = m.Permissions.Camera && app.CameraApproved(m.Id) },

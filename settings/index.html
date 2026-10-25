@@ -214,10 +214,8 @@
             <p>Every widget runs in a sandbox and can only reach the sites it declares. Built one? Open a pull request and it shows up here for everyone.</p>
             <div class="hero-actions">
               <button class="btn primary" data-url="contribute"><span class="ico" data-icon="plus"></span>Submit a widget</button>
-              <button class="btn ghost" id="reloadCatalog"><span class="ico" data-icon="refresh"></span>Refresh</button>
-              <button class="btn ghost" id="installFile"><span class="ico" data-icon="download"></span>Install from file…</button>
-              <button class="btn ghost" id="installFolder">From folder…</button>
-              <button class="btn ghost" id="installUrl">From URL…</button>
+              <button class="btn ghost" id="installMenu" aria-haspopup="menu" aria-expanded="false"><span class="ico" data-icon="download"></span>Install from…<span class="ico caret" data-icon="chevron"></span></button>
+              <button class="btn ghost icon" id="reloadCatalog" title="Refresh the catalog" aria-label="Refresh the catalog"><span class="ico" data-icon="refresh"></span></button>
             </div>
           </div>
           <div class="hero-art" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -228,7 +226,7 @@
           <ol>
             <li>A widget is a folder with a <code>widget.json</code> and an <code>index.html</code>; the folder name must equal the <code>id</code> in <code>widget.json</code>. Start one with <code>umbractl new &lt;id&gt;</code> or copy one from the catalog.</li>
             <li>To share it, zip the folder (right-click, Send to, Compressed folder). A <code>.umbrawidget</code> file is the same zip, renamed.</li>
-            <li>Click <b>Install from file…</b> for a zip or <b>From folder…</b> for a folder. Umbra checks every file first (widget file types only, 5 MB at most) and asks before giving the widget access to websites, system info, media, notifications or commands. A file install replaces an installed widget with the same id and keeps the commands you already approved for it.</li>
+            <li>Open <b>Install from…</b> and pick <b>File…</b> for a zip, <b>Folder…</b> for a folder or <b>URL…</b> for a link. Umbra checks every file first (widget file types only, 5 MB at most) and asks before giving the widget access to websites, system info, media, notifications or commands. A file install replaces an installed widget with the same id and keeps the commands you already approved for it.</li>
             <li>It is copied to <code>widgets\&lt;id&gt;</code> in your Umbra data folder and shows up in My widgets. To update it, install the newer zip or folder again.</li>
           </ol>
         </details>
@@ -354,16 +352,25 @@
       <div class="wcard-body">
         <div class="cmds"></div>
         <div class="fields"></div>
-        <div class="wcard-actions">
-          <label class="check" hidden><input type="checkbox" class="notif"><span></span>Allow notifications</label>
-          <div class="size">
-            <span class="size-label">Size</span>
-            <input type="range" class="range scale" min="50" max="300" step="5" aria-label="Size">
-            <button class="size-val" title="Reset to 100%" aria-label="Reset size to 100%"></button>
+        <div class="hostopts">
+          <div class="field"><span class="flabel">Size</span>
+            <div class="size">
+              <input type="range" class="range scale" min="50" max="300" step="5" aria-label="Size">
+              <button class="size-val" title="Reset to the default size" aria-label="Reset size to 100%"></button>
+            </div>
           </div>
-          <div class="spacer"></div>
+          <div class="field monitor-wrap"><span class="flabel">Monitor</span><select class="select monitor" aria-label="Monitor"></select></div>
+          <div class="field"><span class="flabel">Start hidden</span><label class="switch"><input type="checkbox" class="pw-hidden" role="switch" aria-label="Start hidden"><span></span></label></div>
+          <div class="hostadv-src" hidden>
+            <div class="field"><span class="flabel">Refresh (seconds)</span><input type="number" class="input num pw-refresh" min="30" max="600" step="10" placeholder="default" aria-label="Own refresh interval seconds"></div>
+            <div class="field"><span class="flabel">Opacity (%)</span><input type="number" class="input num pw-opacity" min="20" max="100" step="5" placeholder="default" aria-label="Own opacity percent"></div>
+            <div class="field pw-notif-l"><span class="flabel">Notifications</span><select class="select pw-notif" aria-label="Notifications"><option value="">Default</option><option value="on">On</option><option value="off">Off</option></select></div>
+            <div class="field"><span class="flabel">Show only between</span><span class="timepair"><input type="time" class="input pw-from" aria-label="Show from"><span>and</span><input type="time" class="input pw-to" aria-label="Show until"></span></div>
+            <div class="field"><span class="flabel">Power</span><select class="select pw-ac" aria-label="Power condition"><option value="">Any</option><option value="ac">Only on AC</option><option value="battery">Only on battery</option></select></div>
+          </div>
+        </div>
+        <div class="wcard-actions">
           <button class="btn small copy"><span class="ico" data-icon="plus"></span>Add another copy</button>
-          <label class="check monitor-wrap">Monitor <select class="monitor" aria-label="Monitor"></select></label>
           <button class="btn small reset"><span class="ico" data-icon="target"></span>Reset position</button>
           <button class="btn small danger removecopy"><span class="ico" data-icon="trash"></span>Remove copy</button>
           <button class="btn small danger remove"><span class="ico" data-icon="trash"></span>Remove</button>

@@ -329,7 +329,7 @@
       "name": "Pomodoro",
       "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Optional webcam timelapse of the whole session (replaces Study Time-Lapse). Survives restarts.",
       "author": "AmineChr54",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "manifestVersion": 1,
       "changelog": "Ending a session goes straight back to the start view (no Session complete screen); the timer updates in place without flicker and ignores echoes of its own saves. Timelapse: an optional collapsible setup section records a webcam timelapse for the session and renders the video when it ends. Replaces the Study Time-Lapse widget (set its interval, video length and fps here). Needs camera approval on first use.",
       "preview": "preview.png",
@@ -354,7 +354,7 @@
       "name": "Prayer Times",
       "description": "Daily prayer times with a live countdown to the next prayer, optional iqama times and Hijri date. Pick your city in the widget; times are calculated by coordinates with the Aladhan API (no key) and the method follows your country.",
       "author": "Yacine-DH",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "manifestVersion": 1,
       "preview": "preview.png",
       "hosts": [

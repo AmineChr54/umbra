@@ -26,8 +26,8 @@
       group.append(row(title, sub, `<select id="pf-${key}" aria-label="${title}"></select>`));
     group.append(row("Default opacity", "Window opacity of widgets without their own. Percent; 20 to 100.", `<input type="number" id="pf-defaultOpacity" min="20" max="100" step="5" style="width:72px" aria-label="Default opacity percent">`));
     group.append(row("Allow notifications", "Default for widgets that can show notifications; each widget can override it.", `<label class="switch"><input type="checkbox" id="pf-defaultNotifications"><span></span></label>`));
-    group.append(row("Size", "Scales every widget on top of its own size. Percent; 50 to 150.", `<span class="pf-size"><input type="range" class="range" id="pf-size" min="50" max="150" step="5" aria-label="Size of all widgets"><output id="pf-sizeVal"></output></span>`));
-    group.append(row("Default size", "Size of widgets without their own, and of new ones. Percent; 50 to 300.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Default size">`));
+    group.append(row("Scale all widgets", "Makes every widget on the desktop bigger or smaller right now, on top of its own size. 50 to 150%.", `<span class="pf-size"><input type="range" class="range" id="pf-size" min="50" max="150" step="5" aria-label="Scale all widgets"><output id="pf-sizeVal"></output></span>`));
+    group.append(row("Size of new widgets", "Starting size for widgets you add from now on and for any widget you reset to the default size. Widgets you already sized keep their size. 50 to 300%.", `<input type="number" id="pf-defaultScale" min="50" max="300" step="5" style="width:72px" aria-label="Size of new widgets">`));
     group.append(row("Interface text size", "Percent; 80 to 140. Affects widgets that size text from the design tokens.", `<input type="number" id="pf-fontScale" min="80" max="140" step="5" style="width:72px" aria-label="Interface text size">`));
     group.append(row("Window border", "The hairline around widget windows.", `<span style="display:flex;gap:10px;align-items:center"><input type="color" id="pf-borderColor" aria-label="Border color"><label class="switch"><input type="checkbox" id="pf-borderEnabled"><span></span></label></span>`));
     group.append(row("Match Windows accent", "Follows the accent color of Windows and updates when it changes. Dark accents are lightened to stay readable.", `<label class="switch"><input type="checkbox" id="pf-accentWindows"><span></span></label>`));
@@ -100,24 +100,21 @@
     set("proxy", (i) => (i.value = gen.proxy && gen.proxy !== "system" ? gen.proxy : ""));
   };
 
-  // Per-widget refresh interval and opacity, appended to a card's option fields.
+  // Per-widget host options (#282): Size, Monitor and Start hidden stay visible; refresh, opacity, notifications and
+  // the show-when rules sit in one "Advanced" section (markup in the #tpl-installed template, one row pattern for all).
   window.prefsCard = function (card, w) {
-    const fields = card.querySelector(".fields");
-    if (!fields) return;
+    const box = card.querySelector(".hostopts");
+    if (!box) return;
     const cur = () => state.settings.widgets[w.id];
     const ws = cur();
-    const box = el(`<div class="prefs-widget" style="display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:6px;align-items:center">
-      <label>Refresh (s) <input type="number" class="pw-refresh" min="30" max="600" step="10" style="width:72px" placeholder="default" aria-label="Own refresh interval seconds"></label>
-      <label>Opacity (%) <input type="number" class="pw-opacity" min="20" max="100" step="5" style="width:72px" placeholder="default" aria-label="Own opacity percent"></label>
-      <label class="pw-notif-l" hidden>Notifications <select class="pw-notif" aria-label="Notifications"><option value="">default</option><option value="on">allowed</option><option value="off">blocked</option></select></label>
-      <label><input type="checkbox" class="pw-hidden"> Start hidden</label>
-      <label>Show only from <input type="time" class="pw-from" aria-label="Show from"> to <input type="time" class="pw-to" aria-label="Show until"></label>
-      <label>Power <select class="pw-ac" aria-label="Power condition"><option value="">any</option><option value="ac">only on AC</option><option value="battery">only on battery</option></select></label></div>`);
+    const adv = box.querySelector(".hostadv-src");
+    adv.replaceWith(optionSection(w.id, "Advanced", [...adv.children], "host-advanced"));
     const r = box.querySelector(".pw-refresh"), o = box.querySelector(".pw-opacity");
     r.value = ws.refreshSeconds || "";
     o.value = ws.opacity ? Math.round(ws.opacity * 100) : "";
     const nl = box.querySelector(".pw-notif-l"), nt = box.querySelector(".pw-notif");
-    nl.hidden = !w.notifications;
+    nl.hidden = !w.notifications; // the one notifications control; only for widgets that declare the permission
+    nt.options[0].textContent = g().defaultNotifications ? "Default (on)" : "Default (off)";
     nt.value = ws.notifications === true ? "on" : ws.notifications === false ? "off" : "";
     nt.addEventListener("change", () => { cur().notifications = nt.value === "" ? null : nt.value === "on"; save(true); });
     r.addEventListener("change", () => {
@@ -146,6 +143,5 @@
       save(true);
     };
     for (const e of [from, to, ac]) e.addEventListener("change", rules);
-    fields.after(box);
   };
 })();
