@@ -47,7 +47,7 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 }
 .nav button.update, .nav button.update:hover { background: #7c3aed; color: #fff; font-weight: 600; margin-bottom: 8px; box-shadow: 0 0 14px rgba(124, 58, 237, 0.45); }
 .nav button.update:hover { background: #8b5cf6; }
-.nav button.update:disabled { opacity: 0.75; cursor: default; }
+.nav button.update:disabled, .nav button.update:disabled:hover { background: #5b21b6; box-shadow: none; cursor: default; }
 .nav button.update[hidden] { display: none; }
 .nav .count {
   margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px;

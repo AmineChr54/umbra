@@ -216,8 +216,9 @@ function renderUpdate() {
   if (u.installing && a) $("#updateText").textContent = u.ready ? "Restarting Umbra to update..." : "Downloading the update. Umbra will restart when it's done...";
   const bs = u.button || "none";
   $("#navUpdate").hidden = bs === "none";
-  $("#navUpdate").disabled = bs === "downloading";
-  $("#navUpdateText").textContent = bs === "downloading" ? (u.progress != null ? `Downloading... ${u.progress} %` : "Downloading...") : bs === "ready" ? "Restart to update" : u.portable ? "Download update" : "Update now";
+  // A disabled #updateInstall ignores click(), so the nav button must be disabled for the same window.
+  $("#navUpdate").disabled = bs === "downloading" || !!u.installing;
+  $("#navUpdateText").textContent = bs === "downloading" ? (u.progress != null ? `Downloading... ${u.progress} %` : "Downloading...") : bs === "ready" ? (u.installing ? "Restarting..." : "Restart to update") : u.portable ? "Download update" : "Update now";
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
   renderWhatsNew();
 }
