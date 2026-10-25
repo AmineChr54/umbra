@@ -66,7 +66,9 @@ public sealed class GeneralSettings
     public string Proxy { get; set; } = "system";
     /// <summary>Grid in physical pixels that widgets snap to while moved in edit mode; 0 = no grid.</summary>
     public int SnapGrid { get; set; }
-    /// <summary>Snap to screen and other widgets' edges while moving in edit mode (hold Shift to skip snapping).</summary>
+    /// <summary>"shift" (default, #271): widgets move freely and snap only while Shift is held; "always": snap unless Shift is held. Files without it get the default.</summary>
+    public string SnapMode { get; set; } = "shift";
+    /// <summary>Snap to screen and other widgets' edges while moving in edit mode (see <see cref="SnapMode"/>).</summary>
     public bool SnapEdges { get; set; } = true;
     /// <summary>Gap in logical pixels (96 DPI) that widgets keep from a neighbour when snapping next to it; 0 = touch edge to edge.</summary>
     public int SnapGap { get; set; } = 12;

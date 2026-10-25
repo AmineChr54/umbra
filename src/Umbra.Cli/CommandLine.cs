@@ -107,6 +107,7 @@ static class CommandLine
                 if (Flag(a, "--snap-grid") is string sgr) o["snapGrid"] = int.Parse(sgr, CultureInfo.InvariantCulture);
                 if (Flag(a, "--snap-edges") is string sed) o["snapEdges"] = OnOff(sed);
                 if (Flag(a, "--snap-gap") is string sgp) o["snapGap"] = int.Parse(sgp, CultureInfo.InvariantCulture);
+                if (Flag(a, "--snap-mode") is string smo) o["snapMode"] = smo;
                 if (Flag(a, "--snap") is string sna) o["snap"] = OnOff(sna);
                 if (Flag(a, "--peek-seconds") is string pk) o["peekSeconds"] = int.Parse(pk, CultureInfo.InvariantCulture);
                 if (Flag(a, "--corner-radius") is string cr) o["cornerRadius"] = cr;

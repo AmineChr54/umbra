@@ -51,7 +51,7 @@ The authoritative list is `Protocol.Commands` in `src/Umbra/Protocol.cs`, also u
 | `theme` | `id?` (no id reads) |
 | `themes` | none |
 | `install-theme`, `remove-theme` | `id` |
-| `set-general` | refreshSeconds, animations, startup, checkForUpdates, hideOnFullscreen, slowOnEnergySaver, peekSeconds, cornerRadius, animationSpeed, defaultScale, logLevel, developerMode, hardwareAcceleration, startupDelaySeconds, proxy, snapGrid, snapEdges, snapGap, snap, borderEnabled, borderColor, accent, lightText, uiFont, fontScale, reduceTransparency (all optional) |
+| `set-general` | refreshSeconds, animations, startup, checkForUpdates, hideOnFullscreen, slowOnEnergySaver, peekSeconds, cornerRadius, animationSpeed, defaultScale, logLevel, developerMode, hardwareAcceleration, startupDelaySeconds, proxy, snapGrid, snapEdges, snapGap, snap, snapMode, borderEnabled, borderColor, accent, lightText, uiFont, fontScale, reduceTransparency (all optional) |
 | `peek` | `seconds?` |
 | `hotkeys` | `action?`, `keys?`, `reset?` |
 | `check-update` | none |

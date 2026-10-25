@@ -136,6 +136,7 @@ sealed class Control(App app)
                     if (gap is < 0 or > Snap.MaxGap) throw new CommandException($"snapGap must be between 0 (touch) and {Snap.MaxGap}");
                     g.SnapGap = gap;
                 }
+                if (a["snapMode"] is JsonNode smd) g.SnapMode = Prefs.SnapMode(smd);
                 if (a["snap"] is JsonNode sn) g.SnapEnabled = Bool(sn, "snap");
                 if (a["snapGrid"] is JsonNode sg)
                 {

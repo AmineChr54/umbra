@@ -80,7 +80,7 @@ Missing one? [Build it](CONTRIBUTING.md) in an afternoon, or let an agent [write
   <tr>
     <td width="50%" valign="top">
 
-**Arrange your desktop.** Widgets are locked until you turn on **Arrange widgets** (My widgets header, tray menu or a hotkey), which gives them an outline and a corner handle. Drag to move, drag the corner or Ctrl+scroll to resize, and nudge a selected widget with the arrow keys. Snapping shows guide lines for edges, centers and gaps. Widgets zoom like a web page, so text stays sharp at any size.
+**Arrange your desktop.** Widgets are locked until you turn on **Arrange widgets** (My widgets header, tray menu or a hotkey), which gives them an outline and a corner handle. Drag to move, drag the corner or Ctrl+scroll to resize, and nudge a selected widget with the arrow keys. Hold Shift while dragging to snap, with guide lines for edges, centers and gaps (My widgets can switch to always-on snapping). Widgets zoom like a web page, so text stays sharp at any size.
 
 **Layouts and tab groups.** Save named layouts and switch between them. They are pinned to the monitors they were saved on and can switch automatically when you dock or undock. A tab group lets several widgets share one spot, one visible at a time.
 
@@ -147,7 +147,7 @@ umbractl hotkeys edit-mode Ctrl+Alt+E # global hotkeys (edit-mode, refresh-all, 
 umbractl peek [seconds]               # raise widgets above other windows for a few seconds (never takes focus), then back to the bottom
 umbractl safe-mode on                 # community widgets off, nothing deleted (also `Umbra.exe --safe`; not saved, next normal start restores)
 umbractl layouts save Work            # save positions, sizes and enabled widgets; then `layouts apply Work`, `layouts rename Work Docked`, `layouts delete Work`, `layouts`
-umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off; --snap-gap 12 = px kept between neighbouring widgets, 0 = touch; edges, centers and the gap show guide lines; --snap off = master switch, also on the edit-mode pill); hold Shift while dragging to skip snapping
+umbractl general --snap-grid 20       # edit-mode snapping grid in px (0 = off; --snap-edges off; --snap-gap 12 = px kept between neighbouring widgets, 0 = touch; edges, centers and the gap show guide lines; --snap off = master switch, also on the edit-mode pill; --snap-mode shift|always, default shift = snap only while Shift is held, always = Shift skips snapping)
 umbractl edit-mode on                 # move/resize/zoom by hand; off, or no argument to read it
 umbractl lock-all                     # lock every widget (the default; unlock-all = edit-mode on)
 umbractl general --refresh 120        # app-wide settings (also --updates off to stop the daily update check; --hide-fullscreen on hides widgets during fullscreen apps and games; --peek-seconds 1-60; --energy-saver off stops widgets slowing down 4x on Windows Energy Saver)

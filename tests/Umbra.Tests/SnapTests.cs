@@ -81,4 +81,61 @@ public class SnapTests
         Assert.Equal(new Rectangle(408, 103, 200, 100), r.Rect);
         Assert.Empty(r.Guides);
     }
+
+    [Fact]
+    public void Default_is_shift_mode_so_old_settings_files_migrate()
+    {
+        var g = System.Text.Json.JsonSerializer.Deserialize<GeneralSettings>("""{"snapEnabled":true,"snapEdges":true}""",
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+        Assert.Equal("shift", g.SnapMode);
+        Assert.False(Snap.IsAlways(g));
+    }
+
+    [Fact]
+    public void Shift_mode_snaps_only_while_shift_is_held()
+    {
+        var g = new GeneralSettings();
+        Assert.False(Snap.SnapsWhileDragging(g, shiftHeld: false));
+        Assert.True(Snap.SnapsWhileDragging(g, shiftHeld: true));
+    }
+
+    [Fact]
+    public void Always_mode_snaps_unless_shift_is_held()
+    {
+        var g = new GeneralSettings { SnapMode = "always" };
+        Assert.True(Snap.SnapsWhileDragging(g, shiftHeld: false));
+        Assert.False(Snap.SnapsWhileDragging(g, shiftHeld: true));
+    }
+
+    [Fact]
+    public void Unknown_mode_falls_back_to_shift_and_master_switch_still_wins()
+    {
+        Assert.False(Snap.IsAlways(new GeneralSettings { SnapMode = "banana" }));
+        Assert.False(Snap.SnapsWhileDragging(new GeneralSettings { SnapEnabled = false }, true));
+        Assert.False(Snap.SnapsWhileDragging(new GeneralSettings { SnapEnabled = false, SnapMode = "always" }, false));
+    }
+
+    [Fact]
+    public void Nudge_uses_the_grid_only_for_big_steps_in_both_modes()
+    {
+        var g = new GeneralSettings { SnapGrid = 20 };
+        Assert.Equal(20, Snap.NudgeGrid(g, big: true));
+        Assert.Equal(0, Snap.NudgeGrid(g, big: false));
+        g.SnapMode = "always";
+        Assert.Equal(20, Snap.NudgeGrid(g, big: true));
+        Assert.Equal(0, Snap.NudgeGrid(g, big: false));
+    }
+
+    [Fact]
+    public void Pill_text_follows_the_mode()
+    {
+        var g = new GeneralSettings();
+        Assert.Equal("Hold Shift to snap", Snap.Hint(g));
+        Assert.Equal("Snap: Shift", Snap.Label(g));
+        g.SnapMode = "always";
+        Assert.Equal("Shift skips snapping", Snap.Hint(g));
+        Assert.Equal("Snap: on", Snap.Label(g));
+        g.SnapEnabled = false;
+        Assert.Equal("Snap: off", Snap.Label(g));
+    }
 }
