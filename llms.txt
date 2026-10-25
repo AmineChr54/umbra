@@ -1,6 +1,6 @@
 # Umbra
 
-> Open-source Windows desktop widgets: small sandboxed web pages (HTML/CSS/JS in WebView2) pinned to the wallpaper by a C# .NET 10 host. Scriptable through `umbractl` and an MCP server, so AI agents can configure and build widgets.
+> Open-source Windows desktop widgets: small sandboxed web pages (HTML/CSS/JS in WebView2) pinned to the wallpaper by a C# .NET 10 host. Scriptable through `umbractl` and an MCP server, so AI agents can configure and build widgets. Windows is the only supported platform today; a Linux version (KDE Plasma 6, GNOME 46+) is in progress, tracked in issue #172, and is not usable yet.
 
 ## Docs
 
@@ -12,7 +12,8 @@
 - Package format: a `.umbrawidget` is a zip with `widget.json` at its root (`umbractl pack`); `manifestVersion` (default 1) and `minUmbraVersion` in widget.json gate older apps
 - [widget.json schema](https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json): JSON Schema for widget manifests
 - [CONTRIBUTING](https://github.com/AmineChr54/umbra/blob/main/CONTRIBUTING.md): publish a widget by pull request
-- [CLAUDE.md](https://github.com/AmineChr54/umbra/blob/main/CLAUDE.md): architecture, commands, security invariants for coding agents
+- [CLAUDE.md](https://github.com/AmineChr54/umbra/blob/main/CLAUDE.md): architecture, commands, security invariants for coding agents (including the "Linux port" section)
+- [Linux port epic #172](https://github.com/AmineChr54/umbra/issues/172): design and status of the in-progress Linux version (not shipped)
 
 ## Examples
 

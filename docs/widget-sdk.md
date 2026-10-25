@@ -374,6 +374,27 @@ start the camera; the tray menu can stop or cancel a recording.
 - No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.
 
+## Platforms
+
+Everything in this file describes Umbra on **Windows**, the only platform it runs on today. A Linux version (KDE Plasma 6,
+GNOME 46+) is in progress (epic #172); the Linux app does not exist yet, so none of the following is available or verified.
+This is what the Linux design plans, so you can write widgets that will carry over:
+
+- **Same API, same widgets.** Pages keep using `https://umbra.local/shared/umbra.js` and `window.umbra`. Never touch the host
+  bridge (`window.chrome.webview` on Windows, WebKitGTK's `webkit.messageHandlers` on Linux) yourself.
+- **`umbra.notify`** is planned through the freedesktop Notifications service (#189), with the same permission, rate limit and action buttons.
+- **`umbra.media`** is planned through MPRIS (#190), with the same `permissions.media` rules. Planned limit: album art is only read from
+  `file://` art URLs, so a player that only offers an `https://` art URL (Spotify) returns no `art`, because the host does not fetch undeclared hosts.
+- **`umbra.system`** is planned from `/proc` and `/sys/class/power_supply` (#178), in the same JSON shape.
+- **`umbra.run` / `permissions.commands`** is planned with the same rules, approvals and limits (#194). Linux details: the command runs in its
+  own process group that is killed on timeout, and in a Flatpak it would run through `flatpak-spawn --host`. The commands you declare
+  must exist on the target system, so a Windows-only program (`powershell`, `tasklist`) will not work there.
+- **`platforms` field (planned in #194, not accepted yet):** an optional `"platforms": ["windows", "linux"]` in `widget.json` (default: both) so a
+  widget that needs Windows programs can be marked Windows only. **Do not add it today:** the schema and `scripts/catalog.mjs` don't know it yet and would reject the manifest.
+- **Fonts:** `umbra.css` names Segoe UI Variable, which Linux lacks; a bundled Inter fallback is planned (#195). Keep using the tokens
+  and `.num` for tabular numbers, and don't hard-code a font by name.
+- **Hotkeys, tray and the rest of Settings** are host features, not widget APIs; their Linux differences are listed in the README.
+
 ## Develop with umbractl (or an AI agent)
 
 ```powershell
