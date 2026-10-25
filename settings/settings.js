@@ -1434,6 +1434,60 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------- welcome dialog (#241): described only, nothing here touches the user's widgets ----------
+const WELCOME = [
+  { title: "Browse and enable widgets",
+    text: "Open Browse to find widgets and install them. Installed widgets appear under Active in My widgets, and ones you turn off wait under Not enabled. Use Install more widgets there to get back to Browse.",
+    art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="14" y="16" width="64" height="100" rx="8"/><rect class="a-hot a-pulse" x="22" y="26" width="48" height="14" rx="5"/><rect class="a-dim" x="22" y="48" width="48" height="10" rx="5"/><rect class="a-dim" x="22" y="64" width="48" height="10" rx="5"/><rect class="a-box" x="92" y="16" width="134" height="100" rx="8"/><rect class="a-hot" x="102" y="26" width="52" height="38" rx="7"/><rect class="a-box" x="162" y="26" width="54" height="38" rx="7"/><rect class="a-dim" x="102" y="74" width="114" height="8" rx="4"/><rect class="a-dim" x="102" y="90" width="80" height="8" rx="4"/><circle class="a-acc a-pulse" cx="204" cy="95" r="7"/></svg>` },
+  { title: "Arrange and lock widgets",
+    text: "Widgets start locked, so they stay where they are. Turn on Arrange widgets (in My widgets or the tray menu) to drag and resize them, then press Done to lock them again. Umbra never moves your widgets by itself.",
+    art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="20" y="14" width="84" height="56" rx="8"/><g class="a-slide"><rect class="a-hot" x="72" y="30" width="84" height="56" rx="8"/></g><rect class="a-box" x="64" y="102" width="112" height="22" rx="11"/><rect class="a-acc" x="126" y="106" width="46" height="14" rx="7"/></svg>` },
+  { title: "Groups and the tray",
+    text: "Put widgets in a group to share one spot and switch between them with tabs; create one from the Groups strip in My widgets. Umbra lives in the tray: click the icon for Settings, right-click for Arrange widgets, Layouts and Safe mode.",
+    art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="30" y="10" width="130" height="80" rx="8"/><rect class="a-hot" x="38" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="78" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="118" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="38" y="42" width="114" height="8" rx="4"/><rect class="a-dim" x="38" y="58" width="80" height="8" rx="4"/><rect class="a-box" x="0" y="110" width="240" height="22"/><circle class="a-acc a-pulse" cx="214" cy="121" r="6"/><circle class="a-dim" cx="196" cy="121" r="5"/></svg>` },
+];
+let welcomeAt = 0, welcomeFrom = null;
+/** Shows welcome slide n (1-based); called by the host on first run and for captures. */
+function welcome(n) {
+  const w = $("#welcome");
+  const open = w.hidden;
+  if (open) {
+    welcomeFrom = document.activeElement;
+    const g = state && state.settings && state.settings.general;
+    document.documentElement.dataset.motion = g && (g.animations === false || g.animationSpeed === "off") ? "off" : "on";
+  }
+  welcomeAt = Math.max(0, Math.min(WELCOME.length - 1, (n || 1) - 1));
+  const s = WELCOME[welcomeAt];
+  $("#welcomeArt").innerHTML = s.art;
+  $("#welcomeStep").textContent = `Welcome to Umbra · ${welcomeAt + 1} of ${WELCOME.length}`;
+  $("#welcomeTitle").textContent = s.title;
+  $("#welcomeText").textContent = s.text;
+  $$("#welcomeDots i").forEach((d, i) => d.classList.toggle("on", i === welcomeAt));
+  $("#welcomeBack").hidden = welcomeAt === 0;
+  $("#welcomeNext").textContent = welcomeAt === WELCOME.length - 1 ? "Done" : "Next";
+  $("#welcomeSkip").hidden = welcomeAt === WELCOME.length - 1;
+  w.hidden = false;
+  if (open) $("#welcomeNext").focus();
+}
+function welcomeClose() {
+  $("#welcome").hidden = true;
+  if (welcomeFrom && welcomeFrom.focus) welcomeFrom.focus();
+  welcomeFrom = null;
+}
+$("#welcomeNext").addEventListener("click", () => (welcomeAt === WELCOME.length - 1 ? welcomeClose() : welcome(welcomeAt + 2)));
+$("#welcomeBack").addEventListener("click", () => welcome(welcomeAt));
+$("#welcomeSkip").addEventListener("click", welcomeClose);
+$("#replayTour").addEventListener("click", () => welcome(1));
+$("#welcome").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); welcomeClose(); return; }
+  if (e.key === "Tab") { // keep focus inside the dialog
+    const f = $$("#welcome button").filter((b) => !b.hidden);
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
 icons();
 labelRows();
 post({ type: "load" });
