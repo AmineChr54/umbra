@@ -1,0 +1,118 @@
+---
+import { url, download } from "../../lib/url";
+import { version, widgets } from "../../lib/data";
+---
+
+<section class="hero" id="top">
+  <canvas class="gl" aria-hidden="true"></canvas>
+  <div class="fallback" aria-hidden="true"><img src={url("favicon.png")} alt="" width="256" height="256" /></div>
+  <div class="inner wrap">
+    <div class="slot" aria-hidden="true"></div>
+    <p class="eyebrow" data-hero>Free &amp; open source &nbsp;·&nbsp; Windows 10 &amp; 11</p>
+    <h1 class="title">Desktop widgets that live on your <span class="hl">wallpaper.</span></h1>
+    <p class="lead" data-hero>Small, sharp, true-black widgets pinned under your apps. {widgets.length} of them one click away, sandboxed, scriptable, and yours to build.</p>
+    <div class="cta" data-hero>
+      <a class="btn primary magnetic" href={download}>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14" /></svg>
+        Download Umbra {version}
+      </a>
+      <a class="btn ghost magnetic" href="#story">See it in action</a>
+    </div>
+  </div>
+  <div class="cue" data-hero aria-hidden="true"><span>Scroll</span><i></i></div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+  import { SplitText } from "gsap/SplitText";
+  import { mountEclipse, type EclipseState } from "../../scripts/eclipse";
+
+  gsap.registerPlugin(ScrollTrigger, SplitText);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hero = document.querySelector<HTMLElement>(".hero")!;
+  const canvas = hero.querySelector<HTMLCanvasElement>(".gl")!;
+  const slot = hero.querySelector<HTMLElement>(".slot")!;
+
+  // Where the moon ends up: the logo's crescent (moon down-left of the disc by ~0.33 R).
+  const LOGO = -0.235;
+  const state: EclipseState = reduced
+    ? { mx: LOGO, my: LOGO, light: 1, flare: 0, boost: 0 }
+    : { mx: 1.7, my: 1.7, light: 0, flare: 0, boost: 0 };
+  let scroll = 0;
+  const intro = { mx: state.mx, my: state.my };
+
+  let eclipse: ReturnType<typeof mountEclipse> | null = null;
+  try {
+    eclipse = mountEclipse(canvas, () => {
+      const c = hero.getBoundingClientRect(), s = slot.getBoundingClientRect();
+      return { x: s.left - c.left + s.width / 2, y: s.top - c.top + s.height / 2, r: s.height * 0.32 };
+    }, state);
+  } catch {
+    hero.classList.add("no-gl");   // no WebGL: the logo image with a CSS glow stands in
+  }
+
+  if (eclipse) {
+    const e = eclipse;
+    addEventListener("resize", () => { e.resize(); if (reduced) e.render(); });
+    if (reduced) e.render();
+    else {
+      // Render only while the hero is on screen.
+      let visible = true;
+      new IntersectionObserver(([entry]) => (visible = entry.isIntersecting)).observe(hero);
+      gsap.ticker.add(() => {
+        if (!visible) return;
+        const k = 1 - gsap.parseEase("power2.inOut")(Math.min(scroll / 0.7, 1));   // scrolling pulls the moon into totality
+        state.mx = intro.mx * k; state.my = intro.my * k; state.boost = scroll;
+        e.render();
+      });
+    }
+  }
+
+  const title = hero.querySelector<HTMLElement>(".title")!;
+  if (reduced) {
+    gsap.set([title, "[data-hero]"], { opacity: 1 });
+  } else {
+    document.fonts.ready.then(() => {
+      const split = SplitText.create(title, { type: "lines", mask: "lines" });
+      gsap.set(title, { opacity: 1 });
+      const tl = gsap.timeline({ delay: 0.1 });
+      tl.to(state, { light: 1, duration: 1.0, ease: "power2.out" })
+        .to(intro, { mx: LOGO, my: LOGO, duration: 2.7, ease: "power3.inOut" }, 0.15)
+        .to(state, { flare: 1, duration: 0.22, ease: "power2.in" }, 2.0)    // third contact: the diamond ring
+        .to(state, { flare: 0, duration: 1.3, ease: "power2.out" }, 2.22)
+        .from(split.lines, { yPercent: 115, duration: 1.2, ease: "expo.out", stagger: 0.1 }, 1.75)
+        .fromTo("[data-hero]", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 1, stagger: 0.09, ease: "power3.out" }, 2.15);
+    });
+
+    ScrollTrigger.create({ trigger: hero, start: "top top", end: "bottom top", scrub: true, onUpdate: s => (scroll = s.progress) });
+    gsap.to(hero.querySelector(".inner"), {
+      yPercent: -22, opacity: 0, ease: "none",
+      scrollTrigger: { trigger: hero, start: "top top", end: "75% top", scrub: true },
+    });
+    gsap.to(canvas, { opacity: 0, ease: "power1.in", scrollTrigger: { trigger: hero, start: "55% top", end: "bottom top", scrub: true } });
+  }
+</script>
+
+<style>
+  .hero { position: relative; min-height: 100svh; display: grid; align-items: end; overflow: hidden; isolation: isolate; }
+  .gl { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; }
+  .fallback { display: none; }
+  .hero:global(.no-gl) .fallback { display: block; position: absolute; inset: 0; z-index: -1; }
+  .fallback img { position: absolute; left: 50%; top: 31%; width: min(42svh, 60vw); height: auto; translate: -50% -50%; filter: drop-shadow(0 0 60px rgba(139, 147, 255, .55)); }
+
+  .inner { padding-top: 96px; padding-bottom: clamp(56px, 9svh, 110px); text-align: center; display: flex; flex-direction: column; align-items: center; }
+  .slot { width: min(32svh, 62vw); aspect-ratio: 1; margin-bottom: clamp(4px, 2svh, 28px); flex: none; }
+  .eyebrow { font: 600 .74rem/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--text2); margin: 0 0 20px; }
+  .title { font: 680 clamp(2.6rem, 6.6vw, 6.4rem)/.96 var(--display); letter-spacing: -.045em; margin: 0 auto 24px; max-width: 16ch; text-wrap: balance; }
+  .hl { background: linear-gradient(100deg, var(--acc) 10%, var(--acc3) 60%, #fff 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { color: var(--text2); font-size: clamp(1.02rem, 1.5vw, 1.22rem); max-width: 34em; margin: 0 auto 34px; text-wrap: balance; }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+  .cue { position: absolute; left: 50%; bottom: 22px; translate: -50% 0; display: flex; flex-direction: column; align-items: center; gap: 10px; font: 500 .66rem/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; color: var(--text3); }
+  .cue i { width: 1px; height: 38px; background: linear-gradient(var(--text3), transparent); transform-origin: top; animation: cue 2.2s var(--ease) infinite; }
+  @keyframes cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
+
+  :global(.js) .title, :global(.js) [data-hero] { opacity: 0; }
+  @media (max-height: 720px) { .cue { display: none; } }
+  @media (prefers-reduced-motion: reduce) { .cue i { animation: none; } }
+</style>

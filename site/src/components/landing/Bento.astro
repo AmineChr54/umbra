@@ -1,0 +1,137 @@
+---
+// Feature grid. Each cell has a small live visual; a spotlight follows the cursor across the cell borders.
+import { url, docsHome } from "../../lib/url";
+---
+
+<section class="section" id="features" aria-labelledby="bento-title">
+  <div class="wrap">
+    <p class="kicker" data-reveal>Built for the desktop</p>
+    <h2 class="h2" id="bento-title" data-reveal>Quiet. Sharp.<br /><em>Completely yours.</em></h2>
+
+    <div class="bento">
+      <article class="cell a" data-reveal>
+        <div class="oled"><span>#000</span></div>
+        <h3>True black, truly sharp</h3>
+        <p>Opaque windows with corners drawn by Windows keep full ClearType text. On OLED the black pixels are simply off, so each card floats on your wallpaper.</p>
+      </article>
+
+      <article class="cell b" data-reveal="0.05">
+        <div class="snap" aria-hidden="true"><i class="g"></i><span class="c1"></span><span class="c2"></span></div>
+        <h3>Edit mode with snapping</h3>
+        <p>Drag, resize, zoom and nudge with the arrow keys. Guides snap to edges, centers and gaps.</p>
+      </article>
+
+      <article class="cell c" data-reveal="0.1">
+        <div class="keys" aria-hidden="true"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>E</kbd></div>
+        <h3>Hotkeys &amp; peek</h3>
+        <p>Global shortcuts for edit mode, refresh, hide, and a peek that lifts widgets above your apps for a few seconds.</p>
+      </article>
+
+      <article class="cell d" data-reveal="0.15">
+        <div class="zero" aria-hidden="true"><span class="num" data-from="100">0</span><small>bytes of telemetry</small></div>
+        <h3>Private by design</h3>
+        <p>No account, nothing phoned home. Your settings and data stay in <code>%APPDATA%\Umbra</code>.</p>
+      </article>
+
+      <article class="cell e" data-reveal>
+        <div class="chips" aria-hidden="true"><span>Work</span><span>Docked</span><span>Focus</span><span>Gaming</span></div>
+        <h3>Layouts &amp; tab groups</h3>
+        <p>Save named layouts per monitor setup and switch when you dock. Stack widgets in one spot with tab groups.</p>
+      </article>
+
+      <article class="cell f" data-reveal="0.05">
+        <div class="copies" aria-hidden="true"><span>S&amp;P 500 <b class="up">+0.33%</b></span><span>Nasdaq <b class="up">+0.61%</b></span></div>
+        <h3>Copies side by side</h3>
+        <p>Run any widget twice with its own options, position and data.</p>
+      </article>
+
+      <article class="cell g" data-reveal="0.1">
+        <div class="toast" aria-hidden="true"><img src={url("favicon.png")} alt="" width="18" height="18" /><span><b>Pomodoro</b>Focus session done. Take five.</span></div>
+        <h3>Notifications &amp; media</h3>
+        <p>With your permission, widgets send real Windows toasts or control what's playing.</p>
+      </article>
+    </div>
+    <p class="docs-link" data-reveal><a href={docsHome}>Everything Umbra can do, in the docs →</a></p>
+  </div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+  const grid = document.querySelector<HTMLElement>(".bento")!;
+
+  // Spotlight: every cell gets the cursor position in its own coordinates.
+  grid.addEventListener("pointermove", e => {
+    for (const cell of grid.querySelectorAll<HTMLElement>(".cell")) {
+      const r = cell.getBoundingClientRect();
+      cell.style.setProperty("--x", `${e.clientX - r.left}px`);
+      cell.style.setProperty("--y", `${e.clientY - r.top}px`);
+    }
+  });
+
+  gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+    const num = grid.querySelector<HTMLElement>(".zero .num")!;
+    const n = { v: Number(num.dataset.from) };
+    num.textContent = num.dataset.from!;
+    gsap.to(n, {
+      v: 0, duration: 2.2, ease: "expo.out",
+      scrollTrigger: { trigger: num, start: "top 85%", once: true },
+      onUpdate: () => (num.textContent = String(Math.round(n.v))),
+    });
+  });
+</script>
+
+<style>
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: "a a b b" "a a c d" "e e f g"; gap: 16px; margin-top: 64px; }
+  .a { grid-area: a; } .b { grid-area: b; } .c { grid-area: c; } .d { grid-area: d; } .e { grid-area: e; } .f { grid-area: f; } .g { grid-area: g; }
+  .cell { --x: -999px; --y: -999px; position: relative; display: flex; flex-direction: column; justify-content: flex-end; min-height: 250px; padding: 28px; border-radius: 22px; overflow: hidden;
+    background: radial-gradient(420px circle at var(--x) var(--y), rgba(139, 147, 255, .09), transparent 45%), var(--s1); border: 1px solid var(--line); }
+  .cell::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: radial-gradient(260px circle at var(--x) var(--y), rgba(169, 175, 255, .8), transparent 60%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+  .cell h3 { font: 650 1.22rem/1.2 var(--display); letter-spacing: -.015em; margin: 22px 0 8px; }
+  .cell p { color: var(--text2); margin: 0; font-size: .95rem; max-width: 34em; }
+  .cell code { font-size: .85em; color: var(--text); }
+
+  .oled { flex: 1; display: grid; place-items: center; min-height: 220px; border-radius: 14px; background: #000; border: 1px solid var(--line); position: relative; overflow: hidden; }
+  .oled span { font: 700 clamp(4rem, 10vw, 9rem)/1 var(--display); letter-spacing: -.06em; background: linear-gradient(180deg, #fff, #4a4d66); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .oled::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 80% 0%, rgba(139, 147, 255, .25), transparent 50%); }
+
+  .snap { position: relative; height: 110px; }
+  .snap span { position: absolute; top: 18px; width: 34%; height: 74px; border-radius: 10px; background: var(--s3); border: 1.5px solid var(--acc); }
+  .snap .c1 { left: 6%; }
+  .snap .c2 { left: 58%; animation: drag 4s var(--ease) infinite; }
+  .snap .g { position: absolute; top: 0; bottom: 0; left: calc(40% + 12px); width: 1px; background: repeating-linear-gradient(var(--acc) 0 5px, transparent 5px 9px); animation: guide 4s infinite; }
+  @keyframes drag { 0%, 15% { left: 58%; } 45%, 70% { left: calc(40% + 12px); } 100% { left: 58%; } }
+  @keyframes guide { 0%, 38% { opacity: 0; } 45%, 65% { opacity: 1; } 72%, 100% { opacity: 0; } }
+
+  .keys { display: flex; gap: 8px; }
+  .keys kbd { padding: 10px 14px; border-radius: 10px; font: 600 .9rem/1 var(--body); background: linear-gradient(#2a2c36, #1a1b22); border: 1px solid var(--line2); box-shadow: 0 4px 0 #101116; animation: press 3s infinite; }
+  .keys kbd:nth-child(2) { animation-delay: .08s; } .keys kbd:nth-child(3) { animation-delay: .16s; }
+  @keyframes press { 0%, 70%, 100% { transform: none; box-shadow: 0 4px 0 #101116; } 76%, 84% { transform: translateY(3px); box-shadow: 0 1px 0 #101116; color: var(--acc2); } }
+
+  .zero { display: flex; align-items: baseline; gap: 10px; }
+  .zero .num { font: 700 4.6rem/1 var(--display); letter-spacing: -.05em; color: var(--text); font-variant-numeric: tabular-nums; }
+  .zero small { color: var(--text3); font-size: .85rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line2); color: var(--text2); font-size: .88rem; animation: chip 6s infinite; }
+  .chips span:nth-child(2) { animation-delay: 1.5s; } .chips span:nth-child(3) { animation-delay: 3s; } .chips span:nth-child(4) { animation-delay: 4.5s; }
+  @keyframes chip { 0%, 25% { background: var(--accs); border-color: rgba(139, 147, 255, .5); color: var(--text); } 26%, 100% { background: transparent; } }
+
+  .copies { display: grid; gap: 8px; }
+  .copies span { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: #000; border: 1px solid var(--line); font-size: .86rem; }
+  .up { color: var(--ok); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .toast { display: flex; gap: 10px; padding: 12px; border-radius: 12px; background: #1c1d24; border: 1px solid var(--line2); font-size: .8rem; color: var(--text2); box-shadow: 0 14px 30px rgba(0, 0, 0, .5); animation: toast 5s var(--ease) infinite; }
+  .toast b { display: block; color: var(--text); font-size: .84rem; }
+  @keyframes toast { 0% { transform: translateX(110%); opacity: 0; } 12%, 80% { transform: none; opacity: 1; } 92%, 100% { transform: translateX(110%); opacity: 0; } }
+
+  .docs-link { margin: 40px 0 0; }
+
+  @media (max-width: 980px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "a a" "b b" "c d" "e e" "f g"; } }
+  @media (max-width: 560px) { .bento { grid-template-columns: minmax(0, 1fr); grid-template-areas: "a" "b" "c" "d" "e" "f" "g"; } .cell { min-height: 0; } }
+  @media (prefers-reduced-motion: reduce) { .snap .c2, .snap .g, .keys kbd, .chips span, .toast { animation: none; } }
+</style>

@@ -1,0 +1,92 @@
+---
+// Live theme switcher: the real tokens from themes/index.json recolor a mini desktop. Umbra Black is the built-in default.
+import { themes } from "../../lib/data";
+import { url } from "../../lib/url";
+
+const all = [{ id: "umbra-black", name: "Umbra Black", tokens: {} as Record<string, string> }, ...themes];
+const css = (t: Record<string, string>) => Object.entries(t).map(([k, v]) => `${k}:${v}`).join(";");
+---
+
+<section class="section themes" aria-labelledby="th-title">
+  <div class="wrap grid">
+    <div>
+      <p class="kicker" data-reveal>Themes</p>
+      <h2 class="h2" id="th-title" data-reveal>Repaint everything <em>in one click.</em></h2>
+      <p class="sub" data-reveal="0.05">Themes recolor every widget at once, live, from <b>Settings → Themes</b>. They're plain data with no code, and publishing one is a single <code>theme.json</code>.</p>
+      <div class="picker" role="radiogroup" aria-label="Theme" data-reveal="0.1">
+        {all.map((t, i) => (
+          <button type="button" role="radio" aria-checked={i === 0} data-style={css(t.tokens)}>
+            <i style={css(t.tokens)}><b></b></i>{t.name}
+          </button>
+        ))}
+      </div>
+      <a class="more" href={url("docs/themes/build-a-theme/")} data-reveal>Build a theme →</a>
+    </div>
+
+    <div class="desk" data-reveal="0.1">
+      <div class="mini focus">
+        <div class="top"><span>Focus</span><b>24:59</b></div>
+        <div class="bar"><i></i></div>
+        <div class="btns"><span class="primary">Pause</span><span>Skip</span></div>
+      </div>
+      <div class="mini todo">
+        <div class="top"><span>My Day</span><small>2 of 6</small></div>
+        <div class="row"><s></s>Review lecture notes</div>
+        <div class="row"><s></s>Gym</div>
+        <div class="row dim"><s class="done"></s>Water the plants</div>
+      </div>
+      <div class="mini chart">
+        <div class="top"><span>S&amp;P 500</span><small>Closed</small></div>
+        <div class="price">7,744.06</div>
+        <svg viewBox="0 0 200 50" preserveAspectRatio="none" aria-hidden="true"><path d="M0 40 C20 44 30 22 50 26 S80 34 100 20 S140 10 160 16 S190 8 200 6 L200 50 L0 50Z" class="area" /><path d="M0 40 C20 44 30 22 50 26 S80 34 100 20 S140 10 160 16 S190 8 200 6" class="line" /></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const sec = document.querySelector<HTMLElement>(".themes")!;
+  const desk = sec.querySelector<HTMLElement>(".desk")!;
+  const buttons = [...sec.querySelectorAll<HTMLButtonElement>(".picker button")];
+  for (const b of buttons) {
+    b.addEventListener("click", () => {
+      for (const o of buttons) o.setAttribute("aria-checked", String(o === b));
+      desk.style.cssText = b.dataset.style ?? "";
+      sec.style.setProperty("--glow", getComputedStyle(desk).getPropertyValue("--accent") || "#8b93ff");
+    });
+  }
+</script>
+
+<style>
+  .grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr); gap: clamp(40px, 6vw, 96px); align-items: center; }
+  .picker { display: flex; flex-wrap: wrap; gap: 10px; margin: 34px 0 30px; }
+  .picker button { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 999px; font: 500 .94rem/1 var(--body); color: var(--text2); background: var(--s1); border: 1px solid var(--line2); cursor: pointer; transition: border-color .25s, color .25s, background .25s; }
+  .picker button:hover { color: var(--text); border-color: rgba(255, 255, 255, .28); }
+  .picker button[aria-checked="true"] { color: var(--text); background: var(--accs); border-color: rgba(139, 147, 255, .5); }
+  .picker i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-1, #0a0a0c); border: 1px solid var(--line-strong, rgba(255, 255, 255, .12)); }
+  .picker b { width: 10px; height: 10px; border-radius: 50%; background: var(--accent, #8b93ff); }
+  code { font-size: .88em; color: var(--text); }
+
+  .desk { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: clamp(18px, 3vw, 36px); border-radius: 26px; background: radial-gradient(70% 80% at 80% 10%, color-mix(in srgb, var(--accent, #8b93ff) 35%, transparent), transparent 70%), radial-gradient(60% 70% at 0% 100%, color-mix(in srgb, var(--accent-strong, #8b93ff) 14%, transparent), transparent 70%), #05060b; border: 1px solid var(--line2); transition: background .6s; }
+  .mini { background: var(--surface-1, #0a0a0c); border: 1px solid var(--line-strong, rgba(255, 255, 255, .12)); border-radius: var(--radius-l, 14px); padding: 16px 18px; color: var(--text, #f4f5f7); transition: background .5s, border-color .5s, border-radius .5s; box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .7); }
+  .focus { grid-row: span 1; } .chart { grid-column: span 2; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .84rem; color: var(--text-2, #a3a7b1); transition: color .5s; }
+  .top b { font: 600 1.9rem/1 var(--display); letter-spacing: -.03em; color: var(--text, #f4f5f7); font-variant-numeric: tabular-nums; }
+  .top small { color: var(--text-3, #6b707b); }
+  .bar { height: 5px; border-radius: 5px; background: var(--surface-3, #17171c); margin: 14px 0; transition: background .5s; }
+  .bar i { display: block; width: 62%; height: 100%; border-radius: 5px; background: var(--accent, #8b93ff); transition: background .5s; }
+  .btns { display: flex; gap: 8px; font-size: .8rem; }
+  .btns span { padding: 6px 12px; border-radius: var(--radius-s, 8px); background: var(--surface-3, #17171c); color: var(--text-2, #a3a7b1); transition: background .5s, color .5s; }
+  .btns .primary { background: var(--accent, #8b93ff); color: #07071a; }
+  .todo .top { margin-bottom: 8px; }
+  .row { display: flex; align-items: center; gap: 10px; font-size: .86rem; padding: 7px 8px; border-radius: var(--radius-s, 8px); background: var(--surface-2, #111114); margin-top: 6px; transition: background .5s; }
+  .row.dim { color: var(--text-3, #6b707b); text-decoration: line-through; background: transparent; }
+  .row s { width: 12px; height: 12px; border-radius: 50%; border: 1.6px solid var(--accent, #8b93ff); flex: none; text-decoration: none; transition: border-color .5s; }
+  .row s.done { background: var(--accent, #8b93ff); }
+  .price { font: 600 2rem/1.2 var(--display); letter-spacing: -.03em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .chart svg { display: block; width: 100%; height: 64px; }
+  .chart .line { fill: none; stroke: var(--accent, #8b93ff); stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke .5s; }
+  .chart .area { fill: var(--accent-soft, rgba(139, 147, 255, .14)); transition: fill .5s; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 480px) { .desk { grid-template-columns: minmax(0, 1fr); } .chart { grid-column: auto; } }
+</style>
