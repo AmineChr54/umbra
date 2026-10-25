@@ -1,7 +1,7 @@
 namespace Umbra;
 
 /// <summary>
-/// The host-drawn "Editing widgets · Snap: on · Done" pill shown at the top centre of a monitor while edit mode is on.
+/// The host-drawn "Editing widgets · Snap: Shift · Done" pill shown at the top centre of a monitor while edit mode is on.
 /// Like a widget it is owned by Progman, never activates and sits just above the widgets and below normal windows.
 /// It is its own window (no WebView), so no widget can draw into it and <c>umbractl capture</c> never includes it.
 /// </summary>
@@ -80,8 +80,9 @@ sealed class EditPill : Form
         base.WndProc(ref m);
     }
 
-    string SnapText => $"Snap: {(Snap.IsActive(_app.Settings.General) ? "on" : "off")}";
-    const string Title = "Editing widgets", Hint = "Shift skips snapping", Done = "Done";
+    string SnapText => Snap.Label(_app.Settings.General);
+    string Hint => Snap.Hint(_app.Settings.General);
+    const string Title = "Editing widgets", Done = "Done";
 
     /// <summary>Re-reads the snap state (the label may have changed from the CLI or Settings).</summary>
     public void RefreshState() { if (IsHandleCreated) Relayout(); }

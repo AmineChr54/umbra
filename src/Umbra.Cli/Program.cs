@@ -98,7 +98,7 @@ static void PrintHelp()
                   [--corner-radius default|sharp|round] [--animation-speed normal|calm|off] [--size 0.5-1.5|150%] [--default-scale 0.5-3] [--default-opacity 0.2-1] [--default-notifications on|off]
                   [--log-level errors|normal|verbose] [--developer-mode on|off] [--hardware-acceleration on|off]
                   [--startup-delay 0-300] [--proxy system|none|https://host:port]
-                  [--snap on|off] [--snap-grid 0-200] [--snap-edges on|off] [--snap-gap 0-100]
+                  [--snap on|off] [--snap-mode shift|always] [--snap-grid 0-200] [--snap-edges on|off] [--snap-gap 0-100]
           check-update                   look for a newer Umbra on GitHub (install it from the tray or Settings > About)
           reset-position <id>            back to the default position
           add-instance <id>              run another copy of a widget (own options, position, data); ids look like sp500#2

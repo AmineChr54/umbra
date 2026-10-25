@@ -990,6 +990,7 @@ function renderLayouts() {
   }
   icons(list);
 }
+$("#snapMode").addEventListener("change", (e) => { state.settings.general.snapMode = e.target.value; save(true); });
 $("#autoLayouts").addEventListener("change", (e) => {
   state.settings.general.autoSwitchLayouts = e.target.checked;
   save(true);
@@ -1287,6 +1288,7 @@ bridge && bridge.addEventListener("message", (e) => {
       if (themes) renderThemes();
       renderUpdate();
       showArrange(!!m.editMode);
+      $("#snapMode").value = m.settings.general.snapMode === "always" ? "always" : "shift";
       $("#safeBanner").hidden = !m.safeMode;
       // Same for the layout names: don't rebuild while one is being renamed.
       // Only a layout name being edited blocks the redraw; a clicked button (Apply, Pin, Delete) must see the new state.

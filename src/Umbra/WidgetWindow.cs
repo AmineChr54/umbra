@@ -130,11 +130,11 @@ sealed class WidgetWindow : Form
         base.WndProc(ref m);
     }
 
-    /// <summary>WM_MOVING in edit mode: snap to the grid, edges, centers and an even gap to neighbours unless Shift is held, and draw guides for what it snapped to.</summary>
+    /// <summary>WM_MOVING in edit mode: snap to the grid, edges, centers and an even gap to neighbours while Shift is held (or unless it is, in "always" mode), and draw guides for what it snapped to.</summary>
     unsafe void SnapMove(IntPtr lParam)
     {
         var g = _app.Settings.General;
-        if (!Snap.IsActive(g) || (ModifierKeys & Keys.Shift) != 0)
+        if (!Snap.SnapsWhileDragging(g, (ModifierKeys & Keys.Shift) != 0))
         {
             _app.ShowGuides(Array.Empty<Snap.Guide>(), DeviceDpi);
             return;
@@ -746,8 +746,8 @@ sealed class WidgetWindow : Form
         if (Native.GetForegroundWindow() != Handle || !IsKeyDown(vk)) return;
 
         var general = _app.Settings.General;
-        var grid = Snap.IsActive(general) ? general.SnapGrid : 0;
         bool big = IsKeyDown(Native.VK_SHIFT);
+        var grid = Snap.NudgeGrid(general, big);
         var to = new Point(
             sx == 0 ? Left : WidgetGeometry.NudgeTo(Left, sx, big, grid),
             sy == 0 ? Top : WidgetGeometry.NudgeTo(Top, sy, big, grid));

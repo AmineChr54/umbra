@@ -77,6 +77,7 @@ sidebar: { order: 2 }
 | `--startup-delay` | `0`–`300` seconds |
 | `--proxy` | `system`, `none` or `https://host:port` (needs a restart) |
 | `--snap` | `on` or `off` (master switch) |
+| `--snap-mode` | `shift` (default: snap only while Shift is held) or `always` (Shift skips snapping) |
 | `--snap-grid` | `0`–`200` px (`0` = off) |
 | `--snap-edges` | `on` or `off` |
 | `--snap-gap` | `0`–`100` px kept between neighbours (`0` = touch) |

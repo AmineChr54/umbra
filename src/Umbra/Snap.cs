@@ -21,6 +21,24 @@ public static class Snap
     /// <summary>Whether moving a widget snaps at all: the master switch is on and a grid or edge snapping is configured.</summary>
     public static bool IsActive(GeneralSettings g) => g.SnapEnabled && (g.SnapGrid > 0 || g.SnapEdges);
 
+    /// <summary>The accepted <see cref="GeneralSettings.SnapMode"/> values; the first is the default.</summary>
+    public static readonly string[] Modes = { "shift", "always" };
+
+    /// <summary>True when snapping is on in "always" mode (Shift skips); anything else, including unknown text, is the default "shift" mode.</summary>
+    public static bool IsAlways(GeneralSettings g) => string.Equals(g.SnapMode?.Trim(), "always", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Whether a drag snaps right now: snapping is configured and Shift is held ("shift" mode) or not held ("always" mode).</summary>
+    public static bool SnapsWhileDragging(GeneralSettings g, bool shiftHeld) => IsActive(g) && (IsAlways(g) ? !shiftHeld : shiftHeld);
+
+    /// <summary>Grid for an arrow-key nudge: Shift (a big step) uses it when snapping is configured; in "always" mode a big step uses it too, as before. Small steps never do.</summary>
+    public static int NudgeGrid(GeneralSettings g, bool big) => IsActive(g) && (big || IsAlways(g)) ? g.SnapGrid : 0;
+
+    /// <summary>Pill hint for the current mode.</summary>
+    public static string Hint(GeneralSettings g) => IsAlways(g) ? "Shift skips snapping" : "Hold Shift to snap";
+
+    /// <summary>Pill chip text: on/off in "always" mode, "Shift" or "off" in "shift" mode.</summary>
+    public static string Label(GeneralSettings g) => IsActive(g) ? (IsAlways(g) ? "Snap: on" : "Snap: Shift") : "Snap: off";
+
     /// <summary>
     /// Flips snapping on or off (the edit-mode pill). Turning it on when the grid and edges are both off would change
     /// nothing, so edge snapping is switched on too. Returns the new state.

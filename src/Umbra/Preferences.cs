@@ -386,6 +386,9 @@ static class Prefs
         return TimeSpan.TryParseExact(s, "hh\\:mm", null, out var t) ? t.ToString("hh\\:mm") : throw new Control.CommandException($"\"{name}\" must be a time like 08:30");
     }
 
+    /// <summary>"shift" or "always" (see <see cref="Snap.Modes"/>); throws <see cref="Control.CommandException"/> otherwise.</summary>
+    public static string SnapMode(JsonNode n) => OneOf(n, "snapMode", Snap.Modes);
+
     static string OneOf(JsonNode n, string name, string[] allowed)
     {
         var s = n.GetValueKind() == JsonValueKind.String ? n.GetValue<string>().Trim().ToLowerInvariant() : "";

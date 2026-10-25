@@ -15,7 +15,7 @@ Turn edit mode on from the tray menu, from **My widgets**, with a [hotkey](/umbr
 | Zoom | Hold <kbd>Ctrl</kbd> and scroll over the widget |
 | Select | Click it (stronger outline); it also takes the keyboard |
 | Nudge | Arrow keys: 1 px, or 10 px (one grid step when snapping is on) with <kbd>Shift</kbd> |
-| Skip snapping | Hold <kbd>Shift</kbd> while dragging |
+| Snap | Hold <kbd>Shift</kbd> while dragging (default); or set `--snap-mode always` or My widgets > Snapping so widgets always snap and Shift skips it |
 | Leave | **Done** on the pill, or <kbd>Esc</kbd> on a clicked widget |
 
 A small **Editing widgets · Snap · Done** pill is drawn at the top of each monitor that has widgets. It has the snap switch and the **Done** button. Edit mode is off again after a restart.
@@ -33,6 +33,7 @@ umbractl general --snap-grid 20      # grid in px (0 = off)
 umbractl general --snap-edges on     # snap to other widgets' edges and centers
 umbractl general --snap-gap 12       # px kept between neighbours (0 = touch)
 umbractl general --snap off          # master switch (also on the edit-mode pill)
+umbractl general --snap-mode always  # shift (default) = snap only while Shift is held; always = Shift skips snapping
 ```
 
 ## Locking

@@ -139,6 +139,18 @@
             <label class="switch"><input type="checkbox" id="editMode" aria-label="Arrange widgets: unlock to move and resize"><span></span></label>
           </div>
         </header>
+        <div class="group">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Snapping while arranging</div>
+              <div class="row-sub">Hold Shift to snap (default): widgets move freely and snap to edges, centers and the grid only while Shift is held. Always snap: they snap all the time and Shift skips it. Grid and gap are set with umbractl.</div>
+            </div>
+            <select id="snapMode" aria-label="Snapping while arranging">
+              <option value="shift">Hold Shift to snap</option>
+              <option value="always">Always snap (Shift skips)</option>
+            </select>
+          </div>
+        </div>
         <div class="gstrip" id="groupStrip" role="region" aria-label="Tab groups">
           <div class="gstrip-main">
             <span class="gstrip-title" title="Widgets in a group share one spot on the desktop and show one at a time. Switch tabs from the strip that appears when you hover the widget, or from its right-click menu.">Groups</span>
