@@ -1,0 +1,198 @@
+---
+// Pinned scroll story on a mock desktop: widgets land, apps cover them, Win+D clears the apps, edit mode snaps a widget.
+// Positions are percentages of a 1280x800 desktop with widgets at their real 1x size (previews are 2x captures).
+import { url } from "../../lib/url";
+import { byId } from "../../lib/data";
+
+const place = [
+  { id: "clock", left: 2.2, top: 3.5 },
+  { id: "weather", left: 2.2, top: 22.5 },
+  { id: "now-playing", left: 2.2, top: 46 },
+  { id: "sp500", right: 2.2, top: 3.5 },
+  { id: "todo", right: 2.2, top: 31 },
+].flatMap(p => {
+  const w = byId(p.id);
+  return w?.previewSize ? [{ ...p, name: w.name, ...w.previewSize }] : [];
+});
+const pos = (p: (typeof place)[number]) =>
+  `${p.left !== undefined ? `left:${p.left}%` : `right:${p.right}%`};top:${p.top}%;width:${(p.w / 2 / 1280) * 100}%`;
+
+const steps = [
+  ["Pinned to your wallpaper", "Widgets live on the desktop itself. Not in a sidebar, not in a gadget panel."],
+  ["Always under your apps", "Open anything. Widgets stay at the bottom of the stack and never steal focus while you type."],
+  ["Still there after Win+D", "Show the desktop and your widgets are right where you left them."],
+  ["Arrange it your way", "Edit mode: drag, snap, resize and zoom. Lock everything when you're done."],
+];
+---
+
+<section class="story" id="story" aria-label="How Umbra sits on your desktop">
+  <div class="stage wrap">
+    <div class="captions">
+      <p class="kicker">On your desktop</p>
+      <ol>
+        {steps.map(([t, d], i) => (
+          <li class="cap" data-cap={i}>
+            <span class="n">0{i + 1}</span>
+            <h3>{t}</h3>
+            <p>{d}</p>
+          </li>
+        ))}
+      </ol>
+      <div class="ticks" aria-hidden="true">{steps.map(() => <span><i /></span>)}</div>
+    </div>
+
+    <div class="monitor" aria-hidden="true">
+      <div class="screen">
+        <div class="wall"></div>
+        {place.map(p => (
+          <div class={`w w-${p.id}`} style={pos(p)}>
+            <img src={url(`previews/${p.id}.png`)} alt="" width={p.w / 2} height={p.h / 2} loading="lazy" />
+            <span class="outline"><i /></span>
+          </div>
+        ))}
+        <div class="guide"></div>
+
+        <div class="win editor">
+          <div class="tb"><span>main.js · my-widget</span><b>─</b><b>▢</b><b>✕</b></div>
+          <div class="code">
+            {[62, 48, 74, 30, 55, 68, 40, 58, 26, 64, 44].map((w, i) => <i style={`width:${w}%;--d:${i % 4}`} />)}
+            <i class="caret" />
+          </div>
+        </div>
+        <div class="win browser">
+          <div class="tb"><span>umbra · widget catalog</span><b>─</b><b>▢</b><b>✕</b></div>
+          <div class="addr"><i></i></div>
+          <div class="cards">{Array.from({ length: 6 }, () => <i />)}</div>
+        </div>
+
+        <div class="keys"><kbd>⊞ Win</kbd><span>+</span><kbd>D</kbd></div>
+        <div class="pill">Editing widgets <span class="sep"></span> Snap <span class="sw"></span> <span class="done">Done</span></div>
+
+        <div class="taskbar">
+          <span class="start"><i></i><i></i><i></i><i></i></span><span class="search"></span><span class="app"></span><span class="app"></span><span class="app"></span>
+          <span class="tray"><img src={url("favicon.png")} alt="" width="14" height="14" /> 17:42</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+  const story = document.querySelector<HTMLElement>(".story")!;
+  const q = gsap.utils.selector(story);
+
+  gsap.matchMedia().add("(min-width: 900px) and (prefers-reduced-motion: no-preference)", () => {
+    story.classList.add("pinned");
+    const caps = q(".cap"), ticks = q(".ticks i");
+    gsap.set(caps.slice(1), { opacity: 0, y: 24 });
+    gsap.set(q(".win"), { opacity: 0, y: 70, scale: 0.97 });
+
+    const tl = gsap.timeline({
+      defaults: { ease: "power3.out" },
+      scrollTrigger: { trigger: story, start: "top top", end: "+=420%", pin: true, scrub: 0.8 },
+    });
+    const caption = (i: number, at: number) => tl
+      .to(caps[i - 1], { opacity: 0, y: -24, duration: 0.4, ease: "power2.in" }, at)
+      .to(caps[i], { opacity: 1, y: 0, duration: 0.5 }, at + 0.35)
+      .to(ticks[i], { scaleX: 1, duration: 0.6, ease: "none" }, at);
+
+    // 1: widgets land
+    tl.to(ticks[0], { scaleX: 1, duration: 0.6, ease: "none" }, 0)
+      .from(q(".w"), { opacity: 0, y: -40, scale: 0.92, filter: "blur(8px)", duration: 0.9, stagger: 0.16 }, 0.1);
+    // 2: apps open over them
+    caption(1, 1.6);
+    tl.to(q(".win"), { opacity: 1, y: 0, scale: 1, duration: 0.9, stagger: 0.25 }, 1.8);
+    // 3: Win+D
+    caption(2, 3.2);
+    tl.fromTo(q(".keys"), { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.4 }, 3.5)
+      .to(q(".keys kbd"), { y: 5, boxShadow: "0 1px 0 #2a2c38", duration: 0.12, ease: "power1.in" }, 4.0)
+      .to(q(".keys kbd"), { y: 0, boxShadow: "0 6px 0 #2a2c38", duration: 0.2 }, 4.15)
+      .to(q(".win"), { opacity: 0, scale: 0.06, y: "60%", transformOrigin: "50% 100%", duration: 0.6, stagger: 0.06, ease: "power3.in" }, 4.05)
+      .to(q(".w"), { filter: "brightness(1.25)", duration: 0.2, yoyo: true, repeat: 1 }, 4.5)
+      .to(q(".keys"), { opacity: 0, duration: 0.4 }, 4.8);
+    // 4: edit mode, one widget dragged and snapped
+    caption(3, 5.3);
+    tl.fromTo(q(".pill"), { opacity: 0, y: -30 }, { opacity: 1, y: 0, duration: 0.5 }, 5.5)
+      .to(q(".outline"), { opacity: 1, duration: 0.4, stagger: 0.05 }, 5.6)
+      .to(q(".w-weather"), { xPercent: 26, yPercent: 8, duration: 0.7, ease: "power2.inOut" }, 6.1)
+      .to(q(".guide"), { opacity: 1, duration: 0.2 }, 6.6)
+      .to(q(".w-weather"), { xPercent: 0, yPercent: 0, duration: 0.5, ease: "back.out(2)" }, 6.9)
+      .to(q(".guide"), { opacity: 0, duration: 0.3 }, 7.3)
+      .to({}, { duration: 0.6 });   // hold the final frame a moment before unpinning
+
+    return () => story.classList.remove("pinned");
+  });
+</script>
+
+<style>
+  .story { position: relative; padding: clamp(80px, 10vw, 140px) 0; }
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .story:global(.pinned) { padding: 0; }
+  .story:global(.pinned) .stage { height: 100svh; grid-template-columns: minmax(260px, 0.8fr) minmax(0, 2fr); align-items: center; gap: clamp(32px, 4vw, 64px); padding-top: 68px; }
+
+  /* Captions: a list when static, stacked and crossfaded when pinned. */
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
+  .story:global(.pinned) ol { grid-template-areas: "c"; }
+  .story:global(.pinned) .cap { grid-area: c; }
+  .cap .n { font: 600 .8rem/1 var(--mono); color: var(--acc2); }
+  .cap h3 { font: 650 clamp(1.7rem, 2.6vw, 2.6rem)/1.05 var(--display); letter-spacing: -.03em; margin: 12px 0 12px; text-wrap: balance; }
+  .cap p { color: var(--text2); margin: 0; font-size: 1.05rem; max-width: 26em; }
+  .ticks { display: none; gap: 6px; margin-top: 36px; }
+  .story:global(.pinned) .ticks { display: flex; }
+  .ticks span { flex: 1; height: 2px; background: var(--line2); border-radius: 2px; overflow: hidden; }
+  .ticks i { display: block; height: 100%; background: var(--acc); transform: scaleX(0); transform-origin: left; }
+
+  /* The monitor */
+  .monitor { position: relative; width: 100%; max-width: calc((100svh - 150px) * 1.6); justify-self: center; padding: 10px; border-radius: 22px; background: linear-gradient(#1b1c22, #0c0c10); border: 1px solid var(--line2); box-shadow: 0 50px 140px -40px rgba(139, 147, 255, .35), 0 0 0 1px #000; }
+  .screen { position: relative; aspect-ratio: 16 / 10; border-radius: 13px; overflow: hidden; container-type: inline-size; background: #05060c; }
+  .wall { position: absolute; inset: 0;
+    background:
+      radial-gradient(60% 70% at 78% 18%, rgba(139, 147, 255, .55), transparent 60%),
+      radial-gradient(55% 60% at 12% 95%, rgba(46, 140, 120, .45), transparent 60%),
+      radial-gradient(40% 50% at 45% 55%, rgba(80, 40, 140, .35), transparent 70%),
+      linear-gradient(160deg, #11132a, #06070f 70%); }
+  .wall::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, .45)); }
+
+  .w { position: absolute; border-radius: 1.1cqw; box-shadow: 0 1.5cqw 3cqw rgba(0, 0, 0, .55); }
+  .w img { display: block; width: 100%; height: auto; border-radius: inherit; border: 1px solid rgba(255, 255, 255, .1); }
+  .outline { position: absolute; inset: -4px; border: 1.5px solid var(--acc); border-radius: 1.4cqw; opacity: 0; box-shadow: 0 0 0 4px rgba(139, 147, 255, .15); }
+  .outline i { position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; border-radius: 3px; background: var(--acc); }
+  .guide { position: absolute; top: 0; bottom: 6%; left: 24.6%; width: 1px; background: repeating-linear-gradient(var(--acc) 0 6px, transparent 6px 10px); opacity: 0; }
+
+  .win { position: absolute; border-radius: 1cqw; overflow: hidden; background: #1f2028; border: 1px solid rgba(255, 255, 255, .12); box-shadow: 0 3cqw 6cqw rgba(0, 0, 0, .6); opacity: 0; }
+  .editor { left: 15%; top: 9%; width: 50%; height: 63%; background: #16171d; }
+  .browser { left: 31%; top: 24%; width: 45%; height: 60%; background: #f3f4f8; }
+  .tb { display: flex; align-items: center; gap: 1.6cqw; height: 4.4cqw; padding: 0 0 0 1.4cqw; font-size: 1.1cqw; color: #9a9db0; background: rgba(255, 255, 255, .04); }
+  .browser .tb { background: #e4e6ee; color: #555b6e; }
+  .tb span { flex: 1; white-space: nowrap; overflow: hidden; }
+  .tb b { font-weight: 400; width: 3.4cqw; text-align: center; }
+  .code { padding: 2cqw 2.4cqw; display: grid; gap: 1.15cqw; }
+  .code i { height: 0.9cqw; border-radius: 1cqw; background: hsl(calc(230 + var(--d) * 40) 60% 70% / .55); }
+  .code .caret { width: 2px; height: 1.6cqw; border-radius: 0; background: #fff; animation: blink 1s steps(2) infinite; }
+  .addr { margin: 1.2cqw; height: 2.8cqw; border-radius: 2cqw; background: #fff; border: 1px solid #d6d8e2; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2cqw; padding: 0 1.2cqw; }
+  .cards i { aspect-ratio: 4 / 3; border-radius: 0.8cqw; background: linear-gradient(#000 60%, #fff 60%); border: 1px solid #d6d8e2; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .keys { position: absolute; left: 50%; top: 42%; translate: -50% -50%; display: flex; align-items: center; gap: 1.4cqw; color: var(--text2); font-size: 2.6cqw; opacity: 0; }
+  .keys kbd { display: inline-block; padding: 1.4cqw 2.2cqw; border-radius: 1.2cqw; font: 600 2.4cqw/1 var(--body); color: #fff; background: linear-gradient(#3a3c48, #24252e); border: 1px solid rgba(255, 255, 255, .15); box-shadow: 0 6px 0 #2a2c38; }
+  .pill { position: absolute; left: 50%; top: 2.4%; translate: -50% 0; display: flex; align-items: center; gap: 1cqw; padding: 0.9cqw 1.6cqw; border-radius: 2cqw; font-size: 1.15cqw; color: #e8e9f2; background: rgba(20, 20, 26, .92); border: 1px solid rgba(255, 255, 255, .12); opacity: 0; white-space: nowrap; }
+  .pill .sep { width: 1px; height: 1.4cqw; background: rgba(255, 255, 255, .2); }
+  .pill .sw { width: 2.6cqw; height: 1.4cqw; border-radius: 1cqw; background: var(--acc); position: relative; }
+  .pill .sw::after { content: ""; position: absolute; right: 0.2cqw; top: 0.2cqw; width: 1cqw; height: 1cqw; border-radius: 50%; background: #fff; }
+  .pill .done { padding: 0.4cqw 1.1cqw; border-radius: 1cqw; background: rgba(255, 255, 255, .1); }
+
+  .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 6%; display: flex; align-items: center; justify-content: center; gap: 1.2cqw; background: rgba(18, 18, 26, .82); backdrop-filter: blur(10px); border-top: 1px solid rgba(255, 255, 255, .06); }
+  .start { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25cqw; width: 1.9cqw; }
+  .start i { aspect-ratio: 1; background: #6ea8ff; border-radius: 1px; }
+  .search { width: 14cqw; height: 2.5cqw; border-radius: 2cqw; background: rgba(255, 255, 255, .08); }
+  .app { width: 2.4cqw; height: 2.4cqw; border-radius: 0.6cqw; background: rgba(255, 255, 255, .12); }
+  .tray { position: absolute; right: 1.6cqw; display: flex; align-items: center; gap: 0.8cqw; font-size: 1.1cqw; color: #c9cbd6; }
+  .tray img { width: 1.4cqw; height: 1.4cqw; }
+
+  @media (prefers-reduced-motion: reduce) { .code .caret { animation: none; } }
+</style>

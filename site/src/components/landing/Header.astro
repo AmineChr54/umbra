@@ -1,0 +1,33 @@
+---
+import { url, repo, download, docsHome } from "../../lib/url";
+import { version } from "../../lib/data";
+---
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href={url("")} aria-label="Umbra home"><img src={url("favicon.png")} alt="" width="28" height="28" /><span>Umbra</span></a>
+    <nav aria-label="Main">
+      <a href={docsHome}>Docs</a>
+      <a href={url("widgets/")}>Widgets</a>
+      <a href={repo}>GitHub</a>
+    </nav>
+    <a class="btn primary sm magnetic" href={download}>Download <span class="ver">{version}</span></a>
+  </div>
+</header>
+
+<style>
+  .site-header { position: fixed; inset: 0 0 auto; z-index: 50; transition: background .4s, border-color .4s; border-bottom: 1px solid transparent; }
+  .site-header:global(.scrolled) { background: rgba(0, 0, 0, .6); backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4); border-color: var(--line); }
+  .bar { display: flex; align-items: center; gap: 28px; height: 68px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font: 650 1.12rem/1 var(--display); letter-spacing: -.01em; }
+  .brand:hover { color: var(--text); }
+  .brand img { transition: transform .8s var(--ease); }
+  .brand:hover img { transform: rotate(-35deg); }
+  nav { display: flex; gap: 26px; margin-left: auto; }
+  nav a { color: var(--text2); font-size: .93rem; position: relative; }
+  nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform .4s var(--ease); }
+  nav a:hover { color: var(--text); }
+  nav a:hover::after { transform: scaleX(1); transform-origin: left; }
+  .ver { opacity: .6; font-weight: 500; }
+  @media (max-width: 640px) { nav { gap: 16px; } nav a:nth-child(3), .ver { display: none; } .bar { gap: 16px; } }
+</style>

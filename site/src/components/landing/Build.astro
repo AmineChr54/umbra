@@ -1,0 +1,92 @@
+---
+// Two ways to make a widget, both typed out in terminals. The "agent" terminal is the real MCP setup command.
+import { url, docsHome, repo } from "../../lib/url";
+import { widgets } from "../../lib/data";
+---
+
+<section class="section build" id="build" aria-labelledby="bd-title">
+  <div class="wrap">
+    <p class="kicker" data-reveal>Make it yours</p>
+    <h2 class="h2" id="bd-title" data-reveal>A widget is a folder.<br /><em>Or a sentence.</em></h2>
+    <p class="sub" data-reveal="0.05">HTML, CSS and JavaScript in a folder with a <code>widget.json</code>. No build step, no framework. Write it by hand, or hand the job to an AI agent over MCP.</p>
+
+    <div class="terms">
+      <div class="term" data-reveal="0.05">
+        <div class="bar"><i></i><i></i><i></i><span>PowerShell</span></div>
+        <pre aria-label="Scaffold a widget with umbractl"><span class="l" data-type="umbractl new my-widget" data-prompt="PS>"></span><span class="l out" data-type='{ "path": "…\Umbra\widgets\my-widget", "reload": true }'></span><span class="l" data-type="umbractl capture my-widget shot.png" data-prompt="PS>"></span><span class="l out ok" data-type="shot.png saved: just that widget, nothing else on screen"></span></pre>
+      </div>
+      <div class="term" data-reveal="0.12">
+        <div class="bar"><i></i><i></i><i></i><span>Claude Code</span></div>
+        <pre aria-label="Connect an agent over MCP and ask for a widget"><span class="l" data-type="claude mcp add umbra -- umbractl mcp" data-prompt="PS>"></span><span class="l" data-type="Add a widget with the weather in Berlin under my S&amp;P 500 widget" data-prompt="&gt;"></span><span class="l out" data-type="reading widget_authoring_guide…"></span><span class="l out" data-type="create_widget weather-berlin  ✓"></span><span class="l out ok" data-type="capture weather-berlin  ✓ looks right"></span></pre>
+      </div>
+    </div>
+
+    <ul class="facts">
+      <li data-reveal><b>{widgets.length}</b><span>widgets already built this way</span></li>
+      <li data-reveal="0.05"><b>0</b><span>build tools or frameworks needed</span></li>
+      <li data-reveal="0.1"><b>1</b><span>pull request to publish yours</span></li>
+    </ul>
+    <div class="links" data-reveal>
+      <a class="btn primary magnetic" href={url("docs/widgets/first-widget/")}>Build your first widget</a>
+      <a class="btn ghost magnetic" href={docsHome}>Read the docs</a>
+      <a class="btn ghost magnetic" href={`${repo}/blob/main/CONTRIBUTING.md`}>Contributing guide</a>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const lines = [...document.querySelectorAll<HTMLElement>(".build .l")];
+
+  // Static first: every line has its full text (and a prompt) so it reads without JS or motion.
+  for (const l of lines) {
+    const prompt = l.dataset.prompt;
+    if (prompt) l.insertAdjacentHTML("afterbegin", `<em>${prompt}</em> `);
+    const text = document.createElement("span");
+    text.className = "t";
+    text.innerHTML = l.dataset.type!;
+    l.append(text);
+  }
+
+  if (!reduced) {
+    for (const term of document.querySelectorAll<HTMLElement>(".term")) {
+      const rows = [...term.querySelectorAll<HTMLElement>(".l")];
+      const full = rows.map(r => r.querySelector<HTMLElement>(".t")!.textContent ?? "");
+      for (const r of rows) { r.style.visibility = "hidden"; r.querySelector<HTMLElement>(".t")!.textContent = ""; }
+      const tl = gsap.timeline({ paused: true });
+      rows.forEach((r, i) => {
+        const t = r.querySelector<HTMLElement>(".t")!;
+        const typed = !r.classList.contains("out");
+        const n = { c: 0 };
+        tl.set(r, { visibility: "visible" }, ">" + (typed ? "0.3" : "0.1"))
+          .to(n, { c: full[i].length, duration: typed ? full[i].length * 0.035 : 0.35, ease: "none", onUpdate: () => (t.textContent = full[i].slice(0, Math.round(n.c))) });
+      });
+      ScrollTrigger.create({ trigger: term, start: "top 80%", once: true, onEnter: () => tl.play() });
+    }
+  }
+</script>
+
+<style>
+  .sub code, .facts code { font-size: .88em; color: var(--text); }
+  .terms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 56px 0 48px; }
+  .term { border-radius: 18px; overflow: hidden; background: #050508; border: 1px solid var(--line2); box-shadow: 0 30px 80px -40px rgba(139, 147, 255, .35); }
+  .bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; background: var(--s2); border-bottom: 1px solid var(--line); font: 500 .74rem/1 var(--mono); color: var(--text3); }
+  .bar i { width: 10px; height: 10px; border-radius: 50%; background: #2a2c33; }
+  .bar span { margin-left: 10px; }
+  pre { margin: 0; padding: 22px 22px 26px; min-height: 250px; font-size: .86rem; line-height: 1.8; color: var(--text); overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  .l { display: block; }
+  .l em { font-style: normal; color: var(--acc2); }
+  .l.out { color: var(--text3); padding-left: 1.2em; }
+  .l.ok { color: var(--ok); }
+  .facts { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+  .facts li { background: var(--s1); padding: 26px 28px; display: grid; gap: 4px; }
+  .facts b { font: 650 clamp(2.2rem, 4vw, 3.4rem)/1 var(--display); letter-spacing: -.04em; background: linear-gradient(100deg, var(--acc), var(--acc3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .facts span { color: var(--text2); font-size: .92rem; }
+  .links { display: flex; flex-wrap: wrap; gap: 14px; }
+  @media (max-width: 900px) { .terms { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 640px) { .facts { grid-template-columns: minmax(0, 1fr); } }
+</style>

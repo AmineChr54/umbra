@@ -1,0 +1,37 @@
+/* Starlight theme: Umbra black + periwinkle (tokens from shared/umbra.css). */
+:root {
+  --sl-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --sl-font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+  --sl-content-width: 46rem;
+}
+:root[data-theme="dark"], :root:not([data-theme]) {
+  --sl-color-accent-low: #1c1f45;
+  --sl-color-accent: #8b93ff;
+  --sl-color-accent-high: #c9ccff;
+  --sl-color-white: #f4f5f7;
+  --sl-color-gray-1: #e4e6eb;
+  --sl-color-gray-2: #b9bcc5;
+  --sl-color-gray-3: #8a8f9a;
+  --sl-color-gray-4: #5a5f6a;
+  --sl-color-gray-5: #2a2c33;
+  --sl-color-gray-6: #141418;
+  --sl-color-black: #000;
+  --sl-color-bg-nav: rgba(0, 0, 0, .78);
+  --sl-color-bg-sidebar: #000;
+  --sl-color-hairline-light: rgba(255, 255, 255, .09);
+  --sl-color-hairline: rgba(255, 255, 255, .07);
+}
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e3e5ff;
+  --sl-color-accent: #4f58e0;
+  --sl-color-accent-high: #262c8f;
+}
+header.header { backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.site-title img { height: 1.6rem; width: auto; }
+.sl-markdown-content code:not(pre code) { border-radius: 5px; padding: .1em .35em; }
+.sl-markdown-content table { font-size: .92em; }
+.sl-markdown-content :is(h2, h3) { letter-spacing: -.01em; }
+@media (prefers-reduced-motion: no-preference) {
+  .sl-markdown-content > * { animation: sl-rise .35s ease-out both; }
+}
+@keyframes sl-rise { from { opacity: 0; transform: translateY(6px); } }

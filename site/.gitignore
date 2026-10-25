@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.astro/
+public/previews/
+public/favicon.png
+src/assets/umbra.png
+src/data/
+src/content/docs/docs/widgets/sdk-reference.md
+public/img/
+src/content/docs/docs/reference/widget-schema.md
+src/content/docs/docs/reference/theme-schema.md

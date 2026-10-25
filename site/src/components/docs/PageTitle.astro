@@ -1,0 +1,46 @@
+---
+// Starlight's page title plus Claude-docs-style "Copy page" / "View as Markdown" (the raw page is served at <page>.md).
+import Default from "@astrojs/starlight/components/PageTitle.astro";
+const md = Astro.url.pathname.replace(/\/$/, "") + ".md";
+---
+
+<div class="title-row">
+  <Default />
+  <div class="page-actions">
+    <button type="button" class="copy-page" data-md={md}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h8" /></svg>
+      <span>Copy page</span>
+    </button>
+    <a href={md}>View as Markdown</a>
+  </div>
+</div>
+
+<script>
+  for (const b of document.querySelectorAll<HTMLButtonElement>(".copy-page")) {
+    b.addEventListener("click", async () => {
+      const label = b.querySelector("span")!;
+      try {
+        const text = await (await fetch(b.dataset.md!)).text();
+        await navigator.clipboard.writeText(text);
+        label.textContent = "Copied";
+      } catch {
+        label.textContent = "Copy failed";
+      }
+      setTimeout(() => (label.textContent = "Copy page"), 1800);
+    });
+  }
+</script>
+
+<style>
+  .title-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem 1.5rem; }
+  .page-actions { display: flex; align-items: center; gap: .9rem; font-size: var(--sl-text-sm); margin-bottom: .4rem; }
+  .page-actions a { color: var(--sl-color-gray-3); text-decoration: none; }
+  .page-actions a:hover { color: var(--sl-color-white); }
+  .copy-page {
+    display: inline-flex; align-items: center; gap: .4rem; font: inherit; cursor: pointer;
+    color: var(--sl-color-gray-2); background: var(--sl-color-gray-6); border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 8px; padding: .3rem .7rem;
+  }
+  .copy-page:hover { color: var(--sl-color-white); border-color: var(--sl-color-gray-4); }
+  .copy-page svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>

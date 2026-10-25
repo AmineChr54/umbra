@@ -1,0 +1,84 @@
+---
+// Two rows of real widget previews drifting in opposite directions; scrolling fast speeds them up.
+import { url } from "../../lib/url";
+import { widgets } from "../../lib/data";
+
+const shown = widgets.filter(w => w.previewSize);
+const half = Math.ceil(shown.length / 2);
+const rows = [shown.slice(0, half), shown.slice(half)];
+---
+
+<section class="section marquee-sec" aria-labelledby="mq-title">
+  <div class="wrap head">
+    <p class="kicker" data-reveal>The catalog</p>
+    <h2 class="h2" id="mq-title" data-reveal><span class="count" data-count={widgets.length}>{widgets.length}</span> widgets.<br /><em>One click each.</em></h2>
+    <p class="sub" data-reveal="0.1">Markets, weather, to-dos, habits, timers, calendars, media, games. Every one is reviewed in a pull request and installs from <b>Settings → Browse</b>.</p>
+  </div>
+  <div class="rows">
+    {rows.map((row, r) => (
+      <div class="row" data-dir={r ? -1 : 1}>
+        <div class="track">
+          {[...row, ...row].map((w, i) => (
+            <a class="tile" href={url(`widgets/#${w.id}`)} tabindex={i >= row.length ? -1 : undefined} aria-hidden={i >= row.length ? "true" : undefined}>
+              <img src={url(`previews/${w.id}.png`)} alt="" width={w.previewSize!.w / 2} height={w.previewSize!.h / 2} loading="lazy" />
+              <span>{w.name}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+  <div class="wrap more" data-reveal><a class="btn ghost magnetic" href={url("widgets/")}>Browse all {widgets.length} widgets →</a></div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+  const sec = document.querySelector<HTMLElement>(".marquee-sec")!;
+
+  gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+    const loops = [...sec.querySelectorAll<HTMLElement>(".row")].map(row => {
+      const dir = Number(row.dataset.dir);
+      const track = row.querySelector(".track")!;
+      return gsap.fromTo(track, { xPercent: dir > 0 ? 0 : -50 }, { xPercent: dir > 0 ? -50 : 0, duration: 70, ease: "none", repeat: -1 });
+    });
+    // Scroll velocity briefly speeds the rows up, then they settle back.
+    ScrollTrigger.create({
+      trigger: sec, start: "top bottom", end: "bottom top",
+      onUpdate: self => {
+        const boost = 1 + Math.min(Math.abs(self.getVelocity()) / 250, 7);
+        for (const l of loops) gsap.to(l, { timeScale: boost, duration: 0.2, overwrite: true, onComplete: () => { gsap.to(l, { timeScale: 1, duration: 1.2 }); } });
+      },
+    });
+    for (const row of sec.querySelectorAll<HTMLElement>(".row")) {
+      row.addEventListener("pointerenter", () => loops.forEach(l => gsap.to(l, { timeScale: 0.25, duration: 0.6, overwrite: true })));
+      row.addEventListener("pointerleave", () => loops.forEach(l => gsap.to(l, { timeScale: 1, duration: 0.6, overwrite: true })));
+    }
+
+    // The big number counts up once.
+    const count = sec.querySelector<HTMLElement>(".count")!;
+    const n = { v: 0 };
+    gsap.to(n, {
+      v: Number(count.dataset.count), duration: 1.6, ease: "power2.out",
+      scrollTrigger: { trigger: count, start: "top 85%", once: true },
+      onUpdate: () => (count.textContent = String(Math.round(n.v))),
+    });
+  });
+</script>
+
+<style>
+  .marquee-sec { overflow: hidden; }
+  .head { margin-bottom: 64px; }
+  .count { font-variant-numeric: tabular-nums; }
+  .rows { display: grid; gap: 22px; transform: rotate(-2deg) scale(1.04); }
+  .row { overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .track { display: flex; gap: 22px; width: max-content; padding: 6px 11px; }
+  .tile { flex: none; display: flex; flex-direction: column; gap: 12px; height: 270px; padding: 14px; border-radius: 18px; background: var(--s1); border: 1px solid var(--line); color: var(--text2); font-size: .86rem; transition: border-color .3s, transform .5s var(--ease), color .3s; }
+  .tile:hover { border-color: rgba(139, 147, 255, .5); transform: translateY(-6px); color: var(--text); }
+  .tile img { flex: 1; min-height: 0; width: auto; height: 100%; object-fit: contain; border-radius: 10px; background: #000; }
+  .tile span { padding: 0 4px; }
+  .more { margin-top: 56px; }
+  @media (max-width: 640px) { .tile { height: 200px; } }
+</style>

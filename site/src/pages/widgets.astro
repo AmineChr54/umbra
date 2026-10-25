@@ -1,0 +1,121 @@
+---
+import Base from "../layouts/Base.astro";
+import Footer from "../components/landing/Footer.astro";
+import { url, repo, docsHome } from "../lib/url";
+import { widgets, kindOf } from "../lib/data";
+
+const counts: Record<string, number> = { all: widgets.length, offline: 0, online: 0, commands: 0 };
+for (const w of widgets) counts[kindOf(w)]++;
+const chips = [["all", "All"], ["offline", "Works offline"], ["online", "Uses the internet"], ["commands", "Runs commands"]].filter(([k]) => counts[k]);
+---
+
+<Base title="Umbra widget catalog" description={`${widgets.length} community widgets for Umbra: markets, weather, to-dos, habits, timers, calendars, media and games. Each one is reviewed and sandboxed.`}>
+  <main class="page">
+    <div class="wrap">
+      <p class="kicker">The catalog</p>
+      <h1 class="h2">{widgets.length} widgets, <em>all reviewed.</em></h1>
+      <p class="sub">Every widget is checked in a pull request and runs in a sandbox. Each card shows exactly what it can reach. Install from <b>Settings → Browse</b>, or run <code>umbractl install &lt;id&gt;</code>.</p>
+
+      <div class="tools">
+        <label class="search">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input id="q" type="search" placeholder={`Search ${widgets.length} widgets`} aria-label="Search widgets" autocomplete="off" />
+        </label>
+        <div class="chips" role="group" aria-label="Filter">
+          {chips.map(([k, label]) => <button type="button" data-f={k} aria-pressed={k === "all"}>{label} <span>{counts[k]}</span></button>)}
+        </div>
+      </div>
+
+      <div class="grid" id="grid">
+        {widgets.map(w => {
+          const hosts = w.hosts ?? [], cmds = w.commands ?? [];
+          return (
+            <article class="card" id={w.id} data-kind={kindOf(w)} data-q={`${w.name} ${w.description} ${w.id} ${w.author}`.toLowerCase()}>
+              <div class="shot">{w.previewSize && <img src={url(`previews/${w.id}.png`)} alt={`${w.name} widget`} width={w.previewSize.w / 2} height={w.previewSize.h / 2} loading="lazy" />}</div>
+              <div class="body">
+                <h2>{w.name}<span>v{w.version}</span></h2>
+                <p>{w.description}</p>
+                <ul class="access">
+                  {hosts.length
+                    ? <li title={hosts.join(", ")}>{hosts.length === 1 ? hosts[0] : `${hosts.length} sites`}</li>
+                    : <li class="ok">Works offline</li>}
+                  {cmds.length > 0 && <li class="warn" title={cmds.map(c => c.run).join(", ")}>Runs local commands, asks first</li>}
+                </ul>
+                <p class="by">by {w.author} · <a href={`${repo}/tree/main/widgets/${w.id}`}>Source</a></p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <p class="empty" id="empty" hidden>No widgets match. <a href={`${repo}/blob/main/CONTRIBUTING.md`}>Build it?</a></p>
+
+      <aside class="submit">
+        <h2>Missing one?</h2>
+        <p>Widgets are small folders of HTML, CSS and JavaScript. Build yours in an afternoon and publish it with a pull request.</p>
+        <a class="btn primary magnetic" href={url("docs/widgets/first-widget/")}>Build a widget</a>
+        <a class="btn ghost magnetic" href={docsHome}>Read the docs</a>
+      </aside>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<script>
+  const q = document.getElementById("q") as HTMLInputElement;
+  const cards = [...document.querySelectorAll<HTMLElement>(".card")];
+  const chips = [...document.querySelectorAll<HTMLButtonElement>(".chips button")];
+  const empty = document.getElementById("empty")!;
+  let f = "all";
+  function apply() {
+    const v = q.value.trim().toLowerCase();
+    let n = 0;
+    for (const c of cards) {
+      const show = (f === "all" || c.dataset.kind === f) && (!v || c.dataset.q!.includes(v));
+      c.hidden = !show;
+      n += +show;
+    }
+    empty.hidden = n > 0;
+  }
+  q.addEventListener("input", apply);
+  for (const b of chips) b.addEventListener("click", () => { f = b.dataset.f!; for (const c of chips) c.setAttribute("aria-pressed", String(c === b)); apply(); });
+  // Linked from the landing page marquee: highlight the card the URL points at.
+  if (location.hash) document.querySelector(location.hash)?.classList.add("hit");
+</script>
+
+<style>
+  .page { padding: 140px 0 40px; }
+  .page .h2 { font-size: clamp(2.4rem, 6vw, 5rem); }
+  .page code { font-size: .88em; color: var(--text); }
+  .tools { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 44px 0 28px; }
+  .search { position: relative; flex: 1 1 300px; }
+  .search .i { position: absolute; left: 16px; top: 50%; translate: 0 -50%; color: var(--text3); }
+  .search input { width: 100%; padding: 14px 16px 14px 46px; border: 1px solid var(--line2); border-radius: 14px; background: var(--s1); color: var(--text); font: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
+  .search input:focus { border-color: var(--acc); box-shadow: 0 0 0 4px var(--accs); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button { font: inherit; font-size: .9rem; color: var(--text2); background: var(--s1); border: 1px solid var(--line2); border-radius: 999px; padding: 9px 16px; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
+  .chips button:hover { color: var(--text); }
+  .chips button span { color: var(--text3); margin-left: 4px; }
+  .chips button[aria-pressed="true"] { color: var(--text); background: var(--accs); border-color: rgba(139, 147, 255, .5); }
+  .chips button[aria-pressed="true"] span { color: var(--acc2); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+  .card { display: flex; flex-direction: column; background: var(--s1); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; scroll-margin-top: 100px; transition: border-color .3s, transform .4s var(--ease); }
+  .card:hover { border-color: var(--line2); transform: translateY(-3px); }
+  .card.hit { border-color: var(--acc); box-shadow: 0 0 0 4px var(--accs); }
+  .card[hidden] { display: none; }
+  .shot { height: 240px; display: flex; align-items: center; justify-content: center; padding: 22px; background: #000; border-bottom: 1px solid var(--line); }
+  .shot img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; border-radius: 10px; }
+  .body { padding: 20px 22px 22px; display: flex; flex-direction: column; flex: 1; }
+  .card h2 { font: 650 1.12rem/1.2 var(--display); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .card h2 span { color: var(--text3); font: 400 .78rem var(--body); font-variant-numeric: tabular-nums; }
+  .card p { margin: 0; color: var(--text2); font-size: .93rem; }
+  .access { list-style: none; padding: 0; margin: 16px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .access li { font-size: .78rem; color: var(--text2); background: var(--s3); border-radius: 8px; padding: 5px 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .access .ok { color: var(--ok); } .access .warn { color: var(--warn); }
+  .card .by { margin-top: auto; padding-top: 16px; font-size: .82rem; color: var(--text3); }
+  .empty { color: var(--text3); text-align: center; padding: 56px 0; }
+
+  .submit { margin: 80px 0 0; padding: clamp(28px, 5vw, 56px); border-radius: 24px; text-align: center; background: radial-gradient(70% 120% at 50% 0%, rgba(139, 147, 255, .18), transparent 70%), var(--s1); border: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+  .submit h2 { flex-basis: 100%; font: 650 clamp(1.6rem, 3vw, 2.4rem)/1.1 var(--display); letter-spacing: -.03em; margin: 0; }
+  .submit p { flex-basis: 100%; color: var(--text2); margin: 0 auto 10px; max-width: 34em; }
+</style>

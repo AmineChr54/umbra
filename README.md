@@ -12,7 +12,7 @@ Crisp, true-black widgets pinned under your apps on Windows. Sandboxed, scriptab
 ![Windows 10 1809+ / 11](https://img.shields.io/badge/Windows-10%201809%2B%20%7C%2011-0078d4)
 [![MIT license](https://img.shields.io/github/license/AmineChr54/umbra?color=lightgrey)](LICENSE)
 
-**[Download](https://github.com/AmineChr54/umbra/releases/latest)** · [Widget catalog](https://aminechr54.github.io/umbra/) · [Build a widget](CONTRIBUTING.md) · [Automate it](#automate-umbra-cli-scripts-and-ai-agents) · [Roadmap](https://github.com/users/AmineChr54/projects/5)
+**[Download](https://github.com/AmineChr54/umbra/releases/latest)** · [Website and docs](https://aminechr54.github.io/umbra/) · [Build a widget](CONTRIBUTING.md) · [Automate it](#automate-umbra-cli-scripts-and-ai-agents) · [Roadmap](https://github.com/users/AmineChr54/projects/5)
 
 <br>
 
@@ -208,7 +208,7 @@ A small C# host (.NET 10, WinForms + WebView2) opens one borderless window per e
 - **Local commands:** a widget can start a local program only if it declared that exact command (executable plus arguments, no shell) in `widget.json` and you approved it.
 - **Portable mode:** with `portable.txt` next to `Umbra.exe`, data goes to `<app>\data` (`UMBRA_DATA_DIR` still wins); the pipe and mutex names get a hash of that folder, and `umbractl` next to the exe finds the same copy.
 - **Single instance and startup:** a mutex plus a named pipe means a second launch opens Settings in the running copy. "Start with Windows" is the `HKCU\...\Run\Umbra` value, which the installer and the Settings toggle both read and write.
-- **Community catalog** (`scripts/catalog.mjs`, `.github/workflows/widgets.yml`): pull requests are validated in CI, including that the committed `widgets/index.json` is up to date. The app downloads files into a temp folder, checks paths, file types, size and id, and only then installs them. The catalog is also published as a static site (`scripts/site.mjs`).
+- **Community catalog** (`scripts/catalog.mjs`, `.github/workflows/widgets.yml`): pull requests are validated in CI, including that the committed `widgets/index.json` is up to date. The app downloads files into a temp folder, checks paths, file types, size and id, and only then installs them. The catalog is also published on the website (`site/`, Astro; also holds the docs).
 
 **Example: the S&P 500 widget** (`widgets/sp500`)
 

@@ -1,0 +1,128 @@
+---
+// The sandbox, animated: requests from a widget either pass the host (declared HTTPS hosts) or stop at it with a 403.
+import { url } from "../../lib/url";
+
+const lanes = [
+  { y: 70, host: "api.open-meteo.com", note: "declared in widget.json", ok: true },
+  { y: 170, host: "umbra.local", note: "the widget SDK", ok: true },
+  { y: 270, host: "ads.tracker.example", note: "not declared", ok: false },
+  { y: 370, host: "http://203.0.113.7", note: "not HTTPS", ok: false },
+];
+const WALL = 520;
+const from = { x: 250, y: 220 };
+const path = (y: number, to: number) => `M${from.x} ${from.y} C ${from.x + 150} ${from.y}, ${WALL - 150} ${y}, ${WALL} ${y} L ${to} ${y}`;
+---
+
+<section class="section sandbox" aria-labelledby="sb-title">
+  <div class="wrap grid">
+    <div>
+      <p class="kicker" data-reveal>Sandboxed</p>
+      <h2 class="h2" id="sb-title" data-reveal>Every widget gets a <em>locked room.</em></h2>
+      <ul class="points">
+        <li data-reveal="0.05"><b>Only the hosts it declares.</b> A widget reaches the HTTPS hosts listed in its <code>widget.json</code>. Every other request gets a 403 from the host app.</li>
+        <li data-reveal="0.1"><b>No silent upgrades.</b> An update that asks for new hosts, notifications, media or commands waits until you accept it.</li>
+        <li data-reveal="0.15"><b>Commands, only with your OK.</b> A widget can run a local program only if it declared that exact command, with no shell, and you approved it.</li>
+      </ul>
+      <a class="more" href={url("docs/internals/security/")} data-reveal>Read the security model →</a>
+    </div>
+
+    <div class="diagram" data-reveal="0.1">
+      <svg viewBox="0 0 960 440" role="img" aria-label="A widget's requests to declared hosts pass; requests to other hosts are blocked with 403.">
+        <defs>
+          <linearGradient id="wallg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8b93ff" stop-opacity="0" /><stop offset=".5" stop-color="#8b93ff" /><stop offset="1" stop-color="#8b93ff" stop-opacity="0" /></linearGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="4" /></filter>
+        </defs>
+
+        {lanes.map(l => (
+          <g class={`lane ${l.ok ? "ok" : "no"}`}>
+            <path class="track" d={path(l.y, l.ok ? 700 : WALL)} />
+            {!l.ok && <path class="track ghost" d={`M${WALL} ${l.y} L 700 ${l.y}`} />}
+            <circle class="pkt" r="6" />
+            <circle class="pkt-glow" r="12" filter="url(#glow)" />
+            <g transform={`translate(712 ${l.y - 26})`}>
+              <rect class="host" width="236" height="52" rx="12" />
+              <text x="16" y="23" class="h">{l.host}</text>
+              <text x="16" y="40" class="n">{l.ok ? "✓" : "✕"} {l.note}</text>
+            </g>
+            {!l.ok && <text class="err" x={WALL - 14} y={l.y - 14} text-anchor="end">403</text>}
+          </g>
+        ))}
+
+        <line x1={WALL} x2={WALL} y1="20" y2="420" stroke="url(#wallg)" stroke-width="3" />
+        <g transform={`translate(${WALL - 22} 196)`} class="shield">
+          <path d="M22 0 4 7v14c0 12 8 20 18 24 10-4 18-12 18-24V7z" />
+          <path d="m14 23 6 6 10-11" class="tick" />
+        </g>
+        <text x={WALL} y="440" text-anchor="middle" class="cap">Umbra host</text>
+
+        <g transform={`translate(30 ${from.y - 60})`}>
+          <rect class="widget" width="220" height="120" rx="18" />
+          <text x="20" y="36" class="h">Weather widget</text>
+          <text x="20" y="62" class="n">hosts:</text>
+          <text x="20" y="84" class="m">api.open-meteo.com</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+  import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+
+  gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+  const svg = document.querySelector<SVGSVGElement>(".sandbox svg")!;
+
+  gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+    const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.4, paused: true });
+    svg.querySelectorAll<SVGGElement>(".lane").forEach((lane, i) => {
+      const track = lane.querySelector<SVGPathElement>(".track")!;
+      const dots = lane.querySelectorAll(".pkt, .pkt-glow");
+      const ok = lane.classList.contains("ok");
+      // Blocked lanes' tracks end at the wall, so their requests stop there.
+      const at = i * 0.45;
+      tl.set(dots, { opacity: 1 }, at)
+        .to(dots, { motionPath: { path: track, align: track, alignOrigin: [0.5, 0.5] }, duration: ok ? 1.5 : 0.95, ease: "power1.inOut" }, at);
+      if (ok) {
+        tl.to(lane.querySelector(".host"), { stroke: "#6fd49b", duration: 0.2, yoyo: true, repeat: 1 }, at + 1.45)
+          .to(dots, { opacity: 0, duration: 0.2 }, at + 1.5);
+      } else {
+        tl.to(dots, { scale: 2.4, opacity: 0, transformOrigin: "50% 50%", duration: 0.35 }, at + 0.95)
+          .fromTo(lane.querySelector(".err"), { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 }, at + 0.95)
+          .to(lane.querySelector(".err"), { opacity: 0, duration: 0.4 }, at + 1.9)
+          .set(dots, { scale: 1 }, at + 2);
+      }
+    });
+    tl.to({}, { duration: 0.6 });
+    ScrollTrigger.create({ trigger: svg, start: "top 85%", end: "bottom top", onToggle: s => (s.isActive ? tl.play() : tl.pause()) });
+  });
+</script>
+
+<style>
+  .grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr); gap: clamp(40px, 6vw, 96px); align-items: center; }
+  .points { list-style: none; padding: 0; margin: 36px 0 32px; display: grid; gap: 22px; }
+  .points li { color: var(--text2); padding-left: 22px; position: relative; }
+  .points li::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 12px var(--acc); }
+  .points b { color: var(--text); font-weight: 600; }
+  .points code { font-size: .88em; color: var(--text); }
+  .diagram { padding: clamp(16px, 2.4vw, 32px); border-radius: 24px; background: radial-gradient(80% 80% at 50% 50%, rgba(139, 147, 255, .07), transparent 70%), var(--s1); border: 1px solid var(--line); }
+  svg { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--body); }
+  .track { fill: none; stroke: rgba(255, 255, 255, .12); stroke-width: 1.5; stroke-dasharray: 4 6; }
+  .lane.no .track { stroke: rgba(255, 107, 122, .3); }
+  .lane.no .ghost { stroke: rgba(255, 255, 255, .05); }
+  .pkt { fill: #c9ccff; opacity: 0; }
+  .pkt-glow { fill: #8b93ff; opacity: 0; }
+  .lane.no .pkt { fill: #ffb3bb; } .lane.no .pkt-glow { fill: #ff6b7a; }
+  .host, .widget { fill: #111116; stroke: rgba(255, 255, 255, .12); stroke-width: 1.2; }
+  .widget { stroke: rgba(139, 147, 255, .6); }
+  .h { fill: var(--text); font-size: 16px; font-weight: 600; }
+  .n { fill: var(--text3); font-size: 12.5px; }
+  .m { fill: var(--acc2); font-size: 13px; font-family: var(--mono); }
+  .lane.ok .n { fill: #6fd49b; } .lane.no .n { fill: #ff8b97; }
+  .err { fill: #ff6b7a; font: 700 15px var(--mono); opacity: 0; }
+  .shield path { fill: #0a0a0e; stroke: #8b93ff; stroke-width: 2; }
+  .shield .tick { fill: none; stroke: #c9ccff; stroke-linecap: round; stroke-linejoin: round; }
+  .cap { fill: var(--text3); font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
