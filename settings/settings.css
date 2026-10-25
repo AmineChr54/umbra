@@ -609,3 +609,6 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .wcard.off .wcard-main { align-items: center; }
 .wcard.off .thumb { width: 44px; height: 30px; }
 .wcard.off .btn.small { height: 28px; }
+
+/* A bare [hidden] must win over component display rules (.btn, .wcard...), or hidden buttons still show (About "Download" while up to date). */
+[hidden] { display: none !important; }
