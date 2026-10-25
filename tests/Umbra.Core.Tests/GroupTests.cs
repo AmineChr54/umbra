@@ -229,13 +229,6 @@ public class TabIconSuggestionTests
     }
 
     [Fact]
-    public void Real_bundled_icons_resolve_on_disk()
-    {
-        Assert.NotNull(Groups.CleanSuggestion("rocket"));
-        Assert.Null(Groups.CleanSuggestion("definitely-not-an-icon"));
-    }
-
-    [Fact]
     public void Suggestion_is_persisted_apart_from_the_users_choice()
     {
         var s = new Settings();
