@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "nord",
+  "name": "Nord",
+  "description": "Arctic blue-gray palette after the Nord scheme.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--bg": "#1b1f27",
+    "--surface-1": "#242933",
+    "--surface-2": "#2e3440",
+    "--surface-3": "#3b4252",
+    "--line": "rgba(216, 222, 233, 0.08)",
+    "--line-strong": "rgba(216, 222, 233, 0.15)",
+    "--text": "#eceff4",
+    "--text-2": "#b5bfd0",
+    "--text-3": "#7b88a1",
+    "--accent": "#88c0d0",
+    "--accent-strong": "#a8d4e0",
+    "--accent-soft": "rgba(136, 192, 208, 0.15)",
+    "--up": "#a3be8c",
+    "--down": "#bf616a",
+    "--flat": "#8f9bb3"
+  }
+}

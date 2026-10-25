@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "forest",
+  "name": "Forest",
+  "description": "Dark green surfaces with a fresh leaf accent.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#08110c",
+    "--surface-2": "#0d1a12",
+    "--surface-3": "#14241a",
+    "--line": "rgba(170, 230, 190, 0.08)",
+    "--line-strong": "rgba(170, 230, 190, 0.15)",
+    "--text": "#ebf5ee",
+    "--text-2": "#9db3a4",
+    "--text-3": "#62786a",
+    "--accent": "#4cc37a",
+    "--accent-strong": "#85dba5",
+    "--accent-soft": "rgba(76, 195, 122, 0.15)"
+  }
+}
