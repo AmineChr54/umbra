@@ -125,6 +125,9 @@ static partial class Native
         return 1f;
     }
 
+    [LibraryImport("uxtheme.dll", EntryPoint = "SetWindowTheme", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SetWindowTheme(IntPtr hwnd, string? subAppName, string? subIdList);
+
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 

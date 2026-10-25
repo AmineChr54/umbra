@@ -84,8 +84,37 @@ sealed class ApprovalDialog : Form
         ArmButtons();
     }
 
+    /// <summary>Dark surfaces and a dark title bar to match the app; behaviour is untouched.</summary>
+    void ApplyDark()
+    {
+        BackColor = Color.Black; ForeColor = Color.White;
+        foreach (var c in Controls.OfType<System.Windows.Forms.Control>().SelectMany(c => c.Controls.OfType<System.Windows.Forms.Control>().Prepend(c)))
+        {
+            switch (c)
+            {
+                case Button b:
+                    b.FlatStyle = FlatStyle.Flat; b.UseVisualStyleBackColor = false;
+                    b.BackColor = Color.FromArgb(24, 24, 24); b.ForeColor = Color.White; b.FlatAppearance.BorderColor = Color.FromArgb(58, 58, 58);
+                    b.Paint += (_, e) =>
+                    {
+                        if (!b.Focused) return;
+                        using var pen = new Pen(Color.FromArgb(96, 165, 250), 2);
+                        e.Graphics.DrawRectangle(pen, 1, 1, b.Width - 3, b.Height - 3);
+                    };
+                    b.GotFocus += (_, _) => b.Invalidate();
+                    b.LostFocus += (_, _) => b.Invalidate();
+                    break;
+                case TextBox t: t.BackColor = Color.FromArgb(24, 24, 24); t.ForeColor = Color.White; break;
+                case GroupBox g: g.ForeColor = Color.White; break;
+                case Label l: l.ForeColor = l.ForeColor == Color.Firebrick ? Color.FromArgb(255, 120, 110) : Color.White; break;
+            }
+        }
+        HandleCreated += (_, _) => Native.SetDwm(Handle, Native.DWMWA_USE_IMMERSIVE_DARK_MODE, 1);
+    }
+
     void ArmButtons()
     {
+        ApplyDark();
         AcceptButton = _deny;
         CancelButton = _deny;
         ActiveControl = _deny;

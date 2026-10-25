@@ -306,7 +306,7 @@ sealed class SettingsWindow : Form, ISettingsView
                 var wid = msg["widget"]?.GetValue<string>() ?? "";
                 var name = _app.Manifests.FirstOrDefault(w => w.Id == wid)?.Name;
                 if (name is null) break;
-                if (MessageBox.Show(this, $"Delete everything {name} has saved? This cannot be undone.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) break;
+                if (!HostDialog.Confirm(this, $"Delete everything {ApprovalDialog.Clean(name, 60)} has saved? This cannot be undone.", yesText: "Delete", noText: "Cancel")) break;
                 foreach (var inst in _app.Settings.Instances(wid)) WidgetStore.Delete(inst);
                 Post(new JsonObject { ["type"] = "privacy", ["widgets"] = Backup.Privacy(_app) });
                 break;
@@ -332,7 +332,7 @@ sealed class SettingsWindow : Form, ISettingsView
                 try
                 {
                     var parsed = Backup.ReadFile(dlg.FileName);
-                    if (MessageBox.Show(this, "Replace your current settings, layout and widget data with this backup? Command approvals are not restored.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) break;
+                    if (!HostDialog.Confirm(this, "Replace your current settings, layout and widget data with this backup? Command approvals are not restored.", yesText: "Replace", noText: "Cancel")) break;
                     _app.RestoreBackup(parsed);
                     Post(new JsonObject { ["type"] = "notice", ["text"] = "Backup restored" });
                 }
@@ -343,7 +343,7 @@ sealed class SettingsWindow : Form, ISettingsView
 
             case "resetAll":
                 // Settings, layout and widget data go back to a fresh install; installed widgets, themes and command approvals are kept.
-                if (MessageBox.Show(this, "Reset all settings, widget positions and saved widget data to a fresh start? Installed widgets stay.", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) break;
+                if (!HostDialog.Confirm(this, "Reset all settings, widget positions and saved widget data to a fresh start? Installed widgets stay.", yesText: "Reset", noText: "Cancel")) break;
                 _app.RestoreBackup(new Backup.Parsed(new Settings(), new Dictionary<string, JsonObject>()));
                 Post(new JsonObject { ["type"] = "notice", ["text"] = "Reset to defaults" });
                 break;
@@ -451,7 +451,7 @@ sealed class SettingsWindow : Form, ISettingsView
                         throw new InvalidOperationException($"'{wid}' is the id of a built-in widget");
                     // Host-drawn, so the page can't accept access on the user's behalf. Cancel leaves nothing behind.
                     if (pending.NeedsApproval && !ConfirmNewAccess(pending)) break;
-                    if (pending.IsUpdate && !pending.NeedsApproval && MessageBox.Show(this, $"Replace the installed {pending.Manifest.Name} with version {pending.Manifest.Version} from this file?", "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) break;
+                    if (pending.IsUpdate && !pending.NeedsApproval && !HostDialog.Confirm(this, $"Replace the installed {ApprovalDialog.Clean(pending.Manifest.Name, 60)} with version {pending.Manifest.Version} from this file?", yesText: "Replace", noText: "Cancel")) break;
                     _app.CloseWidget(wid);
                     pending.Commit();
                     _app.ReloadWidgets();
