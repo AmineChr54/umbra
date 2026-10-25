@@ -12,7 +12,7 @@ public static class Hotkey
     /// <summary>The actions that can have a hotkey, with their labels.</summary>
     public static readonly (string Id, string Label)[] Actions =
     {
-        ("edit-mode", "Toggle edit mode"),
+        ("edit-mode", "Arrange widgets (lock or unlock)"),
         ("refresh-all", "Refresh all widgets"),
         ("toggle-widgets", "Show or hide all widgets"),
         ("peek", "Peek: raise widgets for a few seconds"),
