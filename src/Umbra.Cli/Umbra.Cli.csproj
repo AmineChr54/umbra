@@ -15,6 +15,7 @@
     <Compile Include="..\Umbra\Protocol.cs" Link="Protocol.cs" />
     <!-- Agents ask for these through the MCP widget_authoring_guide tool, so they ship next to the exe. -->
     <Content Include="..\..\docs\widget-sdk.md" Link="docs\widget-sdk.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\docs\widgets\*.md" Link="docs\widgets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\..\schemas\widget.schema.json" Link="schemas\widget.schema.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 

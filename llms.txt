@@ -6,6 +6,10 @@
 
 - [README](https://github.com/AmineChr54/umbra/blob/main/README.md): what Umbra is, install, settings, automation (CLI and MCP)
 - [Widget SDK](https://github.com/AmineChr54/umbra/blob/main/docs/widget-sdk.md): complete widget reference (manifest, JavaScript API, sandbox, design rules)
+- [Tutorial](https://github.com/AmineChr54/umbra/blob/main/docs/widgets/tutorial.md): your first widget in 10 minutes (new, dev, validate, pack, install, share)
+- [Cookbook](https://github.com/AmineChr54/umbra/blob/main/docs/widgets/cookbook.md): recipes linked to real widgets (fetching, options, timers, notifications, commands, media, offline, games)
+- [For browser-extension developers](https://github.com/AmineChr54/umbra/blob/main/docs/widgets/from-browser-extensions.md): manifest.json vs widget.json, permissions, storage, alarms, and the manifest field index by version
+- Package format: a `.umbrawidget` is a zip with `widget.json` at its root (`umbractl pack`); `manifestVersion` (default 1) and `minUmbraVersion` in widget.json gate older apps
 - [widget.json schema](https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json): JSON Schema for widget manifests
 - [CONTRIBUTING](https://github.com/AmineChr54/umbra/blob/main/CONTRIBUTING.md): publish a widget by pull request
 - [CLAUDE.md](https://github.com/AmineChr54/umbra/blob/main/CLAUDE.md): architecture, commands, security invariants for coding agents
