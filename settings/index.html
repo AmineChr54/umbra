@@ -312,12 +312,28 @@
             <button class="btn" data-url="repo"><span class="ico" data-icon="github"></span>Source code</button>
             <button class="btn" id="reportIssue"><span class="ico" data-icon="bug"></span>Report an issue</button>
             <button class="btn" id="copyDiagnostics" title="Copies your Umbra and Windows versions, monitors and the last log lines to the clipboard. No settings values, proxy address or widget data."><span class="ico" data-icon="copy"></span>Copy diagnostics</button>
+            <button class="btn" id="replayTour"><span class="ico" data-icon="info"></span>Replay welcome tour</button>
             <button class="btn" data-url="contribute"><span class="ico" data-icon="plus"></span>Build a widget</button>
           </div>
           <p class="about-small">Open source under the MIT license. Market data from Yahoo Finance; delayed and not for trading.</p>
         </div>
       </section>
     </main>
+  </div>
+
+  <div class="welcome" id="welcome" hidden>
+    <div class="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" aria-describedby="welcomeText">
+      <div class="welcome-art" id="welcomeArt" aria-hidden="true"></div>
+      <div class="welcome-step" id="welcomeStep" aria-live="polite"></div>
+      <h2 id="welcomeTitle"></h2>
+      <p id="welcomeText"></p>
+      <div class="welcome-foot">
+        <button class="btn ghost" id="welcomeSkip" type="button">Skip</button>
+        <div class="welcome-dots" id="welcomeDots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <button class="btn" id="welcomeBack" type="button">Back</button>
+        <button class="btn primary" id="welcomeNext" type="button">Next</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -24,6 +24,18 @@ public class SettingsPanelTests
         Assert.True(pages.Length <= 9, "Ctrl+1..9 is all the shortcut covers");
     }
 
+    /// <summary>The first-run welcome dialog is an accessible modal with 3 slides.</summary>
+    [Fact]
+    public void Welcome_dialog_is_a_modal_with_three_slides()
+    {
+        var html = File.ReadAllText(Path.Combine(Repo(), "settings", "index.html"));
+        Assert.Contains("id=\"welcome\"", html);
+        Assert.Contains("role=\"dialog\" aria-modal=\"true\"", html);
+        var js = File.ReadAllText(Path.Combine(Repo(), "settings", "settings.js"));
+        var slides = Regex.Match(js, @"const WELCOME = \[.*?\n\];", RegexOptions.Singleline).Value;
+        Assert.Equal(3, Regex.Matches(slides, @"\btitle:").Count);
+    }
+
     /// <summary>The Esc shortcut in the page asks the host to close the window.</summary>
     [Fact]
     public void Page_posts_close_and_host_handles_it()
