@@ -1,13 +1,16 @@
 # Umbra: guide for AI agents and contributors
 
 Umbra pins small web widgets (HTML/CSS/JS in WebView2) to the Windows desktop. The C# host knows nothing
-about any specific widget; widgets are folders with a `widget.json`. Windows 10 1809+ / 11 only.
+about any specific widget; widgets are folders with a `widget.json`. Windows 10 1809+ / 11 only today; a Linux version
+(KDE Plasma 6, GNOME 46+) is in progress, see "Linux port" below.
 
 ## Commands
 
 ```powershell
 dotnet build Umbra.slnx -warnaserror      # must stay at 0 warnings
 dotnet test Umbra.slnx                    # unit tests (xUnit), no app or network needed
+dotnet build Umbra.Linux.slnf -warnaserror   # Core + umbractl + Core tests: the part that builds on Linux (CI runs it on Ubuntu)
+dotnet test Umbra.Linux.slnf
 node --test tests/relay/*.test.mjs        # relay (Buddy + Hearth) Worker logic, no Cloudflare needed
 node scripts/catalog.mjs                  # validate widgets/ + themes/ and regenerate both index.json files (commit them)
 powershell -File build.ps1                # publish both exes + installer -> dist/UmbraSetup-<ver>.exe
@@ -21,26 +24,28 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 
 | Path | Role |
 |---|---|
+| `src/Umbra.Core/` | Platform-neutral `net10.0` library (no WinForms/WebView2/WinRT): settings and widget model, security checks, control protocol, commands, themes, backups. `UmbraHost.cs` holds `IUmbraHost` / `IWidgetView` / `ISettingsView` / `IUpdater`, the surface `Control` automates; the Windows `App` implements it, a Linux host will too (#172) |
 | `src/Umbra/Program.cs` | Entry: single instance, WebView2 check, starts `App`, serves the control pipe |
 | `src/Umbra/App.cs` | Owns settings, widget windows, tray menu, Settings window. `OnUi()` marshals work to the UI thread |
 | `src/Umbra/WidgetWindow.cs` | One borderless desktop-pinned window per widget; JS bridge (`fetchJson`, `drag`, `rendered`...); host-drawn right-click menu (`ContextMenuRequested`; `RemovedCopy.cs` backs its Undo); `CaptureAsync` |
-| `src/Umbra/CrashRecovery.cs`, `shared/crashed.html` | `CoreWebView2.ProcessFailed` policy: renderer exit reloads (a hung renderer is only logged) (max 3 per 10 min), then the host-owned "This widget stopped working" page (Reload button); browser-process exit recreates the environment and view; Data & privacy shows the count |
+| `src/Umbra.Core/CrashRecovery.cs`, `src/Umbra/WebView2Crash.cs`, `shared/crashed.html` | Crash policy (`WebView2Crash` maps `CoreWebView2.ProcessFailed`): renderer exit reloads (a hung renderer is only logged) (max 3 per 10 min), then the host-owned "This widget stopped working" page (Reload button); browser-process exit recreates the environment and view; Data & privacy shows the count |
 | `src/Umbra/Tray.cs` | Tray tooltip text and the "update ready" badge icon; `--restart` flag (the new process waits for the old one's single-instance mutex) |
 | `src/Umbra/EditPill.cs` | The host-drawn "Editing widgets · Snap · Done" pill per monitor in edit mode: its own non-activating, Progman-owned window just above the widgets (not a WebView, so never in a capture) |
 | `src/Umbra/DesktopPin.cs`, `Native.cs` | Win32: owned by Progman (re-applied when shown and when Explorer restarts), kept at `HWND_BOTTOM`, no activation, DWM corners |
 | `src/Umbra/WebHost.cs` | WebView2 environment, virtual hosts `umbra.local` / `community.umbra.local`, **sandbox** |
 | `src/Umbra/SettingsWindow.cs` + `settings/` | Settings panel (HTML) and its message protocol; `ShowPageAsync`, `CaptureAsync` |
-| `src/Umbra/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
-| `src/Umbra/Themes.cs` | `Theme`: theme.json model, token allow-list and value validation, generated `:root` CSS (applied by `shared/umbra.js`); installed in `%APPDATA%\Umbra\themes\<id>`, catalog in `themes/` |
-| `src/Umbra/Protocol.cs` (`PortableMode`), `Log.cs` (`AppPaths`) | Portable mode: `portable.txt` next to `Umbra.exe` puts data (and the WebView2 cache) in `<AppDir>\data`; no autostart, no self-install; pipe/mutex name carries a data-dir hash. `UMBRA_DATA_DIR` still wins |
-| `src/Umbra/Updates.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`), and `UpdateService` (daily GitHub check, background download + verify, silent installer run with `/UPDATE=1`; `Umbra.iss` then starts `Umbra.exe --updated`; release notes shown once after an update via `General.LastSeenVersion`) |
-| `src/Umbra.Updater/`, `src/Umbra/UpdaterArgs.cs` | `Umbra.Updater.exe`: the dark update window (closing, installing with log-derived progress, starting). `UpdateService.InstallAsync` copies it to temp and runs it, which runs the silent installer; without it the installer runs invisibly as before. `UpdaterArgs` (shared source) is its command-line contract |
-| `src/Umbra/ToastService.cs`, `Notifier.cs` | `umbra.notify`: real toasts via `ToastNotificationManager` (installer shortcut AUMID `AmineChr54.Umbra`; portable/source runs register their own under HKCU; balloon fallback), plus the rate limit and text/action/XML helpers |
-| `src/Umbra/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
-| `src/Umbra/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
-| `src/Umbra/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
-| `src/Umbra/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
-| `src/Umbra/Control.cs` | Executes control commands: the single place that defines what automation can do |
+| `src/Umbra.Core/Community.cs` | Catalog fetch, install/remove, `WriteLocalWidget`, path and type validation |
+| `src/Umbra.Core/Themes.cs` | `Theme`: theme.json model, token allow-list and value validation, generated `:root` CSS (applied by `shared/umbra.js`); installed in `%APPDATA%\Umbra\themes\<id>`, catalog in `themes/` |
+| `src/Umbra.Core/Protocol.cs` (`PortableMode`), `Log.cs` (`AppPaths`) | Portable mode: `portable.txt` next to `Umbra.exe` puts data (and the WebView2 cache) in `<AppDir>\data`; no autostart, no self-install; pipe/mutex name carries a data-dir hash. `UMBRA_DATA_DIR` still wins |
+| `src/Umbra.Core/Updates.cs`, `src/Umbra/UpdateService.cs` | Update check: pure version compare / release parsing / URL validation (`Updates`, Core), and `UpdateService` (Windows) (daily GitHub check, background download + verify, silent installer run with `/UPDATE=1`; `Umbra.iss` then starts `Umbra.exe --updated`; release notes shown once after an update via `General.LastSeenVersion`) |
+| `src/Umbra.Updater/`, `src/Umbra.Core/UpdaterArgs.cs` | `Umbra.Updater.exe`: the dark update window (closing, installing with log-derived progress, starting). `UpdateService.InstallAsync` copies it to temp and runs it, which runs the silent installer; without it the installer runs invisibly as before. `UpdaterArgs` (shared source) is its command-line contract |
+| `src/Umbra/ToastService.cs`, `src/Umbra.Core/Notifier.cs` | `umbra.notify`: real toasts via `ToastNotificationManager` (installer shortcut AUMID `AmineChr54.Umbra`; portable/source runs register their own under HKCU; balloon fallback), plus the rate limit and text/action/XML helpers |
+| `src/Umbra.Core/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
+| `src/Umbra.Core/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
+| `src/Umbra.Core/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
+| `src/Umbra.Core/Protocol.cs` | Control protocol (shared source, linked into umbractl). Command list lives here |
+| `src/Umbra.Core/Control.cs` | Executes control commands against `IUmbraHost`: the single place that defines what automation can do |
+| `src/Umbra/Screens.cs`, `WindowsMedia.cs`, `WindowsMetrics.cs` | Windows halves of pure Core rules: live monitors + fullscreen test (`Placement`), media session (`MediaService`), CPU/memory/network (`SystemMetrics`) |
 | `src/Umbra.Cli/` | `umbractl.exe`: CLI (`Program.cs`, argument mapping in `CommandLine.cs`), MCP stdio server (`McpServer.cs`), scaffold (`Scaffold.cs`) |
 | `shared/umbra.js`, `umbra.css` | Widget SDK and design tokens, served to every widget |
 | `shared/tabicons/` | Bundled tab-strip icons (PNG + `index.json`); the only icons the user picker, `umbractl groups icon` and a widget's `umbra.setTabIcon` suggestion may name (`Groups.CleanSuggestion`) |
@@ -48,16 +53,37 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `site/` | Website on GitHub Pages (Astro + Starlight): landing page, widget catalog, docs in `src/content/docs/docs/`. `npm run build` there (Node >=22.23.4, CI uses 24); `scripts/sync.mjs` pulls catalog, previews, SDK doc and schemas from the repo, so `docs/widget-sdk.md` stays the one SDK source. Deployed by `pages.yml`; not part of the app |
 | `schemas/widget.schema.json`, `docs/widget-sdk.md` | Manifest schema and SDK reference (both ship next to umbractl for agents) |
 | `installer/Umbra.iss`, `build.ps1` | Inno Setup per-user installer; the version comes from `Directory.Build.props` |
-| `tests/Umbra.Tests/` | Unit tests for host and CLI (the CLI project is referenced with `extern alias cli`) |
+| `tests/Umbra.Core.Tests/` | Unit tests for Core and the CLI (`extern alias cli`); plain `net10.0`, run on Windows and Linux. `[WindowsFact]`/`[WindowsTheory]` skip Windows-only cases elsewhere |
+| `tests/Umbra.Tests/` | Windows host tests (WebView2, WinForms, toasts, power events, command runner with cmd/powershell) |
 | `tools/umbra-relay/` | The only server: a Cloudflare Worker + Durable Object behind Buddy (`/pair`, `/beat`, `/unpair`, API frozen) and Hearth (`/hearth/*`, contract in its README). Free plan, all answers status-200 JSON because `fetchJson` drops non-2xx bodies. Never deployed from here; `tests/relay/*.test.mjs` run the Worker against an in-memory fake (`node --test tests/relay/*.test.mjs`) |
+
+## Linux port (epic #172, in progress)
+
+Read epic [#172](https://github.com/AmineChr54/umbra/issues/172) before touching anything Linux: it holds the design and the ordered
+child issues (#173-#200). Only part of it exists in the repo; don't document or assume the rest as done.
+
+- **Exists:** `src/Umbra.Core`, `tests/Umbra.Core.Tests`, `src/Umbra.Cli` as plain `net10.0`, `Umbra.Linux.slnf`, the Ubuntu CI job,
+  the bridge shim in `shared/bridge.js`, and `.claude/skills/linux-port/SKILL.md` (the loop a Linux contributor runs: `/loop 2m /linux-port`).
+- **Planned, not in the repo yet** (names from the epic; add map rows when the files land): `src/Umbra.Linux` (GTK4 + WebKitGTK host,
+  assembly `umbra`, from #179), `src/Umbra.Linux/native/umbra-webext.c` (web-process extension, #180), `tests/Umbra.Linux.Tests`,
+  `linux/` (launcher, `.desktop`, metainfo, `flatpak/`, `test/`), `linux/gnome-extension/umbra@aminechr54.github.io/` (#187).
+  Linux app id: `io.github.aminechr54.Umbra` (the Windows AUMID stays `AmineChr54.Umbra`).
+- Every security invariant below applies **unchanged** on Linux and sandbox parity is a release blocker. If something can't be matched,
+  say so in the issue; don't quietly weaken it. Changes to the sandbox, commands, approvals, focus gating or the control socket need the maintainer's review.
+- **Linux screenshots:** on a real desktop use only `umbractl capture` (that WebView), never a desktop or full-screen screenshot.
+  Compositor screenshots only inside a throwaway nested/headless session you started (`xvfb-run`, `kwin_wayland --virtual`,
+  `dbus-run-session -- gnome-shell --nested --wayland`), with `UMBRA_DATA_DIR=$(mktemp -d)`. Drag, typing into widgets, multi-monitor and
+  fractional scaling are human checks: list them in the PR. No `sudo` or GNOME settings changes outside a nested session.
+- Windows CI must stay green on every PR. Label: `platform: linux`. Widgets use only `window.umbra`, never `chrome.webview`.
 
 ## Adding a capability
 
 New automation goes through the control protocol so the CLI, MCP and tests stay in sync:
-1. Add the command to `Protocol.Commands` and implement it in `Control.Execute`, reusing `App` methods.
+1. Add the command to `Protocol.Commands` and implement it in `Control.Execute`, reusing host methods (add what it needs to
+   `IUmbraHost` in `src/Umbra.Core/UmbraHost.cs` and implement it in `App`).
 2. Map it in `umbractl` (`CommandLine.TranslateAsync` in `src/Umbra.Cli/CommandLine.cs`, plus the help text in
    `Program.cs`) and add an MCP tool in `McpServer.Tools`.
-3. Add tests (`tests/Umbra.Tests`), then update the README "Automate Umbra" section and `docs/widget-sdk.md` if widget-facing.
+3. Add tests (`tests/Umbra.Core.Tests` for Control/protocol logic, so they also run on Linux; `tests/Umbra.Tests` for Windows host code), then update the README "Automate Umbra" section and `docs/widget-sdk.md` if widget-facing.
 
 ## Security invariants (never weaken without an issue and review)
 

@@ -74,6 +74,24 @@ The **Browse** page installs, updates and removes these in one click. You can al
 
 Missing one? [Build it](CONTRIBUTING.md) in an afternoon, or let an agent [write it for you](#ai-agents-mcp).
 
+## Platforms and Linux status
+
+| Platform | Status |
+|---|---|
+| Windows 10 1809+ / Windows 11 | Supported. This is the only platform Umbra releases for today. |
+| Linux (KDE Plasma 6, GNOME 46+) | **In progress, tracked in [#172](https://github.com/AmineChr54/umbra/issues/172). Not usable yet: there is no Linux release, tarball, Flatpak or installer, and the Linux app does not exist.** |
+
+What exists on Linux today is only the platform-neutral groundwork: the shared `Umbra.Core` library, `umbractl` built as plain `net10.0`, the bridge shim that lets widget pages talk to WebKitGTK as well as WebView2, and a CI job that builds and tests that part on Ubuntu. Nothing draws a widget on a Linux desktop yet. If you are not a contributor, there is nothing to install: follow #172 for progress.
+
+What the Linux port aims for, as designed in #172 (none of this is shipped or verified yet):
+
+- **Desktops:** KDE Plasma 6 (Wayland, and X11 sessions) and GNOME 46 or newer (Wayland through a small Umbra GNOME Shell extension, with an XWayland fallback, and X11 sessions). Minimum distributions in the design: Ubuntu 24.04, Fedora 41, Arch.
+- **Packaging:** a self-contained tarball (`umbra-<version>-linux-<x64|arm64>.tar.gz`) and a Flatpak (`io.github.aminechr54.Umbra`). Exact install steps will be written here once the packaging issue (#196) lands, so none are listed yet.
+- **Expected differences from Windows,** from the individual issues: global hotkeys need the GlobalShortcuts portal, which is KDE Plasma 6 and GNOME 48+ (on GNOME 46 Settings is meant to say "Not supported on this desktop"); the tray icon needs a StatusNotifierItem host (KDE, and Ubuntu's GNOME, which ships AppIndicator, have one; stock GNOME has none); `umbra.media` album art is only read from `file://` URLs; updates will only notify and open the release page, never install; a few catalog widgets run Windows programs and are planned to be marked Windows only.
+- **Same security rules:** the sandbox, command approvals and focus rules in [CLAUDE.md](CLAUDE.md) apply unchanged. Linux sandbox parity is a release blocker.
+
+To help, see "Working on the Linux port" in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Features
 
 <table>
@@ -121,6 +139,8 @@ Settings works from the keyboard: **Esc** closes it, **Ctrl+F** or **/** jumps t
 ## Automate Umbra (CLI, scripts and AI agents)
 
 The installer puts `umbractl` on your PATH. Every command prints JSON and starts Umbra in the background if it isn't running.
+
+> **Linux:** `umbractl` and the MCP server are being made cross-platform (they already build as plain `net10.0`), but there is no Linux Umbra for them to talk to yet (#172). The examples below are Windows. Planned for the Flatpak: an MCP client runs `flatpak run --command=umbractl io.github.aminechr54.Umbra mcp`, because the control socket lives inside the sandbox (#175). Not usable today.
 
 ```powershell
 umbractl list                          # widgets, their settings, option schema and window bounds
@@ -193,7 +213,7 @@ Then ask, for example, *"add a widget that shows the weather in Berlin under my 
 - **Resources:** every installed widget's files, read-only, as `umbra://widgets/<id>/<file>` (same path and extension rules as agent-written files, 5 MB cap), so an agent can read a widget before editing it.
 - **Prompts:** `new_widget`, `fix_widget` and `restyle_widget`, which walk the agent through `widget_authoring_guide`, `create_widget` and `capture`.
 
-Under the hood, the CLI and the MCP server talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
+Under the hood, the CLI and the MCP server talk to the running app over a per-user named pipe with one JSON line per request (`src/Umbra.Core/Protocol.cs`). Other users on the PC can't connect, and agent-made widgets get the same sandbox as community widgets.
 </details>
 
 ## How it works
@@ -233,7 +253,7 @@ Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr5
 
 ## Good to know
 
-- Windows 10 1809+ and Windows 11 only (`net10.0-windows10.0.19041.0`). A Linux version is in progress ([#172](https://github.com/AmineChr54/umbra/issues/172)).
+- Windows 10 1809+ and Windows 11 only (`net10.0-windows10.0.19041.0`). A Linux version is in progress ([#172](https://github.com/AmineChr54/umbra/issues/172)), see [Platforms and Linux status](#platforms-and-linux-status).
 - The S&P 500 widget uses Yahoo's unofficial endpoint. Data may be delayed or change without notice, so don't use it for trading.
 - The original lightweight Rainmeter skin is still in [`extras/rainmeter`](extras/rainmeter/SP500).
 
