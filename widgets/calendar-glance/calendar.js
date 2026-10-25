@@ -12,14 +12,19 @@
   /** Sample calendar dated around today so the widget can be tried (and screenshotted) without an account. */
   function demoCalendar() {
     const now = new Date(), t = ics(now), n = ics(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+    const at = k => ics(new Date(now.getFullYear(), now.getMonth(), now.getDate() + k));
     const e = (lines) => ["BEGIN:VEVENT", ...lines, "END:VEVENT"].join("\r\n");
     return ["BEGIN:VCALENDAR", "VERSION:2.0",
       e([`DTSTART;VALUE=DATE:${t}`, `DTEND;VALUE=DATE:${n}`, "SUMMARY:Project week"]),
-      e([`DTSTART:${t}T090000`, "SUMMARY:Stand-up", "RRULE:FREQ=DAILY", "LOCATION:Room 4"]),
+      e([`DTSTART:${t}T090000`, "SUMMARY:Stand-up", "RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR", "LOCATION:Room 4"]),
       e([`DTSTART:${t}T120000`, `DTEND:${t}T130000`, "SUMMARY:Lunch with Sam", "LOCATION:Cafe Einstein"]),
       e([`DTSTART:${t}T150000`, `DTEND:${t}T163000`, "SUMMARY:Design review", "LOCATION:Video call"]),
       e([`DTSTART:${n}T100000`, `DTEND:${n}T110000`, "SUMMARY:Dentist"]),
       e([`DTSTART:${n}T140000`, `DTEND:${n}T150000`, "SUMMARY:Sprint planning", "RRULE:FREQ=WEEKLY"]),
+      e([`DTSTART:${at(3)}T180000`, `DTEND:${at(3)}T200000`, "SUMMARY:Climbing", "LOCATION:Boulder hall"]),
+      e([`DTSTART:${at(5)}T110000`, `DTEND:${at(5)}T120000`, "SUMMARY:Quarterly review", "LOCATION:Video call"]),
+      e([`DTSTART:${at(12)}T093000`, `DTEND:${at(12)}T103000`, "SUMMARY:Dentist follow-up"]),
+      e([`DTSTART;VALUE=DATE:${at(20)}`, `DTEND;VALUE=DATE:${at(21)}`, "SUMMARY:Team offsite"]),
       "END:VCALENDAR"].join("\r\n");
   }
 
@@ -124,11 +129,31 @@
   $("helpClose").onclick = () => toggleHelp(false);
   document.addEventListener("keydown", e => { if (e.key === "Escape") toggleHelp(false); });
 
+  const RANGES = { "1": 1, "3": 3, "7": 7, "30": 30 };
+  const RANGE_TEXT = { 1: "today", 3: "the next 3 days", 7: "the next week", 30: "the next month" };
+  /**
+   * Migration: installs from before `lookAhead` have `showTomorrow: false` saved and get lookAhead's default "7".
+   * They keep 1 day until the user picks a look-ahead themselves (then `legacyOneDay` is cleared and remembered).
+   */
+  let legacyOneDay = umbra.options.showTomorrow === false;
+  let lastLook = umbra.options.lookAhead;
+  umbra.store.get("lookMigrated", false).then(v => { if (v) { legacyOneDay = false; render(); } }).catch(() => {});
+  function lookDays(o) {
+    if (legacyOneDay && String(o.lookAhead) === "7") return 1;
+    return RANGES[String(o.lookAhead)] || 7;
+  }
+  function dayLabel(d, from) {
+    if (d === 0) return "Today";
+    if (d === 1) return "Tomorrow";
+    return new Date(from).toLocaleDateString(umbra.locale, { weekday: "short", day: "numeric", month: "short" });
+  }
+
   function render() {
     const o = umbra.options, now = new Date(), nowMs = now.getTime();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const days = o.showTomorrow === false ? 1 : 2;
-    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days).getTime();
+    const y = now.getFullYear(), m = now.getMonth(), dd = now.getDate();
+    const dayStart = new Date(y, m, dd).getTime();
+    const days = lookDays(o);
+    const dayEnd = new Date(y, m, dd + days).getTime();
     $("date").textContent = now.toLocaleDateString(umbra.locale,{ weekday: "long", day: "numeric", month: "short" });
     $("stale").hidden = !stale;
     const list = $("list");
@@ -140,39 +165,41 @@
       return;
     }
     const events = ICal.expand(icsText, dayStart, dayEnd);
-    const max = Math.max(1, Math.min(12, Number(o.maxRows) || 8));
+    const max = Math.max(1, Math.min(40, Number(o.maxRows) || 8));
     let used = 0, hidden = 0;
     for (let d = 0; d < days; d++) {
-      const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d).getTime();
-      const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d + 1).getTime();
+      const from = new Date(y, m, dd + d).getTime();
+      const to = new Date(y, m, dd + d + 1).getTime();
       const mine = events.filter(e => e.start < to && (e.end > from || (e.end === e.start && e.start >= from)))
         .sort((a, b) => (b.allDay - a.allDay) || a.start - b.start);
+      if (!mine.length) continue; // empty days are skipped
       const head = document.createElement("div");
       head.className = "day";
-      head.textContent = d === 0 ? "Today" : "Tomorrow";
+      head.textContent = dayLabel(d, from);
       const rows = [];
       for (const e of mine) {
         if (used < max) { rows.push(row(e, o, nowMs)); used++; } else hidden++;
       }
-      list.append(head);
-      if (!mine.length) {
-        const none = document.createElement("div");
-        none.className = "ev";
-        none.innerHTML = '<div class="what"><div class="title"></div></div>';
-        none.querySelector(".title").textContent = "Nothing planned";
-        none.style.opacity = 0.6;
-        list.append(none);
-      } else list.append(...rows);
+      if (rows.length) list.append(head, ...rows);
     }
-    // Drop whole rows that do not fit instead of showing a clipped one.
+    if (!list.firstChild && !hidden) {
+      const none = document.createElement("div");
+      none.className = "empty";
+      none.textContent = "Nothing planned " + (days === 1 ? "today" : "in " + RANGE_TEXT[days]);
+      list.append(none);
+      return;
+    }
+    // Drop whole rows that do not fit instead of showing a clipped one (and any day heading left empty).
     const evs = () => [...list.querySelectorAll(".ev")];
     const more = document.createElement("div");
     more.className = "more num";
     list.append(more);
     while (list.scrollHeight > list.clientHeight + 1 && evs().length > 1) {
-      const last = evs().pop();
-      last.remove(); hidden++;
+      evs().pop().remove(); hidden++;
       if (!more.textContent) more.textContent = " ";
+      const heads = list.querySelectorAll(".day");
+      const lastHead = heads[heads.length - 1];
+      if (lastHead && lastHead.nextElementSibling === more) lastHead.remove();
     }
     if (hidden) more.textContent = `+${hidden} more`; else more.remove();
   }
@@ -204,6 +231,10 @@
   });
   let lastUrl = umbra.options.url;
   umbra.onSettings(async () => {
+    if (umbra.options.lookAhead !== lastLook) {
+      lastLook = umbra.options.lookAhead;
+      if (legacyOneDay) { legacyOneDay = false; umbra.store.set("lookMigrated", true).catch(() => {}); }
+    }
     if (umbra.options.url !== lastUrl) { lastUrl = umbra.options.url; icsText = null; await load(); }
     render();
   });

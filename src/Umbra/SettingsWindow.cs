@@ -677,6 +677,13 @@ sealed class SettingsWindow : Form
     /// <summary>Switches the panel to one of <see cref="Pages"/> (the page's own show() function).</summary>
     public async Task ShowPageAsync(string page)
     {
+        if (page == "welcome" || page.StartsWith("welcome:", StringComparison.Ordinal)) // the welcome dialog, optionally at slide n (captures)
+        {
+            var slide = page.Length > 8 && int.TryParse(page.AsSpan(8), out var n) ? n : 1;
+            await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            await _view.CoreWebView2.ExecuteScriptAsync($"welcome({slide})");
+            return;
+        }
         if (!Pages.Contains(page)) throw new ArgumentException($"Unknown Settings page '{page}'. Pages: {string.Join(", ", Pages)}");
         await _loaded.Task.WaitAsync(TimeSpan.FromSeconds(20));
         if (page == "browse") _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
