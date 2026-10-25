@@ -4,9 +4,9 @@
     {
       "id": "calendar-glance",
       "name": "Calendar glance",
-      "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
+      "description": "Upcoming events (1 day to 1 month, default 1 week) from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.2.2",
+      "version": "1.3.0",
       "manifestVersion": 1,
       "preview": "preview.png",
       "icon": "icon.png",
