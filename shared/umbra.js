@@ -471,6 +471,11 @@
     openUrl: (url) => post({ type: "openUrl", url }),
     /** Ask for keyboard focus, e.g. before focusing an input from a double-click. Only works right after a click on the widget. */
     requestFocus: () => post({ type: "focus" }),
+    /**
+     * Suggest this copy's tab icon when it sits in a tab group: a name from the bundled shared/tabicons (e.g. "chart-line"), or null to
+     * clear. Call it again when the view changes. Names the host doesn't know are ignored and logged; the user's own pick in Settings always wins.
+     */
+    setTabIcon: (name) => post({ type: "tabIcon", name: typeof name === "string" ? name : null }),
     /** Call after the first real frame is drawn; screenshots (umbractl capture) wait for it. */
     rendered: () => post({ type: "rendered" }),
     tween,
