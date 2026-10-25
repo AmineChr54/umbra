@@ -30,8 +30,8 @@ public static class Snap
     /// <summary>Whether a drag snaps right now: snapping is configured and Shift is held ("shift" mode) or not held ("always" mode).</summary>
     public static bool SnapsWhileDragging(GeneralSettings g, bool shiftHeld) => IsActive(g) && (IsAlways(g) ? !shiftHeld : shiftHeld);
 
-    /// <summary>Grid for an arrow-key nudge: Shift (a big step) uses it when snapping is configured; in "always" mode a big step uses it too, as before. Small steps never do.</summary>
-    public static int NudgeGrid(GeneralSettings g, bool big) => IsActive(g) && (big || IsAlways(g)) ? g.SnapGrid : 0;
+    /// <summary>Grid for an arrow-key nudge: only a big (Shift) step uses it, and only when snapping is configured, in either mode. Small steps never do.</summary>
+    public static int NudgeGrid(GeneralSettings g, bool big) => IsActive(g) && big ? g.SnapGrid : 0;
 
     /// <summary>Pill hint for the current mode.</summary>
     public static string Hint(GeneralSettings g) => IsAlways(g) ? "Shift skips snapping" : "Hold Shift to snap";

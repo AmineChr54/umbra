@@ -1006,6 +1006,7 @@ sealed class App : ApplicationContext
         SaveSettings();
         SyncWindows();
         foreach (var w in _windows.Values) w.PushSettings();
+        RefreshEditPills(); // the chip and hint encode the snap mode
     }
 
     /// <summary>Turns "Arrange widgets" (the global lock off) on or off, saves it and updates the widgets, tray and Settings.</summary>

@@ -116,13 +116,14 @@ public class SnapTests
     }
 
     [Fact]
-    public void Nudge_uses_the_grid_only_for_big_steps_in_shift_mode()
+    public void Nudge_uses_the_grid_only_for_big_steps_in_both_modes()
     {
         var g = new GeneralSettings { SnapGrid = 20 };
         Assert.Equal(20, Snap.NudgeGrid(g, big: true));
         Assert.Equal(0, Snap.NudgeGrid(g, big: false));
         g.SnapMode = "always";
         Assert.Equal(20, Snap.NudgeGrid(g, big: true));
+        Assert.Equal(0, Snap.NudgeGrid(g, big: false));
     }
 
     [Fact]
