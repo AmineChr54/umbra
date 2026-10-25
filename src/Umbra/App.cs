@@ -320,6 +320,9 @@ sealed class App : ApplicationContext
         ["icons"] = new System.Text.Json.Nodes.JsonObject(kv.Value.Members
             .Where(m => Settings.Widgets.TryGetValue(m, out var w) && w.TabIcon is not null)
             .Select(m => KeyValuePair.Create(m, (System.Text.Json.Nodes.JsonNode?)System.Text.Json.Nodes.JsonValue.Create(Settings.Widgets[m].TabIcon)))),
+        ["suggestedIcons"] = new System.Text.Json.Nodes.JsonObject(kv.Value.Members
+            .Where(m => Settings.Widgets.TryGetValue(m, out var w) && w.SuggestedTabIcon is not null)
+            .Select(m => KeyValuePair.Create(m, (System.Text.Json.Nodes.JsonNode?)System.Text.Json.Nodes.JsonValue.Create(Settings.Widgets[m].SuggestedTabIcon)))),
     }).ToArray());
 
     /// <summary>Sets (or with null/empty clears) the tab icon of a widget copy; the strip redraws at once.</summary>
@@ -329,6 +332,19 @@ sealed class App : ApplicationContext
         if (string.IsNullOrEmpty(icon)) icon = null;
         else if (Groups.IconPath(icon) is null) throw new ArgumentException($"Unknown tab icon '{icon}'");
         ws.TabIcon = icon;
+        SaveSettings();
+        foreach (var id in _tabStrips.Keys.ToList()) _tabStrips[id].Redraw();
+        SettingsChangedElsewhere();
+    }
+
+    /// <summary>
+    /// Stores the tab icon a widget copy suggested (already validated; null clears it). It never touches the user's own choice, which wins in the strip.
+    /// Saved only when it changed, then the strip redraws at once.
+    /// </summary>
+    public void SuggestTabIcon(string instance, string? icon)
+    {
+        if (!Settings.Widgets.TryGetValue(instance, out var ws) || ws.SuggestedTabIcon == icon) return;
+        ws.SuggestedTabIcon = icon;
         SaveSettings();
         foreach (var id in _tabStrips.Keys.ToList()) _tabStrips[id].Redraw();
         SettingsChangedElsewhere();
@@ -392,7 +408,7 @@ sealed class App : ApplicationContext
         BuildTrayMenu();
         UpdateTrayStatus();
         _tray.BalloonTipClicked += (_, _) => _balloonClick?.Invoke();
-        AnnounceUpdate();
+        var announced = AnnounceUpdate();
 
         foreach (var (k, ws) in Settings.Widgets) if (ws.StartHidden) _startHidden.Add(k);
         Power = new PowerState(_ui); // before the windows: their settings payload reads it
@@ -431,6 +447,19 @@ sealed class App : ApplicationContext
             var win = ShowSettings();
             if (showBrowse) _ = ShowBrowseAsync(win);
         }
+        switch (Tour.Decide(Settings.General.TourDone, openSettings, announced || SafeMode))
+        {
+            case Tour.Plan.ShowNow:
+                Settings.General.TourDone = true;
+                SaveSettings();
+                _ = ShowPageAsync(ShowSettings(), "welcome");
+                break;
+            case Tour.Plan.Offer: // an existing profile: ask once, clicking runs it, ignoring it counts as declining
+                Settings.General.TourDone = true;
+                SaveSettings();
+                ShowBalloon(8000, "Umbra", "New: take a quick tour of Umbra?", ToolTipIcon.None, ReplayTour);
+                break;
+        }
     }
 
     static async Task ShowBrowseAsync(SettingsWindow win) => await ShowPageAsync(win, "browse");
@@ -445,17 +474,21 @@ sealed class App : ApplicationContext
     /// After a self-update, shows one balloon "Umbra updated to x.y" that opens About, where the release notes are.
     /// The version is recorded first, so it shows once per version; a first install shows nothing.
     /// </summary>
-    void AnnounceUpdate()
+    bool AnnounceUpdate()
     {
         var current = UpdateService.CurrentVersion;
         var announce = Updates.ShouldAnnounce(Settings.General.LastSeenVersion, current);
         var next = Updates.NextLastSeen(Settings.General.LastSeenVersion, current);
         if (next != Settings.General.LastSeenVersion) { Settings.General.LastSeenVersion = next; SaveSettings(); }
-        if (!announce) return;
+        if (!announce) return false;
         Log.Write($"Updated to {current}");
         _ = ObserveAsync(Updater.LoadWhatsNewAsync(current), "Release notes");
         ShowBalloon(6000, "Umbra", $"Umbra updated to {current}. See what's new", ToolTipIcon.None, () => _ = ShowPageAsync(ShowSettings(), "about"));
+        return true;
     }
+
+    /// <summary>Opens Settings with the welcome tour on top (tray menu, About, the one-time offer).</summary>
+    public void ReplayTour() => _ = ShowPageAsync(ShowSettings(), "welcome");
 
     /// <summary>Legacy widget ids being restored right now; their settings and data must survive <see cref="ForgetOrphans"/>.</summary>
     readonly HashSet<string> _restoring = new();
@@ -646,6 +679,7 @@ sealed class App : ApplicationContext
             menu.Items.Add(new ToolStripSeparator());
         }
         menu.Items.Add("Settings...", null, (_, _) => ShowSettings()).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
+        menu.Items.Add("Welcome tour", null, (_, _) => ReplayTour());
         var edit = new ToolStripMenuItem("Arrange widgets (unlock)") { Checked = EditMode };
         edit.Click += (_, _) => SetEditMode(!EditMode);
         menu.Items.Add(edit);
@@ -969,6 +1003,7 @@ sealed class App : ApplicationContext
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
         s.General.LegacyRestoreDone = true;
         s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
+        s.General.TourDone = Settings.General.TourDone; // nor re-offer or reset the tour
         s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
         Settings = s;
         SaveSettings();
@@ -999,6 +1034,7 @@ sealed class App : ApplicationContext
         incoming.Groups = Settings.Groups; // owned by the group methods, like positions
         incoming.Hotkeys = Settings.Hotkeys; // owned by SetHotkey, never by a (possibly stale) save
         incoming.General.LastSeenVersion = Settings.General.LastSeenVersion; // owned by AnnounceUpdate
+        incoming.General.TourDone = Settings.General.TourDone; // owned by the tour logic in the constructor
         incoming.General.LockAll = Settings.General.LockAll; // owned by SetEditMode
         incoming.SettingsPanel = Settings.SettingsPanel; // owned by the Settings window
         Prefs.FollowDefaultScale(incoming);

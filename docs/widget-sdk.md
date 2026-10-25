@@ -28,7 +28,7 @@ my-widget/            folder name = widget id (lowercase letters, digits, dashes
   index.html          entry page (required, or whatever "entry" names)
   preview.png         screenshot for the Browse page (recommended: 2x, black background)
   icon.png            optional tab icon for widget groups (64x64 PNG, light grey on transparent; "icon": "icon.png" in widget.json)
-  (users can also pick any of the bundled shared/tabicons for a tab in Settings > Tab groups, or with `umbractl groups icon <id> <name>`; their choice wins over icon.png)
+  (users can also pick any of the bundled shared/tabicons for a tab in Settings > Tab groups, or with `umbractl groups icon <id> <name>`; their choice wins over icon.png; a widget copy can also suggest one with `umbra.setTabIcon`, see below)
   ...                 .js .mjs .css .svg .png .jpg .webp .gif .woff .woff2 .ttf .otf .json .txt .md (5 MB total)
 ```
 
@@ -141,6 +141,7 @@ umbra.onSettings(() => { /* options changed: re-render without refetching if you
 | `umbra.store.onChange(fn)` | `fn(key)` runs when the data was changed from outside the widget (`umbractl data`, MCP). `key` is `null` when everything was cleared |
 | `umbra.requestFocus()` | Ask for the keyboard, e.g. before focusing an input you create on double-click. Only honoured right after the user pressed the mouse on the widget (inputs and textareas ask automatically) |
 | `umbra.openUrl(url)` | Opens an http(s) link in the user's browser (links never navigate the widget) |
+| `umbra.setTabIcon(name)` | Suggests this copy's icon in a tab group's strip, e.g. per `view` option so Overview, Board and Pet copies look different by default. `name` is one of the bundled [`shared/tabicons`](../shared/tabicons/index.json) names such as `"chart-line"`, or `null` to clear. Call it again whenever the view changes: the host stores it (`SuggestedTabIcon` in `settings.json`) and redraws the strip at once. See [Tab icon suggestions](#tab-icon-suggestions) |
 | `umbra.rendered()` | Call once the first real frame is drawn; screenshots wait for it |
 | `umbra.tween(from, to, ms, onFrame)` | Ease-out-cubic number animation; jumps straight to `to` when motion is off or the window is hidden |
 | `umbra.locale` | The user's Windows region format as a BCP-47 tag (`"de-DE"`). Pass it to `Intl.*` and `toLocale*String` instead of `[]` or a hard-coded `"en-US"`; `"en-US"` before the host has sent settings |
@@ -362,12 +363,29 @@ a whole interval, the schedule restarts instead of taking a burst of stills, so 
 allow desktop apps to use the camera (Settings > Privacy & security > Camera). No control command, umbractl or MCP tool can
 start the camera; the tray menu can stop or cancel a recording.
 
+## Tab icon suggestions
+
+When copies of a widget sit in a tab group, each shows one icon in the host-drawn tab strip. By default that is the widget's `icon.png`, so three copies with different `view` options look identical. A copy can suggest a better one:
+
+```js
+const ICONS = { overview: "layout-dashboard", board: "list-checks", pet: "paw-print" };
+const suggest = () => umbra.setTabIcon(ICONS[umbra.options.view] ?? null);
+umbra.ready.then(suggest);
+umbra.onSettings(suggest); // again when the user changes the view option; repeats with the same name are free
+```
+
+- **Only bundled icons.** `name` must be the file name (without `.png`) of an icon in `shared/tabicons`, lowercase letters, digits and single hyphens. Paths, URLs, emoji, markup and unknown names are ignored and logged in `umbra.log`; the previous suggestion stays. `null` or `""` clears it.
+- **The user wins.** An icon the user picked in Settings > Tab groups (or `umbractl groups icon`) always overrides the suggestion. Choosing "Default" there goes back to the suggestion, then to `icon.png`, then to the letter badge.
+- **Cheap to call.** The host only saves and redraws when the suggestion changed, and allows at most 12 changes per minute per copy. `umbractl groups` lists current suggestions as `suggestedIcons` next to the user's `icons`.
+- A suggestion has no effect on a copy that is not in a group.
+
 ## Sandbox (what a widget can and cannot do)
 
 - Pages load only from Umbra's virtual hosts (`umbra.local`, `community.umbra.local`), `data:` and `blob:`.
 - Any other request gets HTTP 403 unless its host is listed in `permissions.hosts` and it uses HTTPS.
 - No navigation away, no new windows, no browser context menu or devtools. Right-click opens the host's own menu (Refresh, Options, Arrange widgets, Hide, Add another copy); a widget that calls `preventDefault()` on `contextmenu` keeps its own menu, and Shift+right-click always opens the host menu. Browser zoom keys are off; only the host sets
   the zoom (the user's size setting).
+- A widget can only *suggest* a tab icon, by bundled name; the host validates it and the user's pick overrides it.
 - No file system or native access except the declared, user-approved commands above; the bridge only offers the calls above. `umbra.store` reaches only the
   widget's own data file.
 
