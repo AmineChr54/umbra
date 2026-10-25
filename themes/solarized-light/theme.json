@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "solarized-light",
+  "name": "Solarized Light",
+  "description": "Ethan Schoonover's Solarized palette, light variant.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--bg": "#fdf6e3",
+    "--surface-1": "#fdf6e3",
+    "--surface-2": "#eee8d5",
+    "--surface-3": "#e4ddc8",
+    "--line": "rgba(88, 110, 117, 0.15)",
+    "--line-strong": "rgba(88, 110, 117, 0.28)",
+    "--text": "#073642",
+    "--text-2": "#586e75",
+    "--text-3": "#93a1a1",
+    "--accent": "#268bd2",
+    "--accent-strong": "#1a6aa3",
+    "--accent-soft": "rgba(38, 139, 210, 0.15)",
+    "--up": "#859900",
+    "--down": "#dc322f",
+    "--flat": "#93a1a1"
+  }
+}

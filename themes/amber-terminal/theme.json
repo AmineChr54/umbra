@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "amber-terminal",
+  "name": "Amber Terminal",
+  "description": "Retro amber phosphor on black, with square corners.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#0a0600",
+    "--surface-2": "#120b00",
+    "--surface-3": "#1b1100",
+    "--line": "rgba(255, 176, 0, 0.08)",
+    "--line-strong": "rgba(255, 176, 0, 0.15)",
+    "--text": "#ffb000",
+    "--text-2": "#c58700",
+    "--text-3": "#7d5600",
+    "--accent": "#ffb000",
+    "--accent-strong": "#ffcc4d",
+    "--accent-soft": "rgba(255, 176, 0, 0.15)",
+    "--up": "#b8e000",
+    "--down": "#ff5a36",
+    "--flat": "#a87400",
+    "--radius-s": "0px",
+    "--radius-m": "2px",
+    "--radius-l": "4px"
+  }
+}

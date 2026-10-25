@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "sunset",
+  "name": "Sunset",
+  "description": "Warm coral glow on dusky plum surfaces.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#130a12",
+    "--surface-2": "#1c0f18",
+    "--surface-3": "#271622",
+    "--line": "rgba(255, 190, 170, 0.08)",
+    "--line-strong": "rgba(255, 190, 170, 0.15)",
+    "--text": "#fbeeea",
+    "--text-2": "#c0a2a0",
+    "--text-3": "#85696b",
+    "--accent": "#ff6b5e",
+    "--accent-strong": "#ff9a8a",
+    "--accent-soft": "rgba(255, 107, 94, 0.15)"
+  }
+}

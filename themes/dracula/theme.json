@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "dracula",
+  "name": "Dracula",
+  "description": "The classic purple and pink on charcoal-violet.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--bg": "#14151d",
+    "--surface-1": "#1e1f29",
+    "--surface-2": "#282a36",
+    "--surface-3": "#343746",
+    "--line": "rgba(248, 248, 242, 0.08)",
+    "--line-strong": "rgba(248, 248, 242, 0.15)",
+    "--text": "#f8f8f2",
+    "--text-2": "#c0c3d6",
+    "--text-3": "#7b80a0",
+    "--accent": "#bd93f9",
+    "--accent-strong": "#d6b8ff",
+    "--accent-soft": "rgba(189, 147, 249, 0.15)",
+    "--up": "#50fa7b",
+    "--down": "#ff5555",
+    "--flat": "#a0a4c0"
+  }
+}

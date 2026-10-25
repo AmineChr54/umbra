@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "ocean-teal",
+  "name": "Ocean Teal",
+  "description": "Deep sea-green surfaces with a teal accent.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#071213",
+    "--surface-2": "#0b1b1d",
+    "--surface-3": "#112628",
+    "--line": "rgba(160, 235, 235, 0.08)",
+    "--line-strong": "rgba(160, 235, 235, 0.15)",
+    "--text": "#e8f6f6",
+    "--text-2": "#96b5b6",
+    "--text-3": "#5b7a7c",
+    "--accent": "#1fc8b8",
+    "--accent-strong": "#6adfd3",
+    "--accent-soft": "rgba(31, 200, 184, 0.15)"
+  }
+}

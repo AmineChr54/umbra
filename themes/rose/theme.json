@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "rose",
+  "name": "Rose",
+  "description": "Soft rose accent on deep wine-black surfaces.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#12080c",
+    "--surface-2": "#1a0d13",
+    "--surface-3": "#24131b",
+    "--line": "rgba(255, 190, 210, 0.08)",
+    "--line-strong": "rgba(255, 190, 210, 0.15)",
+    "--text": "#faeef2",
+    "--text-2": "#bda2ab",
+    "--text-3": "#816870",
+    "--accent": "#f4668f",
+    "--accent-strong": "#f99bb8",
+    "--accent-soft": "rgba(244, 102, 143, 0.15)"
+  }
+}
