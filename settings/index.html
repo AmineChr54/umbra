@@ -33,6 +33,7 @@
       </div>
 
       <nav class="nav" id="nav" aria-label="Settings pages">
+        <button class="update" id="navUpdate" hidden><span class="ico" data-icon="download"></span><span id="navUpdateText">Update now</span></button>
         <button data-page="general" class="active" aria-current="page"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
         <button data-page="layouts"><span class="ico" data-icon="layers"></span>Layouts</button>
@@ -96,8 +97,8 @@
           </div>
           <div class="row">
             <div class="row-text">
-              <div class="row-title">Check for updates</div>
-              <div class="row-sub">Once a day Umbra asks GitHub whether a newer version exists. Nothing is installed without your say-so.</div>
+              <div class="row-title">Check for and download updates automatically</div>
+              <div class="row-sub">At start and once a day Umbra asks GitHub for a newer version and downloads it in the background. It is only installed when you click Update now.</div>
             </div>
             <label class="switch"><input type="checkbox" id="checkUpdates"><span></span></label>
           </div>

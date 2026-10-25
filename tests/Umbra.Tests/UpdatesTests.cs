@@ -3,6 +3,19 @@ namespace Umbra.Tests;
 public class UpdatesTests
 {
     [Theory]
+    [InlineData(false, false, false, null, false, "none")]
+    [InlineData(false, true, true, 50, false, "none")]
+    [InlineData(true, false, false, null, false, "available")]
+    [InlineData(true, false, false, 40, false, "downloading")]
+    [InlineData(true, false, true, null, false, "downloading")]
+    [InlineData(true, true, false, null, false, "ready")]
+    [InlineData(true, true, true, null, false, "ready")]
+    [InlineData(true, false, false, null, true, "available")]
+    [InlineData(true, true, false, null, true, "available")]
+    public void ButtonState_follows_the_update_lifecycle(bool available, bool ready, bool installing, int? progress, bool portable, string expected) =>
+        Assert.Equal(expected, Updates.ButtonState(available, ready, installing, progress, portable));
+
+    [Theory]
     [InlineData("1.2.1", "1.2.0", 1)]
     [InlineData("1.10.0", "1.9.9", 1)]
     [InlineData("v2.0.0", "1.99.99", 1)]

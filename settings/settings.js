@@ -62,7 +62,7 @@ function show(page) {
   if (page === "privacy") post({ type: "privacy" });
   post({ type: "page", page }); // the host remembers the last page for the next open
 }
-$$(".nav button").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
+$$(".nav button[data-page]").forEach((b) => b.addEventListener("click", () => show(b.dataset.page)));
 
 // ---------- toast ----------
 let toastTimer;
@@ -178,7 +178,7 @@ function labelRows(root = document) {
 // Arrow keys move through a list of buttons (sidebar, segmented control). `pick` also selects the one reached.
 function arrowNav(container, pick) {
   container.addEventListener("keydown", (e) => {
-    const items = $$("button", container).filter((b) => !b.disabled);
+    const items = $$("button", container).filter((b) => !b.disabled && !b.hidden);
     const i = items.indexOf(document.activeElement);
     if (i < 0 || e.ctrlKey || e.altKey || e.metaKey) return;
     const next = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: items.length - 1 }[e.key];
@@ -214,6 +214,10 @@ function renderUpdate() {
   $("#updateInstall").disabled = busy;
   $("#updateCheck").disabled = busy;
   if (u.installing && a) $("#updateText").textContent = u.ready ? "Restarting Umbra to update..." : "Downloading the update. Umbra will restart when it's done...";
+  const bs = u.button || "none";
+  $("#navUpdate").hidden = bs === "none";
+  $("#navUpdate").disabled = bs === "downloading";
+  $("#navUpdateText").textContent = bs === "downloading" ? (u.progress != null ? `Downloading... ${u.progress} %` : "Downloading...") : bs === "ready" ? "Restart to update" : u.portable ? "Download update" : "Update now";
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
   renderWhatsNew();
 }
@@ -276,6 +280,7 @@ $("#whatsNew").addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.dataset && e.target.dataset.href) post({ type: "openUrl", url: e.target.dataset.href });
 });
 $("#updateCheck").addEventListener("click", () => { $("#updateCheck").disabled = true; $("#updateText").textContent = "Checking..."; post({ type: "checkUpdate" }); });
+$("#navUpdate").addEventListener("click", () => $("#updateInstall").click());
 $("#updateInstall").addEventListener("click", () => {
   if (state.update && state.update.portable) { post({ type: "openUrl", url: state.update.available.url }); return; }
   $("#updateInstall").disabled = true;
@@ -1421,7 +1426,7 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     focusSearch();
   } else if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && /^[1-9]$/.test(e.key)) {
-    const b = $$(".nav button")[Number(e.key) - 1];
+    const b = $$(".nav button[data-page]")[Number(e.key) - 1];
     if (b) { e.preventDefault(); show(b.dataset.page); }
   }
 });
