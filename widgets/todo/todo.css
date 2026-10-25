@@ -53,9 +53,8 @@ html, body { height: 100%; overflow: hidden; }
 
 .row {
   position: relative;
-  display: flex; align-items: center; gap: 12px;
-  min-height: 40px;
-  padding: 7px 10px 7px 12px;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 10px 10px 12px;
   border-radius: var(--radius-s);
   transition: background 120ms, opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
 }
@@ -87,16 +86,19 @@ html, body { height: 100%; overflow: hidden; }
 .text {
   flex: 1; min-width: 0;
   font-size: 13.5px; font-weight: 450; line-height: 1.35;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 1px 0; /* 20px line box: lines up with the checkbox on the first line */
+  white-space: normal; overflow-wrap: anywhere;
   cursor: default;
 }
 .row.done .text { color: var(--text-3); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.25); }
 
 .edit {
   flex: 1; min-width: 0;
-  margin: -4px 0;
+  display: block;
+  margin: -3px 0 -4px -6px;
   padding: 3px 6px;
-  font: inherit; font-size: 13.5px;
+  font: inherit; font-size: 13.5px; font-weight: 450; line-height: 1.35;
+  resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere;
   color: var(--text);
   background: var(--surface-3);
   border: 1px solid var(--line-strong);
@@ -106,7 +108,7 @@ html, body { height: 100%; overflow: hidden; }
 }
 .edit:focus { border-color: var(--accent); }
 
-.meta { flex: none; display: flex; align-items: center; gap: 8px; }
+.meta { flex: none; display: flex; align-items: center; gap: 8px; min-height: 20px; }
 
 .streak {
   display: inline-flex; align-items: center; gap: 3px;
@@ -128,7 +130,8 @@ html, body { height: 100%; overflow: hidden; }
 /* Slides in after the repeat label on hover, so it never covers it. */
 .del {
   flex: none;
-  width: 0; height: 24px; margin: -4px 0 -4px -12px; /* cancels the row gap while hidden */
+  align-self: flex-start;
+  width: 0; height: 24px; margin: -2px 0 -2px -12px; /* cancels the row gap while hidden */
   display: grid; place-items: center;
   padding: 0;
   overflow: hidden;
@@ -140,7 +143,7 @@ html, body { height: 100%; overflow: hidden; }
   transition: width 160ms var(--ease-out), margin 160ms var(--ease-out), opacity 120ms, color 120ms, background 120ms;
 }
 .del svg { flex: none; width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
-.row:hover .del { width: 24px; margin: -4px -2px -4px -4px; opacity: 1; }
+.row:hover .del { width: 24px; margin: -2px -2px -2px -4px; opacity: 1; }
 .del:hover { background: var(--surface-3); }
 .del:hover { color: var(--down); }
 
