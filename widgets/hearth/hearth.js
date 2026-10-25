@@ -158,6 +158,9 @@
     } else setHover(false);
     const pet = app.querySelector("[data-pet-root]");
     if (pet) window.HearthPet.attach(pet, client);
+    // #211: any view may hold a [data-hearth-tap] element
+    const tapSlot = app.querySelector("[data-hearth-tap]");
+    if (tapSlot && window.HearthTap) window.HearthTap.mount(tapSlot, client);
     const code = app.querySelector("#code");
     if (code && (typing || ui.focusCode)) { ui.focusCode = false; code.focus(); code.setSelectionRange(code.value.length, code.value.length); }
     startCountdown();
@@ -270,6 +273,10 @@
       instance: (umbra.widget && (umbra.widget.instance || umbra.widget.id)) || "hearth",
     });
     await window.HearthOverview.init({ app, client, core, mascot, rerender: () => render(true) });
+    if (window.HearthTap) {
+      window.HearthTap.attach(client); // #211: taps, pulse, toast and the together moment work in every view
+      app.addEventListener("hearth-overview", (e) => { if (e.detail && e.detail.tapSlot) window.HearthTap.mount(e.detail.tapSlot, client); });
+    }
     client.subscribe(onView);
     client.setRefreshSeconds(umbra.settings.refreshSeconds);
     client.setPaused(!!umbra.settings.paused);
