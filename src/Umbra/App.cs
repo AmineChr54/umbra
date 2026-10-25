@@ -431,7 +431,7 @@ sealed class App : ApplicationContext
             var win = ShowSettings();
             if (showBrowse) _ = ShowBrowseAsync(win);
         }
-        switch (Tour.Decide(Settings.General.TourDone, openSettings, announced))
+        switch (Tour.Decide(Settings.General.TourDone, openSettings, announced || SafeMode))
         {
             case Tour.Plan.ShowNow:
                 Settings.General.TourDone = true;

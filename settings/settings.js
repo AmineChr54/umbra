@@ -1467,10 +1467,11 @@ function welcome(n) {
   $("#welcomeNext").textContent = welcomeAt === WELCOME.length - 1 ? "Done" : "Next";
   $("#welcomeSkip").hidden = welcomeAt === WELCOME.length - 1;
   w.hidden = false;
-  if (open) $("#welcomeNext").focus();
+  if (open) { document.querySelector(".app").inert = true; $("#welcomeNext").focus(); } // the page behind is out of reach for keys, clicks and screen readers
 }
 function welcomeClose() {
   $("#welcome").hidden = true;
+  document.querySelector(".app").inert = false;
   if (welcomeFrom && welcomeFrom.focus) welcomeFrom.focus();
   welcomeFrom = null;
 }
@@ -1478,15 +1479,17 @@ $("#welcomeNext").addEventListener("click", () => (welcomeAt === WELCOME.length 
 $("#welcomeBack").addEventListener("click", () => welcome(welcomeAt));
 $("#welcomeSkip").addEventListener("click", welcomeClose);
 $("#replayTour").addEventListener("click", () => welcome(1));
-$("#welcome").addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { e.preventDefault(); welcomeClose(); return; }
+// On the document in the capture phase: a click on the backdrop moves focus to the body, and Esc must still close only the dialog (not Settings).
+document.addEventListener("keydown", (e) => {
+  if ($("#welcome").hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); welcomeClose(); return; }
   if (e.key === "Tab") { // keep focus inside the dialog
     const f = $$("#welcome button").filter((b) => !b.hidden);
     const first = f[0], last = f[f.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
-});
+}, true);
 
 icons();
 labelRows();
