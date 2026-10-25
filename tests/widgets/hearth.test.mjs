@@ -859,7 +859,7 @@ test("events reach every copy of the PC", async () => {
 
 test("manifest: id, one declared host, notifications, the view option, no preview yet", () => {
   assert.equal(manifest.id, "hearth");
-  assert.equal(manifest.version, "1.0.0");
+  assert.equal(manifest.version, "1.0.1");
   assert.equal(manifest.author, "Yacine-DH");
   assert.deepEqual(manifest.permissions.hosts, [HOST]);
   assert.equal(manifest.permissions.notifications, true);
