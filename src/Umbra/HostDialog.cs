@@ -16,25 +16,35 @@ sealed class HostDialog : Form
 
     readonly Button _yes, _no;
 
-    HostDialog(string title, string heading, IReadOnlyList<string> items, string? footer, string yesText, string noText)
+    internal HostDialog(string title, string heading, IReadOnlyList<string> items, string? footer, string yesText, string noText, bool hasOwner = true)
     {
         Text = title;
         Icon = App.AppIcon;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = MinimizeBox = false;
-        ShowInTaskbar = false;
-        StartPosition = FormStartPosition.CenterParent;
+        // Without an owner (a file double-click) the box must not hide behind other windows with no way to find it.
+        ShowInTaskbar = !hasOwner;
+        TopMost = !hasOwner;
+        StartPosition = hasOwner ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
         AutoScaleMode = AutoScaleMode.Dpi;
         BackColor = Black;
         ForeColor = Color.White;
         Font = new Font(FontFamily.Families.Any(f => f.Name == "Segoe UI Variable Text") ? "Segoe UI Variable Text" : "Segoe UI", 9.5f);
         const int width = 520;
         var lines = items.Select(Clean).Where(i => i.Length > 0).ToList();
-        var listHeight = lines.Count == 0 ? 0 : Math.Min(lines.Count, MaxVisibleLines) * 22 + 14;
+        // Sizes below are in 96-dpi design units (AutoScaleMode.Dpi scales them), so the cap uses the working area in the same units.
+        var scale = Math.Max(1f, DeviceDpi / 96f);
+        var areaH = (int)(Screen.FromPoint(Cursor.Position).WorkingArea.Height / scale);
+        var lineH = TextRenderer.MeasureText("Ag", Font).Height + 4;
+        var listHeight = lines.Count == 0 ? 0 : Math.Min(lines.Count, MaxVisibleLines) * lineH + 10;
+        listHeight = Math.Min(listHeight, Math.Max(lineH, areaH / 3));
+        var textCap = Math.Max(40, areaH / 6);
+        heading = Cap(heading, MaxHeadingChars);
+        footer = footer is null ? null : Cap(footer, MaxFooterChars);
 
         var y = 16;
-        var head = new Label { Text = heading, Left = 16, Top = y, Width = width - 32, UseMnemonic = false, AutoSize = false, Font = new Font(Font, FontStyle.Bold) };
-        head.Height = MeasureHeight(head, width - 32);
+        var head = new Label { Text = heading, Left = 16, Top = y, Width = width - 32, UseMnemonic = false, AutoSize = false, AutoEllipsis = true, Font = new Font(Font, FontStyle.Bold) };
+        head.Height = Math.Min(MeasureHeight(head, width - 32), textCap);
         Controls.Add(head);
         y += head.Height + 10;
 
@@ -45,6 +55,7 @@ sealed class HostDialog : Form
                 Text = FormatList(lines), ReadOnly = true, Multiline = true, WordWrap = true, BorderStyle = BorderStyle.FixedSingle,
                 ScrollBars = lines.Count > MaxVisibleLines ? ScrollBars.Vertical : ScrollBars.None,
                 Left = 16, Top = y, Width = width - 32, Height = listHeight, BackColor = Surface, ForeColor = Color.White,
+                TabStop = false, // Tab goes straight to Yes/No; the list still scrolls with the wheel or a click
             };
             list.HandleCreated += (_, _) => Native.SetWindowTheme(list.Handle, "DarkMode_Explorer", null);
             Controls.Add(list);
@@ -52,8 +63,8 @@ sealed class HostDialog : Form
         }
         if (!string.IsNullOrWhiteSpace(footer))
         {
-            var note = new Label { Text = footer, Left = 16, Top = y, Width = width - 32, AutoSize = false, UseMnemonic = false, ForeColor = Muted };
-            note.Height = MeasureHeight(note, width - 32);
+            var note = new Label { Text = footer, Left = 16, Top = y, Width = width - 32, AutoSize = false, AutoEllipsis = true, UseMnemonic = false, ForeColor = Muted };
+            note.Height = Math.Min(MeasureHeight(note, width - 32), textCap);
             Controls.Add(note);
             y += note.Height + 10;
         }
@@ -64,7 +75,7 @@ sealed class HostDialog : Form
         _yes.Top = _no.Top = y;
         Controls.Add(_yes); Controls.Add(_no);
         ClientSize = new Size(width, y + 32 + 16);
-        // Tab order: list (scroll), Yes, No. Enter and Esc both mean No.
+        // Tab order: Yes, then No (the list is not a tab stop). Enter and Esc both mean No.
         AcceptButton = _no; CancelButton = _no; ActiveControl = _no;
         HandleCreated += (_, _) => Native.SetDwm(Handle, Native.DWMWA_USE_IMMERSIVE_DARK_MODE, 1);
     }
@@ -107,7 +118,30 @@ sealed class HostDialog : Form
     public static bool Confirm(IWin32Window? owner, string heading, IReadOnlyList<string>? items = null, string? footer = null,
         string yesText = "Yes", string noText = "No", string title = "Umbra")
     {
-        using var dlg = new HostDialog(title, heading, items ?? Array.Empty<string>(), footer, yesText, noText);
-        return dlg.ShowDialog(owner) == DialogResult.Yes;
+        if (!DialogGuard.TryEnter()) { Log.Write("Confirmation box already open; request refused"); return false; }
+        try
+        {
+            using var dlg = new HostDialog(title, heading, items ?? Array.Empty<string>(), footer, yesText, noText, owner is not null);
+            return dlg.ShowDialog(owner) == DialogResult.Yes;
+        }
+        finally { DialogGuard.Exit(); }
     }
+
+    internal const int MaxHeadingChars = 240, MaxFooterChars = 700;
+
+    /// <summary>Control characters removed and at most <paramref name="max"/> characters, with an ellipsis when cut.</summary>
+    internal static string Cap(string s, int max)
+    {
+        var t = s.Replace("\r\n", "\n");
+        t = new string(t.Where(c => c == '\n' || !char.IsControl(c)).ToArray()).Trim();
+        return t.Length > max ? t[..max] + "..." : t;
+    }
+}
+
+/// <summary>Only one confirmation box at a time: a second request is refused (counts as No), so nothing can stack prompts.</summary>
+internal static class DialogGuard
+{
+    static int _open;
+    public static bool TryEnter() => Interlocked.Exchange(ref _open, 1) == 0;
+    public static void Exit() => Interlocked.Exchange(ref _open, 0);
 }

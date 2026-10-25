@@ -25,4 +25,35 @@ public class HostDialogTests
         Assert.Equal(14, HostDialog.FormatList(items).Split("\r\n").Length);
         Assert.True(items.Count > HostDialog.MaxVisibleLines);
     }
+
+    [Fact]
+    public void Second_dialog_is_refused_while_one_is_open()
+    {
+        Assert.True(DialogGuard.TryEnter());
+        try
+        {
+            Assert.False(DialogGuard.TryEnter());
+            Assert.False(HostDialog.Confirm(null, "second")); // refused without showing anything
+        }
+        finally { DialogGuard.Exit(); }
+        Assert.True(DialogGuard.TryEnter());
+        DialogGuard.Exit();
+    }
+
+    [Fact]
+    public void Cap_removes_control_characters_and_truncates()
+    {
+        Assert.Equal("aaaaa...", HostDialog.Cap("a\0aaaaaa", 5));
+        Assert.DoesNotContain('\0', HostDialog.Cap("x\0y", 10));
+    }
+
+    [Fact]
+    public void Enter_and_Esc_both_mean_No_and_an_ownerless_box_is_topmost()
+    {
+        using var d = new HostDialog("Umbra", "Allow?", new[] { "a" }, null, "Yes", "No", hasOwner: false);
+        Assert.Same(d.AcceptButton, d.CancelButton);
+        Assert.Equal(DialogResult.No, ((Button)d.CancelButton!).DialogResult);
+        Assert.True(d.TopMost);
+        Assert.True(d.ShowInTaskbar);
+    }
 }

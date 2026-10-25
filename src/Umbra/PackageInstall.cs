@@ -13,10 +13,11 @@ static class PackageInstall
     /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
     public static bool ConfirmNewAccess(IWin32Window? owner, Community.PendingInstall p, string? source = null)
     {
-        var footer = (source is null ? "" : $"From: {source}\n\n")
+        var name = ApprovalDialog.Clean(p.Manifest.Name, 60);
+        var footer = (source is null ? "" : $"From: {ApprovalDialog.Clean(source, 200)}\n\n")
             + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "What's new: " + cl + "\n\n" : "")
             + (p.IsUpdate ? "Update and allow this?" : "Install and allow this?");
-        return HostDialog.Confirm(owner, $"{p.Manifest.Name} {p.Manifest.Version} wants {(p.IsUpdate ? "new " : "")}access:",
+        return HostDialog.Confirm(owner, $"{name} {ApprovalDialog.Clean(p.Manifest.Version, 30)} wants {(p.IsUpdate ? "new " : "")}access:",
             p.Added.Describe().ToList(), footer, p.IsUpdate ? "Update" : "Install", "Cancel");
     }
 
@@ -43,9 +44,9 @@ static class PackageInstall
 
     /// <summary>The review text for a widget that asks for no access: who made it, where it came from, and that it replaces an installed copy.</summary>
     internal static string PlainReview(Community.PendingInstall p, string source) =>
-        $"{(p.IsUpdate ? "Replace the installed" : "Install")} {p.Manifest.Name} {p.Manifest.Version}"
-        + (p.Manifest.Author.Length > 0 ? $" by {p.Manifest.Author}" : "")
-        + $"?\n\nFrom {source}. It asks for no access to websites, system info, media, notifications or commands.";
+        $"{(p.IsUpdate ? "Replace the installed" : "Install")} {ApprovalDialog.Clean(p.Manifest.Name, 60)} {ApprovalDialog.Clean(p.Manifest.Version, 30)}"
+        + (p.Manifest.Author.Length > 0 ? $" by {ApprovalDialog.Clean(p.Manifest.Author, 60)}" : "")
+        + $"?\n\nFrom {ApprovalDialog.Clean(source, 200)}. It asks for no access to websites, system info, media, notifications or commands.";
 
     /// <summary>
     /// Prepares a widget with <paramref name="prepare"/> (off the UI thread), shows the review, installs it when accepted.
