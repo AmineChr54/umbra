@@ -17,6 +17,8 @@ public sealed class GeneralSettings
     public bool LegacyRestoreDone { get; set; }
     /// <summary>Version that last ran, so a newer one shows "What's new" once; "" on a first install. Host-owned: saves and backups never change it.</summary>
     public string LastSeenVersion { get; set; } = "";
+    /// <summary>The welcome tour has been shown or offered (#242). Host-owned like <see cref="LastSeenVersion"/>: saves, restores and imports never change it.</summary>
+    public bool TourDone { get; set; }
     /// <summary>Hide every widget while a fullscreen app or game is in the foreground, and show them again after.</summary>
     public bool HideOnFullscreen { get; set; }
     /// <summary>How long Peek (hotkey or "peek" command) keeps the widgets above other windows, 1-60 s.</summary>
@@ -116,6 +118,8 @@ public sealed class WidgetSettings
     public bool? Notifications { get; set; }
     /// <summary>Tab-strip icon chosen by the user (a name from shared/tabicons); null = the widget's own icon or a letter.</summary>
     public string? TabIcon { get; set; }
+    /// <summary>Tab-strip icon the widget copy itself suggested with <c>umbra.setTabIcon</c> (validated by <see cref="Groups.CleanSuggestion"/>); only used while <see cref="TabIcon"/> is unset or unusable.</summary>
+    public string? SuggestedTabIcon { get; set; }
 
     /// <summary>Size multiplier for the window and the page zoom, kept within 50-300 % and rounded to whole percent.</summary>
     public double Scale

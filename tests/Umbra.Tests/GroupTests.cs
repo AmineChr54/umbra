@@ -186,3 +186,72 @@ public class WidgetIconTests
         Assert.Null(WidgetManifest.Parse(json.Replace(",\"icon\":\"icon.png\"", "")).Icon);
     }
 }
+
+public class TabIconSuggestionTests
+{
+    static readonly Func<string, bool> Known = n => n is "rocket" or "chart-line" or "paw-print";
+
+    [Theory]
+    [InlineData("rocket", "rocket")]
+    [InlineData("paw-print", "paw-print")]
+    [InlineData("unknown-icon", null)]               // well-formed but not bundled
+    [InlineData("../rocket", null)]                  // traversal
+    [InlineData("icons/board.png", null)]            // a path inside the widget folder is not accepted
+    [InlineData("https://evil.example/x.png", null)] // no URLs
+    [InlineData("data:image/png;base64,AAAA", null)]
+    [InlineData("<img src=x onerror=1>", null)]
+    [InlineData("\U0001F680", null)]                // emoji and free text are not names
+    [InlineData("Rocket", null)]
+    [InlineData("rocket ", null)]
+    [InlineData("rocket\n", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void Only_bundled_icon_names_are_accepted(string? name, string? expected) =>
+        Assert.Equal(expected, Groups.CleanSuggestion(name, Known));
+
+    [Fact]
+    public void An_overlong_name_is_rejected() => Assert.Null(Groups.CleanSuggestion(new string('a', 41), _ => true));
+
+    [Fact]
+    public void The_users_choice_always_beats_the_suggestion()
+    {
+        Assert.Equal("rocket", Groups.ChooseIcon("rocket", "chart-line", Known));
+        Assert.Equal("chart-line", Groups.ChooseIcon(null, "chart-line", Known));
+        Assert.Equal("chart-line", Groups.ChooseIcon("", "chart-line", Known));
+        Assert.Null(Groups.ChooseIcon(null, null, Known));
+    }
+
+    [Fact]
+    public void An_unusable_user_choice_falls_back_to_the_suggestion_and_a_stale_suggestion_to_nothing()
+    {
+        Assert.Equal("chart-line", Groups.ChooseIcon("removed-icon", "chart-line", Known));
+        Assert.Null(Groups.ChooseIcon(null, "removed-icon", Known));
+    }
+
+    [Fact]
+    public void Real_bundled_icons_resolve_on_disk()
+    {
+        Assert.NotNull(Groups.CleanSuggestion("rocket"));
+        Assert.Null(Groups.CleanSuggestion("definitely-not-an-icon"));
+    }
+
+    [Fact]
+    public void Suggestion_is_persisted_apart_from_the_users_choice()
+    {
+        var s = new Settings();
+        s.Widgets["a"] = new WidgetSettings { SuggestedTabIcon = "chart-line" };
+        var back = Settings.FromJson(s.ToJson()).Widgets["a"];
+        Assert.Equal("chart-line", back.SuggestedTabIcon);
+        Assert.Null(back.TabIcon);
+        Assert.Null(new WidgetSettings().SuggestedTabIcon);
+    }
+
+    [Fact]
+    public void Suggestions_are_rate_limited_per_window()
+    {
+        var calls = new Queue<long>();
+        for (var i = 0; i < 12; i++) Assert.True(Groups.AllowSuggestion(calls, 1000 + i));
+        Assert.False(Groups.AllowSuggestion(calls, 2000));
+        Assert.True(Groups.AllowSuggestion(calls, 1000 + 60_000)); // the oldest call aged out
+    }
+}
