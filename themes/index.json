@@ -2,6 +2,64 @@
   "schema": 1,
   "themes": [
     {
+      "id": "amber-terminal",
+      "name": "Amber Terminal",
+      "description": "Retro amber phosphor on black, with square corners.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#0a0600",
+        "--surface-2": "#120b00",
+        "--surface-3": "#1b1100",
+        "--line": "rgba(255, 176, 0, 0.08)",
+        "--line-strong": "rgba(255, 176, 0, 0.15)",
+        "--text": "#ffb000",
+        "--text-2": "#c58700",
+        "--text-3": "#7d5600",
+        "--accent": "#ffb000",
+        "--accent-strong": "#ffcc4d",
+        "--accent-soft": "rgba(255, 176, 0, 0.15)",
+        "--up": "#b8e000",
+        "--down": "#ff5a36",
+        "--flat": "#a87400",
+        "--radius-s": "0px",
+        "--radius-m": "2px",
+        "--radius-l": "4px"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "dracula",
+      "name": "Dracula",
+      "description": "The classic purple and pink on charcoal-violet.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--bg": "#14151d",
+        "--surface-1": "#1e1f29",
+        "--surface-2": "#282a36",
+        "--surface-3": "#343746",
+        "--line": "rgba(248, 248, 242, 0.08)",
+        "--line-strong": "rgba(248, 248, 242, 0.15)",
+        "--text": "#f8f8f2",
+        "--text-2": "#c0c3d6",
+        "--text-3": "#7b80a0",
+        "--accent": "#bd93f9",
+        "--accent-strong": "#d6b8ff",
+        "--accent-soft": "rgba(189, 147, 249, 0.15)",
+        "--up": "#50fa7b",
+        "--down": "#ff5555",
+        "--flat": "#a0a4c0"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
       "id": "ember",
       "name": "Ember",
       "description": "Warm orange accent on deep brown-black surfaces.",
@@ -20,6 +78,30 @@
         "--accent": "#ff8a3d",
         "--accent-strong": "#ffab73",
         "--accent-soft": "rgba(255, 138, 61, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "description": "Dark green surfaces with a fresh leaf accent.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#08110c",
+        "--surface-2": "#0d1a12",
+        "--surface-3": "#14241a",
+        "--line": "rgba(170, 230, 190, 0.08)",
+        "--line-strong": "rgba(170, 230, 190, 0.15)",
+        "--text": "#ebf5ee",
+        "--text-2": "#9db3a4",
+        "--text-3": "#62786a",
+        "--accent": "#4cc37a",
+        "--accent-strong": "#85dba5",
+        "--accent-soft": "rgba(76, 195, 122, 0.15)"
       },
       "files": [
         "theme.json"
@@ -53,6 +135,30 @@
       ]
     },
     {
+      "id": "midnight-blue",
+      "name": "Midnight Blue",
+      "description": "Deep navy surfaces with a bright blue accent.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#070b1a",
+        "--surface-2": "#0c1226",
+        "--surface-3": "#131b33",
+        "--line": "rgba(160, 190, 255, 0.08)",
+        "--line-strong": "rgba(160, 190, 255, 0.15)",
+        "--text": "#eaf0ff",
+        "--text-2": "#9aa8c9",
+        "--text-3": "#5f6d8f",
+        "--accent": "#4d8dff",
+        "--accent-strong": "#8ab4ff",
+        "--accent-soft": "rgba(77, 141, 255, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
       "id": "mono",
       "name": "Mono",
       "description": "Pure grayscale with a white accent and sharper corners.",
@@ -75,6 +181,214 @@
         "--radius-s": "4px",
         "--radius-m": "6px",
         "--radius-l": "10px"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "nord",
+      "name": "Nord",
+      "description": "Arctic blue-gray palette after the Nord scheme.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--bg": "#1b1f27",
+        "--surface-1": "#242933",
+        "--surface-2": "#2e3440",
+        "--surface-3": "#3b4252",
+        "--line": "rgba(216, 222, 233, 0.08)",
+        "--line-strong": "rgba(216, 222, 233, 0.15)",
+        "--text": "#eceff4",
+        "--text-2": "#b5bfd0",
+        "--text-3": "#7b88a1",
+        "--accent": "#88c0d0",
+        "--accent-strong": "#a8d4e0",
+        "--accent-soft": "rgba(136, 192, 208, 0.15)",
+        "--up": "#a3be8c",
+        "--down": "#bf616a",
+        "--flat": "#8f9bb3"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "ocean-teal",
+      "name": "Ocean Teal",
+      "description": "Deep sea-green surfaces with a teal accent.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#071213",
+        "--surface-2": "#0b1b1d",
+        "--surface-3": "#112628",
+        "--line": "rgba(160, 235, 235, 0.08)",
+        "--line-strong": "rgba(160, 235, 235, 0.15)",
+        "--text": "#e8f6f6",
+        "--text-2": "#96b5b6",
+        "--text-3": "#5b7a7c",
+        "--accent": "#1fc8b8",
+        "--accent-strong": "#6adfd3",
+        "--accent-soft": "rgba(31, 200, 184, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "description": "Light warm paper with ink text and a blue accent.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--bg": "#f5f1e8",
+        "--surface-1": "#faf7f0",
+        "--surface-2": "#efe9dc",
+        "--surface-3": "#e6dfcf",
+        "--line": "rgba(40, 30, 10, 0.10)",
+        "--line-strong": "rgba(40, 30, 10, 0.20)",
+        "--text": "#1f1b14",
+        "--text-2": "#5a5345",
+        "--text-3": "#8a8272",
+        "--accent": "#2f5fd0",
+        "--accent-strong": "#1d44a6",
+        "--accent-soft": "rgba(47, 95, 208, 0.14)",
+        "--up": "#1a8a4f",
+        "--down": "#c63a3a",
+        "--flat": "#7a7466"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "rose",
+      "name": "Rose",
+      "description": "Soft rose accent on deep wine-black surfaces.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#12080c",
+        "--surface-2": "#1a0d13",
+        "--surface-3": "#24131b",
+        "--line": "rgba(255, 190, 210, 0.08)",
+        "--line-strong": "rgba(255, 190, 210, 0.15)",
+        "--text": "#faeef2",
+        "--text-2": "#bda2ab",
+        "--text-3": "#816870",
+        "--accent": "#f4668f",
+        "--accent-strong": "#f99bb8",
+        "--accent-soft": "rgba(244, 102, 143, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "sakura",
+      "name": "Sakura",
+      "description": "Light blush pink with a cherry-blossom accent.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--bg": "#fdf2f5",
+        "--surface-1": "#fff7f9",
+        "--surface-2": "#f8e4ea",
+        "--surface-3": "#f1d4de",
+        "--line": "rgba(120, 40, 70, 0.10)",
+        "--line-strong": "rgba(120, 40, 70, 0.20)",
+        "--text": "#3a1a26",
+        "--text-2": "#7a4a5c",
+        "--text-3": "#a8808f",
+        "--accent": "#d6477a",
+        "--accent-strong": "#b02d5e",
+        "--accent-soft": "rgba(214, 71, 122, 0.14)",
+        "--up": "#1e8a5a",
+        "--down": "#c8323c",
+        "--flat": "#9a7a86"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "solarized-light",
+      "name": "Solarized Light",
+      "description": "Ethan Schoonover's Solarized palette, light variant.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--bg": "#fdf6e3",
+        "--surface-1": "#fdf6e3",
+        "--surface-2": "#eee8d5",
+        "--surface-3": "#e4ddc8",
+        "--line": "rgba(88, 110, 117, 0.15)",
+        "--line-strong": "rgba(88, 110, 117, 0.28)",
+        "--text": "#073642",
+        "--text-2": "#586e75",
+        "--text-3": "#93a1a1",
+        "--accent": "#268bd2",
+        "--accent-strong": "#1a6aa3",
+        "--accent-soft": "rgba(38, 139, 210, 0.15)",
+        "--up": "#859900",
+        "--down": "#dc322f",
+        "--flat": "#93a1a1"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "sunset",
+      "name": "Sunset",
+      "description": "Warm coral glow on dusky plum surfaces.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#130a12",
+        "--surface-2": "#1c0f18",
+        "--surface-3": "#271622",
+        "--line": "rgba(255, 190, 170, 0.08)",
+        "--line-strong": "rgba(255, 190, 170, 0.15)",
+        "--text": "#fbeeea",
+        "--text-2": "#c0a2a0",
+        "--text-3": "#85696b",
+        "--accent": "#ff6b5e",
+        "--accent-strong": "#ff9a8a",
+        "--accent-soft": "rgba(255, 107, 94, 0.15)"
+      },
+      "files": [
+        "theme.json"
+      ]
+    },
+    {
+      "id": "violet",
+      "name": "Violet",
+      "description": "Rich purple accent on ink-violet surfaces.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "preview": null,
+      "tokens": {
+        "--surface-1": "#0e0919",
+        "--surface-2": "#150f25",
+        "--surface-3": "#1e1634",
+        "--line": "rgba(200, 175, 255, 0.08)",
+        "--line-strong": "rgba(200, 175, 255, 0.15)",
+        "--text": "#f1ecff",
+        "--text-2": "#aa9fc7",
+        "--text-3": "#6f6590",
+        "--accent": "#9a6bff",
+        "--accent-strong": "#bfa2ff",
+        "--accent-soft": "rgba(154, 107, 255, 0.15)"
       },
       "files": [
         "theme.json"

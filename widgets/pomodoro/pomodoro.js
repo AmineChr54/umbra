@@ -23,6 +23,7 @@ const fmtClock = (ms) => {
 };
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const auto = () => umbra.options.autoStart !== false;
+const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
 const store = (k, v) => umbra.store.set(k, v).catch(() => {});
 
 // ---- events: the one place session changes fan out (log, toasts, future hooks) ----
@@ -41,8 +42,9 @@ function emit(events) {
 
 function apply(r) {
   session = r.s;
-  store("session", session);
-  emit(r.events);
+  emit(r.events); // listeners and the toast still see the finished session
+  if (session.done) { session = null; umbra.store.remove("session").catch(() => {}); } // done is never kept: back to the setup view
+  else store("session", session);
   render();
 }
 
@@ -88,7 +90,7 @@ function startSession() {
 // ---- timelapse ----
 const tlActive = () => !!tlState && (tlState.state === "recording" || tlState.state === "paused");
 async function startTl() {
-  if (tlBusy || tlActive() || !session || session.done) return;
+  if (tlBusy || tlActive() || !session) return;
   tlBusy = true; tlError = ""; tlState = null; render();
   try {
     // The video holds one frame per photo: aim for the session's own photo count, never above the chosen length.
@@ -121,9 +123,8 @@ function renderTl() {
     stat.textContent = `${st === "paused" ? "Timelapse paused" : "Timelapse"}: ${plural(n, "photo")}`;
   } else if (st === "rendering") stat.textContent = "Making the video...";
   else if (tlState && tlState.file) stat.textContent = `Saved ${tlState.file} in ${tlState.folder || folderLabel}`;
-  else if (!session.done) { stat.textContent = tlBusy ? "Starting the camera..." : "Timelapse is not running"; act.hidden = tlBusy; act.textContent = "Start timelapse"; }
-  else stat.textContent = "";
-  if (tlError && !session.done && !tlActive()) { act.hidden = false; act.textContent = "Try again"; }
+  else { stat.textContent = tlBusy ? "Starting the camera..." : "Timelapse is not running"; act.hidden = tlBusy; act.textContent = "Start timelapse"; }
+  if (tlError && !tlActive()) { act.hidden = false; act.textContent = "Try again"; }
 }
 function renderTlSetup() {
   const sum = q("tl-sum");
@@ -140,7 +141,6 @@ function renderTlSetup() {
 const setTl = (patch) => { tl = T.clean({ ...tl, ...patch }); store("timelapse", tl); render(); };
 function toggle() {
   if (!session) return;
-  if (session.done) { session = null; umbra.store.remove("session").catch(() => {}); render(); return; }
   apply(session.running ? S.pause(session, now()) : S.start(session, now()));
 }
 function tick() {
@@ -178,32 +178,31 @@ function renderSetup() {
 function renderRun() {
   const s = session, t = now();
   const p = s.phases[s.idx], left = S.remaining(s, t), total = p.min * MIN;
-  const paused = !s.running && !s.done && left < total;
-  const waiting = !s.running && !s.done && left === total;
-  app.classList.toggle("brk", !s.done && p.kind === "break");
+  const paused = !s.running && left < total;
+  const waiting = !s.running && left === total;
+  app.classList.toggle("brk", p.kind === "break");
   app.classList.toggle("paused", paused);
-  app.classList.toggle("done", s.done);
-  q("phase").textContent = s.done ? "Session complete" : phaseTitle(s);
-  q("time").textContent = s.done ? fmtMin(Math.round((s.focused || 0) / MIN)) : fmtClock(left);
-  q("sub").textContent = s.done ? "focused" : paused ? "Paused" : waiting ? (p.kind === "break" ? "Break ready" : "Ready") : p.kind === "break" ? "Break" : "Focus";
-  arc.style.strokeDashoffset = String(s.done ? 0 : CIRC * (1 - left / total));
+  setText(q("phase"), phaseTitle(s));
+  setText(q("time"), fmtClock(left));
+  setText(q("sub"), paused ? "Paused" : waiting ? (p.kind === "break" ? "Break ready" : "Ready") : p.kind === "break" ? "Break" : "Focus");
+  const off = String(CIRC * (1 - left / total));
+  if (arc.style.strokeDashoffset !== off) arc.style.strokeDashoffset = off;
   const nxt = S.nextPhase(s);
-  q("next").textContent = s.done ? `of ${fmtMin(s.total)} planned` : nxt
+  setText(q("next"), nxt
     ? (nxt.kind === "break" ? `Up next: ${nxt.min} min break` : `Up next: ${phaseTitle(s, s.idx + 1).toLowerCase()}`)
-    : "Last focus period";
-  q("toggle").textContent = s.done ? "New session" : s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start";
+    : "Last focus period");
+  setText(q("toggle"), s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start");
   renderTl();
-  q("more").hidden = s.done;
-  q("m-skip").textContent = p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now";
-  q("menu").hidden = !menuOpen || s.done;
-  q("more").setAttribute("aria-expanded", String(menuOpen && !s.done));
+  setText(q("m-skip"), p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now");
+  q("menu").hidden = !menuOpen;
+  q("more").setAttribute("aria-expanded", String(menuOpen));
 }
 
 function render() {
   q("today").textContent = fmtMin(log[dayKey()] || 0);
   q("setup").hidden = !!session;
   q("run").hidden = !session;
-  if (session) renderRun(); else { app.classList.remove("brk", "paused", "done"); renderSetup(); renderTlSetup(); }
+  if (session) renderRun(); else { app.classList.remove("brk", "paused"); renderSetup(); renderTlSetup(); }
   schedule();
 }
 
@@ -236,7 +235,7 @@ q("start").onclick = startSession;
 q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
 document.addEventListener("pointerdown", (e) => { if (menuOpen && !e.target.closest("#menu, #more")) { menuOpen = false; render(); } });
-const menuAction = (fn) => () => { menuOpen = false; if (session && !session.done) apply(fn(session, now())); };
+const menuAction = (fn) => () => { menuOpen = false; if (session) apply(fn(session, now())); };
 q("m-skip").onclick = menuAction((s, t) => S.skip(s, t, auto()));
 q("m-add").onclick = menuAction((s, t) => S.extend(s, 5, t));
 q("m-end").onclick = menuAction((s, t) => S.end(s, t));
@@ -245,10 +244,16 @@ umbra.onSettings(() => tick());
 umbra.onTimeChanged?.(() => tick());
 document.addEventListener("visibilitychange", () => tick());
 umbra.store.onChange?.(async (k) => {
-  if (!k || k === "log") log = await umbra.store.get("log", {});
-  if (!k || k === "setup") setup = { ...setup, ...(await umbra.store.get("setup", {})) };
-  if (!k || k === "session") { const s = await umbra.store.get("session", null); session = S.valid(s) ? s : null; }
-  tick();
+  // Ignore echoes of our own writes (same value as in memory): only a real outside change re-renders.
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  let changed = false;
+  if (!k || k === "log") { const v = await umbra.store.get("log", {}); if (!same(v, log)) { log = v; changed = true; } }
+  if (!k || k === "setup") { const v = { ...setup, ...(await umbra.store.get("setup", {})) }; if (!same(v, setup)) { setup = v; changed = true; } }
+  if (!k || k === "session") {
+    const s = await umbra.store.get("session", null), v = S.valid(s) && !s.done ? s : null;
+    if (!same(v, session)) { session = v; changed = true; }
+  }
+  if (changed) tick();
 });
 
 (async () => {
@@ -257,7 +262,8 @@ umbra.store.onChange?.(async (k) => {
   log = await umbra.store.get("log", {});
   setup = { ...setup, ...(await umbra.store.get("setup", {})) };
   const s = await umbra.store.get("session", null);
-  session = S.valid(s) ? s : null;
+  session = S.valid(s) && !s.done ? s : null; // a stored finished session (older versions) loads as idle
+  if (s && !session) umbra.store.remove("session").catch(() => {});
   tl = T.clean(await umbra.store.get("timelapse", null));
   q("tl-box").open = tl.on; // show the options when the timelapse is on, collapsed otherwise
   try {

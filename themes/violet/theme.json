@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "violet",
+  "name": "Violet",
+  "description": "Rich purple accent on ink-violet surfaces.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#0e0919",
+    "--surface-2": "#150f25",
+    "--surface-3": "#1e1634",
+    "--line": "rgba(200, 175, 255, 0.08)",
+    "--line-strong": "rgba(200, 175, 255, 0.15)",
+    "--text": "#f1ecff",
+    "--text-2": "#aa9fc7",
+    "--text-3": "#6f6590",
+    "--accent": "#9a6bff",
+    "--accent-strong": "#bfa2ff",
+    "--accent-soft": "rgba(154, 107, 255, 0.15)"
+  }
+}

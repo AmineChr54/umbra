@@ -9,7 +9,7 @@
 <body>
   <main class="notes">
     <nav class="tabs" id="tabs" data-no-drag></nav>
-    <textarea id="text" spellcheck="false" placeholder="Type a note..." aria-label="Note"></textarea>
+    <div id="text" class="editor" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="Note" data-ph="Type a note..."></div>
     <footer class="foot"><span id="status">Saved</span><span class="num" id="count">0 characters</span></footer>
   </main>
   <script src="https://umbra.local/shared/umbra.js"></script>

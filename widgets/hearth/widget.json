@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "id": "hearth",
+  "name": "Hearth",
+  "description": "A cozy shared space for two people on two PCs. Pair once with a code, then add copies of this widget as an Overview strip, a drawing Board or a Pet. Needs the Umbra relay.",
+  "author": "Yacine-DH",
+  "version": "1.0.1",
+  "manifestVersion": 1,
+  "entry": "index.html",
+  "icon": "icon.png",
+  "width": 300,
+  "height": 120,
+  "themeable": false,
+  "defaultPosition": { "x": 24, "y": 24 },
+  "permissions": {
+    "hosts": ["umbra-buddy-relay.umbra-server.workers.dev"],
+    "notifications": true
+  },
+  "options": {
+    "view": {
+      "label": "View",
+      "type": "select",
+      "default": "overview",
+      "choices": [
+        { "value": "overview", "label": "Overview (small strip)" },
+        { "value": "board", "label": "Board (square, resize it)" },
+        { "value": "pet", "label": "Pet (square, resize it)" }
+      ],
+      "hint": "Add more copies of Hearth in My widgets and give each its own view. All copies share one pairing."
+    }
+  }
+}

@@ -25,6 +25,10 @@ let dayKey = "";
 let first = true;
 let selected = null; // keyboard-selected task id
 let openIds = [];    // ids of the open rows, in display order
+let visibleIds = []; // ids of every shown row (open, completed, later), in display order
+let editingId = null; // task being edited: renders are deferred meanwhile so the field is never destroyed
+let renderPending = false;
+const toggling = new Set(); // ids whose completion animation is running
 
 const opts = () => umbra.options;
 const motion = () => document.documentElement.dataset.motion !== "off";
@@ -97,6 +101,8 @@ function group(name, title, items, isDone) {
 }
 
 function render() {
+  if (editingId) { renderPending = true; return; }
+  renderPending = false;
   dayKey = today();
   expire();
   const plan = R.plan(tasks, dayKey, opts().clearCompleted !== false);
@@ -127,6 +133,7 @@ function render() {
     html += group("later", "Tomorrow & later", later, false);
   }
   listEl.innerHTML = html;
+  visibleIds = [...listEl.querySelectorAll(".row")].map((r) => r.dataset.id);
   paintNewRepeat();
 
   if (first) { first = false; umbra.rendered(); }
@@ -145,14 +152,19 @@ const find = (id) => tasks.find((t) => t.id === id);
 const replace = (t) => { tasks = tasks.map((x) => (x.id === t.id ? t : x)); };
 
 async function toggle(id, rowEl) {
-  const t = find(id);
+  if (toggling.has(id)) return;
+  let t = find(id);
   if (!t) return;
   if (t.doneOn === dayKey || (!R.repeats(t) && t.doneOn)) {
     replace(R.uncomplete(t));
   } else {
     if (motion()) {
+      toggling.add(id);
       rowEl.classList.add("leaving");
       await new Promise((r) => setTimeout(r, 320));
+      toggling.delete(id);
+      t = find(id); // may have been deleted or changed while the row faded out
+      if (!t) { render(); return; }
     }
     replace(R.complete(t, dayKey));
   }
@@ -166,31 +178,51 @@ function remove(id) {
   save();
 }
 
-function startEdit(id, textEl) {
+function startEdit(id) {
+  if (editingId) return;
   const t = find(id);
-  if (!t) return;
+  const textEl = listEl.querySelector(`.row[data-id="${id}"] .text`);
+  if (!t || !textEl) return;
   umbra.requestFocus();
-  const field = document.createElement("input");
+  selected = id;
+  editingId = id;
+  const field = document.createElement("textarea");
   field.className = "edit";
+  field.rows = 1;
   field.value = t.title;
   field.maxLength = 200;
   field.spellcheck = false;
+  const grow = () => { field.style.height = "auto"; field.style.height = `${field.scrollHeight}px`; };
   textEl.replaceWith(field);
+  grow();
   field.focus();
   field.select();
   let done = false;
-  const finish = (keep) => {
-    if (done) return;
+  const finish = (keep, immediate) => {
+    if (done) return; // Enter then blur, or blur twice: commit once
     done = true;
-    const title = field.value.trim();
-    if (keep && title && title !== t.title) { replace({ ...t, title }); save(); }
-    render();
+    editingId = null;
+    const title = field.value.replace(/\s+/g, " ").trim();
+    const cur = find(id);
+    if (keep && cur && title && title !== cur.title) { replace({ ...cur, title }); save(); }
+    const shown = (find(id) || t).title;
+    // Put the text back in place instead of rebuilding the list, so a click that caused the blur still lands.
+    const span = document.createElement("span");
+    span.className = "text";
+    span.dataset.act = "edit";
+    span.title = shown;
+    span.textContent = shown;
+    if (field.isConnected) field.replaceWith(span);
+    if (renderPending) {
+      if (immediate) render(); else setTimeout(() => { if (!editingId) render(); }, 300);
+    }
   };
+  field.addEventListener("input", grow);
   field.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") finish(true);
-    if (e.key === "Escape") finish(false);
+    if (e.key === "Enter") { e.preventDefault(); finish(true, true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false, true); }
   });
-  field.addEventListener("blur", () => finish(true));
+  field.addEventListener("blur", () => finish(true, false));
 }
 
 $("add").addEventListener("submit", (e) => {
@@ -234,7 +266,7 @@ listEl.addEventListener("click", (e) => {
 
 listEl.addEventListener("dblclick", (e) => {
   const el = e.target.closest('[data-act="edit"]');
-  if (el) startEdit(el.closest(".row").dataset.id, el);
+  if (el) startEdit(el.closest(".row").dataset.id);
 });
 
 // ---------- repeat menu ----------
@@ -359,6 +391,7 @@ function openCtx(id, x, y) {
   const deferred = t.day && t.day > dayKey;
   const item = (act, text, hint = "") => `<div class="opt" role="menuitem" tabindex="-1" data-ctx="${act}"><span>${text}</span><kbd>${hint}</kbd></div>`;
   ctxEl.innerHTML = [
+    item("edit", "Edit", "F2"),
     item("important", t.important ? "Remove important mark" : "Mark as important !", "I"),
     item("number", t.num ? `Remove number ${t.num}` : `Number it (${nextNumber()})`, "O"),
     !finished && item("day", deferred ? "Move to today" : "Move to tomorrow", "T"),
@@ -384,7 +417,8 @@ function closeCtx() {
 function runAction(act, id) {
   const t = find(id);
   if (!t) return;
-  if (act === "important") patch(id, { important: !t.important });
+  if (act === "edit") startEdit(id);
+  else if (act === "important") patch(id, { important: !t.important });
   else if (act === "number") patch(id, { num: t.num ? null : nextNumber() });
   else if (act === "day") patch(id, { day: t.day && t.day > dayKey ? null : R.addDays(dayKey, 1) });
   else if (act === "clearNumbers") { tasks = tasks.map((x) => (x.num ? { ...x, num: null } : x)); render(); save(); }
@@ -411,9 +445,9 @@ listEl.addEventListener("contextmenu", (e) => {
 // Only while the widget has keyboard focus (click it first); Umbra widgets never grab focus on their own.
 
 function moveSelection(step) {
-  if (!openIds.length) return;
-  const i = openIds.indexOf(selected);
-  selected = openIds[Math.max(0, Math.min(openIds.length - 1, i < 0 ? (step > 0 ? 0 : openIds.length - 1) : i + step))];
+  if (!visibleIds.length) return;
+  const i = visibleIds.indexOf(selected);
+  selected = visibleIds[Math.max(0, Math.min(visibleIds.length - 1, i < 0 ? (step > 0 ? 0 : visibleIds.length - 1) : i + step))];
   render();
   listEl.querySelector(".row.sel")?.scrollIntoView({ block: "nearest" });
 }
@@ -422,7 +456,7 @@ function moveSelection(step) {
 function moveTask(step) {
   const t = find(selected);
   const i = openIds.indexOf(selected);
-  const other = find(openIds[i + step]);
+  const other = i < 0 ? null : find(openIds[i + step]);
   if (!t || !other) return;
   if (t.num && other.num) {
     tasks = tasks.map((x) => (x.id === t.id ? { ...x, num: other.num } : x.id === other.id ? { ...x, num: t.num } : x));
@@ -454,6 +488,7 @@ document.addEventListener("keydown", (e) => {
     if (e.altKey) moveTask(e.key === "ArrowDown" ? 1 : -1); else moveSelection(e.key === "ArrowDown" ? 1 : -1);
   } else if (!selected) return;
   else if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(selected, listEl.querySelector(`.row[data-id="${selected}"]`) || document.createElement("div")); }
+  else if (e.key === "F2" || key === "e") { e.preventDefault(); startEdit(selected); }
   else if (key === "i") runAction("important", selected);
   else if (key === "o") runAction("number", selected);
   else if (key === "t") runAction("day", selected);
@@ -478,7 +513,7 @@ umbra.ready.then(async () => {
   await load();
   render();
   // A new day reopens repeating tasks; check now and then rather than relying on a midnight timer.
-  setInterval(() => { if (today() !== dayKey && menuEl.hidden) render(); }, 30000);
+  setInterval(() => { if (today() !== dayKey && menuEl.hidden && !editingId) render(); }, 30000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && today() !== dayKey) render(); });
 });
 

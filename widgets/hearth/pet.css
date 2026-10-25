@@ -1,0 +1,202 @@
+/* Hearth Pet view (#214), "Meadow" look. Uses the tokens of hearth.css; text is 0.87rem (11.3 px) or larger.
+   Motion follows --motion-scale and html[data-motion="off"] (umbra.css switches animations and transitions off). */
+
+.pt {
+  flex: 1; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  position: relative;
+}
+html[data-stale] .pt { opacity: 0.72; transition: opacity var(--hm-t); }
+.pt button { font-family: inherit; }
+.pt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- the stage: scene, name, level, bubble ---------- */
+
+.pt-stage {
+  position: relative;
+  flex: 1 1 auto; min-height: 64px;
+  overflow: hidden;
+  border: 2px solid var(--hm-brown);
+  border-radius: 16px;
+  background: #FFF8DC;
+}
+.pt-scene { position: absolute; inset: 0; }
+.pt-scene > svg { width: 100%; height: 100%; }
+
+.pt-name {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  max-width: 64%;
+  display: flex; align-items: center; gap: 4px;
+  padding: 1px 3px 1px 10px;
+  border: 2px solid var(--hm-brown);
+  border-radius: 999px;
+  background: var(--hm-card);
+  color: var(--hm-ink);
+  font-size: 0.95rem;
+}
+.pt-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
+.pt-icon {
+  flex: none; width: 20px; height: 20px;
+  display: grid; place-items: center; padding: 0;
+  border: 1.5px solid var(--hm-brown); border-radius: 50%;
+  background: var(--hm-butter); color: var(--hm-ink);
+  font-size: 0.87rem; line-height: 1; cursor: pointer;
+}
+.pt-icon:hover { background: var(--hm-pink); }
+.pt-lv {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  padding: 1px 10px;
+  border: 2px solid var(--hm-brown); border-radius: 999px;
+  background: var(--hm-butter); color: var(--hm-ink);
+  font-size: 0.95rem; font-weight: 800;
+}
+.pt-lv[hidden], .pt-safe[hidden], .pt-bubble[hidden], .pt-outfit[hidden], .pt-sheet[hidden] { display: none; }
+
+/* bubble and the "safe" note sit over the stage but belong to .pt, so the compact layouts can move them */
+.pt-bubble {
+  position: absolute; z-index: 3; left: 10px; right: 10px; top: 42px;
+  padding: 3px 10px;
+  border: 2px solid var(--hm-brown); border-radius: 14px;
+  background: #fff; color: var(--hm-ink);
+  font-size: 0.92rem; font-weight: 700; line-height: 1.25; text-align: center;
+  animation: pt-pop calc(260ms * var(--motion-scale, 1)) ease-out;
+  pointer-events: none;
+}
+.pt-bubble::after {
+  content: ""; position: absolute; left: 50%; bottom: -8px; width: 12px; height: 12px;
+  margin-left: -6px; transform: rotate(45deg);
+  border-right: 2px solid var(--hm-brown); border-bottom: 2px solid var(--hm-brown);
+  background: inherit;
+}
+.pt-bubble.error { background: var(--hm-alert); }
+@keyframes pt-pop { 0% { transform: translateY(6px) scale(0.92); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+.pt-safe {
+  position: absolute; z-index: 2; left: 8px; top: 42px; max-width: 70%;
+  padding: 0 10px;
+  border: 1.5px solid var(--hm-brown); border-radius: 12px;
+  background: var(--hm-butter); color: var(--hm-ink);
+  font-size: 0.87rem; font-weight: 700; line-height: 1.35;
+}
+.pt-bubble:not([hidden]) ~ .pt-safe { display: none; }
+.pt-streak {
+  position: absolute; z-index: 2; left: 6px; bottom: 6px;
+  padding: 0 8px;
+  border: 1.5px solid var(--hm-brown); border-radius: 999px;
+  background: var(--hm-card); color: var(--hm-ink);
+  font-size: 0.87rem; font-weight: 800; line-height: 1.35;
+}
+.pt-streak[hidden] { display: none; }
+.pt-outfit { position: absolute; z-index: 2; right: 6px; bottom: 6px; padding: 0 10px; font-size: 0.9rem; }
+
+/* ---------- care buttons: each one is also the meter of its need ---------- */
+
+.pt-care { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.pt-cb {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l v" "b b";
+  align-items: center; gap: 3px 6px;
+  padding: 4px 8px 6px;
+  border: 2px solid var(--hm-brown); border-radius: 14px;
+  background: var(--hm-butter); color: var(--hm-ink);
+  font-size: 0.92rem; font-weight: 800; text-align: left;
+  cursor: pointer;
+  transition: transform var(--hm-t), filter var(--hm-t), background var(--hm-t);
+}
+.pt-cb:hover:not([disabled]) { filter: brightness(1.05); }
+.pt-cb:active:not([disabled]) { transform: translateY(1px); }
+.pt-cb:focus-visible, .pt-icon:focus-visible, .pt-tile:focus-visible { outline: 2px dashed var(--hm-brown); outline-offset: 2px; }
+.pt-cb.low { background: var(--hm-alert); }
+.pt-cb[disabled] { opacity: 0.6; cursor: default; }
+.pt-cb.cooling[disabled] { opacity: 1; border-style: dashed; background: #F6F1DC; color: var(--hm-soft); }
+.pt-cl { grid-area: l; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-val { grid-area: v; }
+.pt-cb .pt-bar { grid-area: b; }
+
+.pt-bar { display: block; height: 8px; overflow: hidden; border: 1.5px solid var(--hm-brown); border-radius: 999px; background: #fff; }
+.pt-bar i { display: block; height: 100%; width: 0; background: var(--fill, var(--hm-pink)); transition: width var(--hm-t); }
+.pt-cb[data-action="feed"] { --fill: #F2BE4B; }
+.pt-cb[data-action="water"] { --fill: #6EBBE0; }
+.pt-cb[data-action="pet"] { --fill: var(--hm-pink); }
+.pt-bar.xp { flex: 1; min-width: 40px; --fill: #9CCB78; }
+
+/* ---------- level, xp and the daily bond ---------- */
+
+.pt-foot { flex: none; display: flex; flex-direction: column; gap: 3px; font-size: 0.9rem; font-weight: 700; }
+.pt-xp { display: flex; align-items: center; gap: 8px; }
+.pt-xp b { font-weight: 800; }
+.pt-bond { display: flex; flex-wrap: wrap; align-items: center; gap: 1px 10px; }
+.pt-today { color: var(--hm-soft); }
+.pt-who { white-space: nowrap; color: var(--hm-soft); }
+.pt-who.on { color: var(--hm-ink); font-weight: 800; }
+.pt-who.on > span:first-child { color: var(--hm-pink-deep); }
+.pt-done { padding: 0 8px; border: 1.5px solid var(--hm-brown); border-radius: 999px; background: var(--hm-pink); color: var(--hm-ink); font-weight: 800; }
+.pt-streak { color: var(--hm-soft); }
+
+/* ---------- sheets: naming and outfits ---------- */
+
+.pt-sheet {
+  position: absolute; inset: 0; z-index: 6;
+  overflow: auto;
+  padding: 4px 4px 2px;
+  background: var(--hm-card);
+}
+.pt-head { display: flex; align-items: center; gap: 6px; }
+.pt-head h3 { flex: 1; }
+.pt-head .btn { padding: 1px 12px; font-size: 0.92rem; }
+.pt-form { display: flex; flex-direction: column; gap: 6px; }
+.pt-form h3 { margin: 0; font-size: 1.1rem; font-weight: 800; }
+.pt-form p { margin: 0; }
+.pt-form input { text-transform: none; letter-spacing: normal; font-weight: 700; }
+.pt-form input::placeholder { text-transform: none; letter-spacing: normal; }
+.pt-err { min-height: 1.3em; color: #9B1F4B; font-weight: 700; }
+.pt-err:empty { min-height: 0; }
+.pt-muted { color: var(--hm-soft); font-size: 0.87rem; }
+.pt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.pt-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 5px; }
+.pt-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0;
+  padding: 2px 2px 2px;
+  border: 2px solid var(--hm-brown); border-radius: 12px;
+  background: var(--hm-butter); color: var(--hm-ink);
+  cursor: pointer;
+  transition: transform var(--hm-t), background var(--hm-t);
+}
+.pt-tile.on { background: var(--hm-pink); }
+.pt-tile.locked { background: #F2EEDB; color: var(--hm-soft); border-style: dashed; cursor: default; }
+.pt-tile[disabled] { opacity: 1; }
+.pt-tile.locked .pt-art { opacity: 0.35; filter: grayscale(1); }
+.pt-art { display: block; width: 40px; height: 40px; }
+.pt-art > svg { width: 100%; height: 100%; }
+.pt-tl { font-size: 0.87rem; font-weight: 800; line-height: 1.15; }
+.pt-th { font-size: 0.87rem; font-weight: 700; line-height: 1.15; text-align: center; }
+
+/* ---------- sizes ---------- */
+
+/* A short window (the manifest's 300 x 120 strip): the blob on the left, three slim buttons on the right. */
+@container card (max-height: 170px) {
+  .pt { flex-direction: row; align-items: stretch; gap: 8px; }
+  .pt-stage { flex: 0 0 auto; width: auto; aspect-ratio: 1; min-height: 0; }
+  .pt-name, .pt-lv, .pt-safe, .pt-outfit, .pt-foot, .pt-streak { display: none; }
+  /* a bubble takes the place of the buttons while it is shown */
+  .pt-bubble { left: 72px; right: 0; top: 0; bottom: 0; display: grid; place-items: center; font-size: 0.87rem; padding: 0 8px; }
+  .pt-bubble::after { display: none; }
+  .pt-care { flex: 1; grid-template-columns: 1fr; grid-auto-rows: 1fr; gap: 3px; }
+  .pt-cb { grid-template-areas: "l v"; grid-template-columns: 1fr auto; padding: 0 10px; border-radius: 999px; }
+  .pt-cb .pt-bar { display: none; }
+}
+/* A compact square: the same layout with less air; a bubble covers the name row, not the blob. */
+@container card (min-height: 171px) and (max-height: 262px) {
+  .pt { gap: 4px; }
+  .pt-cb { padding: 2px 8px 4px; gap: 1px 6px; }
+  .pt-foot { gap: 1px; }
+  .pt-bubble { top: 4px; z-index: 4; font-size: 0.87rem; padding: 1px 8px; }
+  .pt-safe { top: 38px; }
+}
+@container card (max-width: 250px) {
+  .pt-care { gap: 4px; }
+  .pt-cb { padding: 3px 4px 5px; gap: 2px 2px; font-size: 0.87rem; }
+  .pt-bond { gap: 0 8px; }
+  .pt-today { display: none; }
+  .pt-tl { font-size: 0.87rem; }
+}

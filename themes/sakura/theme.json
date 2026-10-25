@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "sakura",
+  "name": "Sakura",
+  "description": "Light blush pink with a cherry-blossom accent.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--bg": "#fdf2f5",
+    "--surface-1": "#fff7f9",
+    "--surface-2": "#f8e4ea",
+    "--surface-3": "#f1d4de",
+    "--line": "rgba(120, 40, 70, 0.10)",
+    "--line-strong": "rgba(120, 40, 70, 0.20)",
+    "--text": "#3a1a26",
+    "--text-2": "#7a4a5c",
+    "--text-3": "#a8808f",
+    "--accent": "#d6477a",
+    "--accent-strong": "#b02d5e",
+    "--accent-soft": "rgba(214, 71, 122, 0.14)",
+    "--up": "#1e8a5a",
+    "--down": "#c8323c",
+    "--flat": "#9a7a86"
+  }
+}

@@ -4,9 +4,9 @@
     {
       "id": "calendar-glance",
       "name": "Calendar glance",
-      "description": "Today's and tomorrow's events from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
+      "description": "Upcoming events (1 day to 1 month, default 1 week) from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
       "author": "AmineChr54",
-      "version": "1.2.2",
+      "version": "1.3.0",
       "manifestVersion": 1,
       "preview": "preview.png",
       "icon": "icon.png",
@@ -229,6 +229,33 @@
       ]
     },
     {
+      "id": "hearth",
+      "name": "Hearth",
+      "description": "A cozy shared space for two people on two PCs. Pair once with a code, then add copies of this widget as an Overview strip, a drawing Board or a Pet. Needs the Umbra relay.",
+      "author": "Yacine-DH",
+      "version": "1.0.1",
+      "manifestVersion": 1,
+      "preview": null,
+      "icon": "icon.png",
+      "hosts": [
+        "umbra-buddy-relay.umbra-server.workers.dev"
+      ],
+      "notifications": true,
+      "files": [
+        "hearth-core.js",
+        "hearth.css",
+        "hearth.js",
+        "icon.png",
+        "index.html",
+        "mascot.css",
+        "mascot.js",
+        "pet-logic.js",
+        "pet.css",
+        "pet.js",
+        "widget.json"
+      ]
+    },
+    {
       "id": "internships",
       "name": "Internships",
       "description": "New international software internships from the speedyapply 2027 list, filtered to EMEA (or any region). Unread postings are marked and counted; click one to open it.",
@@ -292,9 +319,9 @@
       "name": "Pomodoro",
       "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Optional webcam timelapse of the whole session (replaces Study Time-Lapse). Survives restarts.",
       "author": "AmineChr54",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "manifestVersion": 1,
-      "changelog": "Timelapse: an optional collapsible setup section records a webcam timelapse for the session and renders the video when it ends. Replaces the Study Time-Lapse widget (set its interval, video length and fps here). Needs camera approval on first use.",
+      "changelog": "Ending a session goes straight back to the start view (no Session complete screen); the timer updates in place without flicker and ignores echoes of its own saves. Timelapse: an optional collapsible setup section records a webcam timelapse for the session and renders the video when it ends. Replaces the Study Time-Lapse widget (set its interval, video length and fps here). Needs camera approval on first use.",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [],
@@ -338,9 +365,9 @@
     {
       "id": "quick-notes",
       "name": "Quick Notes",
-      "description": "A scratchpad on your desktop with up to five note tabs. Saves as you type and shows a character count. Everything stays on your PC.",
+      "description": "A scratchpad on your desktop with up to five note tabs. Renders basic markdown as you type (headings, bold, lists), saves as you type and shows a character count. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "manifestVersion": 1,
       "preview": "preview.png",
       "icon": "icon.png",
@@ -452,9 +479,9 @@
     {
       "id": "todo",
       "name": "To Do",
-      "description": "Today's tasks with repeats, streaks and a calm progress bar. Right-click a task to mark it important, number your plan or move it to tomorrow. Keys: N add, arrows select, Space done, I, O, T, Del. Everything stays on your PC.",
+      "description": "Today's tasks with repeats, streaks and a calm progress bar. Right-click a task to mark it important, number your plan or move it to tomorrow. Keys: N add, arrows select, Space done, F2 or E edit, I, O, T, Del. Everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.1.2",
+      "version": "1.2.0",
       "manifestVersion": 1,
       "preview": "preview.png",
       "icon": "icon.png",

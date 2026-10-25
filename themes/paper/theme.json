@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "paper",
+  "name": "Paper",
+  "description": "Light warm paper with ink text and a blue accent.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--bg": "#f5f1e8",
+    "--surface-1": "#faf7f0",
+    "--surface-2": "#efe9dc",
+    "--surface-3": "#e6dfcf",
+    "--line": "rgba(40, 30, 10, 0.10)",
+    "--line-strong": "rgba(40, 30, 10, 0.20)",
+    "--text": "#1f1b14",
+    "--text-2": "#5a5345",
+    "--text-3": "#8a8272",
+    "--accent": "#2f5fd0",
+    "--accent-strong": "#1d44a6",
+    "--accent-soft": "rgba(47, 95, 208, 0.14)",
+    "--up": "#1a8a4f",
+    "--down": "#c63a3a",
+    "--flat": "#7a7466"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/theme.schema.json",
+  "id": "midnight-blue",
+  "name": "Midnight Blue",
+  "description": "Deep navy surfaces with a bright blue accent.",
+  "author": "AmineChr54",
+  "version": "1.0.0",
+  "tokens": {
+    "--surface-1": "#070b1a",
+    "--surface-2": "#0c1226",
+    "--surface-3": "#131b33",
+    "--line": "rgba(160, 190, 255, 0.08)",
+    "--line-strong": "rgba(160, 190, 255, 0.15)",
+    "--text": "#eaf0ff",
+    "--text-2": "#9aa8c9",
+    "--text-3": "#5f6d8f",
+    "--accent": "#4d8dff",
+    "--accent-strong": "#8ab4ff",
+    "--accent-soft": "rgba(77, 141, 255, 0.15)"
+  }
+}
