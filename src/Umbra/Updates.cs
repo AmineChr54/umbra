@@ -17,6 +17,18 @@ public static partial class Updates
     public const string ReleasesApi = "https://api.github.com/repos/AmineChr54/umbra/releases/latest";
     const string DownloadPrefix = "/AmineChr54/umbra/releases/download/";
 
+    /// <summary>
+    /// What the purple sidebar button shows: "none" (nothing to offer), "downloading" (staging, or the click is waiting for it),
+    /// "ready" (installer verified, a click restarts into it) or "available" (a click starts the download; portable copies open the release page).
+    /// </summary>
+    public static string ButtonState(bool available, bool ready, bool installing, int? progress, bool portable)
+    {
+        if (!available) return "none";
+        if (portable) return "available";
+        if (ready) return "ready";
+        return installing || progress is not null ? "downloading" : "available";
+    }
+
     [GeneratedRegex(@"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")]
     private static partial Regex SemVer();
 
@@ -154,7 +166,7 @@ sealed class UpdateService : IDisposable
     static readonly HttpClient Http = CreateClient();
     readonly App _app;
     readonly System.Windows.Forms.Timer _timer = new() { Interval = (int)TimeSpan.FromHours(24).TotalMilliseconds };
-    readonly System.Windows.Forms.Timer _first = new() { Interval = 20_000 };
+    readonly System.Windows.Forms.Timer _first = new() { Interval = 8_000 };
     readonly System.Windows.Forms.Timer _outcome = new() { Interval = 3_000 };
     bool _installing, _started;
     Task<string>? _staging;       // download + verification of the installer for _stagingVersion (resolves to the file path)
@@ -489,6 +501,7 @@ sealed class UpdateService : IDisposable
             ["version"] = WhatsNewVersion, ["url"] = WhatsNew?.PageUrl ?? Updates.ReleasePageUrl(WhatsNewVersion), ["notes"] = WhatsNew?.Notes ?? "",
         },
         ["ready"] = Ready,
+        ["button"] = Updates.ButtonState(Available is not null, Ready, _installing, Progress, AppPaths.IsPortable),
         ["installing"] = _installing,
         ["progress"] = Progress,
         ["lastChecked"] = LastChecked?.ToString("o"),
