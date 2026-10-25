@@ -26,8 +26,9 @@
   --radius-m: 12px;
   --radius-l: 18px;
 
-  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  /* Segoe first so Windows is unchanged; the rest are common Linux UI fonts (Inter, Cantarell on GNOME, Noto Sans on KDE, Ubuntu, Roboto) before the generic fallback. */
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "Inter", "Cantarell", "Noto Sans", "Ubuntu", "Roboto", "DejaVu Sans", system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", "Inter", "Cantarell", "Noto Sans", "Ubuntu", "Roboto", "DejaVu Sans", system-ui, sans-serif;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }

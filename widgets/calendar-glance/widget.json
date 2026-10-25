@@ -4,7 +4,7 @@
   "name": "Calendar glance",
   "description": "Upcoming events (1 day to 1 month, default 1 week) from an iCal (.ics) link, with recurring events. Works with Google, Outlook, Zoho, Proton or a raw GitHub link.",
   "author": "AmineChr54",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "manifestVersion": 1,
   "entry": "index.html",
   "preview": "preview.png",
@@ -37,7 +37,7 @@
     "showLocation": { "label": "Show location", "type": "toggle", "default": true },
     "clock": {
       "label": "Time format", "type": "select", "default": "auto",
-      "choices": [{ "value": "auto", "label": "Follow Windows" }, { "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
+      "choices": [{ "value": "auto", "label": "Follow system" }, { "value": "24", "label": "24-hour" }, { "value": "12", "label": "12-hour" }]
     }
   }
 }
