@@ -70,7 +70,7 @@ Nothing ships inside the app; every widget, including S&P 500, is installed from
 | `entry` | Default `index.html` |
 | `width`, `height` | Integers 80-1200, **logical** pixels (Umbra scales for the display's DPI and the user's size setting) |
 | `themeable` | Default `true`. `false` keeps your own look: the user's [theme](#themes) is not applied to the widget |
-| `private` | Default `false`. `true` marks a widget shared [from a file](#share-without-the-catalog-install-from-file), not the catalog: a Private badge in My widgets, no catalog updates, and a catalog widget with the same id can't replace it. Grants no extra access; refused in the public catalog |
+| `private` | Default `false`. `true` marks a widget shared [from a file](#share-without-the-catalog-the-umbrawidget-package), not the catalog: a Private badge in My widgets, no catalog updates, and a catalog widget with the same id can't replace it. Grants no extra access; refused in the public catalog |
 | `defaultPosition` | `{x, y}` from the top-left of the primary work area, logical pixels. Omit to start top right |
 | `permissions.notifications` | Optional boolean. Needed for `umbra.notify`; the user must also switch "Allow notifications" on for the widget in Settings (off by default) |
 | `permissions.camera` | Optional boolean. Needed for `umbra.timelapse` (webcam stills rendered to an MP4 by the host). Listed in the update review box |
