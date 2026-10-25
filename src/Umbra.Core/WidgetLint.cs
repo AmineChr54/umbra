@@ -9,7 +9,7 @@ namespace Umbra;
 /// id = folder, entry file, manifest rules, manifestVersion / minUmbraVersion) plus the catalog's manifest rules
 /// (unknown keys, option types, hosts) and a few lints for common mistakes. Errors block a pack; warnings do not.
 /// </summary>
-static partial class WidgetLint
+public static partial class WidgetLint
 {
     static readonly HashSet<string> KnownKeys = new(StringComparer.Ordinal)
     {

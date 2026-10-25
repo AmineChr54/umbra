@@ -510,6 +510,8 @@ sealed class App : ApplicationContext, IUmbraHost
     /// Opens a double-clicked .umbrawidget: the full install checks, then the host-drawn review. Only an existing, fully qualified
     /// path ending in .umbrawidget is accepted. Runs on the UI thread.
     /// </summary>
+    public bool CameraApproved(string widgetId) => CameraConsent.Approvals.CameraApproved(widgetId);
+
     public async Task<bool> OpenPackageAsync(string path)
     {
         path = path.Trim().Trim('"');
@@ -644,7 +646,7 @@ sealed class App : ApplicationContext, IUmbraHost
         if (Timelapse.ActiveInstance is { } recorder)
         {
             UpdateTrayStatus(); // the tooltip's one source while a timelapse runs
-            var label = Manifests.FirstOrDefault(m => m.Id == InstanceId.WidgetOf(recorder)) is { } rm ? InstanceLabel(rm, recorder) : recorder;
+            var label = Manifests.FirstOrDefault(m => m.Id == InstanceId.WidgetOf(recorder)) is { } rm ? InstanceId.Label(rm, recorder) : recorder;
             if (Timelapse.TrayLabel != "Making timelapse video")
                 menu.Items.Add($"Stop timelapse ({label})", null, (_, _) => Timelapse.Stop(recorder)).Font = _trayBold ??= new Font(menu.Font, FontStyle.Bold);
             menu.Items.Add($"Cancel timelapse ({label})", null, (_, _) => Timelapse.Cancel(recorder));

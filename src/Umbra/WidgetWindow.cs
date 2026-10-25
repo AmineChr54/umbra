@@ -559,7 +559,7 @@ sealed class WidgetWindow : Form, IWidgetView
     ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add(new ToolStripLabel(App.InstanceLabel(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
+        menu.Items.Add(new ToolStripLabel(InstanceId.Label(Manifest, Instance).Replace("&", "&&")) { Enabled = false });
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh", null, (_, _) => RefreshData());
         menu.Items.Add("Options...", null, (_, _) => _app.ShowWidgetOptions(Instance));

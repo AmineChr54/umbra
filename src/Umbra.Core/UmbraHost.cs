@@ -57,8 +57,14 @@ interface IUmbraHost
     void RenameLayout(string name, string newName);
     bool DeleteLayout(string name);
 
+    /// <summary>Opens the host-drawn review for a widget package (.umbrawidget); nothing is installed without a click on it.</summary>
+    Task<bool> OpenPackageAsync(string path);
+
+    /// <summary>True when the user approved this widget for the camera (Data &amp; privacy).</summary>
+    bool CameraApproved(string widgetId);
+
     JsonArray GroupsJson();
-    string CreateGroup(string name, string instance);
+    string CreateGroup(string name, string? instance);
     void JoinGroup(string groupId, string instance);
     void LeaveGroup(string instance);
     void ActivateTab(string groupId, string instance);

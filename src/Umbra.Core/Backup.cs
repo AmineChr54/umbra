@@ -144,7 +144,7 @@ static class Backup
                 ["widget"] = m.Id,
                 ["hosts"] = new JsonArray(m.Permissions.Hosts.Select(h => (JsonNode?)h).ToArray()),
                 ["commands"] = app.Commands.Approvals.Describe(new[] { m }),
-                ["camera"] = new JsonObject { ["declared"] = m.Permissions.Camera, ["approved"] = m.Permissions.Camera && app.CameraConsent.Approvals.CameraApproved(m.Id) },
+                ["camera"] = new JsonObject { ["declared"] = m.Permissions.Camera, ["approved"] = m.Permissions.Camera && app.CameraApproved(m.Id) },
                 ["data"] = new JsonObject { ["bytes"] = bytes, ["copies"] = copies },
                 ["blocked"] = new JsonObject
                 {
