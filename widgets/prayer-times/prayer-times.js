@@ -272,8 +272,17 @@
   function hint(text, isError) {
     $("sHint").textContent = text;
     $("sHint").classList.toggle("err", !!isError);
+    if (!text && typeof updateSave === "function" && draft) updateSave();
   }
-  const updateSave = () => { $("sSave").disabled = !(draft && draft.location); };
+  const NEED_CITY = "Choose a city from the list to continue.";
+  const updateSave = () => {
+    const ok = !!(draft && draft.location);
+    $("sSave").disabled = !ok;
+    $("sSave").title = ok ? "" : NEED_CITY;
+    const h = $("sHint");
+    if (!ok && !h.textContent && draft) h.textContent = NEED_CITY;
+    else if (ok && h.textContent === NEED_CITY) h.textContent = "";
+  };
 
   function showList(which, items, sub) {
     lists[which] = items;

@@ -2,9 +2,9 @@ namespace Umbra;
 
 /// <summary>
 /// The host-drawn review for installs that come from a file the user opened (double-click on a .umbrawidget) or a URL they typed:
-/// the same checks as every other install (<see cref="Community.PrepareLocal"/>), then a native Yes/No box that always
+/// the same checks as every other install (<see cref="Community.PrepareLocal"/>), then a dark native Yes/No box (<see cref="HostDialog"/>) that always
 /// shows what the widget is and what access it asks for. Nothing is written until the user says yes, and no remote
-/// process can answer the box: it is a MessageBox on the UI thread.
+/// process can answer the box: it is a modal form on the UI thread.
 /// </summary>
 static class PackageInstall
 {
@@ -13,12 +13,12 @@ static class PackageInstall
     /// <summary>"Todo 1.3 wants new access: ..." with the changelog, as a native Yes/No box. No is the default button.</summary>
     public static bool ConfirmNewAccess(IWin32Window? owner, Community.PendingInstall p, string? source = null)
     {
-        var text = $"{p.Manifest.Name} {p.Manifest.Version} wants {(p.IsUpdate ? "new " : "")}access:\n\n"
-            + string.Join("\n", p.Added.Describe().Select(l => "+ " + l))
-            + (source is null ? "" : $"\n\nFrom: {source}")
-            + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "\n\nWhat's new: " + cl : "")
-            + (p.IsUpdate ? "\n\nUpdate and allow this?" : "\n\nInstall and allow this?");
-        return MessageBox.Show(owner, text, "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        var name = ApprovalDialog.Clean(p.Manifest.Name, 60);
+        var footer = (source is null ? "" : $"From: {ApprovalDialog.Clean(source, 200)}\n\n")
+            + (WidgetManifest.SanitizeChangelog(p.Manifest.Changelog) is { } cl ? "What's new: " + cl + "\n\n" : "")
+            + (p.IsUpdate ? "Update and allow this?" : "Install and allow this?");
+        return HostDialog.Confirm(owner, $"{name} {ApprovalDialog.Clean(p.Manifest.Version, 30)} wants {(p.IsUpdate ? "new " : "")}access:",
+            p.Added.Describe().ToList(), footer, p.IsUpdate ? "Update" : "Install", "Cancel");
     }
 
     /// <summary>A small host-drawn box asking for an https:// address. Returns the checked address, or null on cancel (a bad address is explained and cancels).</summary>
@@ -44,9 +44,9 @@ static class PackageInstall
 
     /// <summary>The review text for a widget that asks for no access: who made it, where it came from, and that it replaces an installed copy.</summary>
     internal static string PlainReview(Community.PendingInstall p, string source) =>
-        $"{(p.IsUpdate ? "Replace the installed" : "Install")} {p.Manifest.Name} {p.Manifest.Version}"
-        + (p.Manifest.Author.Length > 0 ? $" by {p.Manifest.Author}" : "")
-        + $"?\n\nFrom {source}. It asks for no access to websites, system info, media, notifications or commands.";
+        $"{(p.IsUpdate ? "Replace the installed" : "Install")} {ApprovalDialog.Clean(p.Manifest.Name, 60)} {ApprovalDialog.Clean(p.Manifest.Version, 30)}"
+        + (p.Manifest.Author.Length > 0 ? $" by {ApprovalDialog.Clean(p.Manifest.Author, 60)}" : "")
+        + $"?\n\nFrom {ApprovalDialog.Clean(source, 200)}. It asks for no access to websites, system info, media, notifications or commands.";
 
     /// <summary>
     /// Prepares a widget with <paramref name="prepare"/> (off the UI thread), shows the review, installs it when accepted.
@@ -64,7 +64,7 @@ static class PackageInstall
                 throw new InvalidOperationException($"'{id}' is the id of a built-in widget");
             var accepted = pending.NeedsApproval
                 ? ConfirmNewAccess(owner, pending, source)
-                : MessageBox.Show(owner, PlainReview(pending, source), "Umbra", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+                : HostDialog.Confirm(owner, PlainReview(pending, source), yesText: pending.IsUpdate ? "Replace" : "Install", noText: "Cancel");
             if (!accepted) return null;
             app.CloseWidget(id);
             pending.Commit();
