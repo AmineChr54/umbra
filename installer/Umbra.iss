@@ -17,6 +17,7 @@ AppSupportURL=https://github.com/AmineChr54/umbra/issues
 AppUpdatesURL=https://github.com/AmineChr54/umbra/releases
 ; Per-user install: no admin rights, no UAC prompt.
 PrivilegesRequired=lowest
+ChangesAssociations=yes
 DefaultDirName={localappdata}\Programs\Umbra
 DisableProgramGroupPage=yes
 DisableDirPage=auto
@@ -63,6 +64,11 @@ Name: "{autodesktop}\Umbra"; Filename: "{app}\Umbra.exe"; Tasks: desktopicon
 [Registry]
 ; Same value the in-app "Start with Windows" toggle reads and writes.
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Umbra"; ValueData: """{app}\Umbra.exe"" --background"; Tasks: startup; Flags: uninsdeletevalue
+; Double-click on a .umbrawidget opens Umbra's install review (per user, no admin). The package is checked and reviewed before anything is installed.
+Root: HKCU; Subkey: "Software\Classes\.umbrawidget"; ValueType: string; ValueName: ""; ValueData: "Umbra.Widget"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Umbra.Widget"; ValueType: string; ValueName: ""; ValueData: "Umbra widget"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\Umbra.Widget\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Umbra.exe,0"
+Root: HKCU; Subkey: "Software\Classes\Umbra.Widget\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Umbra.exe"" ""%1"""
 ; umbractl on the user PATH (removed again on uninstall, see RemoveFromPath).
 Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: addtopath; Check: NeedsAddPath(ExpandConstant('{app}'))
 

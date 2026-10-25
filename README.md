@@ -160,6 +160,7 @@ umbractl install clock                # community catalog: catalog, install, rem
 umbractl validate [folder]          # check a widget without installing it (exit 1 on errors; warnings are lints)
 umbractl pack [folder] [-o out.umbrawidget] [--force]   # validate, then write the shareable package (a zip with widget.json at its root, deterministic; never replaces a file without --force)
 umbractl dev [folder]               # load a folder, reload on every save, print blocked requests and errors live (terminal loop over install-local + logs: no Control command or MCP tool; add --accept-permissions if the widget declares access)
+umbractl install-url https://github.com/.../clock.umbrawidget   # HTTPS only, 5 MB, same checks as install-local; access it declares needs --accept-permissions. Double-clicking a .umbrawidget (the installer registers it) opens the same review. No MCP tool for either
 # `catalog` entries carry `manifestVersion` / `minUmbraVersion` and an `incompatible` field: null, or why this Umbra cannot install the widget (made for a newer Umbra; Browse greys it out and `install` refuses it).
 umbractl update --all                 # update every community widget that has a newer version (failures listed, the rest still update; an update that adds hosts, media, notifications or commands is skipped and listed, accept it per widget with install --accept-permissions or in Settings)
 umbractl themes                       # installed and community themes; theme <id> switches live

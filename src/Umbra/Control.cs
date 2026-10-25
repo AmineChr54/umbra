@@ -13,12 +13,23 @@ sealed class Control(App app)
 {
     internal sealed class CommandException(string message) : Exception(message);
 
+    /// <summary>Plain pipe line a second Umbra.exe sends for a double-clicked package: "open-package\t&lt;full path&gt;".</summary>
+    internal const string OpenPackagePrefix = "open-package\t";
+
     public async Task<string?> HandleLineAsync(string line)
     {
         if (line.Trim() == "settings")
         {
             await app.OnUi(() => Task.FromResult(app.ShowSettings()));
             return null; // legacy second-launch signal: no reply expected
+        }
+
+        // A double-click on a .umbrawidget in a second Umbra.exe: not a control command (it is not in Protocol.Commands, so no
+        // umbractl verb or MCP tool exists for it). It only opens the host-drawn review; nothing is installed without a click on it.
+        if (line.StartsWith(OpenPackagePrefix, StringComparison.Ordinal))
+        {
+            _ = app.OnUi(async () => await app.OpenPackageAsync(line[OpenPackagePrefix.Length..]));
+            return null;
         }
 
         JsonObject reply;
@@ -362,6 +373,44 @@ sealed class Control(App app)
                     catch (PermissionsChangedException ex)
                     {
                         throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install-local \"{path}\" --accept-permissions (or use Settings > Browse > Install from file).");
+                    }
+                    app.CloseWidget(id);
+                    pending.Commit();
+                    app.ReloadWidgets();
+                    app.SettingsChangedElsewhere();
+                    return Describe(app.Manifests.First(m => m.Id == id), id);
+                }
+            }
+
+            case "install-url":
+            {
+                // An https:// package address. Same download rules (HTTPS only, 5 MB, redirect limit) and staging as install-local;
+                // any access it declares needs acceptPermissions (umbractl --accept-permissions). No MCP tool maps here on purpose.
+                var url = Str(a, "url");
+                if (Community.CheckDownloadUrl(url) is { } badUrl) throw new CommandException(badUrl);
+                Community.PendingInstall pending;
+                try { pending = await Community.PrepareUrlAsync(url); }
+                catch (InvalidOperationException ex) { throw new CommandException($"Not installed: {ex.Message}"); }
+                using (pending)
+                {
+                    var id = pending.Manifest.Id;
+                    if (app.Manifests.Any(m => m.Id == id && m.Source == WidgetSource.BuiltIn))
+                        throw new CommandException($"'{id}' is the id of a built-in widget; pick another id");
+                    // A download must not silently replace a widget the user already has, or take a catalog widget's id.
+                    var overwrite = a["overwrite"] is JsonNode ov && Bool(ov, "overwrite");
+                    var installed = app.Manifests.FirstOrDefault(m => m.Id == id);
+                    var inCatalog = false;
+                    if (!overwrite && installed is null)
+                    {
+                        try { inCatalog = (await Community.FetchCatalogAsync()).Any(w => w?["id"]?.GetValue<string>() == id); }
+                        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or JsonException) { /* offline: the installed check still applies */ }
+                    }
+                    if (Community.ReplacementWarning(id, installed, installed is not null && Community.IsLocalInstall(id), inCatalog, overwrite) is { } replace)
+                        throw new CommandException($"{replace}. Nothing was changed.");
+                    try { pending.Require(a["acceptPermissions"] is JsonNode ap && Bool(ap, "acceptPermissions")); }
+                    catch (PermissionsChangedException ex)
+                    {
+                        throw new CommandException($"{ex.Message}. Nothing was changed. To accept, run: umbractl install-url \"{url}\" --accept-permissions (or use Settings > Browse > From URL).");
                     }
                     app.CloseWidget(id);
                     pending.Commit();

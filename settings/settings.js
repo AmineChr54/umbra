@@ -1388,6 +1388,7 @@ $("#exportBackup").addEventListener("click", () => post({ type: "exportBackup" }
 $("#importBackup").addEventListener("click", () => post({ type: "importBackup" }));
 // The host shows the picker and the access prompt; the page never passes a path.
 $("#installFile").addEventListener("click", () => post({ type: "installLocal", kind: "file" }));
+$("#installUrl").addEventListener("click", () => post({ type: "installUrl" }));
 $("#installFolder").addEventListener("click", () => post({ type: "installLocal", kind: "folder" }));
 $("#openDataFolder").addEventListener("click", () => post({ type: "openDataFolder" }));
 $("#openLogBtn").addEventListener("click", () => post({ type: "openLog" }));
