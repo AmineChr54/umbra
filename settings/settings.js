@@ -1388,7 +1388,7 @@ function renderPrivacy(list) {
       sub(`Saved data: ${fmt(w.data.bytes)}` + (w.blocked.count ? ` \u00b7 ${w.blocked.count} blocked request(s), latest ${w.blocked.recent[w.blocked.recent.length - 1]}` : "")));
     if (w.incompatible) text.append(sub(w.incompatible));
     if (w.crashes?.stopped) text.append(sub("Stopped working: its page kept crashing, so Umbra stopped reloading it. Use Reload on the widget."));
-    else if (w.crashes?.count) text.append(sub(`Crashed ${w.crashes.count} time(s) recently (see umbra.log); Umbra reloaded it.`));
+    else if (w.crashes?.count) text.append(sub(`Crashed ${w.crashes.count} time(s) in the recent log (see umbra.log); Umbra reloaded it.`));
     const del = document.createElement("button");
     del.className = "btn small danger";
     del.textContent = "Delete data";

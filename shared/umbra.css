@@ -47,6 +47,10 @@ html, body {
   user-select: none;
 }
 
+/* An unfocused widget paints selections grey with dark text, which is unreadable on black. */
+::selection { background: rgba(139, 147, 255, 0.4); color: var(--text); }
+@media (forced-colors: active) { ::selection { background: Highlight; color: HighlightText; } }
+
 .num { font-variant-numeric: tabular-nums; }
 
 /* Motion is opt-out: the SDK sets data-motion="off" when the user disables animations

@@ -257,6 +257,10 @@ Umbra is community-built. The [roadmap board](https://github.com/users/AmineChr5
 - The S&P 500 widget uses Yahoo's unofficial endpoint. Data may be delayed or change without notice, so don't use it for trading.
 - The original lightweight Rainmeter skin is still in [`extras/rainmeter`](extras/rainmeter/SP500).
 
+## Privacy
+
+Umbra collects no telemetry and has no account. Settings, widget data and logs stay in `%APPDATA%\Umbra` on your PC. The only network traffic Umbra itself makes is a daily check on GitHub for new releases and widget updates (you can turn it off in Settings), the widget and theme catalogs when you open Browse, the downloads you choose to install, and the requests a widget makes to hosts it declares in its `widget.json` (see **Data & privacy** in Settings).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

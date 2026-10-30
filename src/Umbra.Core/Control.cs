@@ -571,6 +571,7 @@ sealed class Control(IUmbraHost app)
             var (_, inst) = app.Resolve(target)
                     ?? throw new CommandException($"No widget '{target}'. Targets: {string.Join(", ", app.Manifests.SelectMany(x => app.Settings.Instances(x.Id)))}, settings:<page>");
             var win = app.Window(inst) ?? throw new CommandException($"'{inst}' is not open; enable it first (configure enabled=true)");
+            if (HiddenTabMessage(app.GroupsJson(), inst) is string hidden) throw new CommandException(hidden);
             png = await win.CaptureAsync();
         }
 
@@ -580,6 +581,18 @@ sealed class Control(IUmbraHost app)
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         await File.WriteAllBytesAsync(full, png);
         return new JsonObject { ["path"] = full, ["bytes"] = png.Length };
+    }
+
+    /// <summary>The error for capturing a hidden tab, or null: it never renders, so the capture would only wait out its timeout.</summary>
+    internal static string? HiddenTabMessage(JsonArray groups, string inst)
+    {
+        foreach (var g in groups.OfType<JsonObject>())
+        {
+            var active = g["active"]?.GetValue<string>();
+            if (active is not null && active != inst && g["members"] is JsonArray members && members.Any(m => m?.GetValue<string>() == inst))
+                return $"'{inst}' is a hidden tab in group '{g["name"]}' ('{active}' is showing); run: groups activate {g["id"]} {inst}";
+        }
+        return null;
     }
 
     /// <summary>Installed themes and the community catalog merged by id; a failed catalog fetch only sets "catalogError".</summary>

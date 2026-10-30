@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Umbra;
 using Xunit;
 
@@ -10,6 +11,19 @@ public class GroupTests
         var s = new Settings();
         foreach (var id in ids) s.Widgets[id] = new WidgetSettings();
         return s;
+    }
+
+    [Fact]
+    public void Capturing_a_hidden_tab_fails_fast_and_says_how_to_show_it()
+    {
+        var groups = JsonNode.Parse("""[{ "id": "g1", "name": "Work", "members": ["a", "b"], "active": "a" }]""")!.AsArray();
+
+        var message = Control.HiddenTabMessage(groups, "b");
+
+        Assert.Contains("hidden tab in group 'Work'", message);
+        Assert.Contains("groups activate g1 b", message);
+        Assert.Null(Control.HiddenTabMessage(groups, "a"));
+        Assert.Null(Control.HiddenTabMessage(groups, "ungrouped"));
     }
 
     [Fact]
