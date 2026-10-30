@@ -18,6 +18,9 @@ html, body { height: 100%; overflow: hidden; }
 .editor[data-empty] > div:first-child::before { content: attr(data-ph); color: var(--text-3); pointer-events: none; }
 .editor .mk { color: var(--text-3); }
 .editor .li > .mk { color: var(--accent); }
+.editor .li > .dot { color: transparent; background: radial-gradient(circle, var(--accent) 0 .15em, transparent .18em) center no-repeat; }
+.editor .li > .dot::selection { color: transparent; }
+@media (forced-colors: active) { .editor .li > .dot { background: none; } }
 .editor .h1, .editor .h2, .editor .h3 { font-weight: 650; }
 .editor .h1 { font-size: 1.35em; line-height: 1.3; }
 .editor .h2 { font-size: 1.2em; line-height: 1.3; }
