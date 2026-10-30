@@ -4,7 +4,7 @@
   "name": "Quick Notes",
   "description": "A scratchpad on your desktop with up to five note tabs. Renders basic markdown as you type (headings, bold, lists), saves as you type and shows a character count. Everything stays on your PC.",
   "author": "AmineChr54",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "manifestVersion": 1,
   "entry": "index.html",
   "preview": "preview.png",

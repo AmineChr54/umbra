@@ -12,6 +12,7 @@
   const nTabs = () => Math.min(5, Math.max(1, Number(umbra.options.tabs) || 3));
   const LIST = /^(\s*)([-*]|\d+\.)(\s)(.*)$/;
   const HEAD = /^(\s*)(#{1,3})(\s)(.*)$/;
+  const TAB = "    ";
 
   function drawTabs() {
     const t = nTabs();
@@ -45,7 +46,14 @@
     let m = HEAD.exec(t);
     if (m) { d.className = "h" + m[2].length; d.appendChild(span("mk", m[1] + m[2] + m[3])); inline(d, m[4]); return d; }
     m = LIST.exec(t);
-    if (m) { d.className = "li"; d.appendChild(span("mk", m[1] + m[2] + m[3])); inline(d, m[4]); return d; }
+    if (m) {
+      d.className = "li";
+      if (m[1]) d.appendChild(span("mk", m[1]));
+      // A "-" or "*" stays in the text, so saving and the caret see it; notes.css paints it as a dot.
+      d.append(span(/\d/.test(m[2]) ? "mk" : "mk dot", m[2]), span("mk", m[3]));
+      inline(d, m[4]);
+      return d;
+    }
     inline(d, t);
     return d;
   }
@@ -150,10 +158,12 @@
   // ---- input ----
   function onInput() {
     if (composing) return;
+    const prev = lines;
+    const next = lines = readLines();
+    // Measured against the new text: the old line is one character short, which would clamp the caret left of what was just typed.
     const sel = getSel();
-    const next = readLines();
     const joined = next.join("\n");
-    if (!allDivs() || next.length !== lines.length || joined.length > MAX) {
+    if (!allDivs() || next.length !== prev.length || joined.length > MAX) {
       const text = joined.slice(0, MAX);
       fullRender(text, sel ? Math.min(sel.s, text.length) : text.length);
       commit(); pushHist(); return;
@@ -165,9 +175,8 @@
     const fn = getSelection().focusNode;
     const caretLine = sel && fn ? lineOf(fn, 0).line : -1;
     next.forEach((t, i) => {
-      if (t !== lines[i] || i === caretLine) ed.replaceChild(buildLine(t), ed.childNodes[i]);
+      if (t !== prev[i] || i === caretLine) ed.replaceChild(buildLine(t), ed.childNodes[i]);
     });
-    lines = next;
     if (sel) setSel(sel.s, sel.e);
     mark(); commit(); pushHist();
   }
@@ -211,8 +220,8 @@
       const m = LIST.exec(t2.slice(ls, le));
       if (m && s >= ls + m[1].length + m[2].length + m[3].length) {
         if (m[4].trim() === "") {
-          if (m[1].length >= 2) {
-            const ln = m[1].slice(2) + m[2] + m[3];
+          if (m[1]) {
+            const ln = m[1].slice(TAB.length) + m[2] + m[3];
             edit(t2.slice(0, ls) + ln + t2.slice(le), ls + ln.length);
           } else edit(t2.slice(0, ls) + t2.slice(le), ls);
         } else {
@@ -224,17 +233,21 @@
       return;
     }
     if (k === "Tab") {
-      const ls = text.lastIndexOf("\n", sel.s - 1) + 1;
-      let le = text.indexOf("\n", sel.s); if (le < 0) le = text.length;
-      const line = text.slice(ls, le);
-      if (!LIST.test(line)) return;
       ev.preventDefault();
+      const ls = sel.s ? text.lastIndexOf("\n", sel.s - 1) + 1 : 0;
+      let le = text.indexOf("\n", sel.e); if (le < 0) le = text.length;
+      const block = text.slice(ls, le).split("\n");
       if (ev.shiftKey) {
-        const rm = Math.min(2, /^ */.exec(line)[0].length);
-        if (!rm) return;
-        edit(text.slice(0, ls) + line.slice(rm) + text.slice(le), Math.max(ls, sel.s - rm), Math.max(ls, sel.e - rm));
+        const rm = block.map((l) => Math.min(TAB.length, /^ */.exec(l)[0].length));
+        const total = rm.reduce((a, b) => a + b, 0);
+        if (!total) return;
+        const out = block.map((l, i) => l.slice(rm[i])).join("\n");
+        const lastLine = ls + out.lastIndexOf("\n") + 1;
+        edit(text.slice(0, ls) + out + text.slice(le), Math.max(ls, sel.s - rm[0]), Math.max(lastLine, sel.e - total));
+      } else if (block.length === 1 && !LIST.test(block[0])) {
+        edit(text.slice(0, sel.s) + TAB + text.slice(sel.e), sel.s + TAB.length);
       } else {
-        edit(text.slice(0, ls) + "  " + line + text.slice(le), sel.s + 2, sel.e + 2);
+        edit(text.slice(0, ls) + block.map((l) => TAB + l).join("\n") + text.slice(le), sel.s + TAB.length, sel.e + TAB.length * block.length);
       }
     }
   });
