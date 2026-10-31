@@ -102,9 +102,9 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
             "Read-only: the local commands that widgets declare in permissions.commands (exact command line) and whether the user approved each one (approved, pending, or changed since approval). " +
             "There is deliberately no tool to approve: the user approves in a prompt or in Settings > My widgets.",
             Schema(Obj(("id", IdProp.DeepClone())))),
-        new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:general|widgets|layouts|browse|themes|hotkeys|privacy|about). Returns a PNG of only that surface, never the rest of the screen.",
+        new("capture", "capture","Screenshot one widget (target = its id) or a Settings page (target = settings:home|widgets|browse|themes|layouts|hotkeys|general|privacy|about). Returns a PNG of only that surface, never the rest of the screen.",
             Schema(Obj(("target", P("string", "Widget id or settings:<page>"))), "target")),
-        new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (general, widgets, browse, themes, hotkeys, privacy, layouts, about).", Schema(Obj(("page", P("string", "general | widgets | browse | themes | hotkeys | privacy | layouts | about"))))),
+        new("open_settings", "open-settings", "Open Umbra's Settings window for the user, optionally on a page (home, widgets, browse, themes, layouts, hotkeys, general, privacy, about).", Schema(Obj(("page", P("string", "home | widgets | browse | themes | layouts | hotkeys | general | privacy | about"))))),
         new("privacy_report", "privacy", "Read-only: per widget, the hosts it may reach, its declared commands and approval status, saved-data size and recent blocked requests.", Schema(Obj(("id", IdProp.DeepClone())))),
         new("backup_settings", "backup", "Write settings, layouts, theme, hotkeys and widget data to a JSON file at an absolute path. Command approvals are never included.", Schema(Obj(("path", P("string", "Output file path"))), "path")),
         new("restore_settings", "restore", "Replace settings, layouts and widget data from a backup file (validated first). Command approvals are not restored: the user must approve again.", Schema(Obj(("path", P("string", "Backup file path"))), "path")),

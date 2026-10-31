@@ -560,7 +560,7 @@ sealed class Control(IUmbraHost app)
         byte[] png;
         if (target.StartsWith("settings", StringComparison.OrdinalIgnoreCase))
         {
-            var page = target.Contains(':') ? target[(target.IndexOf(':') + 1)..] : "general";
+            var page = target.Contains(':') ? target[(target.IndexOf(':') + 1)..] : "home";
             var wasOpen = app.SettingsOpen;
             var win = app.ShowSettings(background: true);
             try { png = await win.CaptureAsync(page); }

@@ -441,12 +441,7 @@ sealed class App : ApplicationContext, IUmbraHost
             _ = RestoreMissingAsync();
         }
         else if (!Settings.General.LegacyRestoreDone) Settings.General.LegacyRestoreDone = true;
-        var showBrowse = openSettings && Manifests.Count == 0 && restore.Count == 0;
-        if (openSettings)
-        {
-            var win = ShowSettings();
-            if (showBrowse) _ = ShowBrowseAsync(win);
-        }
+        if (openSettings) ShowSettings(); // Home is the first page; with no widgets yet it offers a few to start with
         switch (Tour.Decide(Settings.General.TourDone, openSettings, announced || SafeMode))
         {
             case Tour.Plan.ShowNow:
@@ -461,8 +456,6 @@ sealed class App : ApplicationContext, IUmbraHost
                 break;
         }
     }
-
-    static async Task ShowBrowseAsync(SettingsWindow win) => await ShowPageAsync(win, "browse");
 
     static async Task ShowPageAsync(SettingsWindow win, string page)
     {

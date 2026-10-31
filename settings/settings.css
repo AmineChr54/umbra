@@ -58,6 +58,8 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
   font-size: 11px; font-weight: 600; color: var(--text-2);
   background: rgba(255, 255, 255, 0.06);
 }
+.nav-sep { height: 1px; margin: 8px 12px; background: var(--line); }
+.nav .count:empty { display: none; }
 .side-foot { margin-top: auto; }
 
 /* ---------- content ---------- */
@@ -217,7 +219,8 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 }
 .wcard:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
 .wcard.focus, .wcard.focus:hover { box-shadow: inset 0 0 0 2px var(--accent), 0 0 24px rgba(139, 147, 255, 0.25); }
-.wcard-main { display: flex; align-items: center; gap: 14px; padding: 8px 14px; }
+.wcard-main { display: flex; align-items: center; gap: 14px; padding: 8px 14px; cursor: pointer; }
+.wcard.off .wcard-main { cursor: default; }
 .thumb {
   width: 84px; height: 48px; flex: none; border-radius: 8px;
   background: #000 center / contain no-repeat;
@@ -273,6 +276,12 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .optsection[open] summary .ico { transform: none; }
 [data-motion="off"] .optsection summary .ico { transition: none; }
 .optsection-body { padding: 6px 0 2px; }
+/* The same fold-out at page level: Advanced on General, Customize on Appearance. */
+.page-fold { margin-top: 18px; }
+.page-fold summary { padding: 8px 12px 8px 8px; margin-left: -8px; font-size: 13.5px; }
+.page-fold summary .ico { width: 16px; height: 16px; }
+.page-fold .optsection-body { padding: 8px 0 0; }
+#appearanceCustomize { margin: -8px 0 14px; }
 
 /* My widgets header: the one global lock, "Arrange widgets" (#234) */
 .page-head.with-action { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -329,7 +338,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 }
 .hero-text { position: relative; z-index: 1; max-width: 480px; }
 .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-strong); }
-.hero h2 { margin: 8px 0 8px; font-family: var(--font-display); font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
+.hero h2, .hero h1 { margin: 8px 0 8px; font-family: var(--font-display); font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
 .hero p { margin: 0; color: var(--text-2); line-height: 1.55; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .howto { margin: 0 0 16px; color: var(--text-2); line-height: 1.55; }
@@ -343,6 +352,56 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .hero-art i:nth-child(2) { background: #000; transform: translate(-14px, 14px) scale(0.94); }
 .hero-art i:nth-child(3) { box-shadow: 0 0 80px 10px rgba(139, 147, 255, 0.35); animation: breathe 6s ease-in-out infinite; }
 @keyframes breathe { 50% { box-shadow: 0 0 110px 22px rgba(139, 147, 255, 0.45); } }
+[data-motion="off"] .hero-art i:nth-child(3) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .hero-art i:nth-child(3) { animation: none; } }
+
+/* ---------- home ---------- */
+/* Shorter hero and pick cards than Browse, so Install is visible without scrolling at the default window size. */
+.hero.home-hero { padding: 22px 28px; min-height: 104px; margin-bottom: 14px; }
+.home-hero h1 { margin: 0 0 6px; }
+.home-hero .hero-text { margin-right: 130px; }
+.home-hero .hero-art { right: 28px; width: 104px; height: 104px; }
+.home-tasks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+#homePickGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#homePickGrid .cbody { padding: 10px 12px 4px; }
+#homePickGrid .cdesc { margin: 4px 0 8px; -webkit-line-clamp: 2; }
+#homePickGrid .cauthor { display: none; }
+#homePickGrid .cfoot { padding: 8px 12px 12px; }
+#homePickGrid .skeleton { height: 280px; }
+.home-task {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 16px 18px; text-align: left;
+  border-radius: var(--radius-l);
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 220ms var(--ease-out), box-shadow 220ms;
+}
+.home-task:hover:not(:disabled) { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-strong), 0 14px 30px rgba(0, 0, 0, 0.6); }
+.home-task:disabled { opacity: 0.55; cursor: default; }
+.home-task.on { box-shadow: inset 0 0 0 1px var(--accent); background: rgba(139, 147, 255, 0.1); }
+.home-task .ico { width: 20px; height: 20px; margin-bottom: 10px; color: var(--accent-strong); }
+.home-task-title { font-size: 14.5px; font-weight: 650; }
+.home-task-sub { margin-top: 3px; font-size: 12.5px; line-height: 1.4; color: var(--text-2); }
+.home-section { margin-bottom: 22px; }
+.home-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 10px; }
+.home-head h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.link-btn { padding: 0; color: var(--accent-strong); font-size: 12.5px; }
+.link-btn:hover { text-decoration: underline; }
+.home-mine { display: flex; flex-wrap: wrap; gap: 8px; }
+.home-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 5px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 600;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow 160ms;
+}
+.home-chip:hover { box-shadow: inset 0 0 0 1px var(--line-strong); }
+.home-chip .thumb { width: 44px; height: 28px; border-radius: 6px; }
+.home-chip .thumb.fallback { font-size: 13px; }
+@media (max-width: 820px) { .home-tasks, #homePickGrid { grid-template-columns: 1fr; } }
+[data-motion="off"] .home-task, [data-motion="off"] .home-chip { transition: none; }
+[data-motion="off"] .home-task:hover:not(:disabled) { transform: none; }
 
 .search {
   display: flex; align-items: center; gap: 10px;
@@ -509,7 +568,10 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
   .nav button.dot::after { background: Highlight; }
   .content::-webkit-scrollbar-thumb { background: CanvasText; border-color: Canvas; }
 
-  .group, .wcard, .ccard, .search, .hint, .empty, .thumb, .cmd, .toast, .size-val, .hero { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .group, .wcard, .ccard, .search, .hint, .empty, .thumb, .cmd, .toast, .size-val, .hero, .home-task, .home-chip { outline: 1px solid CanvasText; outline-offset: -1px; }
+  .nav-sep { background: CanvasText; }
+  .home-task.on { outline: 2px solid Highlight; outline-offset: -2px; background: Canvas; }
+  .link-btn { color: LinkText; }
   .hero { background: Canvas; }
   .hero-art { display: none; }
   .hero-text { margin-right: 0; }
@@ -649,7 +711,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 @media (prefers-reduced-motion: reduce) { .welcome-art .a-pulse, .welcome-art .a-slide { animation: none; } }
 .welcome-step { font-size: 12px; color: #8a8d99; margin-bottom: 4px; }
 .welcome-card h2 { margin: 0 0 8px; font-size: 20px; }
-.welcome-card p { margin: 0 0 20px; line-height: 1.5; color: #b4b7c2; min-height: 6em; }
+.welcome-card p { margin: 0 0 20px; line-height: 1.5; color: #b4b7c2; min-height: 4.5em; }
 .welcome-foot { display: flex; align-items: center; gap: 8px; }
 .welcome-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
 .welcome-dots i { width: 7px; height: 7px; border-radius: 50%; background: #2b2d36; }

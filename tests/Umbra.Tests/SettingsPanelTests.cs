@@ -13,7 +13,7 @@ public class SettingsPanelTests
         return root!;
     }
 
-    /// <summary>Ctrl+1..7 in settings.js picks the Nth sidebar button, so the sidebar must list the pages in the host's order.</summary>
+    /// <summary>Ctrl+1..9 in settings.js picks the Nth sidebar button, so the sidebar must list the pages in the host's order.</summary>
     [Fact]
     public void Sidebar_order_matches_pages_so_ctrl_number_shortcuts_line_up()
     {
@@ -22,6 +22,58 @@ public class SettingsPanelTests
         var pages = Regex.Matches(nav, "data-page=\"(\\w+)\"").Select(m => m.Groups[1].Value).ToArray();
         Assert.Equal(SettingsWindow.Pages, pages);
         Assert.True(pages.Length <= 9, "Ctrl+1..9 is all the shortcut covers");
+    }
+
+    /// <summary>Settings opens on Home, the first page in the sidebar and the one the markup starts on.</summary>
+    [Fact]
+    public void Home_is_the_landing_page()
+    {
+        Assert.Equal("home", SettingsWindow.Pages[0]);
+        var html = Read("index.html");
+        Assert.Contains("<button data-page=\"home\" class=\"active\"", html);
+        Assert.Contains("<section class=\"page active\" data-page=\"home\">", html);
+        Assert.Single(Regex.Matches(html, "class=\"page active\""));
+    }
+
+    static string Page(string name) =>
+        Regex.Match(Read("index.html"), $"<section class=\"page[^\"]*\" data-page=\"{name}\">.*?</section>", RegexOptions.Singleline).Value;
+
+    /// <summary>General shows only the everyday settings; the rest wait behind a fold-out, here or on Appearance.</summary>
+    [Fact]
+    public void General_keeps_a_short_list_and_folds_the_rest()
+    {
+        var general = Page("general");
+        var fold = general.IndexOf("<details", StringComparison.Ordinal);
+        Assert.True(fold > 0);
+        Assert.True(Regex.Matches(general[..fold], "class=\"row\"").Count <= 4, "keep General short: new settings go under Advanced or Customize");
+        Assert.Contains("id=\"advancedRows\"", general[fold..]);
+        Assert.Contains("id=\"appearanceRows\"", Page("themes"));
+        Assert.DoesNotContain(" open", Regex.Match(general, "<details[^>]*>").Value);
+
+        var prefs = Read("prefs.js");
+        foreach (var look in new[] { "Scale all widgets", "Accent color", "Animations" }) Assert.Contains($"look.append(row(\"{look}\"", prefs);
+        foreach (var adv in new[] { "Proxy", "Developer mode", "Slow down on Energy Saver", "Peek duration" }) Assert.Contains($"adv.append(row(\"{adv}\"", prefs);
+    }
+
+    /// <summary>Home only suggests widgets that can't run programs or use the camera, and installs through the normal job.</summary>
+    [Fact]
+    public void Home_suggestions_stay_low_risk()
+    {
+        var js = Read("settings.js");
+        Assert.Contains("!w.camera && !(w.commands || []).length", js);
+        var card = Regex.Match(js, @"function homePickCard\(w\) \{.*?\n\}", RegexOptions.Singleline).Value;
+        Assert.Contains("permissionChips(", card);
+        Assert.Contains("job(w.id, \"install\", btn)", card);
+    }
+
+    /// <summary>A folded card opens by itself when the right-click menu's Options asks for it.</summary>
+    [Fact]
+    public void Widget_cards_start_folded_and_open_on_request()
+    {
+        var js = Read("settings.js");
+        Assert.Contains("setFolded(!openCards().has(w.id), false);", js);
+        var focus = Regex.Match(js, @"function applyFocus\(\) \{.*?\n\}", RegexOptions.Singleline).Value;
+        Assert.Contains(".fold", focus);
     }
 
     /// <summary>The first-run welcome dialog is an accessible modal with 3 slides.</summary>

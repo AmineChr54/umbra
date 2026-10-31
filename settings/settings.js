@@ -6,6 +6,7 @@ const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
 // Line icons (24x24, stroke). Rendered into every [data-icon] element.
 const ICONS = {
+  home: '<path d="M4 11.5 12 4.5l8 7"/><path d="M6.5 9.5V19.5h11V9.5"/><path d="M10 19.5v-5h4v5"/>',
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   grid: '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
   compass: '<circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
@@ -112,23 +113,14 @@ document.addEventListener("click", (e) => {
 // ---------- General ----------
 function renderGeneral() {
   const g = state.settings.general;
+  document.documentElement.dataset.motion = g.animations === false || g.animationSpeed === "off" ? "off" : "on";
   window.prefsRender && prefsRender();
   $("#startup").checked = state.startup;
   $("#startup").disabled = !!state.portable;
   $("#startupSub").textContent = state.portable ? "Not available in portable mode." : "Your widgets appear on the desktop when you sign in.";
-  $("#animations").checked = g.animations;
   $("#checkUpdates").checked = g.checkForUpdates !== false;
-  $("#slowEnergySaver").checked = g.slowOnEnergySaver !== false;
   $("#hideFullscreen").checked = !!g.hideOnFullscreen;
-  if (document.activeElement !== $("#peekSeconds")) $("#peekSeconds").value = g.peekSeconds || 5;
-  $("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
-$("#peekSeconds").addEventListener("change", (e) => {
-  const v = Math.max(1, Math.min(60, Math.round(Number(e.target.value) || 5)));
-  e.target.value = v;
-  state.settings.general.peekSeconds = v;
-  save(true);
-});
-syncInterval(g.refreshSeconds);
+  syncInterval(g.refreshSeconds);
   labelRows();
 }
 // Segmented control = radio group: the selected button is the one tab stop, arrows move and select.
@@ -146,9 +138,8 @@ $("#startup").addEventListener("change", (e) => {
   post({ type: "setStartup", value: e.target.checked });
   toast(e.target.checked ? "Umbra will start with Windows" : "Umbra won't start with Windows");
 });
-$("#animations").addEventListener("change", (e) => { state.settings.general.animations = e.target.checked; save(true); });
 $("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
-$("#slowEnergySaver").addEventListener("change", (e) => { state.settings.general.slowOnEnergySaver = e.target.checked; save(true); });
+$("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
     state.settings.general.refreshSeconds = Number(b.dataset.v);
@@ -410,6 +401,8 @@ function thumb(el, w) {
   else { el.classList.add("fallback"); el.textContent = (w.name || "?").trim()[0]; }
 }
 
+const openCards = () => { try { return new Set(JSON.parse(localStorage.getItem("openCards") || "[]")); } catch { return new Set(); } };
+
 // Lists are sorted (#236): Active first, then Not enabled, each by name; grouped widgets stay together under their group header.
 // `refocus` = a widget copy whose switch had focus: it gets it back after the rebuild.
 let myFilter = "";
@@ -419,7 +412,9 @@ function renderInstalled(refocus) {
   const top = scroller ? scroller.scrollTop : 0;
   list.textContent = "";
   $("#count").textContent = state.widgets.length || "";
-  $("#mySearchBox").hidden = $("#installMore").hidden = !state.widgets.length;
+  $("#installMore").hidden = $("#groupStrip").hidden = !state.widgets.length;
+  $("#mySearchBox").hidden = state.widgets.length < 6; // a filter only earns its place on a long list
+  if ($("#mySearchBox").hidden && myFilter) { myFilter = ""; $("#mySearch").value = ""; }
   if (!state.widgets.length) {
     list.innerHTML = '<div class="empty">No widgets yet.<br><br><button class="btn primary" id="goBrowse">Browse widgets</button></div>';
     $("#goBrowse").addEventListener("click", () => show("browse"));
@@ -472,7 +467,7 @@ function renderInstalled(refocus) {
       if (here) card.classList.add("ingroup");
     }
 
-    // Fold/unfold the options. Remembered per widget in this browser profile.
+    // Fold/unfold the options: folded until opened, so a long list stays readable. Remembered per widget in this browser profile.
     const fold = $(".fold", card);
     const setFolded = (folded, remember) => {
       card.classList.toggle("folded", folded);
@@ -480,15 +475,17 @@ function renderInstalled(refocus) {
       fold.setAttribute("aria-label", `${folded ? "Show" : "Hide"} ${w.name} options`);
       if (!remember) return;
       try {
-        const set = new Set(JSON.parse(localStorage.getItem("foldedCards") || "[]"));
-        if (folded) set.add(w.id); else set.delete(w.id);
-        localStorage.setItem("foldedCards", JSON.stringify([...set]));
+        const set = openCards();
+        if (folded) set.delete(w.id); else set.add(w.id);
+        localStorage.setItem("openCards", JSON.stringify([...set]));
       } catch { /* storage unavailable */ }
     };
-    let wasFolded = false;
-    try { wasFolded = JSON.parse(localStorage.getItem("foldedCards") || "[]").includes(w.id); } catch { /* ignore */ }
-    setFolded(wasFolded, false);
+    setFolded(!openCards().has(w.id), false);
     fold.addEventListener("click", () => setFolded(!card.classList.contains("folded"), true));
+    // The whole row opens the card, except the controls on it. A disabled card has no options to show.
+    $(".wcard-main", card).addEventListener("click", (e) => {
+      if (!card.classList.contains("off") && !e.target.closest("button, label, input, select, a")) fold.click();
+    });
 
     renderCommands($(".cmds", card), w);
     window.prefsCard && prefsCard(card, w);
@@ -625,7 +622,11 @@ function applyFocus() {
   const card = $$("#installed .wcard").find((c) => c.dataset.instance === focusId);
   if (!card) return;
   card.classList.add("focus");
-  if (!focusScrolled) { focusScrolled = true; card.scrollIntoView({ block: "center" }); }
+  if (!focusScrolled) {
+    focusScrolled = true;
+    if (card.classList.contains("folded")) $(".fold", card).click(); // they asked for this widget's options
+    card.scrollIntoView({ block: "center" });
+  }
   setTimeout(() => card.classList.remove("focus"), Math.max(0, focusUntil - Date.now()));
 }
 
@@ -686,6 +687,7 @@ function showArrange(on) {
   $("#arrangeState").textContent = on ? "Unlocked: drag, resize, then turn off" : "Locked";
   const ico = $(".arrange-ico");
   if (ico.dataset.icon !== (on ? "unlock" : "lock")) { ico.dataset.icon = on ? "unlock" : "lock"; ico.textContent = ""; icons(ico.parentElement); }
+  renderHome();
 }
 
 // ---------- Layouts ----------
@@ -728,6 +730,10 @@ function renderGroups() {
   }
   $("#selectBtn").setAttribute("aria-pressed", String(selectMode));
   $("#selectBtn").textContent = selectMode ? "Done selecting" : "Select widgets";
+  const hasGroups = (state.groups || []).length > 0;
+  $("#selectBtn").hidden = !hasGroups && !selectMode; // it only adds to a group, so it waits for the first one
+  $("#groupHint").textContent = hasGroups ? "Add widgets with a card's badge, by dragging a card onto a group, or with Select widgets."
+    : "Stack widgets in one spot and switch between them with tabs.";
   for (const id of [...selected]) if (!state.widgets.some((w) => w.id === id)) selected.delete(id);
   $("#bulkBar").hidden = !selectMode;
   $("#bulkCount").textContent = `${selected.size} selected`;
@@ -1010,7 +1016,6 @@ function renderLayouts() {
   }
   icons(list);
 }
-$("#snapMode").addEventListener("change", (e) => { state.settings.general.snapMode = e.target.value; save(true); });
 $("#autoLayouts").addEventListener("change", (e) => {
   state.settings.general.autoSwitchLayouts = e.target.checked;
   save(true);
@@ -1060,6 +1065,33 @@ function renderBrowseBar() {
 
 const expandedCards = new Set(); // catalog ids whose description and commands are shown in full
 
+function catalogThumb(card, w) {
+  const th = $(".cthumb", card);
+  $(".initial", card).textContent = (w.name || "?").trim()[0];
+  if (!w.previewUrl) return;
+  const img = new Image();
+  img.onload = () => { th.style.backgroundImage = `url("${w.previewUrl}")`; th.classList.add("has-img"); };
+  img.src = w.previewUrl;
+}
+
+// What a catalog widget can reach and use, one chip each. Commands are drawn by renderCatalog; Home never offers those.
+function permissionChips(chips, w) {
+  const chip = (text) => {
+    const c = document.createElement("span");
+    c.className = "chip";
+    c.innerHTML = '<span class="ico" data-icon="lock"></span>';
+    c.append(text);
+    chips.append(c);
+  };
+  const hosts = w.hosts || [];
+  if (!hosts.length) chip("No network access");
+  hosts.forEach(chip);
+  for (const k of w.media || []) chip(k === "control" ? "Controls media playback" : "Reads now playing");
+  if (w.notifications) chip("Can show notifications");
+  if (w.camera) chip("Uses your camera (timelapses)");
+  for (const s of w.system || []) chip(`Reads ${s} usage`);
+}
+
 function renderCatalog() {
   const grid = $("#catalog");
   grid.textContent = "";
@@ -1085,57 +1117,15 @@ function renderCatalog() {
   }
   for (const w of items) {
     const card = $("#tpl-catalog").content.firstElementChild.cloneNode(true);
-    const th = $(".cthumb", card);
-    $(".initial", card).textContent = (w.name || "?").trim()[0];
-    if (w.previewUrl) {
-      const img = new Image();
-      img.onload = () => { th.style.backgroundImage = `url("${w.previewUrl}")`; th.classList.add("has-img"); };
-      img.src = w.previewUrl;
-    }
+    catalogThumb(card, w);
     $(".cname", card).textContent = w.name;
     $(".cver", card).textContent = `v${w.version}`;
     $(".cauthor", card).textContent = w.author ? `by ${w.author}` : "";
     $(".cdesc", card).textContent = w.description || "";
-    const chips = $(".chips", card);
-    const hosts = w.hosts || [];
-    if (!hosts.length) chips.innerHTML = '<span class="chip"><span class="ico" data-icon="lock"></span>No network access</span>';
-    for (const h of hosts) {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
-      c.append(h);
-      chips.append(c);
-    }
-    for (const k of w.media || []) {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
-      c.append(k === "control" ? "Controls media playback" : "Reads now playing");
-      chips.append(c);
-    }
-    if (w.notifications) {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
-      c.append("Can show notifications");
-      chips.append(c);
-    }
-    if (w.camera) {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
-      c.append("Uses your camera (timelapses)");
-      chips.append(c);
-    }
-    for (const s of w.system || []) {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="ico" data-icon="lock"></span>';
-      c.append(`Reads ${s} usage`);
-      chips.append(c);
-    }
+    permissionChips($(".chips", card), w);
     // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).
     // Collapsed cards show one summary chip; "Read more" lists every command in full.
+    const chips = $(".chips", card);
     const cmds = w.commands || [];
     const open = expandedCards.has(w.id);
     // Only a lot of command text is folded away; one short command stays visible as it is.
@@ -1307,7 +1297,6 @@ bridge && bridge.listen((m) => {
       if (themes) renderThemes();
       renderUpdate();
       showArrange(!!m.editMode);
-      $("#snapMode").value = m.settings.general.snapMode === "always" ? "always" : "shift";
       $("#safeBanner").hidden = !m.safeMode;
       // Same for the layout names: don't rebuild while one is being renamed.
       // Only a layout name being edited blocks the redraw; a clicked button (Apply, Pin, Delete) must see the new state.
@@ -1315,6 +1304,7 @@ bridge && bridge.listen((m) => {
       // Don't rebuild the widget list while the user is typing in it.
       if (!document.activeElement || !$("#installed").contains(document.activeElement)) renderInstalled();
       renderGroups();
+      renderHome();
       break;
     case "privacy":
       renderPrivacy(m.widgets);
@@ -1337,6 +1327,7 @@ bridge && bridge.listen((m) => {
       catalogError = m.error;
       catalog = m.error && !m.widgets.length ? null : m.widgets;
       renderCatalog();
+      renderHome();
       break;
     case "themes":
       themesError = m.error;
@@ -1364,6 +1355,7 @@ bridge && bridge.listen((m) => {
       if (m.error) toast(`${name}: ${m.error}`, true);
       else if (kind === "remove" && m.undo) toast(`${name} removed`, false, { label: "Undo", run: () => post({ type: "undoRemove", id: m.undo }) });
       else toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
+      renderHome();
       break;
     }
     case "undoDone":
@@ -1424,8 +1416,107 @@ $("#openDataFolder").addEventListener("click", () => post({ type: "openDataFolde
 $("#openLogBtn").addEventListener("click", () => post({ type: "openLog" }));
 $("#resetAll").addEventListener("click", () => post({ type: "resetAll" }));
 
+// ---------- Home ----------
+// Hand-picked first widgets. Home only offers ones that can't run programs or use the camera, shows what each can
+// reach, and installs through the same job as Browse. The catalog arrives on its own (not at all when update checks are off).
+const HOME_PICKS = ["clock", "weather", "quick-notes", "now-playing", "todo"];
+const HOME_MINE_MAX = 12;
+let homeMineKey = null, homePicksKey = null; // rebuilt only on a change: the host pushes state often, and a rebuild drops keyboard focus
+
+function homeSubtitle(total, on) {
+  if (!total) return "Small widgets that live on your wallpaper, quietly behind your windows. Pick one to get started.";
+  if (state.safeMode) return "Safe mode is on, so community widgets aren't running right now.";
+  if (!on) return total === 1 ? "Your widget is turned off. Turn it on in My widgets." : `Your ${total} widgets are turned off. Turn them on in My widgets.`;
+  if (on < total) return `${on} on your desktop, ${total - on} turned off.`;
+  return on === 1 ? "1 widget on your desktop." : `${on} widgets on your desktop.`;
+}
+
+function homePickCard(w) {
+  const card = $("#tpl-catalog").content.firstElementChild.cloneNode(true);
+  catalogThumb(card, w);
+  $(".cname", card).textContent = w.name;
+  $(".cauthor", card).textContent = w.author ? `by ${w.author}` : "";
+  $(".cdesc", card).textContent = w.description || "";
+  permissionChips($(".chips", card), w);
+  card.setAttribute("aria-label", w.name);
+  const btn = $(".action", card);
+  btn.setAttribute("aria-label", `Install ${w.name}`);
+  if (busy.has(w.id)) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>Working';
+  } else {
+    btn.classList.add("primary");
+    btn.innerHTML = '<span class="ico" data-icon="download"></span>Install';
+    btn.addEventListener("click", () => job(w.id, "install", btn));
+  }
+  icons(card);
+  return card;
+}
+
+function renderHome() {
+  if (!state) return;
+  const widgets = state.widgets;
+  const on = widgets.filter((w) => (state.settings.widgets[w.id] || {}).enabled);
+  $("#homeTitle").textContent = widgets.length ? "Welcome back" : "Welcome to Umbra";
+  $("#homeSub").textContent = homeSubtitle(widgets.length, on.length);
+
+  const arranging = $("#editMode").checked;
+  $("#homeArrange").disabled = !widgets.length;
+  $("#homeArrange").classList.toggle("on", arranging);
+  $("#homeArrangeTitle").textContent = arranging ? "Lock widgets" : "Arrange your desktop";
+  $("#homeArrangeSub").textContent = !widgets.length ? "Add a widget first"
+    : arranging ? "Widgets are unlocked. Click here when you're done." : "Drag and resize widgets, then lock them again";
+
+  const mineKey = JSON.stringify(on.map((w) => [w.id, w.name, w.preview]));
+  if (mineKey !== homeMineKey) {
+    homeMineKey = mineKey;
+    $("#homeMineList").replaceChildren(...on.slice(0, HOME_MINE_MAX).map((w) => {
+      const b = Object.assign(document.createElement("button"), { className: "home-chip", type: "button", title: `${w.name} options` });
+      const pic = Object.assign(document.createElement("span"), { className: "thumb" });
+      thumb(pic, w);
+      b.append(pic, w.name);
+      b.addEventListener("click", () => focusWidget(w.id));
+      return b;
+    }));
+  }
+  $("#homeMine").hidden = !on.length;
+
+  // Once a desktop has a few widgets Home stops suggesting more; Browse is one click away.
+  const loading = !widgets.length && catalogLoading;
+  const picks = !catalog || widgets.length >= 3 ? [] : HOME_PICKS
+    .map((id) => catalog.find((w) => w.id === id))
+    .filter((w) => w && !w.installed && !w.incompatible && !w.camera && !(w.commands || []).length)
+    .slice(0, 3);
+  const picksKey = loading ? "loading" : JSON.stringify(picks.map((w) => [w.id, busy.has(w.id)]));
+  if (picksKey !== homePicksKey) {
+    homePicksKey = picksKey;
+    $("#homePickGrid").replaceChildren(...(loading
+      ? [0, 1, 2].map(() => Object.assign(document.createElement("div"), { className: "skeleton" }))
+      : picks.map(homePickCard)));
+  }
+  $("#homePicks").hidden = !loading && !picks.length;
+}
+$("#homeAdd").addEventListener("click", () => show("browse"));
+$("#homeSeeAll").addEventListener("click", () => show("browse"));
+$("#homeLook").addEventListener("click", () => show("themes"));
+$("#homeAll").addEventListener("click", () => show("widgets"));
+$("#homeArrange").addEventListener("click", () => $("#editMode").click()); // same switch, same message and toast as My widgets
+$("#homeTour").addEventListener("click", () => welcome(1));
+
+// The fold-outs on General and Appearance reopen the way they were left (this browser profile).
+for (const box of $$("details[data-fold]")) {
+  try { box.open = JSON.parse(localStorage.getItem("openOptionSections") || "[]").includes(box.dataset.fold); } catch { /* ignore */ }
+  box.addEventListener("toggle", () => {
+    try {
+      const set = new Set(JSON.parse(localStorage.getItem("openOptionSections") || "[]"));
+      if (box.open) set.add(box.dataset.fold); else set.delete(box.dataset.fold);
+      localStorage.setItem("openOptionSections", JSON.stringify([...set]));
+    } catch { /* storage unavailable */ }
+  });
+}
+
 // ---------- keyboard ----------
-// Esc closes the window, Ctrl+F or / jumps to the Browse search, Ctrl+1..7 switch pages. A hotkey being recorded
+// Esc closes the window, Ctrl+F or / jumps to the Browse search, Ctrl+1..9 switch pages. A hotkey being recorded
 // handles (and cancels) its own keys first; the arrow keys of the sidebar and segmented control are in arrowNav().
 const typing = (el) => !!el && (el.isContentEditable || el.matches("textarea, select, input:not([type=checkbox], [type=radio], [type=range], [type=color])"));
 function focusSearch() {
@@ -1458,14 +1549,14 @@ document.addEventListener("keydown", (e) => {
 
 // ---------- welcome dialog (#241): described only, nothing here touches the user's widgets ----------
 const WELCOME = [
-  { title: "Browse and enable widgets",
-    text: "Open Browse to find widgets and install them. Installed widgets appear under Active in My widgets, and ones you turn off wait under Not enabled. Use Install more widgets there to get back to Browse.",
+  { title: "Welcome to Umbra",
+    text: "Small widgets that live on your wallpaper, behind your windows. Pick the ones you like: clocks, weather, notes, games and more.",
     art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="14" y="16" width="64" height="100" rx="8"/><rect class="a-hot a-pulse" x="22" y="26" width="48" height="14" rx="5"/><rect class="a-dim" x="22" y="48" width="48" height="10" rx="5"/><rect class="a-dim" x="22" y="64" width="48" height="10" rx="5"/><rect class="a-box" x="92" y="16" width="134" height="100" rx="8"/><rect class="a-hot" x="102" y="26" width="52" height="38" rx="7"/><rect class="a-box" x="162" y="26" width="54" height="38" rx="7"/><rect class="a-dim" x="102" y="74" width="114" height="8" rx="4"/><rect class="a-dim" x="102" y="90" width="80" height="8" rx="4"/><circle class="a-acc a-pulse" cx="204" cy="95" r="7"/></svg>` },
-  { title: "Arrange and lock widgets",
-    text: "Widgets start locked, so they stay where they are. Turn on Arrange widgets (in My widgets or the tray menu) to drag and resize them, then press Done to lock them again. Umbra never moves your widgets by itself.",
+  { title: "Put them where you want",
+    text: "Widgets stay locked so you can't bump them. Turn on Arrange to drag and resize them, then press Done.",
     art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="20" y="14" width="84" height="56" rx="8"/><g class="a-slide"><rect class="a-hot" x="72" y="30" width="84" height="56" rx="8"/></g><rect class="a-box" x="64" y="102" width="112" height="22" rx="11"/><rect class="a-acc" x="126" y="106" width="46" height="14" rx="7"/></svg>` },
-  { title: "Groups and the tray",
-    text: "Put widgets in a group to share one spot and switch between them with tabs; create one from the Groups strip in My widgets. Umbra lives in the tray: click the icon for Settings, right-click for Arrange widgets, Layouts and Safe mode.",
+  { title: "Umbra stays in the tray",
+    text: "Close this window and your widgets keep running. Click the tray icon to come back, or right-click it for Arrange and Layouts.",
     art: `<svg viewBox="0 0 240 132"><rect class="a-box" x="30" y="10" width="130" height="80" rx="8"/><rect class="a-hot" x="38" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="78" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="118" y="18" width="34" height="14" rx="5"/><rect class="a-dim" x="38" y="42" width="114" height="8" rx="4"/><rect class="a-dim" x="38" y="58" width="80" height="8" rx="4"/><rect class="a-box" x="0" y="110" width="240" height="22"/><circle class="a-acc a-pulse" cx="214" cy="121" r="6"/><circle class="a-dim" cx="196" cy="121" r="5"/></svg>` },
 ];
 let welcomeAt = 0, welcomeFrom = null;
@@ -1481,12 +1572,12 @@ function welcome(n) {
   welcomeAt = Math.max(0, Math.min(WELCOME.length - 1, (n || 1) - 1));
   const s = WELCOME[welcomeAt];
   $("#welcomeArt").innerHTML = s.art;
-  $("#welcomeStep").textContent = `Welcome to Umbra · ${welcomeAt + 1} of ${WELCOME.length}`;
+  $("#welcomeStep").textContent = `${welcomeAt + 1} of ${WELCOME.length}`;
   $("#welcomeTitle").textContent = s.title;
   $("#welcomeText").textContent = s.text;
   $$("#welcomeDots i").forEach((d, i) => d.classList.toggle("on", i === welcomeAt));
   $("#welcomeBack").hidden = welcomeAt === 0;
-  $("#welcomeNext").textContent = welcomeAt === WELCOME.length - 1 ? "Done" : "Next";
+  $("#welcomeNext").textContent = welcomeAt === WELCOME.length - 1 ? "Get started" : "Next";
   $("#welcomeSkip").hidden = welcomeAt === WELCOME.length - 1;
   w.hidden = false;
   if (open) { document.querySelector(".app").inert = true; $("#welcomeNext").focus(); } // the page behind is out of reach for keys, clicks and screen readers

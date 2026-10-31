@@ -8,7 +8,7 @@ Umbra styles widgets through design tokens, so one setting restyles every widget
 
 ## Appearance settings
 
-In **Settings → General**:
+In **Settings → Appearance → Customize colors, text and size**:
 
 | Setting | Effect |
 |---|---|
@@ -19,7 +19,7 @@ In **Settings → General**:
 | **Window border** | On or off, and its color. |
 | **Reduce transparency** | Solid `--line*` and `--accent-soft`, opaque windows. |
 | **Animation speed** | `normal`, `calm` (animation durations doubled) or `off`. Windows' reduced-motion preference is respected. |
-| **Default size** | The starting scale for new widgets, 0.5 to 3. |
+| **Size of new widgets** | The starting scale for new widgets, 0.5 to 3. |
 
 The same settings from a terminal:
 
