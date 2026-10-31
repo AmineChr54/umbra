@@ -320,6 +320,14 @@ public class TimelapseTests : IDisposable
     }
 
     [Fact]
+    public void Camera_prompt_lays_out_in_96_dpi_units_so_it_scales_with_the_display()
+    {
+        using var dlg = new ApprovalDialog("Pomodoro");
+        Assert.Equal(new SizeF(96f, 96f), dlg.AutoScaleDimensions);
+        Assert.Equal(AutoScaleMode.Dpi, dlg.AutoScaleMode);
+    }
+
+    [Fact]
     public void ClickGate_accepts_only_a_fresh_left_press_outside_edit_mode()
     {
         Assert.True(ClickGate.IsLeftPress((IntPtr)((0x0201 << 16) | 1)));
