@@ -433,7 +433,7 @@ sealed class App : ApplicationContext, IUmbraHost
 
         if (EditMode) _ui.Post(_ => UpdateEditPills(), null); // left unlocked last time: show the Done pill again
 
-        // Former built-in widgets are fetched again once; a fresh install starts on Browse.
+        // Former built-in widgets are fetched again once; a fresh install starts on Home.
         var restore = Restore.ToRestore(Settings, Manifests);
         if (restore.Count > 0)
         {

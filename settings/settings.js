@@ -484,10 +484,25 @@ function renderInstalled(refocus) {
     fold.addEventListener("click", () => setFolded(!card.classList.contains("folded"), true));
     // The whole row opens the card, except the controls on it. A disabled card has no options to show.
     $(".wcard-main", card).addEventListener("click", (e) => {
-      if (!card.classList.contains("off") && !e.target.closest("button, label, input, select, a")) fold.click();
+      if (e.target.closest("button, label, input, select, a")) return;
+      if (selectMode) $(".sel", card).click();
+      else if (!card.classList.contains("off")) fold.click();
     });
 
     renderCommands($(".cmds", card), w);
+    // Approve and Revoke live in the folded part of the card, so the row says they are there, and when one needs the user.
+    {
+      const cmds = w.commands || [];
+      const text = cmds.some((c) => c.status === "changed") ? "Command changed"
+        : cmds.some((c) => c.status !== "approved") ? "Needs approval"
+        : cmds.length ? "Runs programs"
+        : w.camera ? "Uses camera" : "";
+      if (text) {
+        const access = Object.assign(document.createElement("span"), { className: "badge access", textContent: text });
+        access.classList.toggle("attention", cmds.some((c) => c.status !== "approved"));
+        badge.after(access);
+      }
+    }
     window.prefsCard && prefsCard(card, w);
 
     const fields = $(".fields", card);
@@ -1355,8 +1370,7 @@ bridge && bridge.listen((m) => {
       if (m.error) toast(`${name}: ${m.error}`, true);
       else if (kind === "remove" && m.undo) toast(`${name} removed`, false, { label: "Undo", run: () => post({ type: "undoRemove", id: m.undo }) });
       else toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
-      renderHome();
-      break;
+      break; // Home redraws from the catalog message that follows, as Browse does
     }
     case "undoDone":
       m.error ? toast(m.error, true) : toast(`${m.name || "Widget"} restored`);
@@ -1479,7 +1493,7 @@ function renderHome() {
       return b;
     }));
   }
-  $("#homeMine").hidden = !on.length;
+  $("#homeMine").hidden = !on.length || !!state.safeMode; // in safe mode they aren't on the desktop
 
   // Once a desktop has a few widgets Home stops suggesting more; Browse is one click away.
   const loading = !widgets.length && catalogLoading;
@@ -1487,7 +1501,7 @@ function renderHome() {
     .map((id) => catalog.find((w) => w.id === id))
     .filter((w) => w && !w.installed && !w.incompatible && !w.camera && !(w.commands || []).length)
     .slice(0, 3);
-  const picksKey = loading ? "loading" : JSON.stringify(picks.map((w) => [w.id, busy.has(w.id)]));
+  const picksKey = loading ? "loading" : JSON.stringify(picks.map((w) => [w.id, w.version, w.description, w.hosts, w.media, w.notifications, w.system, busy.has(w.id)]));
   if (picksKey !== homePicksKey) {
     homePicksKey = picksKey;
     $("#homePickGrid").replaceChildren(...(loading

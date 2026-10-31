@@ -235,6 +235,8 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .badge.builtin { color: var(--accent-strong); background: var(--accent-soft); }
 .badge.community { color: #6fe0b0; background: rgba(47, 213, 139, 0.12); }
 .badge.private { color: #e0b46f; background: rgba(213, 160, 47, 0.12); }
+.badge.access { color: var(--text-2); background: rgba(255, 255, 255, 0.06); }
+.badge.access.attention { color: #f0b86e; background: rgba(240, 184, 110, 0.12); }
 .wmeta { color: var(--text-3); font-size: 12px; margin-top: 1px; }
 .wdesc { color: var(--text-2); font-size: 12.5px; margin-top: 2px; line-height: 1.35; }
 
@@ -574,7 +576,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
   .link-btn { color: LinkText; }
   .hero { background: Canvas; }
   .hero-art { display: none; }
-  .hero-text { margin-right: 0; }
+  .hero-text, .home-hero .hero-text { margin-right: 0; }
   .hint { background: Canvas; }
   .badge, .chip { outline: 1px solid CanvasText; outline-offset: -1px; }
   .thumb.fallback, .cthumb:not(.has-img):not(.swatch) { background-image: none; }

@@ -76,6 +76,23 @@ public class SettingsPanelTests
         Assert.Contains(".fold", focus);
     }
 
+    /// <summary>Approve and Revoke sit in the folded part of a card, so the row has to say when a command needs the user.</summary>
+    [Fact]
+    public void Folded_cards_show_command_status_on_the_row()
+    {
+        var js = Read("settings.js");
+        foreach (var label in new[] { "\"Command changed\"", "\"Needs approval\"", "\"Runs programs\"", "\"Uses camera\"" }) Assert.Contains(label, js);
+        Assert.Contains("access.classList.toggle(\"attention\"", js);
+    }
+
+    /// <summary>The protocol's command list names the same pages as the host.</summary>
+    [Fact]
+    public void Capture_help_lists_the_host_pages()
+    {
+        var protocol = File.ReadAllText(Path.Combine(Repo(), "src", "Umbra.Core", "Protocol.cs"));
+        Assert.Contains($"settings:<{string.Join('|', SettingsWindow.Pages)}>", protocol);
+    }
+
     /// <summary>The first-run welcome dialog is an accessible modal with 3 slides.</summary>
     [Fact]
     public void Welcome_dialog_is_a_modal_with_three_slides()

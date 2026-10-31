@@ -30,7 +30,7 @@ umbractl set-general --accent "#ff7a59" --light-text on --ui-font Consolas --fon
 
 ## Themes
 
-A theme restyles every widget at once: surfaces, lines, text, accent, up/down colors and corner radii. Switch in **Settings → Themes**, or:
+A theme restyles every widget at once: surfaces, lines, text, accent, up/down colors and corner radii. Switch in **Settings → Appearance**, or:
 
 ```powershell
 umbractl themes                  # installed themes and the community catalog
