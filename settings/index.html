@@ -34,12 +34,14 @@
 
       <nav class="nav" id="nav" aria-label="Settings pages">
         <button class="update" id="navUpdate" hidden><span class="ico" data-icon="download"></span><span class="update-label"><span id="navUpdateText">Update now</span><span class="update-sub" id="navUpdateSub"></span></span></button>
-        <button data-page="general" class="active" aria-current="page"><span class="ico" data-icon="sliders"></span>General</button>
+        <button data-page="home" class="active" aria-current="page"><span class="ico" data-icon="home"></span>Home</button>
         <button data-page="widgets"><span class="ico" data-icon="grid"></span>My widgets<span class="count" id="count"></span></button>
-        <button data-page="layouts"><span class="ico" data-icon="layers"></span>Layouts</button>
         <button data-page="browse"><span class="ico" data-icon="compass"></span>Browse<span class="count hot" id="browseCount"></span></button>
-        <button data-page="themes"><span class="ico" data-icon="palette"></span>Themes</button>
+        <button data-page="themes"><span class="ico" data-icon="palette"></span>Appearance</button>
+        <div class="nav-sep" role="separator"></div>
+        <button data-page="layouts"><span class="ico" data-icon="layers"></span>Layouts</button>
         <button data-page="hotkeys"><span class="ico" data-icon="keyboard"></span>Hotkeys</button>
+        <button data-page="general"><span class="ico" data-icon="sliders"></span>General</button>
         <button data-page="privacy"><span class="ico" data-icon="lock"></span>Data &amp; privacy</button>
         <button data-page="about"><span class="ico" data-icon="info"></span>About</button>
       </nav>
@@ -53,11 +55,56 @@
       <div id="safeBanner" role="status" hidden style="margin:0 0 16px;padding:10px 14px;border:1px solid #d8a13a;border-radius:10px;background:rgba(216,161,58,.12);color:#f0c674">
         <strong>Safe mode is on.</strong> Community widgets are not running. Nothing was deleted or disabled; the next normal start of Umbra restores them. <button id="safeOff" type="button">Turn off safe mode</button>
       </div>
+      <!-- Home -->
+      <section class="page active" data-page="home">
+        <div class="hero home-hero">
+          <div class="hero-text">
+            <h1 id="homeTitle">Welcome to Umbra</h1>
+            <p id="homeSub">&nbsp;</p>
+          </div>
+          <div class="hero-art" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="home-tasks">
+          <button class="home-task" id="homeAdd" type="button">
+            <span class="ico" data-icon="compass"></span>
+            <span class="home-task-title">Add widgets</span>
+            <span class="home-task-sub">Clocks, weather, notes, games and more</span>
+          </button>
+          <button class="home-task" id="homeArrange" type="button">
+            <span class="ico" data-icon="mouse"></span>
+            <span class="home-task-title" id="homeArrangeTitle">Arrange your desktop</span>
+            <span class="home-task-sub" id="homeArrangeSub"></span>
+          </button>
+          <button class="home-task" id="homeLook" type="button">
+            <span class="ico" data-icon="palette"></span>
+            <span class="home-task-title">Change the look</span>
+            <span class="home-task-sub">Themes, colors and sizes</span>
+          </button>
+        </div>
+
+        <div class="home-section" id="homeMine" hidden>
+          <div class="home-head"><h2>On your desktop</h2><button class="link-btn" id="homeAll" type="button">Manage widgets</button></div>
+          <div class="home-mine" id="homeMineList"></div>
+        </div>
+
+        <div class="home-section" id="homePicks" hidden>
+          <div class="home-head"><h2>A few to start with</h2><button class="link-btn" id="homeSeeAll" type="button">See all widgets</button></div>
+          <div class="grid" id="homePickGrid"></div>
+        </div>
+
+        <div class="hint">
+          <span class="ico" data-icon="info"></span>
+          <span class="hint-grow">Umbra lives in the tray. Close this window and your widgets keep running; click the tray icon to come back.</span>
+          <button class="btn small ghost" id="homeTour" type="button">Take the tour</button>
+        </div>
+      </section>
+
       <!-- General -->
-      <section class="page active" data-page="general">
+      <section class="page" data-page="general">
         <header class="page-head">
           <h1>General</h1>
-          <p>How Umbra starts and behaves on your desktop.</p>
+          <p>How Umbra starts and runs.</p>
         </header>
 
         <div class="group">
@@ -70,8 +117,22 @@
           </div>
           <div class="row">
             <div class="row-text">
+              <div class="row-title">Keep Umbra up to date</div>
+              <div class="row-sub">Once a day Umbra asks GitHub for a newer version and downloads it in the background. It only installs when you click Update now.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="checkUpdates"><span></span></label>
+          </div>
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Hide during fullscreen apps</div>
+              <div class="row-sub">Widgets step aside while a fullscreen game or video is in the foreground.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="hideFullscreen"><span></span></label>
+          </div>
+          <div class="row">
+            <div class="row-text">
               <div class="row-title">Refresh interval</div>
-              <div class="row-sub">How often widgets fetch fresh data. They stop while the PC is locked or the display is off, and refresh once when you are back.</div>
+              <div class="row-sub">How often widgets fetch fresh data. They pause while the PC is locked or the display is off.</div>
             </div>
             <div class="segmented" id="interval" role="radiogroup">
               <button data-v="30">30s</button>
@@ -81,47 +142,13 @@
               <button data-v="600">10m</button>
             </div>
           </div>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Slow down on Energy Saver</div>
-              <div class="row-sub">While Windows Energy Saver is on, widgets refresh 4 times less often to save battery and API quota.</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="slowEnergySaver"><span></span></label>
-          </div>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Animations</div>
-              <div class="row-sub">Chart draw-in, counters and pulses. Also follows Windows' animation setting.</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="animations"><span></span></label>
-          </div>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Check for and download updates automatically</div>
-              <div class="row-sub">At start and once a day Umbra asks GitHub for a newer version and downloads it in the background. It is only installed when you click Update now.</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="checkUpdates"><span></span></label>
-          </div>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Hide during fullscreen apps</div>
-              <div class="row-sub">Widgets disappear while a fullscreen game or video is in the foreground and come back afterwards.</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="hideFullscreen"><span></span></label>
-          </div>
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Peek duration</div>
-              <div class="row-sub">The Peek hotkey (set it under Hotkeys) raises widgets above other windows for this many seconds, without taking focus.</div>
-            </div>
-            <input type="number" id="peekSeconds" min="1" max="60" step="1" style="width:64px" aria-label="Peek seconds">
-          </div>
         </div>
 
-        <div class="hint">
-          <span class="ico" data-icon="mouse"></span>
-          Widgets are locked. To move or resize them, turn on Arrange widgets in My widgets or the tray menu. Some widgets open their source on double-click. Umbra lives in the tray.
-        </div>
+        <!-- The rows inside come from prefs.js -->
+        <details class="optsection page-fold" id="generalAdvanced" data-fold="general-advanced">
+          <summary><span class="ico" data-icon="chevron"></span>Advanced</summary>
+          <div class="optsection-body"><div class="group" id="advancedRows"></div></div>
+        </details>
       </section>
 
       <!-- My widgets -->
@@ -140,18 +167,6 @@
             <label class="switch"><input type="checkbox" id="editMode" aria-label="Arrange widgets: unlock to move and resize"><span></span></label>
           </div>
         </header>
-        <div class="group">
-          <div class="row">
-            <div class="row-text">
-              <div class="row-title">Snapping while arranging</div>
-              <div class="row-sub">Hold Shift to snap (default): widgets move freely and snap to edges, centers and the grid only while Shift is held. Always snap: they snap all the time and Shift skips it. Grid and gap are set with umbractl.</div>
-            </div>
-            <select id="snapMode" aria-label="Snapping while arranging">
-              <option value="shift">Hold Shift to snap</option>
-              <option value="always">Always snap (Shift skips)</option>
-            </select>
-          </div>
-        </div>
         <div class="gstrip" id="groupStrip" role="region" aria-label="Tab groups">
           <div class="gstrip-main">
             <span class="gstrip-title" title="Widgets in a group share one spot on the desktop and show one at a time. Switch tabs from the strip that appears when you hover the widget, or from its right-click menu.">Groups</span>
@@ -169,7 +184,7 @@
             <select id="bulkGroup" aria-label="Group to add the selected widgets to"></select>
             <button class="btn small primary" id="bulkAdd">Add to group</button>
           </div>
-          <div class="gstrip-hint">Create a group, then add widgets with a card's badge, by dragging a card onto it, or with Select widgets.</div>
+          <div class="gstrip-hint" id="groupHint"></div>
         </div>
         <div class="search" id="mySearchBox">
           <span class="ico" data-icon="search"></span>
@@ -247,16 +262,21 @@
         <div class="grid" id="catalog"></div>
       </section>
 
-      <!-- Themes -->
+      <!-- Appearance (the page id stays "themes" for umbractl settings and capture) -->
       <section class="page" data-page="themes">
         <header class="page-head">
-          <h1>Themes</h1>
-          <p>Colors and corner radius for every widget. Themes are plain data with no code, so they can't run anything or load files from the internet.</p>
+          <h1>Appearance</h1>
+          <p>Pick a theme for all your widgets, then fine-tune it if you like.</p>
         </header>
+        <!-- The rows inside come from prefs.js -->
+        <details class="optsection page-fold" id="appearanceCustomize" data-fold="appearance-customize">
+          <summary><span class="ico" data-icon="chevron"></span>Customize colors, text and size</summary>
+          <div class="optsection-body"><div class="group" id="appearanceRows"></div></div>
+        </details>
         <div class="grid" id="themeGrid"></div>
         <div class="hint">
           <span class="ico" data-icon="plus"></span>
-          <span class="hint-grow">Made a theme? Add themes/&lt;id&gt;/theme.json in a pull request and it shows up here for everyone.</span>
+          <span class="hint-grow">Themes are plain data with no code, so they can't run anything or load files from the internet. Made one? Add themes/&lt;id&gt;/theme.json in a pull request and it shows up here for everyone.</span>
           <button class="btn small ghost" id="reloadThemes"><span class="ico" data-icon="refresh"></span>Refresh</button>
         </div>
       </section>

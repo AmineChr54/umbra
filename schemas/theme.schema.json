@@ -14,7 +14,7 @@
       "not": { "const": "default" },
       "description": "Lowercase letters, digits and dashes (2-40 chars). Must equal the folder name. \"default\" is the built-in theme."
     },
-    "name": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Shown on the Themes page." },
+    "name": { "type": "string", "minLength": 1, "maxLength": 300, "description": "Shown on the Appearance page." },
     "description": { "type": "string", "minLength": 1, "maxLength": 300, "description": "One sentence." },
     "author": { "type": "string", "minLength": 1, "maxLength": 300, "description": "GitHub user name." },
     "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$", "description": "Semantic version. Bump it on every change so users see an Update button." },

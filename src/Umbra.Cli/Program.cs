@@ -121,7 +121,7 @@ static void PrintHelp()
           dev [folder] [--accept-permissions]  load the folder, reload on every save, print blocked requests and errors live
           create <folder>               load a widget folder from disk (e.g. widgets/my-widget in the repo)
           capture <id|settings:<page>> [file.png]
-                                         PNG of a widget or Settings page (general|widgets|layouts|browse|themes|hotkeys|privacy|about)
+                                         PNG of a widget or Settings page (home|widgets|browse|themes|layouts|hotkeys|general|privacy|about)
           data <id> [key] [json]         a widget's saved data (umbra.store): all, one key, or set a key
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window

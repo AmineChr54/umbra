@@ -297,7 +297,7 @@ unless the theme is about changing it. The host turns the active theme into one 
 `shared/umbra.js` applies it after `umbra.css`, so widgets need no code to support themes: a widget that uses the
 tokens follows the theme live when the user switches. Widgets that set `"themeable": false` are left alone.
 `umbra.settings.themeCss` holds the generated rule if you ever need it. Schema:
-[`schemas/theme.schema.json`](../schemas/theme.schema.json). Users pick themes in **Settings > Themes** or with
+[`schemas/theme.schema.json`](../schemas/theme.schema.json). Users pick themes in **Settings > Appearance** or with
 `umbractl theme <id>`.
 
 ## Design rules

@@ -12,7 +12,7 @@ const css = (t: Record<string, string>) => Object.entries(t).map(([k, v]) => `${
     <div>
       <p class="kicker" data-reveal>Themes</p>
       <h2 class="h2" id="th-title" data-reveal>Repaint everything <em>in one click.</em></h2>
-      <p class="sub" data-reveal="0.05">Themes recolor every widget at once, live, from <b>Settings → Themes</b>. They're plain data with no code, and publishing one is a single <code>theme.json</code>.</p>
+      <p class="sub" data-reveal="0.05">Themes recolor every widget at once, live, from <b>Settings → Appearance</b>. They're plain data with no code, and publishing one is a single <code>theme.json</code>.</p>
       <div class="picker" role="radiogroup" aria-label="Theme" data-reveal="0.1">
         {all.map((t, i) => (
           <button type="button" role="radio" aria-checked={i === 0} data-style={css(t.tokens)}>

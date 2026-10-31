@@ -18,7 +18,7 @@ sealed class SettingsWindow : Form, ISettingsView
     readonly TaskCompletionSource _loaded = new(TaskCreationOptions.RunContinuationsAsynchronously);
     TaskCompletionSource _catalogSent = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static readonly string[] Pages = { "general", "widgets", "layouts", "browse", "themes", "hotkeys", "privacy", "about" };
+    public static readonly string[] Pages = { "home", "widgets", "browse", "themes", "layouts", "hotkeys", "general", "privacy", "about" };
 
     readonly bool _background;
     string? _page; // last page the panel showed, saved on close
@@ -111,7 +111,7 @@ sealed class SettingsWindow : Form, ISettingsView
             case "load":
                 SendState();
                 // Reopen on the last page; a page asked for explicitly (umbractl settings <page>) runs after this and wins.
-                if (!_background && _app.Settings.SettingsPanel.Page is { } last && last != "general" && Pages.Contains(last))
+                if (!_background && _app.Settings.SettingsPanel.Page is { } last && last != "home" && Pages.Contains(last))
                     _ = _view.CoreWebView2.ExecuteScriptAsync($"show('{last}')");
                 _loaded.TrySetResult();
                 break;
