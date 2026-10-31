@@ -115,6 +115,11 @@ sealed class WidgetWindow : Form, IWidgetView
                 if (ClickGate.IsLeftPress(m.LParam) && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
                 m.Result = Native.MA_NOACTIVATE;
                 return;
+            case Native.WM_PARENTNOTIFY:
+                // A press on the page lands on the WebView's child window, which keeps WM_MOUSEACTIVATE to itself. Windows still
+                // tells this ancestor that a press began there and with which button, and a page can't cause this message.
+                if (ClickGate.IsLeftPressNotify(m.WParam) && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
+                break;
             case Native.WM_GETMINMAXINFO:
                 base.WndProc(ref m);
                 LimitTrackSize(m.LParam);
@@ -707,11 +712,11 @@ sealed class WidgetWindow : Form, IWidgetView
                 break;
 
             case "pointer":
-                if (PressedOnThisWindow()) { MarkPressed(); MarkLeftPress(); SelectForEdit(); }
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 break;
 
             case "focus":
-                if (PressedOnThisWindow()) { MarkPressed(); MarkLeftPress(); SelectForEdit(); }
+                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
                 TakeKeyboardFocus();
                 break;
         }
@@ -794,13 +799,6 @@ sealed class WidgetWindow : Form, IWidgetView
     {
         _pressedAt = System.Environment.TickCount64;
         _foregroundAtPress = Native.GetForegroundWindow();
-    }
-
-    /// <summary>The page reported a press and <see cref="PressedOnThisWindow"/> confirmed it: counts for the camera if it is the left button (<see cref="ClickGate"/>).</summary>
-    void MarkLeftPress()
-    {
-        var left = ClickGate.IsLeftDown(IsKeyDown(Native.VK_LBUTTON), IsKeyDown(Native.VK_RBUTTON), Native.GetSystemMetrics(Native.SM_SWAPBUTTON) != 0);
-        if (left && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
     }
 
     /// <summary>

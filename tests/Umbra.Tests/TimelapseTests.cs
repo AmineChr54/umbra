@@ -301,12 +301,22 @@ public class TimelapseTests : IDisposable
     }
 
     [Fact]
-    public void ClickGate_reads_the_left_button_through_swapped_buttons()
+    public void App_never_marshals_ui_work_through_a_plain_context()
     {
-        Assert.True(ClickGate.IsLeftDown(physicalLeft: true, physicalRight: false, swapped: false));
-        Assert.False(ClickGate.IsLeftDown(physicalLeft: false, physicalRight: true, swapped: false)); // a right-click
-        Assert.True(ClickGate.IsLeftDown(physicalLeft: false, physicalRight: true, swapped: true));
-        Assert.False(ClickGate.IsLeftDown(physicalLeft: true, physicalRight: false, swapped: true)); // a right-click on a left-handed mouse
+        Assert.IsType<WindowsFormsSynchronizationContext>(App.UiContext(null));
+        Assert.IsType<WindowsFormsSynchronizationContext>(App.UiContext(new SynchronizationContext())); // it would post to the thread pool
+        var real = new WindowsFormsSynchronizationContext();
+        Assert.Same(real, App.UiContext(real));
+    }
+
+    [Fact]
+    public void ClickGate_reads_the_button_from_a_press_on_the_page()
+    {
+        Assert.True(ClickGate.IsLeftPressNotify((IntPtr)0x0201));
+        Assert.True(ClickGate.IsLeftPressNotify((IntPtr)((5 << 16) | 0x0201))); // the high word is unrelated
+        Assert.False(ClickGate.IsLeftPressNotify((IntPtr)0x0204));              // WM_RBUTTONDOWN
+        Assert.False(ClickGate.IsLeftPressNotify((IntPtr)0x0207));              // WM_MBUTTONDOWN
+        Assert.False(ClickGate.IsLeftPressNotify((IntPtr)0x0001));              // WM_CREATE of a child window
     }
 
     [Fact]
