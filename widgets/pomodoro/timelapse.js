@@ -39,8 +39,12 @@
     if (st === "recording") return { kind: "rec", text: `Recording · ${photos(s.framesCaptured || 0)}` };
     if (st === "paused") return { kind: "held", text: `Timelapse paused · ${photos(s.framesCaptured || 0)}` };
     if (st === "rendering") return { kind: "busy", text: "Making the video..." };
+    if (s && s.file) {
+      const where = s.folder || folder, title = `${s.file} in ${where}`;
+      // Recording can stop early (disk full, camera lost) and still save what it had.
+      return error ? { kind: "err", text: `${error.replace(/\.?$/, ".")} What was recorded is saved in ${where}.`, title } : { kind: "saved", text: `Video saved in ${where}`, title };
+    }
     if (error) return { kind: "err", text: error, action: "Try again" };
-    if (s && s.file) { const where = s.folder || folder; return { kind: "saved", text: `Video saved in ${where}`, title: `${s.file} in ${where}` }; }
     if (busy) return { kind: "busy", text: "Starting the camera..." };
     return { kind: "idle", text: "Timelapse not running", action: "Start" };
   }

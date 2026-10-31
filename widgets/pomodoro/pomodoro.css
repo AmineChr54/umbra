@@ -69,7 +69,9 @@ html, body { height: 100%; overflow: hidden; background: var(--bg, #000); }
 .pm.brk .round.primary, .pm.brk .round.primary:hover { background: var(--up); }
 #toggle .i-play, #toggle.stopped .i-pause { display: none; }
 #toggle.stopped .i-play { display: block; }
-#reset { animation: pop-in calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
+/* Reset keeps its slot, so Play/Pause never moves under the cursor and a double-click can't land on Reset. */
+#reset.off { visibility: hidden; }
+#reset:not(.off) { animation: pop-in calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
 @keyframes pop-in { from { opacity: 0; transform: scale(0.7); } }
 #more[aria-expanded="true"] { background: #1e1e25; border-color: var(--line-strong); }
 

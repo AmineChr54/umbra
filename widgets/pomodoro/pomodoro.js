@@ -11,7 +11,7 @@ const LIVE_MS = 60000; // a phase change older than this (caught up after a rest
 const T = window.PomodoroTimelapse;
 let session = null, setup = { minutes: 60, breaks: false }, log = {}, timer = null, menuOpen = false;
 // Timelapse: settings in store key "timelapse"; tlState is the host's latest state, tlError a plain-words failure.
-// The camera only starts from a click (Start, or "Start timelapse" in the run view), never automatically. The host has no
+// The camera only starts from a click (Start focus session, or Start on the status pill), never automatically. The host has no
 // pause, so capture runs through pauses and breaks and stops when the session ends; it also pauses while the widget is hidden.
 let tl = T.clean(null), tlState = null, tlError = "", folderLabel = "Videos", tlBusy = false;
 
@@ -112,7 +112,8 @@ function onTlState(s) {
 // The pill sits in the run view, and moves to the setup view so a session that just ended still shows its video being made.
 function renderTl() {
   const box = q("tl-run"), act = q("tl-act"), v = T.status(tlState, { busy: tlBusy, error: tlError, folder: folderLabel });
-  const show = session ? tl.on || v.kind !== "idle" : v.kind !== "idle" && !tlBusy && v.kind !== "err";
+  // In setup: what the session that just ended produced, including a host failure, but not a stale failure to start.
+  const show = session ? tl.on || v.kind !== "idle" : v.kind !== "idle" && !tlBusy && (v.kind !== "err" || !!(tlState && tlState.error));
   box.hidden = !show;
   if (!show) return;
   const home = session ? q("run") : q("setup");
@@ -191,7 +192,7 @@ function renderRun() {
   const toggleBtn = q("toggle");
   toggleBtn.classList.toggle("stopped", !s.running);
   if (toggleBtn.title !== verb) { toggleBtn.title = verb; toggleBtn.setAttribute("aria-label", verb); }
-  q("reset").hidden = s.running;
+  q("reset").classList.toggle("off", s.running);
   setText(q("m-skip"), p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now");
   q("menu").hidden = !menuOpen;
   q("more").setAttribute("aria-expanded", String(menuOpen));
