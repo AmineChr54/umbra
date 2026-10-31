@@ -383,10 +383,17 @@ sealed class App : ApplicationContext, IUmbraHost
         return ok;
     }
 
+    /// <summary>
+    /// The context that puts work on the UI thread. A plain SynchronizationContext can already be current at startup, and it posts
+    /// to the thread pool: everything marshalled through it would then touch windows and WebViews off the UI thread.
+    /// </summary>
+    internal static SynchronizationContext UiContext(SynchronizationContext? current) =>
+        current as WindowsFormsSynchronizationContext ?? new WindowsFormsSynchronizationContext();
+
     public App(bool openSettings, bool background = false, bool safe = false)
     {
         SafeMode = safe;
-        _ui = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+        _ui = UiContext(SynchronizationContext.Current);
         Settings = Settings.Load();
         try { WidgetTrash.Purge(); } catch (Exception ex) { Log.Write($"Trash purge failed: {ex.Message}"); }
         Prefs.Configure(Settings.General);

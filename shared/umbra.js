@@ -238,7 +238,7 @@
    */
   const timelapse = {
     /** { interval (1-3600 s), length (video seconds, up to 3600), fps (1-60) }; recording is capped at 12 h. Resolves with the state. */
-    start: ({ interval, length, fps = 30 }) => request({ type: "timelapse", op: "start", interval, length, fps }, 10000),
+    start: ({ interval, length, fps = 30 }) => request({ type: "timelapse", op: "start", interval, length, fps }, 130000), // the first start waits for the 2-minute camera prompt
     /** Stop early and render what was captured. */
     stop: () => request({ type: "timelapse", op: "stop" }, 10000),
     /** Stop and delete the stills without making a video. */

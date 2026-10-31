@@ -115,6 +115,11 @@ sealed class WidgetWindow : Form, IWidgetView
                 if (ClickGate.IsLeftPress(m.LParam) && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
                 m.Result = Native.MA_NOACTIVATE;
                 return;
+            case Native.WM_PARENTNOTIFY:
+                // A press on the page lands on the WebView's child window, which keeps WM_MOUSEACTIVATE to itself. Windows still
+                // tells this ancestor that a press began there and with which button, and a page can't cause this message.
+                if (ClickGate.IsLeftPressNotify(m.WParam) && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
+                break;
             case Native.WM_GETMINMAXINFO:
                 base.WndProc(ref m);
                 LimitTrackSize(m.LParam);

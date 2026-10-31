@@ -14,6 +14,7 @@ static partial class Native
     public const int WM_NCLBUTTONDOWN = 0x00A1;
     public const int WM_WINDOWPOSCHANGING = 0x0046;
     public const int WM_MOUSEACTIVATE = 0x0021;
+    public const int WM_PARENTNOTIFY = 0x0210;
     public const int MA_NOACTIVATE = 3;
     public const int HTCAPTION = 2;
     public const int HTRIGHT = 11;
