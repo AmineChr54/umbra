@@ -219,6 +219,13 @@ function renderUpdate() {
   // A disabled #updateInstall ignores click(), so the nav button must be disabled for the same window.
   $("#navUpdate").disabled = bs === "downloading" || !!u.installing;
   $("#navUpdateText").textContent = bs === "downloading" ? (u.progress != null ? `Downloading... ${u.progress} %` : "Downloading...") : bs === "ready" ? (u.installing ? "Restarting..." : "Restart to update") : u.portable ? "Download update" : "Update now";
+  // Says what is being updated (widgets have their own Update all in Browse), to what, and what the click will do.
+  $("#navUpdateSub").textContent = a ? `Umbra v${state.version} → v${a.version}` : "";
+  $("#navUpdate").title = u.installing ? ""
+    : bs === "ready" ? "Restarts Umbra to install the new version"
+    : bs !== "available" ? ""
+    : u.portable ? "Opens the release page to download the new version"
+    : "Downloads the new version, then restarts Umbra to install it";
   $$(".nav button[data-page=about]").forEach((b) => b.classList.toggle("dot", !!a));
   renderWhatsNew();
 }

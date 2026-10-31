@@ -644,7 +644,7 @@ sealed class App : ApplicationContext, IUmbraHost
         {
             var label = Updater.Installing ? $"Updating to v{up.Version}..."
                 : Updater.Progress is { } pct ? $"Downloading update v{up.Version} ({pct}%)"
-                : Updater.Ready ? $"Restart to update to v{up.Version}" : $"Update to v{up.Version} available";
+                : Updater.Ready ? $"Restart to update to v{up.Version}" : $"Update Umbra to v{up.Version}";
             var item = menu.Items.Add(label, null, async (_, _) =>
             {
                 try { await Updater.InstallAsync(); }
