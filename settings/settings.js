@@ -1370,7 +1370,7 @@ bridge && bridge.listen((m) => {
       if (m.error) toast(`${name}: ${m.error}`, true);
       else if (kind === "remove" && m.undo) toast(`${name} removed`, false, { label: "Undo", run: () => post({ type: "undoRemove", id: m.undo }) });
       else toast(kind === "remove" || kind === "removeTheme" ? `${name} removed` : `${name} installed`);
-      break; // Home redraws from the catalog message that follows, as Browse does
+      break;
     }
     case "undoDone":
       m.error ? toast(m.error, true) : toast(`${m.name || "Widget"} restored`);
@@ -1500,6 +1500,7 @@ function renderHome() {
   const picks = !catalog || widgets.length >= 3 ? [] : HOME_PICKS
     .map((id) => catalog.find((w) => w.id === id))
     .filter((w) => w && !w.installed && !w.incompatible && !w.camera && !(w.commands || []).length)
+    .filter((w) => !widgets.some((x) => x.widget === w.id)) // the state after an install arrives before the updated catalog
     .slice(0, 3);
   const picksKey = loading ? "loading" : JSON.stringify(picks.map((w) => [w.id, w.version, w.description, w.hosts, w.media, w.notifications, w.system, busy.has(w.id)]));
   if (picksKey !== homePicksKey) {
