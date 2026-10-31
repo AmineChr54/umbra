@@ -94,8 +94,10 @@ public sealed record TimelapsePlan(TimeSpan Interval, TimeSpan Length, int Fps)
 }
 
 /// <summary>
-/// Which clicks may start the camera: a physical left-button press on the widget (WM_MOUSEACTIVATE reports which
-/// button), within the last 2 s, outside edit mode, and not followed by the host's right-click menu.
+/// Which clicks may start the camera: a physical left-button press on the widget, within the last 2 s, outside edit
+/// mode, and not followed by the host's right-click menu. A press is seen either as WM_MOUSEACTIVATE (which reports the
+/// button) or, for clicks on the page, as its pointer message while the host reads the button down over this window:
+/// the WebView keeps those clicks' WM_MOUSEACTIVATE to itself, and a page can't fake the button state.
 /// Right-clicks, edit-mode drags and resizes therefore never count. Pure, so it is unit tested.
 /// </summary>
 static class ClickGate
@@ -105,6 +107,9 @@ static class ClickGate
 
     /// <summary>The mouse message inside WM_MOUSEACTIVATE's lParam (high word) is a left-button press.</summary>
     public static bool IsLeftPress(IntPtr lParam) => (int)(((long)lParam >> 16) & 0xFFFF) == WM_LBUTTONDOWN;
+
+    /// <summary>GetAsyncKeyState reads physical buttons, so with swapped buttons the user's left click is the physical right one.</summary>
+    public static bool IsLeftDown(bool physicalLeft, bool physicalRight, bool swapped) => swapped ? physicalRight : physicalLeft;
 
     /// <param name="leftPressAt">Tick of the last left press outside edit mode.</param>
     /// <param name="menuAt">Tick the host menu last opened on this widget.</param>

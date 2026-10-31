@@ -707,11 +707,11 @@ sealed class WidgetWindow : Form, IWidgetView
                 break;
 
             case "pointer":
-                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
+                if (PressedOnThisWindow()) { MarkPressed(); MarkLeftPress(); SelectForEdit(); }
                 break;
 
             case "focus":
-                if (PressedOnThisWindow()) { MarkPressed(); SelectForEdit(); }
+                if (PressedOnThisWindow()) { MarkPressed(); MarkLeftPress(); SelectForEdit(); }
                 TakeKeyboardFocus();
                 break;
         }
@@ -794,6 +794,13 @@ sealed class WidgetWindow : Form, IWidgetView
     {
         _pressedAt = System.Environment.TickCount64;
         _foregroundAtPress = Native.GetForegroundWindow();
+    }
+
+    /// <summary>The page reported a press and <see cref="PressedOnThisWindow"/> confirmed it: counts for the camera if it is the left button (<see cref="ClickGate"/>).</summary>
+    void MarkLeftPress()
+    {
+        var left = ClickGate.IsLeftDown(IsKeyDown(Native.VK_LBUTTON), IsKeyDown(Native.VK_RBUTTON), Native.GetSystemMetrics(Native.SM_SWAPBUTTON) != 0);
+        if (left && !_app.EditMode) _leftPressAt = System.Environment.TickCount64;
     }
 
     /// <summary>

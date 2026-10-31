@@ -84,6 +84,11 @@ static partial class Native
     [LibraryImport("user32.dll")]
     public static partial short GetAsyncKeyState(int vKey);
 
+    public const int SM_SWAPBUTTON = 23;
+
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetrics(int nIndex);
+
     [LibraryImport("user32.dll")]
     public static partial IntPtr WindowFromPoint(POINT point);
 

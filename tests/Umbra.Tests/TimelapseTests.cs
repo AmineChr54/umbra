@@ -301,6 +301,15 @@ public class TimelapseTests : IDisposable
     }
 
     [Fact]
+    public void ClickGate_reads_the_left_button_through_swapped_buttons()
+    {
+        Assert.True(ClickGate.IsLeftDown(physicalLeft: true, physicalRight: false, swapped: false));
+        Assert.False(ClickGate.IsLeftDown(physicalLeft: false, physicalRight: true, swapped: false)); // a right-click
+        Assert.True(ClickGate.IsLeftDown(physicalLeft: false, physicalRight: true, swapped: true));
+        Assert.False(ClickGate.IsLeftDown(physicalLeft: true, physicalRight: false, swapped: true)); // a right-click on a left-handed mouse
+    }
+
+    [Fact]
     public void ClickGate_accepts_only_a_fresh_left_press_outside_edit_mode()
     {
         Assert.True(ClickGate.IsLeftPress((IntPtr)((0x0201 << 16) | 1)));
