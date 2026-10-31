@@ -33,6 +33,22 @@
     return m || "The timelapse could not start.";
   }
 
-  const api = { MAX_STILLS, DEFAULTS, clean, estimate, friendly };
+  /** What the status pill shows for a host state: kind (rec, held, busy, saved, err, idle), text, an optional tooltip and action label. */
+  function status(s, { busy = false, error = "", folder = "" } = {}) {
+    const st = s && s.state, photos = (n) => `${n} photo${n === 1 ? "" : "s"}`;
+    if (st === "recording") return { kind: "rec", text: `Recording · ${photos(s.framesCaptured || 0)}` };
+    if (st === "paused") return { kind: "held", text: `Timelapse paused · ${photos(s.framesCaptured || 0)}` };
+    if (st === "rendering") return { kind: "busy", text: "Making the video..." };
+    if (s && s.file) {
+      const where = s.folder || folder, title = `${s.file} in ${where}`;
+      // Recording can stop early (disk full, camera lost) and still save what it had.
+      return error ? { kind: "err", text: `${error.replace(/\.?$/, ".")} What was recorded is saved in ${where}.`, title } : { kind: "saved", text: `Video saved in ${where}`, title };
+    }
+    if (error) return { kind: "err", text: error, action: "Try again" };
+    if (busy) return { kind: "busy", text: "Starting the camera..." };
+    return { kind: "idle", text: "Timelapse not running", action: "Start" };
+  }
+
+  const api = { MAX_STILLS, DEFAULTS, clean, estimate, friendly, status };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PomodoroTimelapse = api;
 })(typeof window !== "undefined" ? window : globalThis);

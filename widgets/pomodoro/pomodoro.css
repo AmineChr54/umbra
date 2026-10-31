@@ -1,16 +1,16 @@
 html, body { height: 100%; overflow: hidden; background: var(--bg, #000); }
 [hidden] { display: none !important; }
 .pm { position: relative; height: 100%; }
-.view { height: 100%; display: flex; flex-direction: column; padding: 14px 18px 16px; gap: 10px; }
+.view { height: 100%; display: flex; flex-direction: column; padding: 14px 16px 16px; gap: 10px; }
 .head { display: flex; align-items: center; justify-content: space-between; height: 24px; flex: none; }
 .title { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
 .today { font-size: 12px; color: var(--text-3); }
 .today b { font-weight: 600; color: var(--text-2); }
 
 /* Setup */
-.pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .stepper { display: flex; align-items: center; gap: 14px; }
-.step { width: 36px; height: 36px; padding: 0; font: inherit; font-size: 20px; line-height: 1; color: var(--text); background: var(--surface-3); border: 1px solid var(--line); border-radius: 50%; cursor: pointer; }
+.step { width: 36px; height: 36px; padding: 0; font: inherit; font-size: 20px; line-height: 1; color: var(--text); background: var(--surface-3); border: 1px solid var(--line); border-radius: 50%; cursor: pointer; transition: background calc(120ms * var(--motion-scale, 1)), border-color calc(120ms * var(--motion-scale, 1)); }
 .step:hover { border-color: var(--line-strong); background: #1e1e25; }
 .step:disabled { opacity: 0.35; cursor: default; }
 .mins { display: flex; flex-direction: column; align-items: center; }
@@ -19,42 +19,65 @@ html, body { height: 100%; overflow: hidden; background: var(--bg, #000); }
 .mins input:hover { border-bottom-color: var(--line-strong); }
 .mins input:focus { outline: none; border-bottom-color: var(--accent); }
 .mins span { font-size: 12px; color: var(--text-3); }
-.hint { margin: 0; font-size: 12.5px; color: var(--text-2); }
-.check { display: flex; align-items: center; gap: 9px; margin-top: 8px; font-size: 12.5px; color: var(--text-2); cursor: pointer; user-select: none; }
-.check input { position: absolute; opacity: 0; pointer-events: none; }
-.check .box { width: 16px; height: 16px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface-3); display: grid; place-content: center; }
-.check input:checked + .box { background: var(--accent); border-color: var(--accent); }
-.check input:checked + .box::after { content: ""; width: 8px; height: 4px; margin-top: -2px; border: solid #000; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
-.check input:focus-visible + .box { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+.card { flex: none; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 6px 12px; cursor: pointer; user-select: none; }
+.switch-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.switch-text small { font-size: 11px; font-weight: 400; color: var(--text-3); }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.knob { position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: var(--surface-3); border: 1px solid var(--line-strong); transition: background calc(140ms * var(--motion-scale, 1)), border-color calc(140ms * var(--motion-scale, 1)); }
+.knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--text-2); transition: transform calc(160ms * var(--motion-scale, 1)) var(--ease-out), background calc(140ms * var(--motion-scale, 1)); }
+.switch input:checked + .knob { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .knob::after { background: #000; transform: translateX(14px); }
+.switch input:focus-visible + .knob { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 
 .btn { height: 32px; padding: 0 18px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); background: var(--surface-3); border: 0; border-radius: 9px; cursor: pointer; }
 .btn:hover { background: #1e1e25; }
 .btn.primary { min-width: 96px; color: #000; background: var(--accent); }
 .btn.primary:hover { filter: brightness(1.1); }
-.btn.wide { width: 100%; flex: none; }
+.btn.wide { width: 100%; height: 38px; flex: none; border-radius: 12px; font-size: 13px; }
 
 /* Run */
-.more { width: 28px; height: 24px; padding: 0 0 4px; font: inherit; font-size: 16px; font-weight: 700; line-height: 1; letter-spacing: 1px; color: var(--text-3); background: none; border: 0; border-radius: 7px; cursor: pointer; }
-.more:hover, .more[aria-expanded="true"] { color: var(--text); background: var(--surface-3); }
-.dial { position: relative; width: 176px; height: 176px; margin: 0 auto; flex: none; }
-.dial svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.dial circle { fill: none; stroke-width: 5; }
-.track { stroke: rgba(255,255,255,0.08); }
-.arc { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset calc(400ms * var(--motion-scale, 1)) linear; }
-.dial line { stroke: rgba(255,255,255,0.13); stroke-width: 1; stroke-linecap: round; }
-.dial line.major { stroke: rgba(255,255,255,0.28); stroke-width: 1.4; }
-.pm.brk .arc { stroke: var(--up); }
-.pm.brk .btn.primary { background: var(--up); }
+.run { align-items: center; }
+.run .head { justify-content: center; }
+.dial { position: relative; width: 204px; height: 204px; margin-top: 4px; flex: none; }
+.dial svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.dial circle { fill: none; stroke-width: 3.6; }
+.track { stroke: rgba(255,255,255,0.07); }
+.arc { stroke: var(--accent); stroke-linecap: round; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 45%, transparent)); transition: stroke-dashoffset calc(400ms * var(--motion-scale, 1)) linear, opacity calc(200ms * var(--motion-scale, 1)); }
+.dial line { stroke: rgba(255,255,255,0.2); stroke-width: 1.1; stroke-linecap: round; }
+.pm.brk .arc { stroke: var(--up); filter: drop-shadow(0 0 3px color-mix(in srgb, var(--up) 45%, transparent)); }
 .center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.time { font-family: var(--font-display); font-size: 38px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
-.sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.time { font-family: var(--font-display); font-size: 44px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; transition: color calc(200ms * var(--motion-scale, 1)); }
+.time.long { font-size: 35px; }
+.sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
 .pm.paused .time { color: var(--text-2); }
 .pm.paused .sub { color: var(--accent-strong); }
-.next { margin: 0; text-align: center; font-size: 12.5px; color: var(--text-2); }
-.ctl { display: flex; gap: 8px; justify-content: center; margin-top: auto; }
+.pm.paused .arc { opacity: 0.5; }
+.next { margin: 0; text-align: center; font-size: 12.5px; color: var(--text-3); }
 
-.menu { position: absolute; top: 40px; right: 14px; z-index: 2; display: flex; flex-direction: column; min-width: 150px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 10px; }
-.menu button { height: 30px; padding: 0 10px; font: inherit; font-size: 12.5px; text-align: left; color: var(--text); background: none; border: 0; border-radius: 7px; cursor: pointer; }
+.ctl { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: auto; flex: none; }
+.round { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; color: var(--text); background: var(--surface-3); border: 1px solid var(--line); border-radius: 50%; cursor: pointer; transition: background calc(120ms * var(--motion-scale, 1)), border-color calc(120ms * var(--motion-scale, 1)), transform calc(120ms * var(--motion-scale, 1)) var(--ease-out), filter calc(120ms * var(--motion-scale, 1)); }
+.round svg { width: 18px; height: 18px; fill: currentColor; }
+.round svg.line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.round:hover { background: #1e1e25; border-color: var(--line-strong); }
+.round:active { transform: scale(0.94); }
+.round:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.round.primary { width: 50px; height: 50px; color: #000; background: var(--accent); border-color: transparent; }
+.round.primary svg { width: 22px; height: 22px; }
+.round.primary:hover { background: var(--accent); filter: brightness(1.1); }
+.pm.brk .round.primary, .pm.brk .round.primary:hover { background: var(--up); }
+#toggle .i-play, #toggle.stopped .i-pause { display: none; }
+#toggle.stopped .i-play { display: block; }
+/* Reset keeps its slot, so Play/Pause never moves under the cursor and a double-click can't land on Reset. */
+#reset.off { visibility: hidden; }
+#reset:not(.off) { animation: pop-in calc(160ms * var(--motion-scale, 1)) var(--ease-out); }
+@keyframes pop-in { from { opacity: 0; transform: scale(0.7); } }
+#more[aria-expanded="true"] { background: #1e1e25; border-color: var(--line-strong); }
+
+.more-wrap { position: relative; }
+.menu { position: absolute; bottom: calc(100% + 8px); right: -6px; z-index: 2; display: flex; flex-direction: column; width: 156px; padding: 4px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 -6px 20px rgba(0,0,0,0.5); }
+.menu button { height: 30px; padding: 0 10px; font: inherit; font-size: 12.5px; text-align: left; color: var(--text); background: none; border: 0; border-radius: 8px; cursor: pointer; }
 .menu button:hover { background: var(--surface-3); }
 .menu button.danger { color: var(--down); }
 .menu button:disabled { color: var(--text-3); cursor: default; background: none; }

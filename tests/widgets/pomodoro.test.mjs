@@ -127,3 +127,28 @@ test("timelapse errors are put in plain words", () => {
   assert.match(T.friendly("Camera privacy setting is off"), /Windows is blocking/);
   assert.equal(T.friendly("odd"), "odd");
 });
+
+test("timelapse pill: each host state maps to one kind, and paths never appear", () => {
+  assert.deepEqual(T.status({ state: "recording", framesCaptured: 1 }), { kind: "rec", text: "Recording \u00b7 1 photo" });
+  assert.equal(T.status({ state: "paused", framesCaptured: 12 }).kind, "held");
+  assert.equal(T.status({ state: "paused", framesCaptured: 12 }).text, "Timelapse paused \u00b7 12 photos");
+  assert.equal(T.status({ state: "rendering" }).kind, "busy");
+  const saved = T.status({ state: "idle", file: "a.mp4", folder: "Umbra Timelapses" });
+  assert.deepEqual(saved, { kind: "saved", text: "Video saved in Umbra Timelapses", title: "a.mp4 in Umbra Timelapses" });
+  assert.equal(T.status(null, { busy: true }).text, "Starting the camera...");
+  assert.deepEqual(T.status(null), { kind: "idle", text: "Timelapse not running", action: "Start" });
+});
+
+test("timelapse pill: a failure offers a retry, but a live recording outranks a stale failure", () => {
+  assert.deepEqual(T.status(null, { error: "No webcam was found." }), { kind: "err", text: "No webcam was found.", action: "Try again" });
+  assert.equal(T.status({ state: "recording", framesCaptured: 2 }, { error: "old" }).kind, "rec");
+});
+
+test("timelapse pill: an early stop that still saved a video says both, and offers no retry", () => {
+  const v = T.status({ state: "idle", file: "a.mp4", folder: "Umbra Timelapses", error: "x" }, { error: "Disk almost full." });
+  assert.equal(v.kind, "err");
+  assert.equal(v.text, "Disk almost full. What was recorded is saved in Umbra Timelapses.");
+  assert.equal(v.title, "a.mp4 in Umbra Timelapses");
+  assert.equal(v.action, undefined);
+  assert.match(T.status({ state: "idle", file: "a.mp4", folder: "F" }, { error: "Disk full" }).text, /^Disk full\. What/);
+});

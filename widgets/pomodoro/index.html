@@ -9,7 +9,7 @@
 </head>
 <body>
   <main class="pm" id="app">
-    <!-- Setup: pick the session length and whether it has breaks -->
+    <!-- Setup: pick the session length, whether it has breaks and whether to record a timelapse -->
     <section class="view setup" id="setup">
       <header class="head">
         <span class="title">Focus session</span>
@@ -24,35 +24,37 @@
           </label>
           <button class="step" id="plus" aria-label="5 minutes more">+</button>
         </div>
-        <p class="hint" id="breaks-hint">You'll have no breaks</p>
-        <label class="check" data-no-drag>
+      </div>
+      <div class="card" data-no-drag>
+        <label class="switch">
+          <span class="switch-text"><span>Skip breaks</span><small id="breaks-hint">You'll have no breaks</small></span>
           <input type="checkbox" id="skip-breaks" checked>
-          <span class="box" aria-hidden="true"></span>
-          Skip breaks
+          <span class="knob" aria-hidden="true"></span>
         </label>
       </div>
-      <details class="tl" id="tl-box" data-no-drag>
-        <summary><span>Timelapse</span><span class="tl-sum num" id="tl-sum">Off</span></summary>
-        <div class="tl-body">
-          <label class="check"><input type="checkbox" id="tl-on"><span class="box" aria-hidden="true"></span>Record a webcam timelapse</label>
-          <div class="tl-grid" id="tl-fields">
-            <label>Photo every <span><input class="num" id="tl-interval" type="number" min="1" max="3600" aria-label="Seconds between photos"> s</span></label>
-            <label>Video up to <span><input class="num" id="tl-length" type="number" min="1" max="3600" aria-label="Maximum video seconds"> s</span></label>
-            <label>Frame rate <span><input class="num" id="tl-fps" type="number" min="1" max="60" aria-label="Frames per second"> fps</span></label>
-            <label>Save to <button type="button" class="link" id="tl-folder">Videos</button></label>
+      <div class="card tl" data-no-drag>
+        <label class="switch">
+          <span class="switch-text"><span>Timelapse</span><small class="num" id="tl-sum">Off</small></span>
+          <input type="checkbox" id="tl-on">
+          <span class="knob" aria-hidden="true"></span>
+        </label>
+        <div class="tl-body" id="tl-fields">
+          <div class="tl-grid">
+            <label>Photo every <span class="field"><input class="num" id="tl-interval" type="number" min="1" max="3600" aria-label="Seconds between photos"><i>s</i></span></label>
+            <label>Video up to <span class="field"><input class="num" id="tl-length" type="number" min="1" max="3600" aria-label="Maximum video seconds"><i>s</i></span></label>
+            <label>Frame rate <span class="field"><input class="num" id="tl-fps" type="number" min="1" max="60" aria-label="Frames per second"><i>fps</i></span></label>
           </div>
-          <p class="tl-est num" id="tl-est"></p>
+          <div class="tl-row"><span>Save to</span><button type="button" class="link" id="tl-folder">Videos</button></div>
         </div>
-      </details>
+      </div>
       <p class="tl-msg" id="setup-msg" hidden></p>
       <button class="btn primary wide" id="start" data-no-drag>Start focus session</button>
     </section>
 
-    <!-- Run: ring, phase, up next, pause and the "..." menu -->
+    <!-- Run: ring, phase, up next, the round controls and the timelapse status -->
     <section class="view run" id="run" hidden>
       <header class="head">
         <span class="title num" id="phase">Focus period 1 of 1</span>
-        <button class="more" id="more" data-no-drag aria-label="More" aria-haspopup="menu">&middot;&middot;&middot;</button>
       </header>
       <div class="dial">
         <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -66,17 +68,30 @@
         </div>
       </div>
       <p class="next num" id="next">Up next: 5 min break</p>
+      <div class="ctl" data-no-drag>
+        <button class="round off" id="reset" aria-label="Reset session" title="Reset session">
+          <svg class="line" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.6-5.9L4 8.5"/><path d="M4 4v4.5h4.5"/></svg>
+        </button>
+        <button class="round primary" id="toggle" aria-label="Pause" title="Pause">
+          <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.6v12.8a1 1 0 0 0 1.5.86l10.6-6.4a1 1 0 0 0 0-1.72L10 4.74a1 1 0 0 0-1.5.86z"/></svg>
+        </button>
+        <div class="more-wrap">
+          <button class="round" id="more" aria-label="More" title="More" aria-haspopup="menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg>
+          </button>
+          <div class="menu" id="menu" role="menu" hidden>
+            <button role="menuitem" id="m-skip">Skip break</button>
+            <button role="menuitem" id="m-add">Add 5 minutes</button>
+            <button role="menuitem" id="m-end" class="danger">End session</button>
+          </div>
+        </div>
+      </div>
+      <!-- Moves to the setup view when a session ends while its video is still being made (renderTl) -->
       <div class="tl-run" id="tl-run" data-no-drag hidden>
+        <span class="tl-mark" aria-hidden="true"></span>
         <span class="tl-stat num" id="tl-stat"></span>
         <button class="link" id="tl-act"></button>
-      </div>
-      <div class="ctl" data-no-drag>
-        <button class="btn primary" id="toggle">Pause</button>
-      </div>
-      <div class="menu" id="menu" role="menu" data-no-drag hidden>
-        <button role="menuitem" id="m-skip">Skip break</button>
-        <button role="menuitem" id="m-add">Add 5 minutes</button>
-        <button role="menuitem" id="m-end" class="danger">End session</button>
       </div>
     </section>
   </main>
