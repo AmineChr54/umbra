@@ -109,25 +109,21 @@ function onTlState(s) {
   if (s && s.state === "idle" && s.error) tlError = T.friendly(s.error);
   render();
 }
+// The pill sits in the run view, and moves to the setup view so a session that just ended still shows its video being made.
 function renderTl() {
-  const box = q("tl-run"), stat = q("tl-stat"), act = q("tl-act"), st = tlState && tlState.state;
-  const show = tl.on || tlActive() || st === "rendering" || (tlState && tlState.file);
+  const box = q("tl-run"), act = q("tl-act"), v = T.status(tlState, { busy: tlBusy, error: tlError, folder: folderLabel });
+  const show = session ? tl.on || v.kind !== "idle" : v.kind !== "idle" && !tlBusy && v.kind !== "err";
   box.hidden = !show;
   if (!show) return;
-  stat.className = "tl-stat num";
-  act.hidden = true;
-  if (tlError) { stat.textContent = tlError; stat.classList.add("err"); }
-  else if (st === "recording" || st === "paused") {
-    stat.classList.add("rec");
-    const n = tlState.framesCaptured || 0;
-    stat.textContent = `${st === "paused" ? "Timelapse paused" : "Timelapse"}: ${plural(n, "photo")}`;
-  } else if (st === "rendering") stat.textContent = "Making the video...";
-  else if (tlState && tlState.file) stat.textContent = `Saved ${tlState.file} in ${tlState.folder || folderLabel}`;
-  else { stat.textContent = tlBusy ? "Starting the camera..." : "Timelapse is not running"; act.hidden = tlBusy; act.textContent = "Start timelapse"; }
-  if (tlError && !tlActive()) { act.hidden = false; act.textContent = "Try again"; }
+  const home = session ? q("run") : q("setup");
+  if (box.parentElement !== home) home.insertBefore(box, session ? null : q("start"));
+  if (box.className !== `tl-run ${v.kind}`) box.className = `tl-run ${v.kind}`;
+  setText(q("tl-stat"), v.text);
+  box.title = v.title || "";
+  act.hidden = !(v.action && session);
+  setText(act, v.action || "");
 }
 function renderTlSetup() {
-  const sum = q("tl-sum");
   if (document.activeElement.id !== "tl-interval") q("tl-interval").value = tl.interval;
   if (document.activeElement.id !== "tl-length") q("tl-length").value = tl.length;
   if (document.activeElement.id !== "tl-fps") q("tl-fps").value = tl.fps;
@@ -135,8 +131,7 @@ function renderTlSetup() {
   q("tl-fields").hidden = !tl.on;
   q("tl-folder").textContent = folderLabel;
   const e = T.estimate(tl, setup.minutes);
-  q("tl-est").textContent = tl.on ? `About ${plural(e.frames, "photo")}, a ${Math.round(e.seconds * 10) / 10} s video${e.capped ? " (shortened by the length limit)" : ""}` : "";
-  sum.textContent = tl.on ? `On, ${Math.round(e.seconds * 10) / 10} s video` : "Off";
+  setText(q("tl-sum"), tl.on ? `About ${plural(e.frames, "photo")}, ${Math.round(e.seconds * 10) / 10} s video${e.capped ? " (at the limit)" : ""}` : "Off");
 }
 const setTl = (patch) => { tl = T.clean({ ...tl, ...patch }); store("timelapse", tl); render(); };
 function toggle() {
@@ -155,10 +150,10 @@ function tick() {
 function renderTicks() {
   const g = q("ticks");
   let out = "";
-  for (let i = 0; i < 60; i++) {
-    const a = (i / 60) * 2 * Math.PI, major = i % 5 === 0, r1 = major ? 44 : 46, r2 = 49;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * 2 * Math.PI, r1 = 45.5, r2 = 48;
     const p = (r) => `${(60 + r * Math.cos(a)).toFixed(2)}`, t = (r) => `${(60 + r * Math.sin(a)).toFixed(2)}`;
-    out += `<line${major ? ' class="major"' : ""} x1="${p(r1)}" y1="${t(r1)}" x2="${p(r2)}" y2="${t(r2)}"/>`;
+    out += `<line x1="${p(r1)}" y1="${t(r1)}" x2="${p(r2)}" y2="${t(r2)}"/>`;
   }
   g.innerHTML = out;
   arc.style.strokeDasharray = String(CIRC);
@@ -184,6 +179,7 @@ function renderRun() {
   app.classList.toggle("paused", paused);
   setText(q("phase"), phaseTitle(s));
   setText(q("time"), fmtClock(left));
+  q("time").classList.toggle("long", left > 59 * MIN + 59000); // h:mm:ss needs a smaller size to clear the ticks
   setText(q("sub"), paused ? "Paused" : waiting ? (p.kind === "break" ? "Break ready" : "Ready") : p.kind === "break" ? "Break" : "Focus");
   const off = String(CIRC * (1 - left / total));
   if (arc.style.strokeDashoffset !== off) arc.style.strokeDashoffset = off;
@@ -191,8 +187,11 @@ function renderRun() {
   setText(q("next"), nxt
     ? (nxt.kind === "break" ? `Up next: ${nxt.min} min break` : `Up next: ${phaseTitle(s, s.idx + 1).toLowerCase()}`)
     : "Last focus period");
-  setText(q("toggle"), s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start");
-  renderTl();
+  const verb = s.running ? "Pause" : paused ? "Resume" : p.kind === "break" ? "Start break" : "Start";
+  const toggleBtn = q("toggle");
+  toggleBtn.classList.toggle("stopped", !s.running);
+  if (toggleBtn.title !== verb) { toggleBtn.title = verb; toggleBtn.setAttribute("aria-label", verb); }
+  q("reset").hidden = s.running;
   setText(q("m-skip"), p.kind === "break" ? "Skip break" : nxt ? "Skip to break" : "Finish now");
   q("menu").hidden = !menuOpen;
   q("more").setAttribute("aria-expanded", String(menuOpen));
@@ -203,6 +202,7 @@ function render() {
   q("setup").hidden = !!session;
   q("run").hidden = !session;
   if (session) renderRun(); else { app.classList.remove("brk", "paused"); renderSetup(); renderTlSetup(); }
+  renderTl();
   schedule();
 }
 
@@ -236,6 +236,7 @@ q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
 document.addEventListener("pointerdown", (e) => { if (menuOpen && !e.target.closest("#menu, #more")) { menuOpen = false; render(); } });
 const menuAction = (fn) => () => { menuOpen = false; if (session) apply(fn(session, now())); };
+q("reset").onclick = menuAction((s, t) => S.end(s, t)); // same as End session in the menu: keeps the focus time and makes the video
 q("m-skip").onclick = menuAction((s, t) => S.skip(s, t, auto()));
 q("m-add").onclick = menuAction((s, t) => S.extend(s, 5, t));
 q("m-end").onclick = menuAction((s, t) => S.end(s, t));
@@ -265,7 +266,6 @@ umbra.store.onChange?.(async (k) => {
   session = S.valid(s) && !s.done ? s : null; // a stored finished session (older versions) loads as idle
   if (s && !session) umbra.store.remove("session").catch(() => {});
   tl = T.clean(await umbra.store.get("timelapse", null));
-  q("tl-box").open = tl.on; // show the options when the timelapse is on, collapsed otherwise
   try {
     umbra.timelapse.onChange(onTlState);
     const st = await umbra.timelapse.status();

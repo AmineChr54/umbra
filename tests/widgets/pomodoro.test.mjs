@@ -127,3 +127,22 @@ test("timelapse errors are put in plain words", () => {
   assert.match(T.friendly("Camera privacy setting is off"), /Windows is blocking/);
   assert.equal(T.friendly("odd"), "odd");
 });
+
+const TL = createRequire(import.meta.url)("../../widgets/pomodoro/timelapse.js");
+
+test("timelapse pill: each host state maps to one kind, and paths never appear", () => {
+  assert.deepEqual(TL.status({ state: "recording", framesCaptured: 1 }), { kind: "rec", text: "Recording \u00b7 1 photo" });
+  assert.equal(TL.status({ state: "paused", framesCaptured: 12 }).kind, "held");
+  assert.equal(TL.status({ state: "paused", framesCaptured: 12 }).text, "Timelapse paused \u00b7 12 photos");
+  assert.equal(TL.status({ state: "rendering" }).kind, "busy");
+  const saved = TL.status({ state: "idle", file: "a.mp4", folder: "Umbra Timelapses" });
+  assert.deepEqual(saved, { kind: "saved", text: "Video saved in Umbra Timelapses", title: "a.mp4 in Umbra Timelapses" });
+  assert.equal(TL.status(null, { busy: true }).text, "Starting the camera...");
+  assert.deepEqual(TL.status(null), { kind: "idle", text: "Timelapse not running", action: "Start" });
+});
+
+test("timelapse pill: a failure offers a retry, but a live recording outranks a stale failure", () => {
+  assert.deepEqual(TL.status(null, { error: "No webcam was found." }), { kind: "err", text: "No webcam was found.", action: "Try again" });
+  assert.equal(TL.status({ state: "recording", framesCaptured: 2 }, { error: "old" }).kind, "rec");
+  assert.equal(TL.status({ state: "idle", file: "a.mp4", error: "x" }, { error: "x" }).kind, "err");
+});
