@@ -118,8 +118,6 @@
   function render(force) {
     const v = view;
     if (!v || v.phase === "loading") return;
-    // Interface text size above about 105% (1rem is 13px at 100%): the strip switches to its compact layout (overview.css).
-    app.toggleAttribute("data-big-text", parseFloat(getComputedStyle(document.documentElement).fontSize) > 13.7);
     const w = which();
     const days = core.daysTogether(v.togetherSince);
     const mood = moodOf(v);

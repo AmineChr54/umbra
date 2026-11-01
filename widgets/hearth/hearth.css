@@ -195,6 +195,11 @@ form.join input { flex: 1 1 120px; width: 120px; }
   .panel { padding: 8px 12px; gap: 4px; }
   .panel .hint { display: none; }
 }
+/* The long offline label doesn't shrink, so on a narrow square it would push the gear out of the card. */
+@container card (max-width: 240px) {
+  .top:has(umbra-status[data-state="offline"]) .chip.off { display: inline; }
+  .card umbra-status[data-state="offline"] > span { display: none; }
+}
 @container card (min-height: 171px) {
   .body { flex-direction: column; justify-content: center; text-align: center; }
   .col { align-items: center; }
