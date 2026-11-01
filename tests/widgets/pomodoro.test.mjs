@@ -105,21 +105,45 @@ test("valid rejects old pomodoro state", () => {
 
 const T = createRequire(import.meta.url)("../../widgets/pomodoro/timelapse.js");
 
-test("timelapse settings are clamped and stay within 3600 stills", () => {
-  assert.deepEqual(T.clean(null), { on: false, interval: 30, length: 30, fps: 30 });
-  const c = T.clean({ on: true, interval: 0, length: 9999, fps: 60 });
-  assert.equal(c.interval, 1);
-  assert.ok(c.length * c.fps <= T.MAX_STILLS);
+test("timelapse settings keep one allowed speed, and older saves snap to the nearest", () => {
+  assert.deepEqual(T.clean(null), { on: false, interval: 30 });
+  assert.deepEqual(T.clean({ on: true, interval: 1, length: 9999, fps: 60 }), { on: true, interval: 15 });
+  assert.equal(T.clean({ interval: 45 }).interval, 30);
+  assert.equal(T.clean({ interval: 3600 }).interval, 60);
+  assert.equal(T.clean({ interval: "x" }).interval, 30);
 });
 
-test("timelapse estimate follows the session minutes and the length cap", () => {
-  const e = T.estimate({ interval: 30, length: 30, fps: 30 }, 60);
-  assert.equal(e.frames, 120);
-  assert.equal(e.seconds, 4);
-  assert.equal(e.capped, false);
-  const c = T.estimate({ interval: 1, length: 5, fps: 10 }, 60);
-  assert.equal(c.frames, 50);
-  assert.equal(c.capped, true);
+test("timelapse speed steps through the list and stops at both ends", () => {
+  assert.equal(T.stepInterval(30, -1), 20);
+  assert.equal(T.stepInterval(30, 1), 60);
+  assert.equal(T.stepInterval(15, -1), 15);
+  assert.equal(T.stepInterval(60, 1), 60);
+});
+
+test("timelapse estimate follows the session minutes and the speed", () => {
+  assert.deepEqual(T.estimate({ interval: 30 }, 60), { frames: 120, seconds: 4 });
+  assert.deepEqual(T.estimate({ interval: 15 }, 60), { frames: 240, seconds: 8 });
+  assert.equal(T.estimate({ interval: 60 }, 0).frames, 1);
+});
+
+test("timelapse summary says the video length and the photo count", () => {
+  assert.equal(T.summary({ interval: 30 }, 60), "4 s video · 120 photos");
+  assert.equal(T.summary({ interval: 60 }, 25), "0.8 s video · 25 photos");
+  assert.equal(T.summary({ interval: 15 }, 600), "1 min 20 s video · 2400 photos");
+  assert.equal(T.videoLength(60), "1 min");
+  assert.equal(T.videoLength(12.4), "12 s");
+});
+
+test("timelapse request passes the host's limits and outlasts the longest session at every speed", () => {
+  for (const interval of T.INTERVALS) {
+    const r = T.request({ interval });
+    const stills = Math.ceil(r.length * r.fps - 1e-9); // TimelapsePlan.Frames
+    assert.equal(r.interval, interval);
+    assert.equal(r.fps, T.FPS);
+    assert.ok(stills <= T.MAX_STILLS, `${interval} s asks for ${stills} stills`);
+    assert.ok(interval * (stills - 1) <= T.MAX_SECONDS, `${interval} s records past 12 h`); // TimelapsePlan.Session
+    assert.ok(stills > T.estimate({ interval }, S.MAX_TOTAL).frames);
+  }
 });
 
 test("timelapse errors are put in plain words", () => {
