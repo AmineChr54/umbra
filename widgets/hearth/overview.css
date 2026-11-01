@@ -67,10 +67,11 @@
   .hov-dot { width: 36px; height: 36px; }
   .hov.has-cheer .hov-names { display: none; }
   /* The body is only about 62px tall here, so the Tap button sits in the header row, right after the brand, and only its
-     one-line "Sam tapped you" message stays under the count. Anchored from the left so an "Offline" chip on the right is clear of it. */
+     one-line "Sam tapped you" message stays under the count. It is out of the header's flow, so the header's right side has to
+     stay short: on the strip, offline is the compact chip, not the long status label (hearth.css). In rem so it follows the text size. */
   .hov-tap:not(:empty) { margin-top: 0; }
   .hov-tap .ht { align-items: flex-start; }
-  .hov-tap .ht-btn { position: absolute; top: 7px; left: 92px; z-index: 1; }
+  .hov-tap .ht-btn { position: absolute; top: 7px; left: 7.1rem; z-index: 1; }
   .hov-tap .ht-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 }
 
@@ -119,6 +120,25 @@
   .hov-names { justify-content: center; }
   .hov-cheer { align-self: center; }
   .hov-fields { grid-template-columns: minmax(0, 1fr); }
+}
+/* A strip too small for its text, because it was made narrow or the Interface text size is large: the brand and the circles give
+   way so the names and the count fit, and Tap is only its heart, so it never covers the gear or the chip. font-size 0 keeps the
+   word for screen readers. Container queries can't see the text size, so hearth.js sets data-big-text for that case. At the very
+   smallest the chip goes too: the hollow status dot and the dimmed body still show it. */
+@container card (max-width: 230px) and (max-height: 170px) {
+  .top .brand { display: none; }
+  .hov-pair { display: none; }
+  .hov-tap .ht-btn { left: 14px; gap: 0; }
+  .hov-tap .ht-label { font-size: 0; }
+}
+@container card (max-height: 170px) {
+  #app[data-big-text] .brand { display: none; }
+  #app[data-big-text] .hov-pair { display: none; }
+  #app[data-big-text] .hov-tap .ht-btn { left: 14px; gap: 0; }
+  #app[data-big-text] .hov-tap .ht-label { font-size: 0; }
+}
+@container card (max-width: 140px) and (max-height: 170px) {
+  .chip.off, .top:has(umbra-status[data-state="offline"]) .chip.off { display: none; }
 }
 
 /* ---------- confetti: lives outside the card so a re-render does not cut it short ---------- */
