@@ -93,7 +93,7 @@ async function startTl() {
   if (tlBusy || tlActive() || !session) return;
   tlBusy = true; tlError = ""; tlState = null; render();
   try {
-    tlState = await umbra.timelapse.start(T.request(tl));
+    tlState = await umbra.timelapse.start(T.request(tl, session.total));
     if (tlState && tlState.error) tlError = T.friendly(tlState.error);
   } catch (err) { tlError = T.friendly(err && err.message); }
   tlBusy = false; render();
@@ -204,9 +204,10 @@ function render() {
   schedule();
 }
 
-// One timer per second, only while a phase runs and the PC is awake.
+// One timer per second, only while a phase runs and the PC is awake. A recording keeps it going while the PC is locked or
+// the display is off: the camera doesn't pause for those, and only this timer can notice that the session ended and stop it.
 function schedule() {
-  const want = !!(session && session.running) && !umbra.settings.paused;
+  const want = !!(session && session.running) && (!umbra.settings.paused || tlActive());
   if (want && !timer) timer = setInterval(tick, 1000);
   if (!want && timer) { clearInterval(timer); timer = null; }
 }
@@ -247,7 +248,7 @@ umbra.store.onChange?.(async (k) => {
   if (!k || k === "setup") { const v = { ...setup, ...(await umbra.store.get("setup", {})) }; if (!same(v, setup)) { setup = v; changed = true; } }
   if (!k || k === "session") {
     const s = await umbra.store.get("session", null), v = S.valid(s) && !s.done ? s : null;
-    if (!same(v, session)) { session = v; changed = true; }
+    if (!same(v, session)) { session = v; changed = true; if (!session) stopTl(); } // removed from outside: the recording ends with it
   }
   if (changed) tick();
 });

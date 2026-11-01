@@ -3,7 +3,7 @@
 (function (root) {
   "use strict";
   const MAX_STILLS = 3600, MAX_SECONDS = 12 * 3600; // the host's caps per video (TimelapsePlan.Create)
-  const INTERVALS = [15, 20, 30, 60], FPS = 30;
+  const INTERVALS = [15, 20, 30, 60], FPS = 30, SPARE_SECONDS = 3600;
   const DEFAULTS = { on: false, interval: 30 };
 
   /** Clean saved settings: the on switch and one of INTERVALS (older saves with any other number snap to the nearest). */
@@ -40,17 +40,20 @@
   }
 
   /**
-   * Arguments for umbra.timelapse.start. The host stops at the stills it was asked for, so this asks for the most it allows at
-   * this speed: Add 5 minutes or a pause can't end the recording early. Ending the session stops it and renders what was taken.
+   * Arguments for umbra.timelapse.start for a session of `minutes`. Ending the session stops the recording and renders what was
+   * taken. The host stops by itself at the stills asked for, so this asks for the session plus SPARE_SECONDS: Add 5 minutes or a
+   * short pause can't end it early, and if the page can't stop it (crashed, or a session left paused) the camera still goes off soon after.
    */
-  function request(t) {
-    const interval = clean(t).interval, stills = Math.min(MAX_STILLS, Math.floor(MAX_SECONDS / interval) + 1);
-    return { interval, length: stills / FPS, fps: FPS };
+  function request(t, minutes) {
+    const interval = clean(t).interval;
+    const stills = Math.floor(Math.min(MAX_SECONDS, minutes * 60 + SPARE_SECONDS) / interval) + 1;
+    return { interval, length: Math.min(MAX_STILLS, stills) / FPS, fps: FPS };
   }
 
   /** Plain-words version of a host error. */
   function friendly(msg) {
     const m = String(msg || "");
+    if (/disk space/i.test(m)) return `${m.replace(/\.?$/, ".")} A slower speed needs less.`;
     if (/click/i.test(m)) return "Click Start on the widget to begin the timelapse.";
     if (/den(y|ied)|not allowed|approv|declin/i.test(m)) return "Camera access was not allowed for this widget. Allow it in Settings > My widgets.";
     if (/privacy|access is off|blocked/i.test(m)) return "Windows is blocking the camera. Turn on Settings > Privacy & security > Camera for desktop apps.";
@@ -75,6 +78,6 @@
     return { kind: "idle", text: "Timelapse not running", action: "Start" };
   }
 
-  const api = { MAX_STILLS, MAX_SECONDS, INTERVALS, FPS, DEFAULTS, clean, stepInterval, estimate, videoLength, summary, request, friendly, status };
+  const api = { MAX_STILLS, MAX_SECONDS, INTERVALS, FPS, SPARE_SECONDS, DEFAULTS, clean, stepInterval, estimate, videoLength, summary, request, friendly, status };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PomodoroTimelapse = api;
 })(typeof window !== "undefined" ? window : globalThis);
