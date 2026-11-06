@@ -199,10 +199,10 @@ button:focus-visible, select:focus-visible, input[type=color]:focus-visible, inp
 .select { appearance: none; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a7b1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
-.select option { background: #111114; }
+.select option { background: var(--surface-2); }
 /* Bare controls (prefs rows, card extras): same look as .input/.select, sized to content. */
 select:not(.select), input:is([type=number], [type=text], [type=time]):not(.input) {
-  height: 32px; padding: 0 10px; color-scheme: dark;
+  height: 32px; padding: 0 10px;
   border: 0; border-radius: 8px; outline: none;
   background-color: color-mix(in srgb, var(--text) 5%, transparent);
   box-shadow: inset 0 0 0 1px var(--line-strong);
@@ -212,7 +212,7 @@ select:not(.select), input:is([type=number], [type=text], [type=time]):not(.inpu
 select:not(.select) { appearance: none; cursor: pointer; padding-right: 30px; max-width: 220px; text-overflow: ellipsis;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a7b1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 10px center; }
-select:not(.select) option { background: #111114; }
+select:not(.select) option { background: var(--surface-2); }
 input:is([type=number], [type=text], [type=time]):not(.input) { user-select: text; }
 input[type=number]:not(.input) { text-align: right; }
 input[type=number]:not(.input)::-webkit-inner-spin-button, input[type=number]:not(.input)::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -450,7 +450,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 }
 .cthumb.has-img { background-color: #000; background-size: contain; background-position: center; background-repeat: no-repeat; }
 .cthumb.has-img .initial { display: none; }
-.initial { font-family: var(--font-display); font-size: 34px; font-weight: 650; color: rgba(255, 255, 255, 0.85); }
+.initial { font-family: var(--font-display); font-size: 34px; font-weight: 650; color: color-mix(in srgb, var(--text) 85%, transparent); }
 .cbody { padding: 14px 16px 6px; flex: 1; }
 .ctitle { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .cname { font-weight: 650; font-size: 14.5px; }
@@ -706,7 +706,7 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .gbadge.none { color: var(--text-3); background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
 .gbadge:hover { background: rgba(139, 147, 255, 0.24); }
 .gmenu { position: absolute; z-index: 20; display: flex; flex-direction: column; min-width: 170px; padding: 4px; margin-top: 4px; border-radius: 10px;
-  background: #15151a; box-shadow: inset 0 0 0 1px var(--line-strong), 0 12px 30px rgba(0, 0, 0, 0.5); }
+  background: var(--surface-3); box-shadow: inset 0 0 0 1px var(--line-strong), 0 12px 30px rgba(0, 0, 0, 0.5); }
 .wcard-title { position: relative; }
 .gmenu button { text-align: left; background: none; border: 0; color: inherit; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 .gmenu button:hover, .gmenu button:focus-visible { background: color-mix(in srgb, var(--text) 8%, transparent); }

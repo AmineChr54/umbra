@@ -1378,6 +1378,7 @@ function applyTheme(css) {
     if (el.textContent !== css) el.textContent = css;
   }
   // umbra.css says color-scheme: dark; a light theme flips it so scrollbars, selects and date fields match.
+  // Same test as applyScheme in shared/umbra.js: keep the two in step.
   const m = /rgba?\((\d+), (\d+), (\d+)/.exec(getComputedStyle(document.documentElement).backgroundColor);
   document.documentElement.style.colorScheme = m && 0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3] > 140 ? "light" : "";
 }

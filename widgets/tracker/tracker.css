@@ -36,7 +36,7 @@ html, body { height: 100%; overflow: hidden; }
 .empty .btn { margin-top: 10px; }
 
 .btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); background: var(--surface-3); border: 0; border-radius: 9px; cursor: pointer; }
-.btn:hover { background: var(--surface-3); }
+.btn:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface-3)); }
 .btn.primary { color: #000; background: var(--accent); }
 .btn.danger { color: var(--down); background: none; padding: 0 10px; }
 .btn.danger:hover, .btn.danger.armed { background: rgba(255,90,95,0.12); }
@@ -59,7 +59,7 @@ html, body { height: 100%; overflow: hidden; }
 .field::placeholder { color: var(--text-3); }
 .field:focus { border-color: var(--accent); }
 .field.invalid { border-color: var(--down); }
-.field[type="date"] { color-scheme: dark; width: 140px; padding: 0 8px; }
+.field[type="date"] { width: 140px; padding: 0 8px; }
 .field::-webkit-calendar-picker-indicator { display: none; }
 .field::-webkit-datetime-edit-day-field:focus, .field::-webkit-datetime-edit-month-field:focus, .field::-webkit-datetime-edit-year-field:focus { color: #000; background: var(--accent); border-radius: 3px; }
 .row { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; }

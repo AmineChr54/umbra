@@ -204,7 +204,7 @@ html, body { height: 100%; overflow: hidden; }
   cursor: pointer;
   transition: background 120ms, color 120ms;
 }
-.btn:hover { background: var(--surface-3); }
+.btn:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface-3)); }
 .btn svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .btn.primary { color: #000; background: var(--c, var(--accent)); }
 .btn.primary:hover { background: color-mix(in srgb, var(--c, var(--accent)) 85%, #fff); }
@@ -306,7 +306,7 @@ html, body { height: 100%; overflow: hidden; }
 .field.small { height: 30px; font-size: 12px; }
 
 /* Typed dates: the picker popup is hidden because the widget window never activates. */
-.field[type="date"], .field[type="time"] { color-scheme: dark; padding: 0 8px; }
+.field[type="date"], .field[type="time"] { padding: 0 8px; }
 .field[type="date"] { width: 128px; }
 .field[type="time"] { width: 84px; }
 .field::-webkit-calendar-picker-indicator { display: none; }
