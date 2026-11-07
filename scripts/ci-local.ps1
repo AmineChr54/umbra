@@ -14,6 +14,8 @@
   -Capture then starts that portable copy once more with a throwaway data folder holding the commit's widgets and saves
   `umbractl capture` PNGs (only the widget's or Settings' own WebView, never the desktop).
 
+  A PR from a fork is refused unless -TrustFork: its code runs on this PC, so read its diff first.
+
   With -Status it posts the commit status "local-ci" (pending, then success or failure) through gh, which is the check
   branch protection on main requires. Needs Docker Desktop running (Linux containers), the .NET 10 SDK, Node and gh.
 
@@ -28,7 +30,8 @@ param(
     [switch]$Status,
     [string[]]$Capture = @(),
     [string]$OutDir,
-    [switch]$Keep
+    [switch]$Keep,
+    [switch]$TrustFork
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,6 +48,11 @@ function Native([string]$exe) {
 
 # What to test
 if ($Pr) {
+    # It builds and runs the PR's code on this PC: a fork's PR only after someone read its diff.
+    $fork = Native gh pr view $Pr --json isCrossRepository -q .isCrossRepository
+    if ($fork -eq 'true' -and -not $TrustFork) {
+        throw "PR #$Pr comes from a fork, and CI runs its code on this PC. Read the diff (gh pr diff $Pr), then rerun with -TrustFork."
+    }
     Native git fetch -q origin "pull/$Pr/head" | Out-Null
     $sha = Native git rev-parse FETCH_HEAD
 } else { $sha = Native git rev-parse "$Ref^{commit}" }
@@ -89,7 +97,7 @@ function Finish($job, [string]$pattern) {
     $job.Proc.WaitForExit()
     if (Test-Path "$($job.Log).err") { Get-Content "$($job.Log).err" | Add-Content $job.Log; Remove-Item "$($job.Log).err" }
     $ok = $job.Proc.ExitCode -eq 0
-    $lines = @(Get-Content $job.Log | Where-Object { $_ -match $pattern } | ForEach-Object { $_.Trim() })
+    $lines = @(Get-Content $job.Log | Where-Object { $_ -cmatch $pattern } | ForEach-Object { $_.Trim() })
     $secs = [int]((Get-Date) - $job.Start).TotalSeconds
     $results[$job.Name] = @{ Ok = $ok; Lines = $lines; Secs = $secs }
     $mark = if ($ok) { 'PASS' } else { 'FAIL' }
@@ -156,8 +164,8 @@ try {
         Finish $smoke 'FAIL|SKIPPED|passed\.'
     } else { $results['smoke'] = @{ Ok = $false; Lines = @('not run: the Windows build failed'); Secs = 0 } }
 
-    foreach ($j in $jobs) { Finish $j '^image:|^node v|Warning\(s\)|Error\(s\)|^(Passed|Failed)!|^\s+Failed |^# (pass|fail)|^not ok|Versions|^OK:|error' }
-    Finish $bump '.'
+    foreach ($j in $jobs) { Finish $j '^image:|^node v|Warning\(s\)|Error\(s\)|^(Passed|Failed)!|^\s+Failed |^# (pass|fail) |^not ok|^Versions|^OK:|^ERROR|error:' }
+    Finish $bump '\S'
 
     # Captures for review: the commit's widgets in a throwaway data folder, then settings:<page> and widget ids.
     if ($Capture.Count -and $buildOk) {
