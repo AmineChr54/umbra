@@ -1,11 +1,12 @@
 ---
 name: release
-description: Ship a new Umbra version with scripts/release.mjs (bump, checks, release PR with draft notes); merging the PR makes release.yml build the installer, tag vX.Y.Z and publish the release. Use for "release", "publish a new version", "cut vX.Y.Z".
+description: Ship a new Umbra version with scripts/release.mjs (bump, checks, release PR with draft notes), local CI, merge, then build.ps1 and gh release create on this PC (GitHub Actions is off). Use for "release", "publish a new version", "cut vX.Y.Z".
 ---
 
 # Release Umbra
 
-Never bump versions, tag or create the release by hand: the script and the workflow do it.
+Never bump versions by hand: `release.mjs` does it. The tag and the release come only from step 6 (`gh release create --target` on the
+merge commit of the release PR), never from a hand-pushed tag.
 
 1. **Checklist:** run `.claude/skills/release-checklist` first (`dist/release-checklist-<ver>.md`).
 2. **Pick the bump** (semver): `patch` for fixes only, `minor` for features, `major` for breaking changes to the widget SDK
@@ -28,7 +29,9 @@ Never bump versions, tag or create the release by hand: the script and the workf
    `gh release create vX.Y.Z dist/UmbraSetup-X.Y.Z.exe dist/Umbra-X.Y.Z-portable.zip --target <merge sha> --title "Umbra X.Y.Z" --notes-file <notes> --latest`.
    The installer is unsigned (no signing secrets here).
 7. **Verify:** `gh release view vX.Y.Z --json assets -q ".assets[].name"` lists `UmbraSetup-X.Y.Z.exe` (about 90 MB) and
-   `Umbra-X.Y.Z-portable.zip`. The winget manifests are an artifact of the run (`scripts/winget.ps1`, CONTRIBUTING.md).
+   `Umbra-X.Y.Z-portable.zip`. For winget, fill the manifests from the *released* installer:
+   `gh release download vX.Y.Z -p UmbraSetup-X.Y.Z.exe -D <temp>`, then `powershell -File scripts/winget.ps1 -Installer <temp>/UmbraSetup-X.Y.Z.exe`
+   (writes `dist/winget/X.Y.Z`; check with `winget validate --manifest`).
 
 Rebuild an existing release: check out its tag in a worktree, run `build.ps1` there, and `gh release upload vX.Y.Z <files> --clobber`.
 If GitHub Actions is ever turned back on (`gh workflow enable Release`), merging the release PR makes `release.yml` do step 6.

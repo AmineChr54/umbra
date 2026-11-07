@@ -168,7 +168,8 @@ try {
     Finish $bump '\S'
 
     # Captures for review: the commit's widgets in a throwaway data folder, then settings:<page> and widget ids.
-    if ($Capture.Count -and $buildOk) {
+    if ($Capture.Count -and $buildOk) { try {
+        $capFailed = @()
         $capDir = New-Item -ItemType Directory -Force (Join-Path $OutDir 'captures')
         $data = Join-Path ([IO.Path]::GetTempPath()) "umbra-ci-data-$([Guid]::NewGuid().ToString('N'))"
         New-Item -ItemType Directory -Force (Join-Path $data 'widgets') | Out-Null
@@ -188,7 +189,7 @@ try {
             foreach ($t in $targets) {
                 $png = Join-Path $capDir (($t -replace '[:#]', '-') + '.png')
                 $out = (& $ctl capture $t $png 2>&1 | Out-String).Trim()
-                if ($LASTEXITCODE) { Write-Host "capture $t failed: $out" -ForegroundColor Red } else { Write-Host "capture  $png" }
+                if ($LASTEXITCODE) { Write-Host "capture $t failed: $out" -ForegroundColor Red; $capFailed += "${t}: $out" } else { Write-Host "capture  $png" }
             }
         } finally {
             & $ctl quit *> $null
@@ -196,7 +197,13 @@ try {
             Remove-Item Env:\UMBRA_DATA_DIR
             Remove-Item $data -Recurse -Force -ErrorAction SilentlyContinue
         }
-    }
+        $results['capture'] = @{ Ok = $capFailed.Count -eq 0; Lines = $capFailed; Secs = 0 }
+    } catch { $results['capture'] = @{ Ok = $false; Lines = @($_.Exception.Message); Secs = 0 } } }
+}
+catch {
+    # Anything unexpected still ends as a failed local-ci status, never a pending one.
+    $results['ci-local'] = @{ Ok = $false; Lines = @($_.Exception.Message); Secs = 0 }
+    Write-Host "ci-local: $($_.Exception.Message)" -ForegroundColor Red
 }
 finally {
     if (-not $Keep) {

@@ -3,7 +3,7 @@
   End-to-end smoke test: starts a real Umbra with a throwaway data folder and drives it with umbractl.
 
 .DESCRIPTION
-  status, list, new + capture, configure, data, logs, remove, quit. Used by CI (.github/workflows/ci.yml)
+  status, list, new + capture, configure, data, logs, remove, quit. Used by CI (scripts/ci-local.ps1, the smoke job of .github/workflows/ci.yml)
   and runnable locally after `dotnet build Umbra.slnx -c Release`.
 
   It refuses to run while another Umbra is running (one instance per user, and it would quit it), unless -Umbra is a
