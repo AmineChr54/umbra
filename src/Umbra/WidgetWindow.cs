@@ -940,8 +940,17 @@ sealed class WidgetWindow : Form, IWidgetView
         else
         {
             var kinds = Manifest.Permissions.System.ToArray();
-            reply["ok"] = true;
-            reply["data"] = await Task.Run(() => WindowsMetrics.Read(kinds));
+            try
+            {
+                reply["data"] = await Task.Run(() => WindowsMetrics.Read(kinds));
+                reply["ok"] = true;
+            }
+            catch (Exception ex)
+            {
+                reply["ok"] = false;
+                reply["error"] = "System metrics are not available";
+                Log.Write($"[{Manifest.Id}] system metrics failed: {ex.Message}");
+            }
         }
         Post(reply);
     }
