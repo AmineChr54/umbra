@@ -825,3 +825,6 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .welcome-dots i { width: 6px; height: 6px; }
 [data-motion="off"] .tour-ring, [data-motion="off"] .welcome-card.placed { transition: none; }
 @media (prefers-reduced-motion: reduce) { .tour-ring, .welcome-card.placed { transition: none; } }
+
+.small-select { height: 30px; font-size: 12.5px; border-radius: 8px; }
+.small-select[hidden] { display: none; }

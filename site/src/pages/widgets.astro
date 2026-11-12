@@ -2,6 +2,7 @@
 import Base from "../layouts/Base.astro";
 import Footer from "../components/landing/Footer.astro";
 import { url, repo, docsHome } from "../lib/url";
+import { RELAY } from "../lib/beacon.mjs";
 import { widgets, kindOf, categories, categoryOf, categoryLabel } from "../lib/data";
 
 const counts: Record<string, number> = { all: widgets.length, offline: 0, online: 0, commands: 0 };
@@ -25,6 +26,10 @@ catCounts.all = widgets.length;
           <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input id="q" type="search" placeholder={`Search ${widgets.length} widgets`} aria-label="Search widgets" autocomplete="off" />
         </label>
+        <select id="sort" class="sort" aria-label="Sort widgets" hidden>
+          <option value="popular">Most installed</option>
+          <option value="name">Name</option>
+        </select>
         <div class="chips" id="kinds" role="group" aria-label="Filter by access">
           {chips.map(([k, label]) => <button type="button" data-f={k} aria-pressed={k === "all"}>{label} <span>{counts[k]}</span></button>)}
         </div>
@@ -37,7 +42,7 @@ catCounts.all = widgets.length;
         {widgets.map(w => {
           const hosts = w.hosts ?? [], cmds = w.commands ?? [];
           return (
-            <article class="card" id={w.id} data-kind={kindOf(w)} data-cat={categoryOf(w)} data-q={`${w.name} ${w.description} ${w.id} ${w.author} ${categoryLabel(categoryOf(w))}`.toLowerCase()}>
+            <article class="card" id={w.id} data-name={w.name.toLowerCase()} data-kind={kindOf(w)} data-cat={categoryOf(w)} data-q={`${w.name} ${w.description} ${w.id} ${w.author} ${categoryLabel(categoryOf(w))}`.toLowerCase()}>
               <div class="shot">{w.previewSize && <img src={url(`previews/${w.id}.png`)} alt={`${w.name} widget`} width={w.previewSize.w / 2} height={w.previewSize.h / 2} loading="lazy" />}</div>
               <div class="body">
                 <h2>{w.name}<span>v{w.version}</span></h2>
@@ -48,7 +53,7 @@ catCounts.all = widgets.length;
                     : <li class="ok">Works offline</li>}
                   {cmds.length > 0 && <li class="warn" title={cmds.map(c => c.run).join(", ")}>Runs local commands, asks first</li>}
                 </ul>
-                <p class="by">{categoryOf(w) !== "other" && <>{categoryLabel(categoryOf(w))} · </>}by {w.author} · <a href={`${repo}/tree/main/widgets/${w.id}`}>Source</a></p>
+                <p class="by">{categoryOf(w) !== "other" && <>{categoryLabel(categoryOf(w))} · </>}by {w.author} · <span class="installs" hidden></span><a href={`${repo}/tree/main/widgets/${w.id}`}>Source</a></p>
               </div>
             </article>
           );
@@ -66,6 +71,30 @@ catCounts.all = widgets.length;
   </main>
   <Footer />
 </Base>
+
+<script define:vars={{ RELAY }}>
+  // Install counts come from the relay at view time (anonymous per-widget totals); without them the page is unchanged.
+  const sortSel = document.getElementById("sort");
+  const grid = document.getElementById("grid");
+  const byName = [...grid.querySelectorAll(".card")];
+  let counts = {};
+  const fmt = (n) => n === 1 ? "1 install" : n < 1000 ? `${n} installs` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/, "")}k installs`;
+  function order() {
+    const list = sortSel.value === "name" ? byName : [...byName].sort((a, b) => (counts[b.id] || 0) - (counts[a.id] || 0) || a.dataset.name.localeCompare(b.dataset.name));
+    grid.append(...list);
+  }
+  fetch(RELAY + "/stats/installs", { credentials: "omit" }).then((r) => r.json()).then((d) => {
+    counts = d && d.widgets && typeof d.widgets === "object" ? d.widgets : {};
+    let any = false;
+    for (const c of byName) {
+      const n = Number(counts[c.id]);
+      const s = c.querySelector(".installs");
+      if (n > 0) { s.textContent = fmt(n) + " · "; s.hidden = false; any = true; }
+    }
+    if (any) { sortSel.hidden = false; order(); }
+  }).catch(() => {});
+  sortSel.addEventListener("change", order);
+</script>
 
 <script>
   const q = document.getElementById("q") as HTMLInputElement;
@@ -108,6 +137,8 @@ catCounts.all = widgets.length;
   .search input { width: 100%; padding: 14px 16px 14px 46px; border: 1px solid var(--line2); border-radius: 14px; background: var(--s1); color: var(--text); font: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
   .search input:focus { border-color: var(--acc); box-shadow: 0 0 0 4px var(--accs); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sort { font: inherit; font-size: .9rem; color: var(--text2); background: var(--s1); border: 1px solid var(--line2); border-radius: 999px; padding: 9px 14px; cursor: pointer; }
+  .sort[hidden] { display: none; }
   .chips button { font: inherit; font-size: .9rem; color: var(--text2); background: var(--s1); border: 1px solid var(--line2); border-radius: 999px; padding: 9px 16px; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
   .chips button:hover { color: var(--text); }
   .chips button span { color: var(--text3); margin-left: 4px; }

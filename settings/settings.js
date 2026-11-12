@@ -49,6 +49,9 @@ const busy = new Map(); // id -> "install" | "remove"
 let catalogLoading = false;
 let browseFilter = "all"; // all | installed | updates
 let browseCat = "all";    // all | a CATEGORIES id | "other"
+let browseSort = (() => { try { return localStorage.getItem("browseSort") === "name" ? "name" : "popular"; } catch { return "popular"; } })();
+/** "1 install", "840 installs", "1.2k installs"; "" before anyone counted (or with counting off). */
+const installsText = (n) => !(n > 0) ? "" : n === 1 ? "1 install" : n < 1000 ? `${n} installs` : `${(n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/, "")}k installs`;
 // widget.json "category" ids in Browse order, with their labels (the list is WidgetManifest.Categories in the host).
 const CATEGORIES = [
   ["time", "Time & dates"], ["productivity", "Productivity"], ["info", "Info & news"], ["markets", "Markets"],
@@ -128,6 +131,7 @@ function renderGeneral() {
   $("#startup").disabled = !!state.portable;
   $("#startupSub").textContent = state.portable ? "Not available in portable mode." : "Your widgets appear on the desktop when you sign in.";
   $("#checkUpdates").checked = g.checkForUpdates !== false;
+  $("#countInstalls").checked = g.countInstalls !== false;
   $("#hideFullscreen").checked = !!g.hideOnFullscreen;
   syncInterval(g.refreshSeconds);
   labelRows();
@@ -148,6 +152,7 @@ $("#startup").addEventListener("change", (e) => {
   toast(e.target.checked ? "Umbra will start with Windows" : "Umbra won't start with Windows");
 });
 $("#checkUpdates").addEventListener("change", (e) => { state.settings.general.checkForUpdates = e.target.checked; save(true); });
+$("#countInstalls").addEventListener("change", (e) => { state.settings.general.countInstalls = e.target.checked; save(true); });
 $("#hideFullscreen").addEventListener("change", (e) => { state.settings.general.hideOnFullscreen = e.target.checked; save(true); });
 $$("#interval button").forEach((b) =>
   b.addEventListener("click", () => {
@@ -1342,6 +1347,11 @@ function loadCatalog() {
 }
 $("#reloadCatalog").addEventListener("click", loadCatalog);
 $("#search").addEventListener("input", renderCatalog);
+$("#browseSort").addEventListener("change", (e) => {
+  browseSort = e.target.value === "name" ? "name" : "popular";
+  try { localStorage.setItem("browseSort", browseSort); } catch { /* storage unavailable */ }
+  renderCatalog();
+});
 $$("#browseFilter button").forEach((b) => b.addEventListener("click", () => { browseFilter = b.dataset.filter; renderCatalog(); }));
 $("#updateAll").addEventListener("click", () => {
   const ids = (catalog || []).filter((w) => w.updateAvailable).map((w) => w.id);
@@ -1447,6 +1457,9 @@ function renderCatalog() {
   const q = $("#search").value.trim().toLowerCase();
   const inFilter = (w) => browseFilter === "updates" ? w.updateAvailable : browseFilter === "installed" ? w.installed : true;
   const inCat = (w) => browseCat === "all" || catOf(w) === browseCat;
+  const counted = catalog.some((w) => w.installs > 0);
+  $("#browseSort").hidden = !counted;
+  $("#browseSort").value = browseSort;
   const items = catalog.filter((w) => inFilter(w) && inCat(w) && (!q || [w.name, w.description, w.author, w.id, catLabel(catOf(w))].join(" ").toLowerCase().includes(q)));
   if (!items.length) {
     const none = q ? "No widgets match your search."
@@ -1457,6 +1470,8 @@ function renderCatalog() {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">${none}</div>`;
     return;
   }
+  if (counted && browseSort === "popular") items.sort((a, b) => (b.installs || 0) - (a.installs || 0) || a.name.localeCompare(b.name));
+  else items.sort((a, b) => a.name.localeCompare(b.name));
   welcomeRefresh();
   // Built off-page and swapped in at once, so the grid never shows half-built cards (or loses its scroll position) mid-render.
   const cards = [], clampChecks = [];
@@ -1465,7 +1480,7 @@ function renderCatalog() {
     catalogThumb(card, w);
     $(".cname", card).textContent = w.name;
     $(".cver", card).textContent = `v${w.version}`;
-    $(".cauthor", card).textContent = [w.author ? `by ${w.author}` : "", catOf(w) !== "other" ? catLabel(catOf(w)) : ""].filter(Boolean).join(" · ");
+    $(".cauthor", card).textContent = [w.author ? `by ${w.author}` : "", catOf(w) !== "other" ? catLabel(catOf(w)) : "", installsText(w.installs)].filter(Boolean).join(" · ");
     $(".cdesc", card).textContent = w.description || "";
     permissionChips($(".chips", card), w);
     // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).

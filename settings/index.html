@@ -259,6 +259,10 @@
             <button data-filter="updates">Updates<span id="updatesCount"></span></button>
           </div>
           <span class="toolbar-status" id="updateStatus" role="status"></span>
+          <select class="select small-select" id="browseSort" aria-label="Sort widgets">
+            <option value="popular">Most installed</option>
+            <option value="name">Name</option>
+          </select>
           <button class="btn small primary" id="updateAll" hidden><span class="ico" data-icon="download"></span>Update all</button>
         </div>
         <div class="cats" id="browseCats" role="group" aria-label="Categories"></div>
@@ -302,6 +306,13 @@
         </header>
         <div class="group" id="privacyList"></div>
         <div class="group">
+          <div class="row">
+            <div class="row-text">
+              <div class="row-title">Count my widget installs</div>
+              <div class="row-sub">When you install a widget from the catalog, Umbra sends one anonymous +1 for that widget, so Browse can show how many people use it. Nothing else: no id, no version, nothing about you or this PC, and updates aren't counted. Off also stops Browse from loading the counts.</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="countInstalls"><span></span></label>
+          </div>
           <div class="row"><div class="row-text"><div class="row-title">Backup</div><div class="row-sub">Settings, layout, theme, hotkeys and widget data in one file. Command approvals are never included.</div></div>
             <button class="btn" id="exportBackup">Export</button><button class="btn" id="importBackup">Import</button></div>
           <div class="row"><div class="row-text"><div class="row-title">Files</div><div class="row-sub">Where Umbra keeps its data and log.</div></div>
