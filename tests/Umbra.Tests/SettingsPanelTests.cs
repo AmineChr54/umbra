@@ -167,7 +167,7 @@ public class SettingsPanelTests
     {
         var html = Read("index.html");
         var hero = Regex.Match(html, "<div class=\"hero-actions\">.*?</div>", RegexOptions.Singleline).Value;
-        Assert.Equal(4, Regex.Matches(hero, "<button").Count); // Submit, Install from, Refresh, How to add widgets
+        Assert.Equal(3, Regex.Matches(hero, "<button").Count); // Submit, Install from, Refresh (How to add widgets is a link in the text)
         Assert.Contains("id=\"installMenu\"", hero);
         Assert.Contains("aria-label=\"Refresh the catalog\"", hero);
         Assert.DoesNotContain("id=\"installFile\"", html);

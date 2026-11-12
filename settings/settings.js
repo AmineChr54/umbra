@@ -1588,6 +1588,7 @@ $("#reloadThemes").addEventListener("click", loadThemes);
 function renderThemes() {
   const grid = $("#themeGrid");
   grid.textContent = "";
+  welcomeRefresh();
   if (!themes) {
     for (let i = 0; i < 3; i++) grid.append(Object.assign(document.createElement("div"), { className: "skeleton" }));
     return;
@@ -2036,7 +2037,7 @@ const WELCOME = [
     text: "Widgets are locked so you can't bump them. Turn on Arrange, drag and resize them on the desktop, then press Done." },
   { page: "widgets", target: ["#groupStrip"], title: "Stack widgets in tabs",
     text: "A group puts several widgets in one spot and shows one at a time. Hover the widget to switch tabs." },
-  { page: "themes", target: ["#themeGrid", "#appearanceCustomize"], title: "Pick a look",
+  { page: "themes", target: ["#themeGrid .tcard", "#appearanceCustomize"], title: "Pick a look",
     text: "A theme restyles every widget at once. Fine-tune colors, text and size underneath." },
   { page: "layouts", target: ["#layoutName", "section[data-page=layouts] .group"], title: "Save your setups",
     text: "Save where everything is and switch between layouts. Umbra can switch on its own when you dock or undock." },
@@ -2121,9 +2122,9 @@ function welcomeClose() {
   if (welcomeFrom && welcomeFrom.focus && welcomeFrom.isConnected) welcomeFrom.focus();
   welcomeFrom = null;
 }
-/** The catalog or My widgets just re-rendered: ring the control again (a Browse step opened before the catalog arrived). */
+/** The catalog or the themes just re-rendered: ring the control again (a step opened before they arrived). */
 function welcomeRefresh() {
-  if (!$("#welcome").hidden && WELCOME[welcomeAt].page === "browse") welcomeRaf = requestAnimationFrame(() => welcome(welcomeAt + 1));
+  if (!$("#welcome").hidden && ["browse", "themes"].includes(WELCOME[welcomeAt].page)) welcomeRaf = requestAnimationFrame(() => welcome(welcomeAt + 1));
 }
 $("#welcomeNext").addEventListener("click", () => (welcomeAt === WELCOME.length - 1 ? welcomeClose() : welcome(welcomeAt + 2)));
 $("#welcomeBack").addEventListener("click", () => welcome(welcomeAt));
