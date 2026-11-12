@@ -7,7 +7,7 @@ import { RELAY } from "../lib/beacon.mjs";
 ---
 
 <Base title="Umbra stats" description="Private dashboard." noindex count={false}>
-  <main class="page">
+  <main class="page statspage">
     <div class="wrap">
       <p class="kicker">Private</p>
       <h1 class="h2">Stats</h1>
@@ -181,39 +181,40 @@ import { RELAY } from "../lib/beacon.mjs";
   if (saved) { $("token").value = saved; load(saved); }
 </script>
 
-<style>
-  .page { padding: 140px 0 60px; }
-  .token { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 32px 0; }
-  .token input { flex: 1 1 260px; padding: 12px 14px; border: 1px solid var(--line2); border-radius: 12px; background: var(--s1); color: var(--text); font: inherit; outline: none; }
-  .token input:focus { border-color: var(--acc); }
-  .status { color: var(--text3); font-size: .9rem; }
-  .range { display: flex; gap: 8px; margin-bottom: 18px; }
-  .range button { font: inherit; font-size: .88rem; color: var(--text2); background: var(--s1); border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
-  .range button[aria-pressed="true"] { color: var(--text); background: var(--accs); border-color: rgba(139, 147, 255, .5); }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; margin-bottom: 14px; }
-  .tile, .panel { background: var(--s1); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
-  .tl { color: var(--text2); font-size: .85rem; }
-  .tn { font: 650 2rem/1.15 var(--display); margin: 6px 0 2px; }
-  .ts { color: var(--text3); font-size: .8rem; }
-  .num { font-variant-numeric: tabular-nums; }
-  .panel { margin-bottom: 14px; }
-  .panel h2 { font: 600 .95rem var(--body); margin: 0 0 12px; }
-  .panel h2 small { color: var(--text3); font-weight: 400; margin-left: 6px; }
-  .chart svg { width: 100%; height: auto; display: block; }
-  .chart .bar { fill: var(--acc); }
-  .chart .hit { fill: transparent; }
-  .chart .hit:hover { fill: rgba(255, 255, 255, .04); }
-  .chart .grid { stroke: var(--line); stroke-width: 1; }
-  .chart .base { stroke: var(--line2); stroke-width: 1; }
-  .chart .ax { fill: var(--text3); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; }
-  .cols .panel { margin: 0; }
-  .bars .row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: .85rem; }
-  .bars .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
-  .bars .track { height: 8px; border-radius: 4px; background: var(--s3); overflow: hidden; }
-  .bars .track i { display: block; height: 100%; border-radius: 4px; background: var(--acc); }
-  .bars .v { color: var(--text); }
-  .none { color: var(--text3); margin: 0; font-size: .88rem; }
-  .tip { position: fixed; z-index: 10; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: var(--s3); border: 1px solid var(--line2); color: var(--text); font-size: .8rem; font-variant-numeric: tabular-nums; }
-  .tip[hidden] { display: none; }
+<style is:global>
+  /* global: the dashboard builds its tiles, charts and lists at run time, which scoped styles never reach */
+  .statspage { padding: 140px 0 60px; }
+  .statspage .token { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 32px 0; }
+  .statspage .token input { flex: 1 1 260px; padding: 12px 14px; border: 1px solid var(--line2); border-radius: 12px; background: var(--s1); color: var(--text); font: inherit; outline: none; }
+  .statspage .token input:focus { border-color: var(--acc); }
+  .statspage .status { color: var(--text3); font-size: .9rem; }
+  .statspage .range { display: flex; gap: 8px; margin-bottom: 18px; }
+  .statspage .range button { font: inherit; font-size: .88rem; color: var(--text2); background: var(--s1); border: 1px solid var(--line2); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  .statspage .range button[aria-pressed="true"] { color: var(--text); background: var(--accs); border-color: rgba(139, 147, 255, .5); }
+  .statspage .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; margin-bottom: 14px; }
+  .statspage .tile, .statspage .panel { background: var(--s1); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .statspage .tl { color: var(--text2); font-size: .85rem; }
+  .statspage .tn { font: 650 2rem/1.15 var(--display); margin: 6px 0 2px; }
+  .statspage .ts { color: var(--text3); font-size: .8rem; }
+  .statspage .num { font-variant-numeric: tabular-nums; }
+  .statspage .panel { margin-bottom: 14px; }
+  .statspage .panel h2 { font: 600 .95rem var(--body); margin: 0 0 12px; }
+  .statspage .panel h2 small { color: var(--text3); font-weight: 400; margin-left: 6px; }
+  .statspage .chart svg { width: 100%; height: auto; display: block; }
+  .statspage .chart .bar { fill: var(--acc); }
+  .statspage .chart .hit { fill: transparent; }
+  .statspage .chart .hit:hover { fill: rgba(255, 255, 255, .04); }
+  .statspage .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .statspage .chart .base { stroke: var(--line2); stroke-width: 1; }
+  .statspage .chart .ax { fill: var(--text3); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .statspage .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; }
+  .statspage .cols .panel { margin: 0; }
+  .statspage .bars .row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: .85rem; }
+  .statspage .bars .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+  .statspage .bars .track { height: 8px; border-radius: 4px; background: var(--s3); overflow: hidden; }
+  .statspage .bars .track i { display: block; height: 100%; border-radius: 4px; background: var(--acc); }
+  .statspage .bars .v { color: var(--text); }
+  .statspage .none { color: var(--text3); margin: 0; font-size: .88rem; }
+  .statspage .tip { position: fixed; z-index: 10; pointer-events: none; padding: 6px 10px; border-radius: 8px; background: var(--s3); border: 1px solid var(--line2); color: var(--text); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .statspage .tip[hidden] { display: none; }
 </style>
