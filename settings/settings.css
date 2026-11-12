@@ -775,3 +775,18 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 .welcome-dots { flex: 1; display: flex; justify-content: center; gap: 6px; }
 .welcome-dots i { width: 7px; height: 7px; border-radius: 50%; background: #2b2d36; }
 .welcome-dots i.on { background: var(--accent-strong); }
+
+/* ---------- Browse categories ---------- */
+.cats { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 16px; }
+.cats[hidden] { display: none; }
+.cats button {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--text-2);
+  background: color-mix(in srgb, var(--text) 5%, transparent); box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 180ms, color 180ms, box-shadow 180ms;
+}
+.cats button:hover { color: var(--text); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.cats button.on { color: var(--text); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.cats button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.cats .n { font-size: 11px; font-weight: 600; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.cats button.on .n { color: var(--text-2); }

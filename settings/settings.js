@@ -47,6 +47,14 @@ let themesError = null;
 const busy = new Map(); // id -> "install" | "remove"
 let catalogLoading = false;
 let browseFilter = "all"; // all | installed | updates
+let browseCat = "all";    // all | a CATEGORIES id | "other"
+// widget.json "category" ids in Browse order, with their labels (the list is WidgetManifest.Categories in the host).
+const CATEGORIES = [
+  ["time", "Time & dates"], ["productivity", "Productivity"], ["info", "Info & news"], ["markets", "Markets"],
+  ["system", "System"], ["media", "Media"], ["developer", "Developer"], ["social", "Social"], ["games", "Games"],
+];
+const catOf = (w) => (CATEGORIES.some(([id]) => id === w.category) ? w.category : "other");
+const catLabel = (id) => (CATEGORIES.find(([c]) => c === id) || [, "Other"])[1];
 let updatingAll = null;   // { ids, index, total } while "Update all" runs
 
 // ---------- navigation ----------
@@ -1355,7 +1363,38 @@ function renderBrowseBar() {
   all.disabled = !!updatingAll;
   all.lastChild.textContent = updatingAll ? "Updating..." : n === 1 ? "Update 1 widget" : `Update all (${n})`;
   $("#updateStatus").textContent = updatingAll && updatingAll.index ? `Updating ${updatingAll.index} of ${updatingAll.total}...` : "";
+  renderCats();
 }
+
+// One pill per category the catalog has, with its count; "Other" only for widgets without a known category.
+function renderCats() {
+  const box = $("#browseCats");
+  const counts = new Map();
+  for (const w of catalog || []) counts.set(catOf(w), (counts.get(catOf(w)) || 0) + 1);
+  const ids = [...CATEGORIES.map(([id]) => id), "other"].filter((id) => counts.has(id));
+  if (browseCat !== "all" && !counts.has(browseCat)) browseCat = "all";
+  box.hidden = ids.length < 2;
+  const pill = (id, label, n) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.cat = id;
+    b.className = id === browseCat ? "on" : "";
+    b.setAttribute("aria-pressed", String(id === browseCat));
+    b.append(label);
+    const c = document.createElement("span");
+    c.className = "n";
+    c.textContent = n;
+    b.append(c);
+    return b;
+  };
+  box.replaceChildren(pill("all", "All", (catalog || []).length), ...ids.map((id) => pill(id, catLabel(id), counts.get(id))));
+}
+$("#browseCats").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-cat]");
+  if (!b) return;
+  browseCat = b.dataset.cat;
+  renderCatalog();
+});
 
 const expandedCards = new Set(); // catalog ids whose description and commands are shown in full
 
@@ -1406,9 +1445,11 @@ function renderCatalog() {
   }
   const q = $("#search").value.trim().toLowerCase();
   const inFilter = (w) => browseFilter === "updates" ? w.updateAvailable : browseFilter === "installed" ? w.installed : true;
-  const items = catalog.filter((w) => inFilter(w) && (!q || [w.name, w.description, w.author, w.id].join(" ").toLowerCase().includes(q)));
+  const inCat = (w) => browseCat === "all" || catOf(w) === browseCat;
+  const items = catalog.filter((w) => inFilter(w) && inCat(w) && (!q || [w.name, w.description, w.author, w.id, catLabel(catOf(w))].join(" ").toLowerCase().includes(q)));
   if (!items.length) {
     const none = q ? "No widgets match your search."
+      : browseCat !== "all" && browseFilter !== "all" ? `Nothing here in ${catLabel(browseCat)}.`
       : browseFilter === "updates" ? "Everything is up to date."
       : browseFilter === "installed" ? "No community widgets installed yet."
       : "The catalog is empty. Be the first to submit one!";
@@ -1422,7 +1463,7 @@ function renderCatalog() {
     catalogThumb(card, w);
     $(".cname", card).textContent = w.name;
     $(".cver", card).textContent = `v${w.version}`;
-    $(".cauthor", card).textContent = w.author ? `by ${w.author}` : "";
+    $(".cauthor", card).textContent = [w.author ? `by ${w.author}` : "", catOf(w) !== "other" ? catLabel(catOf(w)) : ""].filter(Boolean).join(" · ");
     $(".cdesc", card).textContent = w.description || "";
     permissionChips($(".chips", card), w);
     // A widget that can start programs on this PC is flagged with the exact commands (you approve each one on first use).
