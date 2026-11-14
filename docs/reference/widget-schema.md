@@ -1,0 +1,195 @@
+# widget.json schema
+
+> The JSON Schema for widget manifests.
+
+The JSON Schema for widget manifests. Add the schema URL as `$schema` and your editor validates and completes the file as you type:
+
+```json
+"$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json"
+```
+
+:::note
+This page is generated from [`schemas/widget.schema.json`](https://github.com/AmineChr54/umbra/blob/main/schemas/widget.schema.json).
+:::
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
+  "title": "Umbra widget manifest (widget.json)",
+  "description": "Describes one Umbra desktop widget. The same rules are enforced by scripts/catalog.mjs in CI and by the app when it installs a widget.",
+  "type": "object",
+  "required": ["id", "name", "description", "author", "version"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "description": "Lowercase letters, digits and dashes (2-40 chars). Must equal the folder name."
+    },
+    "name": { "type": "string", "minLength": 1, "description": "Shown in Settings and the tray menu." },
+    "description": { "type": "string", "minLength": 1, "description": "One sentence for the Browse page." },
+    "author": { "type": "string", "minLength": 1, "description": "GitHub user name." },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version. Bump it on every change so users see an Update button."
+    },
+    "manifestVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1,
+      "default": 1,
+      "description": "The widget.json format version. 1 is the current (and only) format; a missing value means 1. Umbra refuses a widget with a newer format and asks the user to update Umbra."
+    },
+    "minUmbraVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Oldest Umbra release the widget works on, like 1.9.0. Older Umbra versions refuse to install or load it and ask the user to update; Browse greys it out."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["time", "productivity", "info", "markets", "system", "media", "developer", "social", "games"],
+      "description": "Where the widget is listed on Browse and the website: time (clocks, calendars, countdowns), productivity (to-dos, notes, timers), info (weather, news, quotes), markets, system (PC monitors), media, developer, social, games. Required for catalog widgets."
+    },
+    "changelog": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "What changed in this version, in a sentence or two. Shown when an update asks the user for new access; the first line is the short form."
+    },
+    "entry": { "type": "string", "default": "index.html", "description": "The page Umbra loads, relative to the widget folder." },
+    "preview": { "type": "string", "description": "Screenshot shown in Browse (PNG, 2x, black background)." },
+    "icon": { "type": "string", "pattern": "^[A-Za-z0-9_-]+\\.png$", "description": "Tab icon for widget groups: a small PNG (64x64 recommended, light grey on transparent, at most 128 px and 64 KB) in the widget folder. Without one the tab shows the first letter of the widget name." },
+    "width": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 320, "description": "Logical (96-DPI) pixels; Umbra scales for the display." },
+    "height": { "type": "integer", "minimum": 80, "maximum": 1200, "default": 180, "description": "Logical (96-DPI) pixels." },
+    "themeable": { "type": "boolean", "default": true, "description": "Set false to keep the widget's own look: the user's theme is not applied to it." },
+    "private": { "type": "boolean", "default": false, "description": "A widget shared outside the catalog and installed from a file (Settings > Browse > Install from file). Shows a Private badge, is never updated from the catalog, and a catalog widget with the same id can't replace it. Not allowed in the public catalog." },
+    "defaultPosition": {
+      "type": "object",
+      "description": "Offset from the top-left of the primary work area, in logical pixels. Omit to start at the top right.",
+      "required": ["x", "y"],
+      "properties": { "x": { "type": "integer" }, "y": { "type": "integer" } },
+      "additionalProperties": false
+    },
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "enum": ["windows", "linux"] },
+      "description": "The operating systems the widget runs on. Leave it out for both. A widget that starts Windows-only programs (powershell, tasklist...) should say [\"windows\"]: Browse then shows \"Windows only\" and offers no install on Linux, and a local install there fails with a clear error."
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "hosts": {
+          "type": "array",
+          "description": "Every HTTPS hostname the widget may contact (fetch, images, scripts, umbra.fetchJson). Everything else is blocked. Hostnames only: no scheme, port or path.",
+          "items": { "type": "string", "pattern": "^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$" },
+          "uniqueItems": true
+        },
+        "system": {
+          "type": "array",
+          "description": "Read-only machine totals the widget may read with umbra.system(): cpu (load percent), memory (total/used bytes), network (total down/up bytes per second), gpu (load percent, dedicated + shared memory in use), disk (activity, read/write bytes per second, size and free space per fixed drive letter). Numbers only, no process, adapter or volume names. Browse shows these.",
+          "items": { "enum": ["cpu", "memory", "network", "gpu", "disk"] },
+          "uniqueItems": true
+        },
+        "notifications": {
+          "type": "boolean",
+          "description": "Lets the widget call umbra.notify (Windows toast with up to 2 buttons, 5 per 10 minutes). The user must also switch it on for the widget in Settings."
+        },
+        "camera": {
+          "type": "boolean",
+          "description": "Lets the widget use umbra.timelapse: the host takes webcam stills at an interval and renders them to an MP4 (no frame ever reaches the page). Recording starts only from a click on the widget, shows a red dot on the widget and in the tray, and stops after 12 h."
+        },
+        "saveImages": {
+          "type": "boolean",
+          "description": "Lets the widget call umbra.images: the host writes PNGs the widget hands it into Pictures > Umbra > (widget name), or a folder the user picked in the host's folder dialog (Settings, or the widget's button after a click). The widget never gives a path or a file name and can't read files back."
+        },
+        "userScripts": {
+          "type": "boolean",
+          "description": "Lets the user add their own scripts for this widget in Settings > My widgets (PowerShell, Python, Bash or a program; a file or code typed there). The widget lists them with umbra.commands() and runs them by id with umbra.run, like declared commands. Grants nothing by itself: the user writes each script, and saving it is the approval."
+        },
+        "media": {
+          "type": "array",
+          "description": "Windows media session: \"read\" for umbra.media.nowPlaying (title, artist, album art), \"control\" for umbra.media.control (play, pause, next, previous; needs a click on the widget).",
+          "items": { "enum": ["read", "control"] },
+          "uniqueItems": true
+        },
+        "commands": {
+          "type": "array",
+          "maxItems": 16,
+          "description": "Local programs the widget may start with umbra.run(id, params?). Each is an exact executable plus an argument array (no shell). The user is asked to approve each command the first time it runs, and again whenever it changes. Browse flags widgets that declare commands.",
+          "items": { "$ref": "#/$defs/command" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "options": {
+      "type": "object",
+      "description": "User settings shown in My widgets, in this order. Values reach the page as umbra.options.<key>.",
+      "additionalProperties": { "$ref": "#/$defs/option" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "command": {
+      "type": "object",
+      "required": ["id", "run"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,39}$", "description": "What the page passes to umbra.run." },
+        "run": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "description": "[executable, ...arguments]. The executable is a plain program name found on PATH (\"claude\") or an absolute path (\"C:\\\\Tools\\\\app.exe\" on Windows, \"/usr/bin/app\" on Linux; the other form is simply not found). Each other element is a literal argument, or exactly \"${name}\" for a declared parameter (never part of a longer string).",
+          "items": { "type": "string", "maxLength": 1024 }
+        },
+        "description": { "type": "string", "maxLength": 200, "description": "Shown to the user in the approval prompt and in My widgets (not verified by Umbra)." },
+        "params": {
+          "type": "object",
+          "description": "Named string parameters. Each is passed as one argument, must not start with \"-\" unless it is one of the fixed choices, and every declared parameter must be supplied.",
+          "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]{0,31}$" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "maxLength": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 200 },
+              "choices": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "string", "minLength": 1 }, "description": "Only these exact values are accepted." }
+            },
+            "additionalProperties": false
+          }
+        },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 120, "default": 60, "description": "The process tree is killed after this long." }
+      },
+      "additionalProperties": false
+    },
+    "option": {
+      "type": "object",
+      "required": ["label", "type"],
+      "properties": {
+        "label": { "type": "string" },
+        "type": { "enum": ["text", "number", "select", "toggle"] },
+        "default": {},
+        "hint": { "type": "string", "description": "Help text under the field." },
+        "group": { "type": "string", "minLength": 1, "maxLength": 40, "description": "Settings folds options with the same group into one collapsed section titled with it." },
+        "advanced": { "type": "boolean", "description": "true folds this option into a collapsed \"Advanced\" section (unless it has a group)." },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["value", "label"],
+            "properties": { "value": { "type": "string" }, "label": { "type": "string" } },
+            "additionalProperties": false
+          }
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number" }
+      },
+      "if": { "properties": { "type": { "const": "select" } } },
+      "then": { "required": ["choices"] }
+    }
+  }
+}
+```
