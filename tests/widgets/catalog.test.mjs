@@ -19,7 +19,7 @@ function run(manifest, { extra = [] } = {}) {
     const dir = join(repo, "widgets", "demo");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), "<html></html>");
-    const base = { id: "demo", name: "Demo", description: "d", author: "a", version: "1.0.0" };
+    const base = { id: "demo", name: "Demo", description: "d", author: "a", version: "1.0.0", category: "info" };
     writeFileSync(join(dir, "widget.json"), JSON.stringify({ ...base, ...manifest }));
     const r = spawnSync(process.execPath, [join(repo, "scripts", "catalog.mjs"), ...extra], { encoding: "utf8" });
     let index = null;
@@ -63,7 +63,7 @@ test("the index check notices a stale platforms entry", () => {
     const dir = join(repo, "widgets", "demo");
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "index.html"), "<html></html>");
-    const manifest = { id: "demo", name: "Demo", description: "d", author: "a", version: "1.0.0" };
+    const manifest = { id: "demo", name: "Demo", description: "d", author: "a", version: "1.0.0", category: "info" };
     writeFileSync(join(dir, "widget.json"), JSON.stringify(manifest));
     const exe = join(repo, "scripts", "catalog.mjs");
     assert.equal(spawnSync(process.execPath, [exe], { encoding: "utf8" }).status, 0);
