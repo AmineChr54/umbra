@@ -51,6 +51,9 @@ export const bumpIss = (text, v) => replaceVersion(text, /#define\s+AppVersion\s
  * Adds a `<release>` entry for `version` (dated `date`, YYYY-MM-DD) at the top of the AppStream metainfo's `<releases>`,
  * in the indentation and line endings of the newest entry, so check-versions.mjs agrees. Unchanged when already listed.
  */
+/** Today as YYYY-MM-DD in the maintainer's own time zone (toISOString would be the UTC day, off by one near midnight). */
+const localDate = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 export function bumpMetainfo(xml, version, date) {
   if (xml.includes(`<release version="${version}"`)) return xml;
   const m = /([ \t]*)<release version="[^"]+"[^>]*>\r?\n([ \t]*)<url /.exec(xml);
@@ -129,7 +132,7 @@ function main(argv) {
   step(`Bumping to ${version}`);
   writeFileSync(propsPath, bumpProps(props, version), "utf8");
   writeFileSync(issPath, bumpIss(iss, version), "utf8");
-  if (existsSync(metaPath)) writeFileSync(metaPath, bumpMetainfo(readFileSync(metaPath, "utf8"), version, new Date().toISOString().slice(0, 10)), "utf8");
+  if (existsSync(metaPath)) writeFileSync(metaPath, bumpMetainfo(readFileSync(metaPath, "utf8"), version, localDate()), "utf8");
   run("node", ["scripts/check-versions.mjs"], { show: true });
   run("node", ["scripts/catalog.mjs", "--check"], { show: true });
   if (!noTest) {
