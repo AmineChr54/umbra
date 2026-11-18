@@ -47,3 +47,25 @@ test("setTabIcon with null or a non-string clears the suggestion and sends nothi
   umbra.setTabIcon(42);
   assert.deepEqual(tabIcons(posted).map((m) => m.name), [null, null, null, null]);
 });
+
+const keepAlives = (posted) => JSON.parse(JSON.stringify(posted)).filter((m) => m.type === "keepAlive");
+
+test("keepAlive posts only when the boolean state changes, and defaults to true", () => {
+  const { umbra, posted } = load();
+  umbra.keepAlive(false); // already false: no message
+  umbra.keepAlive();      // defaults to true
+  umbra.keepAlive(true);  // unchanged: no message
+  umbra.keepAlive(1);     // coerced to true: no message
+  umbra.keepAlive(false);
+  umbra.keepAlive(0);     // coerced to false: no message
+  assert.deepEqual(keepAlives(posted), [
+    { type: "keepAlive", on: true },
+    { type: "keepAlive", on: false },
+  ]);
+});
+
+test("ready carries the page's own keepAlive state, so a reloaded page starts from false", () => {
+  const { posted } = load();
+  const ready = JSON.parse(JSON.stringify(posted)).filter((m) => m.type === "ready");
+  assert.deepEqual(ready, [{ type: "ready", keepAlive: false }]);
+});
