@@ -27,7 +27,6 @@ let selected = null; // keyboard-selected task id
 let openIds = [];    // ids of the open rows, in display order
 let visibleIds = []; // ids of every shown row (open, completed, later), in display order
 let editingId = null; // task being edited: renders are deferred meanwhile so the field is never destroyed
-let sorting = null;   // a row being dragged to a new place: renders are deferred meanwhile too
 let renderPending = false;
 const toggling = new Set(); // ids whose completion animation is running
 
@@ -63,27 +62,21 @@ function expire() {
 
 // ---------- rendering ----------
 
-/** Rows only move within their band: numbered, important, the rest. */
-const rank = (t) => (t.num ? 0 : t.important ? 1 : 2);
-
-/** Row tints from the right-click menu. Stored as names, so the palette can change without touching saved tasks. */
-const COLORS = [["red", "Red"], ["orange", "Orange"], ["yellow", "Yellow"], ["green", "Green"], ["blue", "Blue"], ["purple", "Purple"]];
-const colorOf = (t) => (COLORS.some(([c]) => c === t.color) ? t.color : "");
-
-/** Numbered tasks first (1, 2, 3...), then important ones, then the rest in your own order (drag, or Alt+Up/Down). */
+/** Numbered tasks first (1, 2, 3...), then important ones, then the rest in the order they were added. */
 function sortOpen(list) {
+  const rank = (t) => (t.num ? 0 : t.important ? 1 : 2);
   return list
     .map((t, i) => ({ t, i }))
     .sort((a, b) => rank(a.t) - rank(b.t) || (a.t.num || 0) - (b.t.num || 0) || a.i - b.i)
     .map((x) => x.t);
 }
 
-function row(t, isDone, sortable = false) {
+function row(t, isDone) {
   const label = R.label(t, weekdayShort);
   const streak = opts().streaks !== false ? R.streakOn(t, dayKey) : 0;
   const tomorrow = t.day && t.day > dayKey;
   return `
-    <div class="row${isDone ? " done" : ""}${t.important ? " important" : ""}${t.id === selected ? " sel" : ""}${colorOf(t) ? ` tint-${colorOf(t)}` : ""}" data-id="${t.id}" data-band="${sortable ? rank(t) : ""}">
+    <div class="row${isDone ? " done" : ""}${t.important ? " important" : ""}${t.id === selected ? " sel" : ""}" data-id="${t.id}">
       <button class="check" data-act="toggle" aria-label="${isDone ? "Mark as not done" : "Complete"}">${ICON.check}</button>
       ${t.num ? `<span class="order num" title="Number ${t.num}">${t.num}</span>` : ""}
       <span class="text" data-act="edit" title="${esc(t.title)}">${esc(t.title)}</span>
@@ -108,7 +101,7 @@ function group(name, title, items, isDone) {
 }
 
 function render() {
-  if (editingId || sorting) { renderPending = true; return; }
+  if (editingId) { renderPending = true; return; }
   renderPending = false;
   dayKey = today();
   expire();
@@ -135,7 +128,7 @@ function render() {
       html += `<div class="empty compact"><div class="icon">${ICON.done}</div><strong>All done for today</strong></div>`;
     else if (!open.length)
       html += `<div class="empty compact"><div class="icon">${ICON.sun}</div><strong>Nothing due today</strong></div>`;
-    html += open.map((t) => row(t, false, true)).join("");
+    html += open.map((t) => row(t, false)).join("");
     html += group("completed", "Completed", done, true);
     html += group("later", "Tomorrow & later", later, false);
   }
@@ -190,9 +183,7 @@ function startEdit(id) {
   const t = find(id);
   const textEl = listEl.querySelector(`.row[data-id="${id}"] .text`);
   if (!t || !textEl) return;
-  // Ask for the keyboard only when the widget doesn't have it: Umbra hands it over by focusing the whole view, which
-  // blurs the field for a moment. With F2 the widget already has the keyboard, so there is nothing to ask for.
-  if (!document.hasFocus()) umbra.requestFocus();
+  umbra.requestFocus();
   selected = id;
   editingId = id;
   const field = document.createElement("textarea");
@@ -231,17 +222,7 @@ function startEdit(id) {
     if (e.key === "Enter") { e.preventDefault(); finish(true, true); }
     else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false, true); }
   });
-  // A blur only ends the edit when focus really moved on. Umbra granting the keyboard blurs the field and gives it back
-  // a moment later (that is why rename closed at once and F2 needed a second press). Switching to another app leaves
-  // the field focused in a window without focus: save then, unless the user comes straight back.
-  field.addEventListener("blur", () => {
-    setTimeout(() => {
-      if (done || !field.isConnected) return;
-      if (document.activeElement !== field) { finish(true, false); return; }
-      if (document.hasFocus()) return;
-      setTimeout(() => { if (!done && !(document.hasFocus() && document.activeElement === field)) finish(true, true); }, 1500);
-    }, 200);
-  });
+  field.addEventListener("blur", () => finish(true, false));
 }
 
 $("add").addEventListener("submit", (e) => {
@@ -287,115 +268,6 @@ listEl.addEventListener("dblclick", (e) => {
   const el = e.target.closest('[data-act="edit"]');
   if (el) startEdit(el.closest(".row").dataset.id);
 });
-
-// ---------- drag to reorder ----------
-// Press a task and move it: the row lifts and the others make room. A task moves within its band (numbered,
-// important, the rest), so where you drop it is where it stays; numbered tasks take over the numbers in their new order.
-
-let justSorted = false;
-const bandRows = (band) => [...listEl.querySelectorAll(`.row[data-band="${band}"]`)];
-
-listEl.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || editingId || sorting || !menuEl.hidden || !ctxEl.hidden) return;
-  const rowEl = e.target.closest(".row");
-  if (!rowEl || !rowEl.dataset.band || e.target.closest("button, textarea")) return;
-  sorting = { id: rowEl.dataset.id, el: rowEl, band: rowEl.dataset.band, y0: e.clientY, y: e.clientY, pointerId: e.pointerId, live: false, grab: 0, frame: 0 };
-});
-
-/** Keep the lifted row under the pointer, moving it among its band's rows once it passes their middle. */
-function follow() {
-  const { el, y, band } = sorting;
-  const others = bandRows(band).filter((r) => r !== el);
-  if (others.length) {
-    const next = others.find((r) => { const b = r.getBoundingClientRect(); return y < b.top + b.height / 2; }) || null;
-    const last = others[others.length - 1];
-    if (next ? el.nextElementSibling !== next : el.previousElementSibling !== last) {
-      const before = new Map(others.map((r) => [r, r.getBoundingClientRect().top]));
-      if (next) next.before(el); else last.after(el);
-      // The rows that made room slide into place instead of jumping.
-      if (motion()) for (const [r, top] of before) {
-        const d = top - r.getBoundingClientRect().top;
-        if (!d) continue;
-        r.style.transition = "none";
-        r.style.transform = `translateY(${d}px)`;
-        requestAnimationFrame(() => { r.style.transition = ""; r.style.transform = ""; });
-      }
-    }
-  }
-  el.style.transform = "";
-  const natural = el.getBoundingClientRect().top;
-  const rows = bandRows(band);
-  const lo = rows[0].getBoundingClientRect().top - 6;
-  const hi = rows[rows.length - 1].getBoundingClientRect().bottom - el.offsetHeight + 6;
-  el.style.transform = `translateY(${Math.max(lo, Math.min(hi, y - sorting.grab)) - natural}px)`;
-}
-
-/** Near the top or bottom edge of the list, scroll it while a row is lifted. */
-function autoScroll() {
-  if (!sorting || !sorting.live) return;
-  const box = listEl.getBoundingClientRect(), edge = 28;
-  const over = sorting.y < box.top + edge ? sorting.y - (box.top + edge) : sorting.y > box.bottom - edge ? sorting.y - (box.bottom - edge) : 0;
-  if (over) {
-    const top = listEl.scrollTop;
-    listEl.scrollTop += Math.max(-12, Math.min(12, over / 2));
-    if (listEl.scrollTop !== top) follow();
-  }
-  sorting.frame = requestAnimationFrame(autoScroll);
-}
-
-window.addEventListener("pointermove", (e) => {
-  if (!sorting || e.pointerId !== sorting.pointerId) return;
-  if (!(e.buttons & 1)) { endSort(false); return; }
-  sorting.y = e.clientY;
-  if (!sorting.live) {
-    if (Math.abs(e.clientY - sorting.y0) < 5) return;
-    sorting.live = true;
-    sorting.grab = sorting.y0 - sorting.el.getBoundingClientRect().top;
-    selected = sorting.id;
-    for (const r of listEl.querySelectorAll(".row.sel")) r.classList.remove("sel");
-    sorting.el.classList.add("lifted", "sel");
-    listEl.classList.add("sorting");
-    try { listEl.setPointerCapture(e.pointerId); } catch { /* the pointer is already gone */ }
-    sorting.frame = requestAnimationFrame(autoScroll);
-  }
-  follow();
-});
-
-window.addEventListener("pointerup", (e) => { if (sorting && e.pointerId === sorting.pointerId) endSort(true); });
-window.addEventListener("pointercancel", () => endSort(false));
-window.addEventListener("blur", () => endSort(false));
-// Pressed but left the list before moving: no drag, and renders shouldn't wait for a release that may happen elsewhere.
-listEl.addEventListener("pointerleave", () => { if (sorting && !sorting.live) endSort(false); });
-
-function endSort(drop) {
-  if (!sorting) return;
-  const s = sorting;
-  sorting = null;
-  cancelAnimationFrame(s.frame);
-  if (!s.live) { if (renderPending) render(); return; }
-  listEl.classList.remove("sorting");
-  s.el.classList.remove("lifted");
-  for (const r of listEl.querySelectorAll(".row")) { r.style.transition = ""; r.style.transform = ""; }
-  // The click that follows the release isn't one.
-  justSorted = true;
-  setTimeout(() => { justSorted = false; }, 0);
-  if (drop) applyOrder(bandRows(s.band).map((r) => r.dataset.id));
-  render();
-  if (drop) save();
-}
-
-/** A band's tasks take their new order: they reuse their own slots in the saved list (and their own numbers) in that order. */
-function applyOrder(ids) {
-  const moved = ids.map(find).filter(Boolean);
-  if (moved.length < 2) return;
-  const slots = moved.map((t) => tasks.indexOf(t)).sort((a, b) => a - b);
-  const nums = moved.every((t) => t.num) ? moved.map((t) => t.num).sort((a, b) => a - b) : null;
-  const next = tasks.slice();
-  moved.forEach((t, i) => { next[slots[i]] = nums ? { ...t, num: nums[i] } : t; });
-  tasks = next;
-}
-
-listEl.addEventListener("click", (e) => { if (justSorted) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
 // ---------- repeat menu ----------
 
@@ -525,9 +397,6 @@ function openCtx(id, x, y) {
     !finished && item("day", deferred ? "Move to today" : "Move to tomorrow", "T"),
     tasks.some((x) => x.num) && item("clearNumbers", "Clear all numbers"),
     '<div class="sep"></div>',
-    `<div class="colors" role="group" aria-label="Color">${[["", "No color"], ...COLORS].map(([c, name]) =>
-      `<button class="swatch ${c ? `tint-${c}` : "none"}${colorOf(t) === c ? " on" : ""}" data-color="${c}" title="${name}" aria-label="${name}" aria-pressed="${colorOf(t) === c}"></button>`).join("")}</div>`,
-    '<div class="sep"></div>',
     item("delete", "Delete", "Del"),
   ].filter(Boolean).join("");
   ctxEl.hidden = false;
@@ -557,13 +426,6 @@ function runAction(act, id) {
 }
 
 ctxEl.addEventListener("click", (e) => {
-  const swatch = e.target.closest("[data-color]");
-  if (swatch && ctxFor) {
-    const id = ctxFor;
-    closeCtx();
-    patch(id, { color: swatch.dataset.color || null });
-    return;
-  }
   const el = e.target.closest("[data-ctx]");
   if (!el || !ctxFor) return;
   const id = ctxFor;
@@ -657,4 +519,4 @@ umbra.ready.then(async () => {
 
 umbra.onSettings(() => { if (!first) render(); });
 umbra.onTimeChanged?.(() => { if (!first) render(); }); // time zone or clock changed: today may be a different day
-umbra.store?.onChange(async () => { if (sorting?.live) return; await load(); render(); });
+umbra.store?.onChange(async () => { await load(); render(); });

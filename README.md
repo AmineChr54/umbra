@@ -11,17 +11,18 @@ Crisp, true-black widgets pinned under your apps on Windows. Sandboxed, scriptab
 ![Windows 10 1809+ / 11](https://img.shields.io/badge/Windows-10%201809%2B%20%7C%2011-0078d4)
 [![MIT license](https://img.shields.io/github/license/AmineChr54/umbra?color=lightgrey)](LICENSE)
 
-<br>
-
-<a href="https://github.com/AmineChr54/umbra/releases/latest"><img src="https://img.shields.io/badge/Download-Windows%20%C2%B7%20Linux-8b8cff?style=for-the-badge" alt="Download Umbra" height="36"></a>
-&nbsp;
-<a href="https://aminechr54.github.io/umbra/"><img src="https://img.shields.io/badge/Website-widgets%2C%20docs%2C%20tutorial-1f2333?style=for-the-badge" alt="Visit the Umbra website" height="36"></a>
-
-**[aminechr54.github.io/umbra](https://aminechr54.github.io/umbra/)** · [Build a widget](CONTRIBUTING.md) · [Automate it](#automate-umbra-cli-scripts-and-ai-agents) · [Roadmap](https://github.com/users/AmineChr54/projects/5)
+**[Download](https://github.com/AmineChr54/umbra/releases/latest)** · [Website and docs](https://aminechr54.github.io/umbra/) · [Build a widget](CONTRIBUTING.md) · [Automate it](#automate-umbra-cli-scripts-and-ai-agents) · [Roadmap](https://github.com/users/AmineChr54/projects/5)
 
 <br>
 
-<a href="https://aminechr54.github.io/umbra/"><img src="docs/hero.png" alt="Umbra widgets on a desktop: clock, weather, quick notes with tabs, a to-do list with colored tasks, a daily quote, S&P 500 and a system monitor" width="100%"></a>
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="widgets/sp500/preview.png" width="230" alt="S&P 500 widget"><br><img src="widgets/clock/preview.png" width="230" alt="Clock widget"><br><img src="widgets/weather/preview.png" width="230" alt="Weather widget"></td>
+    <td align="center" valign="top"><img src="widgets/todo/preview.png" width="230" alt="To Do widget"></td>
+    <td align="center" valign="top"><img src="widgets/pomodoro/preview.png" width="230" alt="Pomodoro widget"><br><img src="widgets/now-playing/preview.png" width="230" alt="Now Playing widget"></td>
+    <td align="center" valign="top"><img src="widgets/habits/preview.png" width="230" alt="Habits widget"></td>
+  </tr>
+</table>
 
 </div>
 

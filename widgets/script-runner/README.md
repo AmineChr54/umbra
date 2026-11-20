@@ -46,33 +46,7 @@ administrator** for the script in Settings, then:
   the widget off, edit or delete the script, or quit Umbra.
 - Links (http and https) in the output are clickable and open in your browser; the small icon after each one copies it. The copy icon at the top right copies the whole output. **Earlier runs** lists the last runs of the selected script (when, exit code, duration).
 - **Notify me** (options): a Windows toast when a script fails or a running one stops on its own (default), on every
-  finish, or never. The first click on Run asks whether Script Runner may notify; you can also switch on *Allow
-  notifications* for this widget in Settings.
-
-## Switches (a VPN, a tunnel)
-
-Put a script's name in **Show as a switch** (options; several names separated by commas) and its row gets an on/off
-switch instead of Run.
-
-- **A script that flips something** (VPN on or off): clicking the switch runs it. The switch shows the first on/off word
-  on the last line the script printed, so end it with `VPN ON` or `VPN OFF` (also understood: true/false, up/down,
-  connected/disconnected, enabled/disabled, active/inactive, yes/no, running/stopped). Text after it stays visible,
-  e.g. `VPN ON - Darmstadt, DE`.
-- **Keep it right**: add a second script named after the first plus ` status` (for `VPN`, a script called `VPN status`)
-  that only checks and prints `ON` or `OFF`. The widget runs it when it starts, every minute (**Check switches every**),
-  and when it comes back on screen, and hides it from the list. Without it, the switch shows the last run's answer, which
-  can be stale if you change the VPN in its own app.
-- **A script that keeps running** (a tunnel): the switch is on while it runs; clicking starts or stops it.
-
-A status script for a Tailscale exit node, for example:
-
-```powershell
-$ts = (Get-Command tailscale.exe -ErrorAction SilentlyContinue).Source
-if (-not $ts) { $ts = "$env:ProgramFiles\Tailscale\tailscale.exe" }
-$st = (& $ts status --json | Out-String) | ConvertFrom-Json
-$exit = @($st.Peer.PSObject.Properties.Value | Where-Object { $_.ExitNode })
-if ($st.BackendState -eq 'Running' -and $exit.Count) { "VPN ON - $($exit[0].HostName)" } else { 'VPN OFF' }
-```
+  finish, or never. Also switch on *Allow notifications* for this widget in Settings.
 
 Notes:
 

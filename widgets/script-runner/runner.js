@@ -98,8 +98,6 @@ function migrate(r) {
 
 async function loadState() {
   results = migrate(await umbra.store.get("results", {}));
-  const c = await umbra.store.get("checks", {});
-  checks = c && typeof c === "object" && !Array.isArray(c) ? c : {};
   const ui = await umbra.store.get("ui", {});
   selected = ui && typeof ui.selected === "string" ? ui.selected : null;
 }
@@ -208,84 +206,6 @@ async function poll() {
   } catch { /* try again next second */ }
 }
 
-// ---------- switches ----------
-// A script named in the "Show as a switch" option gets an on/off switch instead of Run. Its state is the first on/off
-// word on the last line it printed ("VPN ON - Darmstadt" is on). A script named "<name> status" is its check: the widget
-// runs it now and then (and hides it from the list), so the switch stays right when the state changes elsewhere.
-// A script that keeps running needs neither: the switch is on while it runs.
-
-const ON = new Set(["on", "true", "up", "connected", "enabled", "active", "yes", "running", "started"]);
-const STATE_WORD = /\b(on|off|true|false|up|down|connected|disconnected|enabled|disabled|active|inactive|yes|no|running|stopped|started)\b/i;
-let checks = {};            // switch id -> { at, on, line } from its last status check
-const checking = new Set(); // switch ids whose status check runs now
-let checkTimer = null;
-
-const switchNames = () => String(opts().switches || "").split(/[,;\n]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
-const isSwitch = (c) => !!c && switchNames().some((n) => n === c.id.toLowerCase() || n === nameOf(c).toLowerCase());
-const statusOf = (c) => (keeps(c) ? null : commands.find((x) => x !== c && !keeps(x) && !admin(x) && nameOf(x).trim().toLowerCase() === `${nameOf(c).trim().toLowerCase()} status`) || null);
-/** A status script is part of its switch, not a row of its own. */
-const isCheck = (x) => commands.some((c) => isSwitch(c) && statusOf(c) === x);
-
-/** { on: true | false | null, line } from what a script printed. */
-function parseState(text) {
-  const line = lastLine(text);
-  const m = STATE_WORD.exec(line);
-  return { on: m ? ON.has(m[1].toLowerCase()) : null, line };
-}
-
-/** The switch's state: running for a script that keeps running, else the newer of its last good run and its last check. */
-function switchState(c) {
-  if (keeps(c)) {
-    const s = services.get(c.id);
-    return { on: !!(s && (s.running || s.restarting)), line: "", at: s?.since || 0 };
-  }
-  const r = lastRun(c.id), chk = checks[c.id];
-  let src = r && r.kind === "ok" ? { at: r.at, ...parseState(r.stdout) } : null;
-  if (chk && (!src || chk.at > src.at)) src = chk;
-  return src || { on: null, line: "", at: 0 };
-}
-
-async function checkSwitch(c) {
-  const st = statusOf(c);
-  if (!st || checking.has(c.id) || running.has(c.id) || running.has(st.id)) return;
-  checking.add(c.id);
-  try {
-    const r = await umbra.run(st.id);
-    checks[c.id] = r.exitCode === 0 && !r.timedOut && !r.stopped
-      ? { at: Date.now(), ...parseState(r.stdout) }
-      : { at: Date.now(), on: null, line: `Status check failed${r.exitCode != null ? ` (exit ${r.exitCode})` : ""}` };
-  } catch (err) {
-    // Not approved yet (or gone): leave the state from the last run alone.
-    console.warn("Script Runner: status check", nameOf(st), err);
-  } finally {
-    checking.delete(c.id);
-  }
-  umbra.store.set("checks", checks).catch(() => {});
-  render();
-}
-
-function checkAll() {
-  if (document.hidden) return;
-  for (const c of commands) if (isSwitch(c) && statusOf(c)) checkSwitch(c);
-}
-
-function setupChecks() {
-  clearInterval(checkTimer); checkTimer = null;
-  if (!commands.some((c) => isSwitch(c) && statusOf(c))) return;
-  const secs = Math.max(15, Number(opts().checkSeconds) || 60);
-  checkTimer = setInterval(checkAll, secs * 1000);
-}
-
-/** Click on a switch: start or stop a script that keeps running, otherwise run the script (it does the switching). */
-function flip(c) {
-  if (keeps(c)) {
-    const s = services.get(c.id);
-    if (s && (s.running || s.restarting)) stopScript(c.id); else startService(c);
-    return;
-  }
-  runScript(c.id);
-}
-
 // ---------- automatic runs ----------
 
 /** The option names a script by its name or its id. */
@@ -326,15 +246,6 @@ function canAuto(id) {
 // ---------- rendering ----------
 
 function subtitle(c) {
-  if (isSwitch(c) && !keeps(c)) {
-    if (running.has(c.id)) return { text: `Switching… ${fmtMs(Date.now() - running.get(c.id))}`, cls: "" };
-    const r = lastRun(c.id), st = switchState(c);
-    if (r && r.kind === "warn") return { text: "Needs your approval", cls: "warn" };
-    if (r && r.at > st.at && r.kind !== "ok" && r.kind !== "stopped" && r.kind !== "cancelled")
-      return { text: `${r.exitCode != null ? `Failed · exit ${r.exitCode}` : "Could not run"} · ${ago(r.at)}`, cls: "bad" };
-    if (!st.at) return { text: c.description || "Click the switch to run it", cls: "" };
-    return { text: `${st.line || (st.on ? "On" : st.on === false ? "Off" : "Unknown")} · ${ago(st.at)}`, cls: st.on ? "live" : st.on === null ? "warn" : "" };
-  }
   if (keeps(c)) {
     const s = services.get(c.id), r = lastRun(c.id);
     if (s && s.running) return { text: `Running · ${fmtMs(Date.now() - s.since)}${s.restarts ? ` · restarted ${s.restarts}×` : ""}`, cls: "live" };
@@ -360,7 +271,6 @@ function subtitle(c) {
 }
 
 function dotClass(c) {
-  if (isSwitch(c) && !keeps(c)) return running.has(c.id) ? "run" : switchState(c).on ? "live" : "";
   if (keeps(c)) {
     const s = services.get(c.id);
     if (!s) return "";
@@ -388,21 +298,12 @@ function renderList() {
     listEl.innerHTML = `<div class="empty">No scripts yet. Add one in Settings: My widgets, Script Runner, Add script. There are examples to start from.</div>`;
     return;
   }
-  listEl.innerHTML = commands.filter((c) => !isCheck(c)).map((c) => {
-    const s = subtitle(c), b = button(c), sw = isSwitch(c);
-    let control = `<button class="go ${b.cls}" data-act="${b.act}" data-cmd="${esc(c.id)}" ${b.disabled ? "disabled" : ""}>${b.label}</button>`;
-    if (sw) {
-      const st = switchState(c);
-      const busy = running.has(c.id) || (keeps(c) && !!services.get(c.id)?.restarting);
-      const label = `${nameOf(c)}: ${st.on ? "on" : st.on === false ? "off" : "unknown"}`;
-      control = `<button class="switch${st.on ? " on" : ""}${st.on === null ? " unknown" : ""}${busy ? " busy" : ""}" role="switch" aria-checked="${st.on === true}"
-        aria-label="${esc(label)}" title="${esc(label)}" data-act="flip" data-cmd="${esc(c.id)}" ${busy || (keeps(c) && st.on && !canStop) ? "disabled" : ""}><span class="knob"></span></button>`;
-    }
-    const tags = `${keeps(c) && !sw ? '<span class="tag">keeps running</span>' : ""}${admin(c) ? '<span class="tag">admin</span>' : ""}`;
-    return `<div class="row${c.id === selected ? " sel" : ""}${sw ? " is-switch" : ""}" data-id="${esc(c.id)}">
+  listEl.innerHTML = commands.map((c) => {
+    const s = subtitle(c), b = button(c);
+    return `<div class="row${c.id === selected ? " sel" : ""}" data-id="${esc(c.id)}">
       <span class="dot ${dotClass(c)}"></span>
-      <div class="info"><div class="name">${esc(nameOf(c))}${tags}</div><div class="sub num ${s.cls}">${esc(s.text)}</div></div>
-      ${control}
+      <div class="info"><div class="name">${esc(nameOf(c))}${keeps(c) ? '<span class="tag">keeps running</span>' : ""}${admin(c) ? '<span class="tag">admin</span>' : ""}</div><div class="sub num ${s.cls}">${esc(s.text)}</div></div>
+      <button class="go ${b.cls}" data-act="${b.act}" data-cmd="${esc(c.id)}" ${b.disabled ? "disabled" : ""}>${b.label}</button>
     </div>`;
   }).join("");
 }
@@ -555,8 +456,7 @@ function renderHistory(c) {
 
 function render() {
   $("title").textContent = String(opts().title || "Scripts");
-  const shown = commands.filter((c) => !isCheck(c)).length;
-  $("count").textContent = shown ? `${shown} script${shown > 1 ? "s" : ""}` : "";
+  $("count").textContent = commands.length ? `${commands.length} script${commands.length > 1 ? "s" : ""}` : "";
   renderList();
   renderOutput();
   if (first) { first = false; requestAnimationFrame(() => umbra.rendered()); }
@@ -576,12 +476,8 @@ function tick() {
 listEl.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-act]");
   if (btn) {
-    // A click is the one moment Umbra may ask whether this widget can notify; it answers at once once you've decided.
-    if (String(opts().notify || "fail") !== "never" && typeof umbra.requestNotifications === "function")
-      umbra.requestNotifications().catch(() => {});
     if (btn.dataset.act === "run") runScript(btn.dataset.cmd);
     else if (btn.dataset.act === "stop") stopScript(btn.dataset.cmd);
-    else if (btn.dataset.act === "flip") { const c = commands.find((x) => x.id === btn.dataset.cmd); if (c) flip(c); }
     return;
   }
   const row = e.target.closest(".row");
@@ -614,31 +510,18 @@ setInterval(tick, 1000);
 (async () => {
   await umbra.ready;
   await Promise.all([loadCommands(), loadState()]);
-  if (!selected || !commands.some((c) => c.id === selected && !isCheck(c))) selected = commands.find((c) => !isCheck(c))?.id ?? null;
+  if (!selected || !commands.some((c) => c.id === selected)) selected = commands.length ? commands[0].id : null;
   render();
   setupAuto();
-  setupChecks();
-  checkAll();
-  // Back on screen after a while (a hidden tab, a covered desktop): check the switches again.
-  let hiddenAt = 0;
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) hiddenAt = Date.now();
-    else if (Date.now() - hiddenAt > 30000) checkAll();
-  });
   const id = autoId();
   if (opts().runOnStart && id && canAuto(id)) runScript(id);
-  let switchOpt = String(opts().switches || "");
-  umbra.onSettings(() => {
-    render(); setupAuto(); setupChecks();
-    // A switch just named in the options: check it now instead of after the first interval.
-    if (String(opts().switches || "") !== switchOpt) { switchOpt = String(opts().switches || ""); checkAll(); }
-  });
+  umbra.onSettings(() => { render(); setupAuto(); });
   // A script added, edited or deleted in Settings, or one that keeps running started or stopped, shows up at once.
   if (umbra.onCommandsChange) umbra.onCommandsChange(async () => {
     await loadCommands();
-    if (!commands.some((c) => c.id === selected && !isCheck(c))) { selected = commands.find((c) => !isCheck(c))?.id ?? null; saveUi(); }
+    if (!commands.some((c) => c.id === selected)) { selected = commands.length ? commands[0].id : null; saveUi(); }
     if (live && !running.has(live.id) && !services.get(live.id)?.running) live = null;
-    render(); setupAuto(); setupChecks();
+    render(); setupAuto();
   });
   umbra.store.onChange(async () => { await loadState(); render(); });
 })();

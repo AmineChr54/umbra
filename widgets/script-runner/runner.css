@@ -68,28 +68,3 @@ html, body { height: 100%; overflow: hidden; }
 .hist .dot { width: 6px; height: 6px; }
 .hist-when { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hist-ms { color: var(--text-3); }
-
-/* An on/off switch instead of Run, for scripts named in "Show as a switch" (a VPN, a tunnel). */
-.switch {
-  flex: none; position: relative; width: 44px; height: 24px; padding: 0;
-  border: 1px solid var(--line-strong); border-radius: 12px; background: rgba(255,255,255,0.08);
-  cursor: pointer; transition: background 160ms, border-color 160ms;
-}
-.switch .knob {
-  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--text-2); transition: transform 180ms var(--ease-out), background 160ms;
-}
-.switch:hover:not(:disabled) { border-color: var(--accent); }
-.switch.on { background: var(--up); border-color: var(--up); }
-.switch.on .knob { transform: translateX(20px); background: #000; }
-.switch.unknown .knob { transform: translateX(10px); background: var(--text-3); }
-.switch.busy { cursor: progress; }
-.switch.busy .knob { animation: pulse 0.9s ease-in-out infinite; }
-.switch:disabled:not(.busy) { opacity: 0.5; cursor: default; }
-.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (forced-colors: active) {
-  .switch { border-color: ButtonText; }
-  .switch.on { background: Highlight; }
-  .switch .knob { background: ButtonText; }
-  .switch.on .knob { background: HighlightText; }
-}

@@ -1,40 +1,14 @@
 html, body { height: 100%; overflow: hidden; }
 .notes { height: 100%; display: flex; flex-direction: column; padding: 14px 14px 10px; gap: 8px; }
-/* The tab strip scrolls sideways (wheel) once the tabs don't fit; + adds one, x or middle-click deletes, double-click renames, drag moves. */
-.tabs { display: flex; gap: 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; flex: none; padding-bottom: 1px; }
-.tabs::-webkit-scrollbar { display: none; }
+.tabs { display: flex; gap: 4px; }
 .tab {
-  position: relative; flex: none; max-width: 130px;
-  display: flex; align-items: center; gap: 2px; padding: 0 4px 0 10px; height: 26px;
-  font-size: 12px; font-weight: 500; color: var(--text-3);
-  background: transparent; border: 1px solid var(--line); border-radius: var(--radius-s); cursor: pointer;
+  flex: 1; min-width: 0; padding: 5px 0; font: inherit; font-size: 12px; font-weight: 500;
+  color: var(--text-3); background: transparent; border: 1px solid var(--line);
+  border-radius: var(--radius-s); cursor: pointer;
 }
-.tab .name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 6px; }
 .tab:hover { color: var(--text-2); }
 .tab.on { color: var(--text); background: var(--accent-soft); border-color: var(--accent); }
-.tab.full .name::after { content: " \2022"; color: var(--accent); }
-.tab .x {
-  flex: none; width: 0; height: 18px; padding: 0; margin: 0; overflow: hidden; display: grid; place-items: center;
-  color: var(--text-3); background: none; border: 0; border-radius: 5px; cursor: pointer; opacity: 0;
-  transition: width 120ms var(--ease-out), opacity 120ms;
-}
-.tab:hover .x, .tab.on .x { width: 18px; opacity: 1; }
-.tab .x:hover { color: var(--text); background: var(--surface-3); }
-.tab .x svg, .tabs .add svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
-.tabs .add {
-  flex: none; width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
-  color: var(--text-3); background: transparent; border: 1px dashed var(--line); border-radius: var(--radius-s); cursor: pointer;
-}
-.tabs .add:hover { color: var(--accent-strong); border-color: var(--accent); }
-.tab.editing { padding-right: 4px; }
-.tab .rename {
-  width: 100%; min-width: 60px; padding: 0; font: inherit; color: var(--text);
-  background: none; border: 0; outline: none; user-select: text;
-}
-.tab.editing { min-width: 90px; max-width: 160px; border-color: var(--accent); }
-.tabs.sorting, .tabs.sorting * { cursor: grabbing !important; }
-.tabs.sorting .tab:not(.lifted) { transition: transform 150ms var(--ease-out); }
-.tab.lifted { z-index: 2; background: var(--surface-3); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6); }
+.tab.full::after { content: " \2022"; color: var(--accent); }
 .editor {
   flex: 1; min-height: 0; width: 100%; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere;
   background: var(--surface-1); color: var(--text); font-family: inherit; line-height: 1.45;
@@ -56,8 +30,4 @@ html, body { height: 100%; overflow: hidden; }
 .editor::-webkit-scrollbar { width: 6px; }
 .editor::-webkit-scrollbar-button { display: none; }
 .editor::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 3px; }
-.foot { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--text-3); }
-.foot #undo { margin-left: auto; white-space: nowrap; }
-.foot #undo[hidden] { display: none; }
-.foot .undo { padding: 0; font: inherit; font-weight: 600; color: var(--accent-strong); background: none; border: 0; cursor: pointer; }
-.foot .undo:hover { text-decoration: underline; }
+.foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); }

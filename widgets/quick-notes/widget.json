@@ -2,10 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json",
   "id": "quick-notes",
   "name": "Quick Notes",
-  "description": "A scratchpad on your desktop with note tabs you add, rename, reorder and delete (up to 12). Renders basic markdown as you type (headings, bold, lists), saves as you type and shows a character count. Everything stays on your PC.",
+  "description": "A scratchpad on your desktop with up to five note tabs. Renders basic markdown as you type (headings, bold, lists), saves as you type and shows a character count. Everything stays on your PC.",
   "author": "AmineChr54",
-  "version": "1.3.0",
-  "changelog": "Tabs: + adds one, x or middle-click deletes it (with Undo), double-click renames it, drag moves it. Wrapped list items continue under their text.",
+  "version": "1.2.2",
+  "changelog": "Wrapped list items and indented lines continue under their text instead of at the left edge.",
   "category": "productivity",
   "manifestVersion": 1,
   "entry": "index.html",
@@ -16,6 +16,7 @@
   "defaultPosition": { "x": 24, "y": 500 },
   "permissions": { "hosts": [] },
   "options": {
+    "tabs": { "label": "Note tabs", "type": "number", "default": 3, "min": 1, "max": 5, "step": 1 },
     "fontSize": { "label": "Text size", "type": "number", "default": 14, "min": 11, "max": 20, "step": 1 }
   }
 }
