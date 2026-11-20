@@ -324,6 +324,71 @@ function outMeta() {
 /** What the Copy button copies: the output shown, in full (not cut to the line limit). */
 let copyText = "";
 
+const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>';
+const ICON_DONE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5"/></svg>';
+
+/** http(s) links in the output; trailing punctuation and an unmatched closing bracket stay outside, as in "(see https://x.y/z).". */
+const URL_RE = /\bhttps?:\/\/[^\s<>"'`]+/gi;
+function trimUrl(u) {
+  const closers = { ")": "(", "]": "[", "}": "{" };
+  const n = (s, ch) => s.split(ch).length - 1;
+  while (u) {
+    const ch = u[u.length - 1];
+    if (/[.,;:!?*]/.test(ch) || (closers[ch] && n(u, ch) > n(u, closers[ch]))) u = u.slice(0, -1);
+    else break;
+  }
+  return u;
+}
+const isWebUrl = (u) => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) && !!x.hostname && u.length <= 2048; } catch { return false; } };
+
+/** Escaped output text with each web link made clickable (opens in the browser) and a copy icon after it. */
+function linkify(text) {
+  text = String(text);
+  let html = "", at = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const url = trimUrl(m[0]);
+    if (m.index < at || !isWebUrl(url)) continue;
+    html += esc(text.slice(at, m.index))
+      // The last character and the copy icon share a no-wrap span, so the icon never lands on a line of its own.
+      + `<a class="link" role="link" tabindex="0" data-url="${esc(url)}" title="Open in your browser">${esc(url.slice(0, -1))}<span class="tail">${esc(url.slice(-1))}`
+      + `<button type="button" class="url-copy" data-copy="${esc(url)}" title="Copy link" aria-label="Copy link">${ICON_COPY}</button></span></a>`;
+    at = m.index + url.length;
+  }
+  return html + esc(text.slice(at));
+}
+
+/** Rewrite the log only when it changed, so a hover, a click or a text selection in it survives the once-a-second refresh. */
+let logHtml = null;
+function setLog(html) {
+  if (html === logHtml) return;
+  logHtml = html;
+  logEl.innerHTML = html;
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {
+    // Without the async clipboard: copy through a hidden text box.
+    const t = Object.assign(document.createElement("textarea"), { value: text });
+    t.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+    document.body.append(t);
+    t.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    t.remove();
+    return ok;
+  }
+}
+
+/** A check mark on the button for a moment (or "Couldn't copy" in its tooltip). */
+function flash(btn, ok) {
+  const title = btn.dataset.title || (btn.dataset.title = btn.title);
+  btn.innerHTML = ok ? ICON_DONE : ICON_COPY;
+  btn.classList.toggle("done", ok);
+  btn.title = ok ? "Copied" : "Couldn't copy";
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => { btn.innerHTML = ICON_COPY; btn.classList.remove("done"); btn.title = title; }, 1400);
+}
+
 function renderOutput() {
   const c = commands.find((x) => x.id === selected);
   bigEl.hidden = true;
@@ -331,7 +396,7 @@ function renderOutput() {
   copyText = "";
   if (!c) {
     $("out-name").textContent = "Output";
-    logEl.innerHTML = commands.length ? '<span class="dim">Press Run on a script to see its output here.</span>' : "";
+    setLog(commands.length ? '<span class="dim">Press Run on a script to see its output here.</span>' : "");
     renderHistory(null);
     copyBtn.hidden = true;
     return;
@@ -346,8 +411,8 @@ function renderOutput() {
   if (running.has(c.id) || (svc && liveText)) {
     const t = trimLines(liveText || "", n, true);
     copyText = liveText || "";
-    logEl.innerHTML = (t.cut ? `<span class="dim">... ${t.cut} earlier line${t.cut > 1 ? "s" : ""}</span>\n` : "")
-      + (t.text ? esc(t.text).replace(/^\[Umbra\] .*$/gm, (l) => `<span class="dim">${l}</span>`) : '<span class="dim">Waiting for output...</span>');
+    setLog((t.cut ? `<span class="dim">... ${t.cut} earlier line${t.cut > 1 ? "s" : ""}</span>\n` : "")
+      + (t.text ? linkify(t.text).replace(/^\[Umbra\] .*$/gm, (l) => `<span class="dim">${l}</span>`) : '<span class="dim">Waiting for output...</span>'));
     if (atBottom || first) logEl.scrollTop = logEl.scrollHeight;
     copyBtn.hidden = !copyText;
     renderHistory(keeps(c) ? null : c);
@@ -358,7 +423,7 @@ function renderOutput() {
   if (!r || keeps(c)) {
     const msg = r && r.note ? `<span class="note">${esc(r.note)}</span>`
       : `<span class="dim">${esc(c.description || (keeps(c) ? "Press Start. It keeps running until you stop it or turn the widget off." : "Never run."))}</span>`;
-    logEl.innerHTML = msg;
+    setLog(msg);
     renderHistory(null);
     copyBtn.hidden = true;
     return;
@@ -366,10 +431,10 @@ function renderOutput() {
   const out = trimLines(r.stdout, n), err = trimLines(r.stderr, Math.max(3, Math.floor(n / 4)));
   let html = "";
   if (r.note) html += `<span class="note">${esc(r.note)}</span>\n`;
-  if (out.text) html += esc(out.text) + (out.cut ? `\n<span class="dim">... ${out.cut} more line${out.cut > 1 ? "s" : ""}</span>` : "") + "\n";
-  if (err.text) html += `<span class="err">${esc(err.text)}</span>` + (err.cut ? `\n<span class="dim">... ${err.cut} more error line${err.cut > 1 ? "s" : ""}</span>` : "") + "\n";
+  if (out.text) html += linkify(out.text) + (out.cut ? `\n<span class="dim">... ${out.cut} more line${out.cut > 1 ? "s" : ""}</span>` : "") + "\n";
+  if (err.text) html += `<span class="err">${linkify(err.text)}</span>` + (err.cut ? `\n<span class="dim">... ${err.cut} more error line${err.cut > 1 ? "s" : ""}</span>` : "") + "\n";
   if (!out.text && !err.text && !r.note) html = '<span class="dim">(no output)</span>';
-  logEl.innerHTML = html;
+  setLog(html);
   copyText = [r.stdout, r.stderr].filter((s) => s && s.trim()).join("\n");
   copyBtn.hidden = !copyText;
   if (opts().bigLine && r.kind === "ok" && lastLine(r.stdout)) { bigEl.textContent = lastLine(r.stdout); bigEl.hidden = false; }
@@ -419,20 +484,25 @@ listEl.addEventListener("click", (e) => {
   if (row) { selected = row.dataset.id; live = null; saveUi(); render(); poll(); }
 });
 
+copyBtn.innerHTML = ICON_COPY;
 copyBtn.addEventListener("click", async () => {
-  if (!copyText) return;
-  let ok = false;
-  try { await navigator.clipboard.writeText(copyText); ok = true; } catch {
-    // Without the async clipboard: copy through a hidden text box.
-    const t = Object.assign(document.createElement("textarea"), { value: copyText });
-    t.style.cssText = "position:fixed;opacity:0;pointer-events:none";
-    document.body.append(t);
-    t.select();
-    try { ok = document.execCommand("copy"); } catch { ok = false; }
-    t.remove();
-  }
-  copyBtn.textContent = ok ? "Copied" : "Couldn't copy";
-  setTimeout(() => { copyBtn.textContent = "Copy"; }, 1400);
+  if (copyText) flash(copyBtn, await copy(copyText));
+});
+
+// Links in the output: a click opens it in the browser (not while editing the layout, and not at the end of a text selection).
+function openLink(a) {
+  if (umbra.settings?.editMode || !getSelection().isCollapsed) return;
+  umbra.openUrl(a.dataset.url);
+}
+logEl.addEventListener("click", async (e) => {
+  const cp = e.target.closest(".url-copy");
+  if (cp) { flash(cp, await copy(cp.dataset.copy)); return; }
+  const a = e.target.closest(".link");
+  if (a) openLink(a);
+});
+logEl.addEventListener("keydown", (e) => {
+  const a = e.target.closest?.(".link");
+  if (a && e.key === "Enter" && !e.target.closest(".url-copy")) { e.preventDefault(); openLink(a); }
 });
 
 setInterval(tick, 1000);

@@ -41,8 +41,11 @@ html, body { height: 100%; overflow: hidden; }
 .out-head { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; }
 .out-name { font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .out-meta { margin-left: auto; color: var(--text-3); white-space: nowrap; }
-.copy { flex: none; margin: -2px -4px -2px 0; padding: 0 6px; border: 0; border-radius: 5px; background: none; color: var(--text-3); font: inherit; font-size: 11px; cursor: pointer; }
+.copy { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 20px; margin: -3px -5px -3px 0; padding: 0; border: 0; border-radius: 5px; background: none; color: var(--text-3); cursor: pointer; }
+.copy[hidden] { display: none; }
 .copy:hover { background: var(--surface-3); color: var(--text); }
+.copy svg, .url-copy svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.copy.done, .url-copy.done { color: var(--up); }
 .big { margin-top: 6px; font-family: var(--font-display); font-size: 32px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log { flex: 1; min-height: 0; margin: 8px 0 0; overflow: auto; font: 11px/1.5 Consolas, "Cascadia Mono", monospace; color: var(--text); white-space: pre-wrap; word-break: break-word; user-select: text; }
 .log::-webkit-scrollbar { width: 6px; }
@@ -50,6 +53,13 @@ html, body { height: 100%; overflow: hidden; }
 .log .err { color: #ff8a8e; }
 .log .note { color: #ffb454; }
 .log .dim { color: var(--text-3); }
+.log .link .tail { white-space: nowrap; }
+.log .link { color: var(--accent-strong); text-decoration: underline; text-decoration-color: rgba(139,147,255,0.45); text-underline-offset: 2px; cursor: pointer; border-radius: 2px; }
+.log .link:hover { text-decoration-color: currentColor; }
+.log .link:focus-visible, .url-copy:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.url-copy { display: inline-flex; text-decoration: none; align-items: center; justify-content: center; width: 18px; height: 16px; margin: 0 1px 0 3px; padding: 0; vertical-align: -3px; border: 0; border-radius: 4px; background: none; color: var(--text-3); cursor: pointer; }
+.url-copy:hover { background: var(--surface-3); color: var(--text); }
+.url-copy svg { width: 12px; height: 12px; }
 
 /* Earlier runs of the selected script */
 .history { flex: none; max-height: 92px; overflow-y: auto; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
