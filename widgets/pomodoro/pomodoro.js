@@ -77,9 +77,19 @@ function notify(e) {
   umbra.notify?.({ title, body, tag: "pomodoro-phase" })?.catch?.(() => {});
 }
 
+/**
+ * Phase toasts need this widget's notifications switch, which is off until the user allows it. Starting a session is a
+ * click on the widget, the one moment Umbra may ask; once the user has decided it answers at once without a prompt.
+ */
+function askNotifications() {
+  if (umbra.options.notify === false || typeof umbra.requestNotifications !== "function") return;
+  umbra.requestNotifications().catch(() => { /* not right after a click, or asked recently */ });
+}
+
 // ---- actions ----
 const now = () => Date.now();
 function startSession() {
+  askNotifications();
   setup.minutes = S.clampTotal(setup.minutes);
   store("setup", setup);
   apply(S.start(S.create(setup.minutes, setup.breaks), now()));
