@@ -3,29 +3,264 @@
   const $ = (id) => document.getElementById(id);
   const MAX = 100000;
   const ed = $("text");
+  const MAX_TABS = 12;
+  const strip = $("tabs");
+  // One note per tab: "notes" holds the texts and "names" the names you gave them ("" = named after the first line).
   let notes = await umbra.store.get("notes", []);
+  let names = await umbra.store.get("names", null);
   let active = await umbra.store.get("active", 0);
   let timer = null, dirty = false, composing = false;
   let lines = [""];
   let hist = [], hi = -1, histAt = 0;
+  let renaming = -1, tabDrag = null, tabsStale = false, undoTimer = null;
 
-  const nTabs = () => Math.min(5, Math.max(1, Number(umbra.options.tabs) || 3));
   const LIST = /^(\s*)([-*]|\d+\.)(\s)(.*)$/;
   const HEAD = /^(\s*)(#{1,3})(\s)(.*)$/;
   const TAB = "    ";
 
+  /** Notes and names line up one per tab, at least one tab. */
+  function normalize() {
+    if (!Array.isArray(notes)) notes = [];
+    notes = notes.map((n) => (typeof n === "string" ? n : ""));
+    if (!Array.isArray(names)) {
+      // Before 1.3 the number of tabs was an option (1-5). Keep that many, and every tab that has text.
+      const last = notes.reduce((n, t, i) => (t ? i + 1 : n), 0);
+      const count = Math.max(last, Math.min(5, Math.max(1, Number(umbra.options.tabs) || 3)));
+      notes = Array.from({ length: count }, (_, i) => notes[i] || "");
+      names = notes.map(() => "");
+      umbra.store.set("names", names).catch(() => {});
+    }
+    names = notes.map((_, i) => (typeof names[i] === "string" ? names[i] : ""));
+    if (!notes.length) { notes = [""]; names = [""]; }
+    active = Math.max(0, Math.min(notes.length - 1, Number(active) || 0));
+  }
+  normalize();
+
+  /** The tab's own name, else the first line of its note without markdown, else "Note N". */
+  function label(i) {
+    if ((names[i] || "").trim()) return names[i].trim();
+    const first = (notes[i] || "").split("\n").map((l) => l.replace(/^\s*(#{1,3}|[-*]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim()).find(Boolean);
+    return first ? first.slice(0, 40) : `Note ${i + 1}`;
+  }
+
+  async function saveTabs() {
+    try { await Promise.all([umbra.store.set("notes", notes), umbra.store.set("names", names), umbra.store.set("active", active)]); }
+    catch { $("status").textContent = "Could not save (too large)"; }
+  }
+
   function drawTabs() {
-    const t = nTabs();
-    if (active >= t) active = t - 1;
-    $("tabs").replaceChildren(...Array.from({ length: t }, (_, i) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "tab" + (i === active ? " on" : "") + ((notes[i] || "") && i !== active ? " full" : "");
-      b.textContent = String(i + 1);
-      b.title = `Note ${i + 1}`;
-      b.onclick = async () => { await flush(); active = i; umbra.store.set("active", i); drawTabs(); load(); };
-      return b;
-    }));
+    // Never rebuild the strip under a rename field or a tab being dragged; catch up afterwards.
+    if (renaming >= 0 || tabDrag?.live) { tabsStale = true; return; }
+    tabsStale = false;
+    const els = notes.map((text, i) => {
+      const t = document.createElement("div");
+      t.className = "tab" + (i === active ? " on" : "") + (text && i !== active ? " full" : "");
+      t.dataset.i = String(i);
+      t.setAttribute("role", "tab");
+      t.setAttribute("aria-selected", String(i === active));
+      t.title = `${label(i)}\nDouble-click to rename, drag to move, middle-click to delete`;
+      t.append(Object.assign(document.createElement("span"), { className: "name", textContent: label(i) }));
+      if (notes.length > 1) {
+        const x = document.createElement("button");
+        x.type = "button"; x.className = "x"; x.title = "Delete tab"; x.setAttribute("aria-label", `Delete ${label(i)}`);
+        x.innerHTML = '<svg viewBox="0 0 10 10"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5"/></svg>';
+        t.append(x);
+      }
+      return t;
+    });
+    if (notes.length < MAX_TABS) {
+      const add = document.createElement("button");
+      add.type = "button"; add.className = "add"; add.title = "New tab"; add.setAttribute("aria-label", "New tab");
+      add.innerHTML = '<svg viewBox="0 0 12 12"><path d="M6 2v8M2 6h8"/></svg>';
+      els.push(add);
+    }
+    const x = strip.scrollLeft;
+    strip.replaceChildren(...els);
+    strip.scrollLeft = x;
+  }
+
+  function showActiveTab() {
+    strip.querySelector(".tab.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
+  async function selectTab(i) {
+    if (i === active || i < 0 || i >= notes.length) return;
+    await flush();
+    active = i;
+    umbra.store.set("active", i).catch(() => {});
+    drawTabs(); load(); showActiveTab();
+  }
+
+  async function addTab() {
+    if (notes.length >= MAX_TABS) return;
+    await flush();
+    notes.push(""); names.push("");
+    active = notes.length - 1;
+    drawTabs(); load(); showActiveTab();
+    saveTabs();
+    // The + was just pressed, so Umbra lets the widget take the keyboard: start typing straight away.
+    umbra.requestFocus();
+    ed.focus();
+  }
+
+  async function deleteTab(i) {
+    if (notes.length < 2 || i < 0 || i >= notes.length) return;
+    await flush();
+    const gone = { i, text: notes[i], name: names[i], wasActive: i === active, label: label(i) };
+    notes.splice(i, 1); names.splice(i, 1);
+    if (i < active || (i === active && active === notes.length)) active--;
+    drawTabs(); load(); showActiveTab();
+    saveTabs();
+    if (gone.text || gone.name) offerUndo(gone);
+  }
+
+  /** A tab that had text can come back for a few seconds. */
+  function offerUndo(gone) {
+    const st = $("undo");
+    clearTimeout(undoTimer);
+    st.hidden = false;
+    st.replaceChildren(`Deleted “${gone.label.slice(0, 20)}” · `);
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "undo", textContent: "Undo" });
+    b.onclick = async () => {
+      clearTimeout(undoTimer);
+      st.hidden = true;
+      if (notes.length >= MAX_TABS) { $("status").textContent = "Too many tabs to bring it back"; return; }
+      await flush();
+      const at = Math.min(gone.i, notes.length);
+      notes.splice(at, 0, gone.text); names.splice(at, 0, gone.name);
+      if (gone.wasActive || at <= active) active = gone.wasActive ? at : active + 1;
+      drawTabs(); load(); showActiveTab();
+      await saveTabs();
+    };
+    st.append(b);
+    undoTimer = setTimeout(() => { st.hidden = true; }, 8000);
+  }
+
+  function renameTab(i) {
+    const tab = strip.querySelector(`.tab[data-i="${i}"]`);
+    if (!tab || renaming >= 0) return;
+    // Umbra hands over the keyboard by focusing the whole view, which blurs the field for a moment: only ask when needed.
+    if (!document.hasFocus()) umbra.requestFocus();
+    renaming = i;
+    const field = Object.assign(document.createElement("input"), { className: "rename", value: names[i] || label(i), maxLength: 40, spellcheck: false });
+    field.setAttribute("aria-label", "Tab name");
+    tab.classList.add("editing");
+    tab.querySelector(".name").replaceWith(field);
+    field.focus(); field.select();
+    let done = false;
+    const finish = (keep) => {
+      if (done) return;
+      done = true;
+      renaming = -1;
+      if (keep) {
+        const v = field.value.replace(/\s+/g, " ").trim();
+        // Typing the automatic name back (or nothing) keeps it automatic.
+        names[i] = !v || (!names[i] && v === label(i)) ? "" : v;
+        umbra.store.set("names", names).catch(() => {});
+      }
+      drawTabs();
+      if (document.hasFocus()) ed.focus({ preventScroll: true });
+    };
+    field.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); finish(true); }
+      else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    // Only a real move of focus ends it (see the note above): Umbra's own refocus gives the field back within a moment.
+    field.addEventListener("blur", () => setTimeout(() => {
+      if (done) return;
+      if (document.activeElement !== field) finish(true);
+      else if (!document.hasFocus()) setTimeout(() => { if (!done && !(document.hasFocus() && document.activeElement === field)) finish(true); }, 1500);
+    }, 200));
+  }
+
+  // ---- tab strip input: click, double-click, middle-click, wheel, drag ----
+  const tabAt = (e) => e.target.closest(".tab");
+  strip.addEventListener("click", (e) => {
+    if (tabDrag?.moved) return;
+    if (e.target.closest(".add")) { addTab(); return; }
+    const t = tabAt(e);
+    if (!t || t.classList.contains("editing")) return;
+    if (e.target.closest(".x")) deleteTab(Number(t.dataset.i));
+    else selectTab(Number(t.dataset.i));
+  });
+  strip.addEventListener("dblclick", (e) => {
+    const t = tabAt(e);
+    if (t && !e.target.closest(".x, .rename")) renameTab(Number(t.dataset.i));
+  });
+  strip.addEventListener("auxclick", (e) => {
+    const t = tabAt(e);
+    if (e.button === 1 && t && !t.classList.contains("editing")) { e.preventDefault(); deleteTab(Number(t.dataset.i)); }
+  });
+  strip.addEventListener("wheel", (e) => {
+    if (strip.scrollWidth <= strip.clientWidth) return;
+    e.preventDefault();
+    strip.scrollLeft += e.deltaY || e.deltaX;
+  }, { passive: false });
+
+  strip.addEventListener("pointerdown", (e) => {
+    if (e.button === 1) e.preventDefault(); // no autoscroll circle on middle-click
+    const t = tabAt(e);
+    if (e.button !== 0 || !t || renaming >= 0 || e.target.closest(".x") || notes.length < 2) return;
+    tabDrag = { el: t, from: Number(t.dataset.i), x0: e.clientX, x: e.clientX, grab: 0, id: e.pointerId, live: false, moved: false };
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!tabDrag || e.pointerId !== tabDrag.id) return;
+    if (!(e.buttons & 1)) { endTabDrag(false); return; }
+    tabDrag.x = e.clientX;
+    if (!tabDrag.live) {
+      if (Math.abs(e.clientX - tabDrag.x0) < 5) return;
+      tabDrag.live = tabDrag.moved = true;
+      tabDrag.grab = tabDrag.x0 - tabDrag.el.getBoundingClientRect().left;
+      tabDrag.el.classList.add("lifted");
+      strip.classList.add("sorting");
+      try { strip.setPointerCapture(e.pointerId); } catch { /* gone already */ }
+    }
+    const { el, x } = tabDrag;
+    const others = [...strip.querySelectorAll(".tab")].filter((t) => t !== el);
+    const next = others.find((t) => { const b = t.getBoundingClientRect(); return x < b.left + b.width / 2; }) || null;
+    const last = others[others.length - 1];
+    if (next ? el.nextElementSibling !== next : el.previousElementSibling !== last) {
+      const before = new Map(others.map((t) => [t, t.getBoundingClientRect().left]));
+      if (next) next.before(el); else last.after(el);
+      if (document.documentElement.dataset.motion !== "off") for (const [t, left] of before) {
+        const d = left - t.getBoundingClientRect().left;
+        if (!d) continue;
+        t.style.transition = "none"; t.style.transform = `translateX(${d}px)`;
+        requestAnimationFrame(() => { t.style.transition = ""; t.style.transform = ""; });
+      }
+    }
+    el.style.transform = "";
+    const natural = el.getBoundingClientRect().left;
+    const tabs = [...strip.querySelectorAll(".tab")];
+    const lo = tabs[0].getBoundingClientRect().left, hi = tabs[tabs.length - 1].getBoundingClientRect().right - el.offsetWidth;
+    el.style.transform = `translateX(${Math.max(lo, Math.min(hi, x - tabDrag.grab)) - natural}px)`;
+  });
+  window.addEventListener("pointerup", (e) => { if (tabDrag && e.pointerId === tabDrag.id) endTabDrag(true); });
+  window.addEventListener("pointercancel", () => endTabDrag(false));
+  window.addEventListener("blur", () => endTabDrag(false));
+
+  function endTabDrag(drop) {
+    if (!tabDrag) return;
+    const d = tabDrag;
+    // Keep tabDrag.moved until the click that follows the release has been ignored.
+    setTimeout(() => { if (tabDrag === d) tabDrag = null; }, 0);
+    d.live = false;
+    if (!d.moved) { tabDrag = null; return; }
+    d.el.classList.remove("lifted");
+    strip.classList.remove("sorting");
+    for (const t of strip.querySelectorAll(".tab")) { t.style.transition = ""; t.style.transform = ""; }
+    if (drop) {
+      const order = [...strip.querySelectorAll(".tab")].map((t) => Number(t.dataset.i));
+      if (order.some((v, i) => v !== i)) {
+        const activeWas = active;
+        notes = order.map((i) => notes[i]);
+        names = order.map((i) => names[i]);
+        active = order.indexOf(activeWas);
+        saveTabs();
+      }
+    }
+    drawTabs();
   }
 
   // ---- rendering: one div per line, raw markdown kept as text, markers dimmed ----
@@ -267,10 +502,14 @@
     }
   });
   ed.addEventListener("blur", flush);
-  umbra.store.onChange(async () => { if (dirty) return; notes = await umbra.store.get("notes", []); drawTabs(); load(); });
+  umbra.store.onChange(async () => {
+    if (dirty || renaming >= 0 || tabDrag) return;
+    [notes, names, active] = await Promise.all([umbra.store.get("notes", []), umbra.store.get("names", null), umbra.store.get("active", active)]);
+    normalize(); drawTabs(); load();
+  });
   umbra.onSettings(() => { drawTabs(); load(); });
 
-  drawTabs(); load();
+  drawTabs(); load(); showActiveTab();
   // The prefix widths depend on the font; measure again once it has loaded.
   document.fonts.ready.then(() => hang(Array.from(ed.childNodes)));
   umbra.rendered();
