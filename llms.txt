@@ -1,0 +1,77 @@
+# Umbra
+
+> Open-source Windows desktop widgets: small sandboxed web pages (HTML/CSS/JS in WebView2) pinned to the wallpaper by a C# .NET 10 host. Scriptable through `umbractl` and an MCP server, so AI agents can configure and build widgets.
+
+Every page below is plain Markdown. The whole documentation in one file: https://aminechr54.github.io/umbra/llms-full.txt
+
+## Get started
+
+- [Introduction](https://aminechr54.github.io/umbra/docs/get-started/introduction.md): What Umbra is, how it works in one minute, and where to go next in these docs.
+- [Install](https://aminechr54.github.io/umbra/docs/get-started/install.md): Install Umbra with the per-user installer or as a portable copy, build it from source, and uninstall it.
+- [Quickstart](https://aminechr54.github.io/umbra/docs/get-started/quickstart.md): From a fresh install to an arranged desktop in five minutes, plus your first command-line and widget experiments.
+- [FAQ](https://aminechr54.github.io/umbra/docs/get-started/faq.md): Short answers about how Umbra works, what it can access, and how it compares to other desktop widget tools.
+
+## Using Umbra
+
+- [Settings tour](https://aminechr54.github.io/umbra/docs/using/settings.md): A page-by-page tour of Umbra's Settings window, with keyboard shortcuts and where each setting is stored.
+- [Arranging widgets](https://aminechr54.github.io/umbra/docs/using/arranging-widgets.md): Edit mode, snapping, resizing and zooming, locking, and moving widgets between monitors.
+- [Hotkeys, peek and layouts](https://aminechr54.github.io/umbra/docs/using/hotkeys-peek-layouts.md): Global hotkeys, the peek gesture, and named layouts that follow your monitor setup.
+- [Copies and tab groups](https://aminechr54.github.io/umbra/docs/using/copies-and-tab-groups.md): Run a widget more than once with separate options, and stack several widgets in one spot with tab groups.
+- [Visibility and refresh rules](https://aminechr54.github.io/umbra/docs/using/visibility-rules.md): Control when each widget is shown, how opaque it is, and how often it updates, including what Umbra does while the PC is locked or on battery saver.
+- [Appearance and themes](https://aminechr54.github.io/umbra/docs/using/appearance.md): Change corner radius, accent color, fonts, borders and motion for every widget, and switch community themes live.
+- [Data, privacy and backups](https://aminechr54.github.io/umbra/docs/using/data-privacy-backups.md): What Umbra stores and sends, the Data and privacy page, backup and restore, the trash, and safe mode.
+- [Updates](https://aminechr54.github.io/umbra/docs/using/updates.md): How Umbra updates itself, how widget and theme updates work, and why an update can wait for your approval.
+- [Troubleshooting](https://aminechr54.github.io/umbra/docs/using/troubleshooting.md): Find out why a widget misbehaves, read logs, use safe mode and diagnostics, and understand what Umbra does when a widget crashes.
+
+## Build widgets
+
+- [Your first widget](https://aminechr54.github.io/umbra/docs/widgets/first-widget.md): Scaffold, run, edit and screenshot a working widget in a few minutes, then see where to go next.
+- [widget.json](https://aminechr54.github.io/umbra/docs/widgets/manifest.md): Every field of a widget manifest, option types, permissions and the rules Umbra validates.
+- [Page and lifecycle](https://aminechr54.github.io/umbra/docs/widgets/page-and-lifecycle.md): How a widget page loads, when umbra.every runs, how settings and the paused state reach your code, and how drag, focus and zoom behave.
+- [JavaScript API](https://aminechr54.github.io/umbra/docs/widgets/javascript-api.md): The window.umbra object by task - settings, fetching, saving data, notifications, media, system readings, formatting and utilities.
+- [Styling and tokens](https://aminechr54.github.io/umbra/docs/widgets/styling.md): The design tokens in umbra.css, how themes and user appearance settings reach your widget, motion, and Windows contrast themes.
+- [Freshness and offline](https://aminechr54.github.io/umbra/docs/widgets/offline.md): How umbra.status tracks whether your widget's data is live, stale or offline, and how to show it.
+- [Running local commands](https://aminechr54.github.io/umbra/docs/widgets/local-commands.md): How a widget declares and runs a local program, the strict rules around it, and how the user's approval works.
+- [Sandbox and permissions](https://aminechr54.github.io/umbra/docs/widgets/sandbox.md): What a widget can and cannot do, and the permissions that widen it.
+- [Design guidelines](https://aminechr54.github.io/umbra/docs/widgets/design-guidelines.md): The house style for Umbra widgets - true black, tokens, tabular numbers, calm motion and honest data - and how reviewers judge a widget.
+- [Testing with capture](https://aminechr54.github.io/umbra/docs/widgets/testing.md): The develop-capture-fix loop with umbractl, including pixel-exact screenshots, sizes, simulated offline, logs and testing the catalog locally.
+- [Publishing to the catalog](https://aminechr54.github.io/umbra/docs/widgets/publishing.md): Get your widget into everyone's Browse page with one pull request, and what review and CI check.
+- [Walkthrough: the S&P 500 widget](https://aminechr54.github.io/umbra/docs/widgets/sp500-walkthrough.md): A guided tour of a real widget - manifest, fetching, the change math, an SVG chart, motion and hover - using widgets/sp500.
+- [SDK reference](https://aminechr54.github.io/umbra/docs/widgets/sdk-reference.md): The complete widget reference in one page: manifest, JavaScript API, tokens, commands, sandbox and publishing.
+
+## Themes
+
+- [Build a theme](https://aminechr54.github.io/umbra/docs/themes/build-a-theme.md): Create a theme.json, test it live, and publish it to the catalog.
+- [Token reference](https://aminechr54.github.io/umbra/docs/themes/token-reference.md): Every token a theme can set, its default, what it's for, and the value formats Umbra accepts.
+
+## Automate (CLI, MCP, control protocol)
+
+- [Automation overview](https://aminechr54.github.io/umbra/docs/automate/overview.md): The three ways to automate Umbra - the umbractl command line, the MCP server for AI agents, and the raw control protocol - and how they relate.
+- [umbractl command reference](https://aminechr54.github.io/umbra/docs/automate/cli.md): Every umbractl command with its arguments and flags, grouped by task.
+- [MCP server](https://aminechr54.github.io/umbra/docs/automate/mcp.md): Connect an AI agent to Umbra with the built-in Model Context Protocol server - setup, tools, resources, prompts and safety.
+- [Control protocol](https://aminechr54.github.io/umbra/docs/automate/control-protocol.md): The JSON-lines protocol over a per-user named pipe that umbractl and the MCP server use, with every command and how to add one.
+
+## Internals
+
+- [Architecture](https://aminechr54.github.io/umbra/docs/internals/architecture.md): How Umbra is put together - the host app, widgets, the control protocol and the CLI - with a map of the source tree.
+- [Desktop pinning](https://aminechr54.github.io/umbra/docs/internals/desktop-pinning.md): How widget windows stay under every app, survive Win+D and Explorer restarts, and never take focus.
+- [WebView2 host and the bridge](https://aminechr54.github.io/umbra/docs/internals/webview-host.md): How Umbra creates WebView2 environments, serves widgets from virtual hosts, enforces the sandbox with WebResourceRequested and bridges the page to C#.
+- [Security model](https://aminechr54.github.io/umbra/docs/internals/security.md): The invariants Umbra enforces for widgets, community installs, commands, themes, automation and updates, and why each exists.
+- [Crash recovery](https://aminechr54.github.io/umbra/docs/internals/crash-recovery.md): What Umbra does when a widget's renderer or the WebView2 browser process fails, and where you can see it.
+- [Updates and installer](https://aminechr54.github.io/umbra/docs/internals/updates-installer.md): How the per-user installer is built, how self-update downloads and runs it, and the update window.
+- [Portable mode](https://aminechr54.github.io/umbra/docs/internals/portable-mode.md): How a portable copy keeps everything in one folder, what it doesn't do, and how the pipe and single-instance names avoid collisions.
+- [Dev setup and tests](https://aminechr54.github.io/umbra/docs/internals/dev-setup.md): Build, test and run Umbra from source, how to verify UI changes, and the contribution workflow.
+- [Release process](https://aminechr54.github.io/umbra/docs/internals/release-process.md): How a version is cut - bump, tag, the release workflow, code signing and the winget manifests.
+- [Linux port](https://aminechr54.github.io/umbra/docs/internals/linux-port.md): Status and direction of the Linux version of Umbra (epic
+
+## Reference
+
+- [widget.json schema](https://aminechr54.github.io/umbra/docs/reference/widget-schema.md): The JSON Schema for widget manifests.
+- [theme.json schema](https://aminechr54.github.io/umbra/docs/reference/theme-schema.md): The JSON Schema for theme files.
+- [For AI agents](https://aminechr54.github.io/umbra/docs/reference/for-agents.md): How an AI agent can read this documentation and drive Umbra - llms.txt, raw Markdown pages and the MCP server.
+
+## Source
+
+- [Repository](https://github.com/AmineChr54/umbra)
+- [widget.json schema](https://raw.githubusercontent.com/AmineChr54/umbra/main/schemas/widget.schema.json)
+- [CLAUDE.md](https://github.com/AmineChr54/umbra/blob/main/CLAUDE.md): architecture, commands and security invariants for coding agents
