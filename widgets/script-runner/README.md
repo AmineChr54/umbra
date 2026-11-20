@@ -44,7 +44,7 @@ administrator** for the script in Settings, then:
 - A script that keeps running shows **Start** / **Stop**, a green *Running · 2 h 14 m*, and its newest output lines.
   Stop it here, on its row in Settings, or from the tray menu (*1 script running > Stop ...*). It also stops when you turn
   the widget off, edit or delete the script, or quit Umbra.
-- **Copy** copies the output. **Earlier runs** lists the last runs of the selected script (when, exit code, duration).
+- Links (http and https) in the output are clickable and open in your browser; the small icon after each one copies it. The copy icon at the top right copies the whole output. **Earlier runs** lists the last runs of the selected script (when, exit code, duration).
 - **Notify me** (options): a Windows toast when a script fails or a running one stops on its own (default), on every
   finish, or never. Also switch on *Allow notifications* for this widget in Settings.
 

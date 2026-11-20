@@ -48,14 +48,26 @@
     m = LIST.exec(t);
     if (m) {
       d.className = "li";
-      if (m[1]) d.appendChild(span("mk", m[1]));
+      // The prefix (indent, marker, space) sits in one span so hang() can line wrapped text up under the text after it.
+      const pre = span("pre", "");
+      if (m[1]) pre.appendChild(span("mk", m[1]));
       // A "-" or "*" stays in the text, so saving and the caret see it; notes.css paints it as a dot.
-      d.append(span(/\d/.test(m[2]) ? "mk" : "mk dot", m[2]), span("mk", m[3]));
+      pre.append(span(/\d/.test(m[2]) ? "mk" : "mk dot", m[2]), span("mk", m[3]));
+      d.appendChild(pre);
       inline(d, m[4]);
       return d;
     }
+    m = /^([ \t]+)(\S.*)$/.exec(t);
+    if (m) { d.className = "ind"; d.appendChild(span("pre", m[1])); inline(d, m[2]); return d; }
     inline(d, t);
     return d;
+  }
+  /** Hanging indent: a wrapped list (or indented) line continues under its text, not at the left edge. */
+  function hang(divs) {
+    const rows = divs.filter((d) => d.firstChild && d.firstChild.className === "pre");
+    const max = ed.clientWidth * 0.6;
+    const w = rows.map((d) => Math.min(max, d.firstChild.getBoundingClientRect().width));
+    rows.forEach((d, i) => d.style.setProperty("--hang", `${w[i]}px`));
   }
 
   // ---- text <-> DOM ----
@@ -104,6 +116,7 @@
   function fullRender(text, s, e) {
     lines = text.split("\n");
     ed.replaceChildren(...lines.map(buildLine));
+    hang(Array.from(ed.childNodes));
     if (s != null) setSel(s, e == null ? s : e);
     mark();
   }
@@ -174,9 +187,11 @@
     }
     const fn = getSelection().focusNode;
     const caretLine = sel && fn ? lineOf(fn, 0).line : -1;
+    const built = [];
     next.forEach((t, i) => {
-      if (t !== prev[i] || i === caretLine) ed.replaceChild(buildLine(t), ed.childNodes[i]);
+      if (t !== prev[i] || i === caretLine) { const d = buildLine(t); ed.replaceChild(d, ed.childNodes[i]); built.push(d); }
     });
+    hang(built);
     if (sel) setSel(sel.s, sel.e);
     mark(); commit(); pushHist();
   }
@@ -256,5 +271,7 @@
   umbra.onSettings(() => { drawTabs(); load(); });
 
   drawTabs(); load();
+  // The prefix widths depend on the font; measure again once it has loaded.
+  document.fonts.ready.then(() => hang(Array.from(ed.childNodes)));
   umbra.rendered();
 })();
