@@ -212,7 +212,7 @@ async function poll() {
 // A script named in the "Show as a switch" option gets an on/off switch instead of Run. Its state is the first on/off
 // word on the last line it printed ("VPN ON - Darmstadt" is on). A script named "<name> status" is its check: the widget
 // runs it now and then (and hides it from the list), so the switch stays right when the state changes elsewhere.
-// A script that keeps running needs neither: the switch is on while it runs.
+// A script that keeps running is always a switch (no option needed): it is on while it runs.
 
 const ON = new Set(["on", "true", "up", "connected", "enabled", "active", "yes", "running", "started"]);
 const STATE_WORD = /\b(on|off|true|false|up|down|connected|disconnected|enabled|disabled|active|inactive|yes|no|running|stopped|started)\b/i;
@@ -221,7 +221,7 @@ const checking = new Set(); // switch ids whose status check runs now
 let checkTimer = null;
 
 const switchNames = () => String(opts().switches || "").split(/[,;\n]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
-const isSwitch = (c) => !!c && switchNames().some((n) => n === c.id.toLowerCase() || n === nameOf(c).toLowerCase());
+const isSwitch = (c) => !!c && (keeps(c) || switchNames().some((n) => n === c.id.toLowerCase() || n === nameOf(c).toLowerCase()));
 const statusOf = (c) => (keeps(c) ? null : commands.find((x) => x !== c && !keeps(x) && !admin(x) && nameOf(x).trim().toLowerCase() === `${nameOf(c).trim().toLowerCase()} status`) || null);
 /** A status script is part of its switch, not a row of its own. */
 const isCheck = (x) => commands.some((c) => isSwitch(c) && statusOf(c) === x);
@@ -372,7 +372,7 @@ function dotClass(c) {
   return r.kind === "ok" && r.truncated ? "warn" : r.kind === "stopped" || r.kind === "cancelled" ? "" : r.kind;
 }
 
-/** The button: Run, or Stop while it runs; Start/Stop for a script that keeps running. */
+/** The button: Run, or Stop while it runs. (A script that keeps running has a switch instead.) */
 function button(c) {
   if (keeps(c)) {
     const s = services.get(c.id), on = !!(s && (s.running || s.restarting));
@@ -521,7 +521,7 @@ function renderOutput() {
   const r = lastRun(c.id);
   if (!r || keeps(c)) {
     const msg = r && r.note ? `<span class="note">${esc(r.note)}</span>`
-      : `<span class="dim">${esc(c.description || (keeps(c) ? "Press Start. It keeps running until you stop it or turn the widget off." : "Never run."))}</span>`;
+      : `<span class="dim">${esc(c.description || (keeps(c) ? "Turn the switch on. It keeps running until you turn it off or turn the widget off." : "Never run."))}</span>`;
     setLog(msg);
     renderHistory(null);
     copyBtn.hidden = true;
