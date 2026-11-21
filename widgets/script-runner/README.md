@@ -41,8 +41,8 @@ administrator** for the script in Settings, then:
 ## Use it
 
 - **Run** a script; while it runs the output appears live and the button becomes **Stop**.
-- A script that keeps running shows **Start** / **Stop**, a green *Running · 2 h 14 m*, and its newest output lines.
-  Stop it here, on its row in Settings, or from the tray menu (*1 script running > Stop ...*). It also stops when you turn
+- A script that keeps running gets an on/off switch, a green *Running · 2 h 14 m*, and its newest output lines.
+  Turn it off here, on its row in Settings, or from the tray menu (*1 script running > Stop ...*). It also stops when you turn
   the widget off, edit or delete the script, or quit Umbra.
 - Links (http and https) in the output are clickable and open in your browser; the small icon after each one copies it. The copy icon at the top right copies the whole output. **Earlier runs** lists the last runs of the selected script (when, exit code, duration).
 - **Notify me** (options): a Windows toast when a script fails or a running one stops on its own (default), on every
@@ -51,8 +51,8 @@ administrator** for the script in Settings, then:
 
 ## Switches (a VPN, a tunnel)
 
-Put a script's name in **Show as a switch** (options; several names separated by commas) and its row gets an on/off
-switch instead of Run.
+A script that keeps running always gets an on/off switch. For any other script, put its name in **Show as a switch**
+(options; several names separated by commas) and its row gets an on/off switch instead of Run.
 
 - **A script that flips something** (VPN on or off): clicking the switch runs it. The switch shows the first on/off word
   on the last line the script printed, so end it with `VPN ON` or `VPN OFF` (also understood: true/false, up/down,
@@ -62,7 +62,8 @@ switch instead of Run.
   that only checks and prints `ON` or `OFF`. The widget runs it when it starts, every minute (**Check switches every**),
   and when it comes back on screen, and hides it from the list. Without it, the switch shows the last run's answer, which
   can be stale if you change the VPN in its own app.
-- **A script that keeps running** (a tunnel): the switch is on while it runs; clicking starts or stops it.
+- **A script that keeps running** (a tunnel): always a switch, no option needed. It is on while the script runs; clicking
+  starts or stops it.
 
 A status script for a Tailscale exit node, for example:
 
