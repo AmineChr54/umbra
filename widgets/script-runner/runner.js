@@ -1,7 +1,7 @@
 // Script Runner: runs the user's own scripts (added in Settings) via umbra.run. Data in umbra.store ("results", "ui").
 // Scripts that keep running (a tunnel, a server) are started and stopped here and owned by the host; this page only shows them.
 const $ = (id) => document.getElementById(id);
-const listEl = $("list"), logEl = $("log"), bigEl = $("big"), histEl = $("history"), copyBtn = $("copy");
+const listEl = $("list"), logEl = $("log"), bigEl = $("big"), histEl = $("history"), copyBtn = $("copy"), clearBtn = $("clear");
 
 const MAX_KEEP = 6000;   // characters of each stream saved for the newest run
 const HISTORY = 10;      // runs remembered per script
@@ -11,6 +11,8 @@ let selected = null;
 const running = new Map();   // id -> start time of a run (that finishes) started from this page
 const services = new Map();  // id -> { running, since, exitCode, restarting, restarts, text } for scripts that keep running
 let live = null;             // { id, text } live output of the selected script while it runs
+/** id -> { since, tail } set by Clear on live output: only what was printed after `tail` (the end of the text then) is shown. */
+let clearMarks = {};
 let loadError = "";
 let first = true;
 let autoTimer = null;
@@ -102,9 +104,44 @@ async function loadState() {
   checks = c && typeof c === "object" && !Array.isArray(c) ? c : {};
   const ui = await umbra.store.get("ui", {});
   selected = ui && typeof ui.selected === "string" ? ui.selected : null;
+  clearMarks = ui && ui.cleared && typeof ui.cleared === "object" && !Array.isArray(ui.cleared) ? ui.cleared : {};
 }
 const saveResults = () => umbra.store.set("results", results).catch((e) => console.error("Script Runner: could not save", e));
-const saveUi = () => umbra.store.set("ui", { selected }).catch(() => {});
+const saveUi = () => umbra.store.set("ui", { selected, cleared: clearMarks }).catch(() => {});
+
+/**
+ * Live output after a Clear. The host keeps a rolling tail (its start moves once it is full), so an offset would drift:
+ * the end of the text at the time of the Clear marks the spot instead. The first match is used, so a repeated line can
+ * only ever show a few extra lines, never hide new ones; no match means the tail rolled past it and everything is new.
+ */
+function afterClear(id, since, text) {
+  const m = clearMarks[id];
+  text = String(text || "");
+  if (!m || m.since !== since) return { text, cleared: false };
+  if (!m.tail) return { text, cleared: true };
+  const i = text.indexOf(m.tail);
+  return { text: i < 0 ? text : text.slice(i + m.tail.length).replace(/^\r?\n/, ""), cleared: true };
+}
+/** When the live output of the script began: the host's start time for one that keeps running, else this page's run. */
+const sinceOf = (c) => (keeps(c) ? services.get(c.id)?.since ?? 0 : running.get(c.id) ?? 0);
+
+/** The Clear button: live output is hidden up to now; a finished run's saved output is dropped (the run stays in the history). */
+function clearOutput() {
+  const c = commands.find((x) => x.id === selected);
+  if (!c) return;
+  const svc = keeps(c) ? services.get(c.id) : null;
+  if (running.has(c.id) || svc) {
+    const text = live && live.id === c.id ? live.text : svc ? svc.text || "" : "";
+    clearMarks[c.id] = { since: sinceOf(c), tail: String(text).slice(-200) };
+    saveUi();
+  } else {
+    const r = lastRun(c.id);
+    if (!r) return;
+    r.stdout = ""; r.stderr = ""; r.note = ""; r.cleared = true;
+    saveResults();
+  }
+  renderOutput();
+}
 
 function remember(id, entry) {
   // Only the newest run keeps its output; older ones keep the facts, so the store stays small.
@@ -145,7 +182,8 @@ async function runScript(id) {
   if (!c) return;
   if (keeps(c)) return startService(c);
   if (running.has(id)) return;
-  running.set(id, Date.now());
+  const startedAt = Date.now();
+  running.set(id, startedAt);
   updateKeepAlive();
   selected = id; saveUi();
   live = null;
@@ -170,6 +208,15 @@ async function runScript(id) {
   running.delete(id);
   updateKeepAlive();
   if (live && live.id === id) live = null;
+  // Cleared while it ran: the saved output starts where the Clear was too.
+  if (clearMarks[id]) {
+    if (clearMarks[id].since === startedAt) {
+      entry.stdout = afterClear(id, startedAt, entry.stdout).text;
+      entry.stderr = "";
+      entry.cleared = true;
+    }
+    delete clearMarks[id]; saveUi();
+  }
   remember(id, entry);
   if (entry.kind === "ok") notify(c, `Finished in ${fmtMs(entry.ms)}.${lastLine(entry.stdout) ? ` ${lastLine(entry.stdout)}` : ""}`.slice(0, 200), false);
   else if (entry.kind !== "stopped" && entry.kind !== "cancelled") notify(c, entry.exitCode != null ? `Failed with exit code ${entry.exitCode}.` : entry.note.slice(0, 200), true);
@@ -424,6 +471,7 @@ function outMeta() {
 let copyText = "";
 
 const ICON_COPY = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 5.5V4A1.5 1.5 0 0 0 9 2.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5"/></svg>';
+const ICON_CLEAR = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.2 3.2l3.6 3.6-5.6 5.7H4.6l-2-2a1 1 0 0 1 0-1.4z"/><path d="M6.4 6l3.6 3.6M8.6 12.5h4.9"/></svg>';
 const ICON_DONE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5"/></svg>';
 
 /** http(s) links in the output; trailing punctuation and an unmatched closing bracket stay outside, as in "(see https://x.y/z).". */
@@ -497,7 +545,7 @@ function renderOutput() {
     $("out-name").textContent = "Output";
     setLog(commands.length ? '<span class="dim">Press Run on a script to see its output here.</span>' : "");
     renderHistory(null);
-    copyBtn.hidden = true;
+    copyBtn.hidden = clearBtn.hidden = true;
     return;
   }
   $("out-name").textContent = nameOf(c);
@@ -508,12 +556,15 @@ function renderOutput() {
   const svc = keeps(c) ? services.get(c.id) : null;
   const liveText = live && live.id === c.id ? live.text : svc ? svc.text || "" : null;
   if (running.has(c.id) || (svc && liveText)) {
-    const t = trimLines(liveText || "", n, true);
-    copyText = liveText || "";
+    const shown = afterClear(c.id, sinceOf(c), liveText);
+    const t = trimLines(shown.text, n, true);
+    copyText = shown.text;
+    const waiting = !shown.cleared ? "Waiting for output..." : running.has(c.id) || svc?.running ? "Output cleared. New output shows here." : "Output cleared.";
     setLog((t.cut ? `<span class="dim">... ${t.cut} earlier line${t.cut > 1 ? "s" : ""}</span>\n` : "")
-      + (t.text ? linkify(t.text).replace(/^\[Umbra\] .*$/gm, (l) => `<span class="dim">${l}</span>`) : '<span class="dim">Waiting for output...</span>'));
+      + (t.text ? linkify(t.text).replace(/^\[Umbra\] .*$/gm, (l) => `<span class="dim">${l}</span>`) : `<span class="dim">${waiting}</span>`));
     if (atBottom || first) logEl.scrollTop = logEl.scrollHeight;
     copyBtn.hidden = !copyText;
+    clearBtn.hidden = !t.text;
     renderHistory(keeps(c) ? null : c);
     return;
   }
@@ -524,7 +575,7 @@ function renderOutput() {
       : `<span class="dim">${esc(c.description || (keeps(c) ? "Turn the switch on. It keeps running until you turn it off or turn the widget off." : "Never run."))}</span>`;
     setLog(msg);
     renderHistory(null);
-    copyBtn.hidden = true;
+    copyBtn.hidden = clearBtn.hidden = true;
     return;
   }
   const out = trimLines(r.stdout, n), err = trimLines(r.stderr, Math.max(3, Math.floor(n / 4)));
@@ -532,10 +583,11 @@ function renderOutput() {
   if (r.note) html += `<span class="note">${esc(r.note)}</span>\n`;
   if (out.text) html += linkify(out.text) + (out.cut ? `\n<span class="dim">... ${out.cut} more line${out.cut > 1 ? "s" : ""}</span>` : "") + "\n";
   if (err.text) html += `<span class="err">${linkify(err.text)}</span>` + (err.cut ? `\n<span class="dim">... ${err.cut} more error line${err.cut > 1 ? "s" : ""}</span>` : "") + "\n";
-  if (!out.text && !err.text && !r.note) html = '<span class="dim">(no output)</span>';
+  if (!out.text && !err.text && !r.note) html = `<span class="dim">${r.cleared ? "Output cleared." : "(no output)"}</span>`;
   setLog(html);
   copyText = [r.stdout, r.stderr].filter((s) => s && s.trim()).join("\n");
   copyBtn.hidden = !copyText;
+  clearBtn.hidden = !copyText && !r.note;
   if (opts().bigLine && r.kind === "ok" && lastLine(r.stdout)) { bigEl.textContent = lastLine(r.stdout); bigEl.hidden = false; }
   renderHistory(c);
 }
@@ -589,6 +641,8 @@ listEl.addEventListener("click", (e) => {
 });
 
 copyBtn.innerHTML = ICON_COPY;
+clearBtn.innerHTML = ICON_CLEAR;
+clearBtn.addEventListener("click", clearOutput);
 copyBtn.addEventListener("click", async () => {
   if (copyText) flash(copyBtn, await copy(copyText));
 });

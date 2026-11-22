@@ -4,7 +4,7 @@
   "name": "Script Runner",
   "description": "Run your own PowerShell, Python or Bash scripts from the desktop: ones that finish (with exit code, time and output) and ones that keep running, like a tunnel or a server. Add them in Settings, give them a name, and press Run.",
   "author": "AmineChr54",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "category": "developer",
   "changelog": "Scripts that keep running now always show the same on/off switch as a VPN toggle, instead of separate Start/Stop buttons.",
   "platforms": ["windows"],
