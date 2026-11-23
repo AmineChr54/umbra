@@ -115,6 +115,7 @@ const saveUi = () => umbra.store.set("ui", { selected, cleared: clearMarks, list
 const splitEl = $("split"), outEl = $("out");
 const LIST_MIN = 52;   // about one row
 const OUT_MIN = 96;    // the output keeps its header and a few lines
+const LIST_DEFAULT = 190;
 
 /**
  * The tallest the list may be: no taller than its rows (scrollHeight), and the output keeps OUT_MIN. The list shrinks
@@ -127,7 +128,8 @@ function listMax() {
 const clampList = (h) => Math.round(Math.min(Math.max(h, LIST_MIN), listMax()));
 /** Applies the chosen height (or the stylesheet's default), clamped to what fits now; the saved choice is kept for a bigger window. */
 function fitSplit() {
-  listEl.style.maxHeight = listHeight ? `${clampList(listHeight)}px` : "";
+  // The default is the stylesheet's 190 px, clamped the same way, so a short widget keeps its output too.
+  listEl.style.maxHeight = `${clampList(listHeight || LIST_DEFAULT)}px`;
 }
 function setListHeight(h) {
   listHeight = clampList(h);
@@ -163,6 +165,7 @@ splitEl.addEventListener("lostpointercapture", endDrag);
 // Double-click: back to the default height.
 splitEl.addEventListener("dblclick", () => { listHeight = 0; fitSplit(); saveUi(); });
 splitEl.addEventListener("keydown", (e) => {
+  if (umbra.settings?.editMode) return; // the arrow keys move the widget while editing the layout
   const step = e.shiftKey ? 88 : 22;
   if (e.key === "ArrowUp") setListHeight(listEl.offsetHeight - step);
   else if (e.key === "ArrowDown") setListHeight(listEl.offsetHeight + step);

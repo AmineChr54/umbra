@@ -1266,6 +1266,7 @@ sealed class App : IUmbraHost
         s.General.LegacyRestoreDone = true;
         s.General.LastSeenVersion = Settings.General.LastSeenVersion;
         s.General.TourDone = Settings.General.TourDone;
+        s.General.AgentScripts &= Settings.General.AgentScripts; // a restore or reset can turn agent access to scripts off, never on
         s.SettingsPanel = Settings.SettingsPanel;
         Settings = s;
         SaveSettings();

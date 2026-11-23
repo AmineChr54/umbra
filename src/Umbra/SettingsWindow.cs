@@ -278,7 +278,7 @@ sealed class SettingsWindow : Form, ISettingsView
             case "deleteScript":
             {
                 // The user's own scripts (permissions.userScripts). This page is the only writer: saving here is the user's
-                // approval of exactly that command, and there is no control command, umbractl or MCP tool for it.
+                // approval of exactly that command. Automation has only the gated "scripts" command (AgentScripts).
                 var widget = _app.Manifests.FirstOrDefault(w => w.Id == (msg["widget"]?.GetValue<string>() ?? ""));
                 try
                 {
@@ -321,7 +321,7 @@ sealed class SettingsWindow : Form, ISettingsView
             case "stopScript":
             {
                 // Start or stop a script that keeps running. Starting needs the widget on and the script approved; this page is
-                // the user's own (no control command, umbractl or MCP tool starts a script).
+                // the user's own (automation starts one only through the gated "scripts" command, AgentScripts).
                 var widget = _app.Manifests.FirstOrDefault(w => w.Id == (msg["widget"]?.GetValue<string>() ?? ""));
                 var sid = msg["script"]?.GetValue<string>() ?? "";
                 try

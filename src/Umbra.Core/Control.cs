@@ -477,8 +477,25 @@ sealed class Control(IUmbraHost app)
             case "data":
                 return Data(Target(a).Instance, a);
 
+            case "scripts":
+            {
+                // The user's own scripts. Everything but reading needs the user's "Let AI agents manage my scripts" switch,
+                // which only the Settings page changes (see AgentScripts).
+                var (m, inst) = a["id"] is null
+                    ? (app.Manifests.FirstOrDefault(app.Commands.TakesUserScripts) is { } first ? app.Resolve(first.Id) : null)
+                      ?? throw new CommandException("No installed widget takes your own scripts (install Script Runner first)")
+                    : Target(a);
+                var op = a["op"] is null ? "list" : Str(a, "op");
+                var ctx = new AgentScripts.Context(app.Commands, m, app.Settings.General.AgentScripts, app.Settings.For(m, inst).Enabled, app.HasOpenWindow(m.Id));
+                JsonNode? result;
+                try { result = await AgentScripts.ExecuteAsync(ctx, op, a); }
+                catch (WidgetCommandException ex) { throw new CommandException(ex.Message); }
+                if (!AgentScripts.IsRead(op)) { app.CommandsChanged(m.Id); app.SettingsChangedElsewhere(); }
+                return result;
+            }
+
             case "approvals":
-                // Read-only on purpose: there is no control command that approves or revokes a command.
+                // Read-only on purpose: approving goes through Settings, or "scripts" for the user's own scripts while they allow it.
                 return app.Commands.Describe(app.Manifests, a["id"] is null ? null : Target(a).Manifest.Id);
 
             case "privacy":

@@ -38,6 +38,11 @@ interface IUmbraHost
     ISettingsView ShowSettings(bool background = false);
     (WidgetManifest Manifest, string Instance)? Resolve(string id);
 
+    /// <summary>Whether any window of the widget is open (a script that keeps running only runs while one is).</summary>
+    bool HasOpenWindow(string widgetId);
+    /// <summary>The widget's scripts changed (added, edited, deleted, started, stopped): its windows reload their list.</summary>
+    void CommandsChanged(string widgetId);
+
     void SaveSettings();
     void SyncWindows();
     void SettingsChangedElsewhere();

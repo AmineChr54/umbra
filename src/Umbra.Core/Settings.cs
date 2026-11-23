@@ -15,6 +15,12 @@ public sealed class GeneralSettings
     public bool CheckForUpdates { get; set; } = true;
     /// <summary>Send an anonymous +1 for a catalog widget when it is freshly installed (<see cref="InstallStats"/>), so Browse can show install counts.</summary>
     public bool CountInstalls { get; set; } = true;
+    /// <summary>
+    /// "Let AI agents manage my scripts" (Settings > My widgets > Script Runner): the <c>scripts</c> control command (umbractl,
+    /// MCP) may add, change, delete, approve, run and stop the user's scripts. Off by default. Only the Settings page changes it:
+    /// no control command, and a restored backup keeps the current value.
+    /// </summary>
+    public bool AgentScripts { get; set; }
     /// <summary>Set once the one-time restore of former built-in widgets (sp500) has finished; see <see cref="Restore"/>.</summary>
     public bool LegacyRestoreDone { get; set; }
     /// <summary>Version that last ran, so a newer one shows "What's new" once; "" on a first install. Host-owned: saves and backups never change it.</summary>

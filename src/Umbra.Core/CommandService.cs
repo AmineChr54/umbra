@@ -124,7 +124,7 @@ sealed class CommandService
     /// <summary>
     /// The Settings page's Save on a script the user wrote. Saving is the user's approval of exactly that command (they
     /// typed it in the host's own page), so it is approved when its program is found; otherwise it waits as "pending".
-    /// Only <c>SettingsWindow</c> calls this: no control command, umbractl or MCP tool adds or approves a script.
+    /// Called by <c>SettingsWindow</c>, and by <see cref="AgentScripts"/> only while the user lets agents manage scripts.
     /// </summary>
     public (UserScript Script, bool Approved) SaveUserScript(WidgetManifest m, UserScript script)
     {

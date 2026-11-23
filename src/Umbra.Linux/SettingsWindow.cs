@@ -297,7 +297,7 @@ sealed class SettingsWindow : ISettingsView
             case "saveScript":
             case "deleteScript":
             {
-                // The user's own scripts (permissions.userScripts). This page is the only writer; no control command, umbractl or MCP tool.
+                // The user's own scripts (permissions.userScripts). Automation has only the gated "scripts" command (AgentScripts).
                 var widget = ManifestOf(msg);
                 try
                 {

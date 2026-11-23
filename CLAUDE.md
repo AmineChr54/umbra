@@ -57,7 +57,8 @@ community widgets in `widgets\`). `UMBRA_DATA_DIR` overrides the data folder (te
 | `src/Umbra/ToastService.cs`, `src/Umbra.Core/Notifier.cs` | `umbra.notify`: real toasts via `ToastNotificationManager` (installer shortcut AUMID `AmineChr54.Umbra`; portable/source runs register their own under HKCU; balloon fallback), plus the rate limit and text/action/XML helpers |
 | `src/Umbra.Core/WidgetStore.cs` | `umbra.store`: per-widget JSON data in `%APPDATA%\Umbra\data\<id>.json` (1 MB cap, deleted on `umbractl remove`; Settings > Remove moves it to the trash) |
 | `src/Umbra.Core/WidgetTrash.cs` | Settings > Remove moves the widget folder, data and settings of every copy to `%APPDATA%\Umbra\trash\<id>-<timestamp>` for Undo; purged after 7 days at startup; never part of backups |
-| `src/Umbra.Core/UserScripts.cs` | The user's own scripts for widgets with `permissions.userScripts` (Script Runner): `UserScript` (validation, the argv it becomes) and the store in `%APPDATA%\Umbra\scripts.json` (+ code files in `scripts\<id>\`). Edited only in Settings (`saveScript`/`deleteScript`); `CommandService.All` merges them with declared commands; widgets list them with `umbra.commands()`. Scripts that keep running (tunnels, servers) are owned by `CommandService` (start/stop/restart, `OutputTail`, `CommandRunner.Start`); the tray lists them; `ShellLink.cs` reads a picked `.lnk` |
+| `src/Umbra.Core/AgentScripts.cs` | The `scripts` control command: AI agents list, add, edit, delete, approve, run and stop the user's scripts, all but reading only while `General.AgentScripts` (Settings > My widgets > "Let AI agents manage my scripts") is on; never a run-as-administrator script |
+| `src/Umbra.Core/UserScripts.cs` | The user's own scripts for widgets with `permissions.userScripts` (Script Runner): `UserScript` (validation, the argv it becomes) and the store in `%APPDATA%\Umbra\scripts.json` (+ code files in `scripts\<id>\`). Edited in Settings (`saveScript`/`deleteScript`), or by agents through `AgentScripts` while the user allows it; `CommandService.All` merges them with declared commands; widgets list them with `umbra.commands()`. Scripts that keep running (tunnels, servers) are owned by `CommandService` (start/stop/restart, `OutputTail`, `CommandRunner.Start`); the tray lists them; `ShellLink.cs` reads a picked `.lnk` |
 | `src/Umbra.Core/WidgetManifest.cs`, `Settings.cs` | `widget.json` model and discovery; `settings.json` model |
 | `src/Umbra.Core/WidgetPlatforms.cs` | The optional `platforms` field (`["windows","linux"]`, absent = both): validation and the pure "does this run on OS X" policy for manifests and catalog entries (the OS is always a parameter). Browse flags "Windows only" and offers no install; `Community.PrepareAsync`, `WriteLocalWidget` and `WidgetManifest.Discover` refuse/skip widgets for another OS |
 | `src/Umbra.Core/CommandRunner.cs`, `CommandEnvironment.cs`, `CommandLaunch.cs`, `ProcessContainment.cs`, `ExecutableResolver.cs`, `OutputCapture.cs` | `permissions.commands` execution split into pure, testable-on-any-OS parts (environment allow-lists per OS, the argv that reaches the OS, PATH/absolute-path resolution with an injected file test, the capped output reader) and thin process code: `JobContainment` (Windows job object) and `ProcessGroupContainment` (Linux `setsid` group + `kill(-pgid)`; `linux/test/commands.sh`). Under Flatpak commands fail closed (`CommandRunner`: "not available in the Flatpak build yet") |
@@ -156,18 +157,25 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   are `${name}` whole-argument placeholders validated and passed as single arguments, never a free command line. Every
   command needs the user's approval, stored per widget id + command hash in `approvals.json` (a changed command is
   asked again). Only a host-drawn prompt (after a physical click on the widget, rate-limited) or the Settings button
-  approves; **no control command, umbractl or MCP tool may approve** (`approvals` is read-only). Runs are as the
+  approves a declared command; **no control command, umbractl or MCP tool may approve one** (`approvals` is read-only). The one
+  automation path to the user's own scripts is the gated `scripts` command (next item). Runs are as the
   user, in the widget's data dir, with a scrubbed environment (an allow-list per OS in `CommandEnvironment`; on Linux
   `PATH` keeps only absolute entries, and no `LD_*`, display or bus variables), a timeout (max 120 s) and a 1 MB output cap, never
   while the widget is disabled. The approval is bound to the resolved program: its path (case-insensitive on Windows, exact
   on Linux) and SHA-256 (`ExeIdentity.Matches`). Interpreters and launchers (shells, script runtimes, `env`, `sudo`, `xargs`...) never take
   free-text parameters. The whole process tree dies with the run (Windows job object, Linux process group), and commands fail
   closed where the program can't be identified (a Flatpak, until reviewed). Built-in widgets get no automatic trust. Don't loosen any of this without an issue and review.
-- `permissions.userScripts` (`UserScripts.cs`) lets the user write their own commands, never the widget: only the Settings page
+- `permissions.userScripts` (`UserScripts.cs`) lets the user write their own commands, never the widget: the Settings page
   adds, edits, deletes or approves one (saving there is the approval, the row shows the exact command line), the page
   sees ids and names only (`umbra.commands()`), the host builds a fixed argv (no shell, no parameters) that passes
   `CommandSpec.Validate`, and code typed in Settings runs from a file named after its hash, rewritten from `scripts.json` before each run.
-  No control command, umbractl or MCP tool may add, change, approve, start or stop a script (tested). A declared command id always wins.
+  A declared command id always wins. Automation reaches scripts only through the `scripts` control command (`AgentScripts.cs`; umbractl
+  `scripts`, MCP `scripts`): list, get and output always; add, edit, delete, approve, run and stop only while the user's
+  **Let AI agents manage my scripts** switch (`General.AgentScripts`) is on. It is off by default and only the Settings page turns it on:
+  no control command (`set-general` doesn't know it), and a restored backup or reset can turn it off but never on (`App.RestoreBackup`).
+  An agent's add/edit approves exactly that command, like saving in Settings, and runs go through the same `CommandService.RunAsync`/
+  `StartFromSettings` gates (widget on, approved program identity, timeout, output cap). Run-as-administrator scripts stay the user's:
+  `scripts` never creates, changes, approves or runs one. Every change and run is logged as "by an AI agent". Tested in `AgentScriptsTests`.
   The one exception to the 120 s timeout (#322): a user script the user marked **Keeps running** in Settings (`CommandSpec.KeepsRunning`,
   never settable from widget.json) has no timeout and keeps only a 64 KB output tail; it runs in a kill-on-close job (dies with Umbra),
   at most one per widget + script and 8 in all, and stops on Stop (widget, Settings, tray), when the widget's last window closes,

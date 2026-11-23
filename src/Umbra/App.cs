@@ -1124,6 +1124,7 @@ sealed class App : ApplicationContext, IUmbraHost
         s.General.LegacyRestoreDone = true;
         s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
         s.General.TourDone = Settings.General.TourDone; // nor re-offer or reset the tour
+        s.General.AgentScripts &= Settings.General.AgentScripts; // a restore or reset can turn agent access to scripts off, never on
         s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
         Settings = s;
         SaveSettings();

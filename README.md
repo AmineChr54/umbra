@@ -236,6 +236,7 @@ umbractl capture sp500 shot.png       # PNG of just that widget (or settings:bro
 umbractl data todo                    # a widget's saved data (umbra.store); data <id> <key> <json> to set
 umbractl diagnostics                  # Markdown for a bug report: versions, monitors, enabled widgets, last log lines (no settings values or proxy address)
 umbractl approvals                    # local commands widgets declare and whether you approved them (read-only)
+umbractl scripts                      # your Script Runner scripts; add/edit/run/stop need "Let AI agents manage my scripts" (below)
 umbractl help                         # everything else
 ```
 
@@ -255,7 +256,8 @@ Then ask, for example, *"add a widget that shows the weather in Berlin under my 
 <details>
 <summary><b>What the MCP server exposes</b></summary>
 
-- **Tools:** `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `validate_widget`, `pack_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `groups`, `capture`, `install_widget`, `update_all_widgets`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself) and a few more.
+- **Tools:** `list_widgets`, `configure_widget` (including `scale`), `edit_mode`, `set_general`, `check_update`, `create_widget`, `validate_widget`, `pack_widget`, `widget_data`, `add_widget_instance`, `remove_widget_instance`, `groups`, `capture`, `install_widget`, `update_all_widgets`, `remove_widget`, `browse_catalog`, `list_themes`, `theme`, `install_theme`, `remove_theme`, `read_logs`, `diagnostics`, `privacy_report`, `backup_settings`, `restore_settings`, `list_command_approvals` (read-only: you approve widget commands yourself), `scripts` (your Script Runner scripts, see below) and a few more.
+- **Your scripts:** `umbractl scripts` and the MCP `scripts` tool always list your Script Runner scripts and read their output. Adding, editing, deleting, approving, running and stopping them works only after you switch on **Let AI agents manage my scripts** in Settings > My widgets > Script Runner (off by default; no command, tool or backup can switch it on). An agent can then set up a script, run it and read the result, or start and stop a tunnel. Saving through an agent approves exactly that command, like saving in Settings. Scripts that run as administrator stay yours: agents can't create, change, approve or start them.
 - **Resources:** every installed widget's files, read-only, as `umbra://widgets/<id>/<file>` (same path and extension rules as agent-written files, 5 MB cap), so an agent can read a widget before editing it.
 - **Prompts:** `new_widget`, `fix_widget` and `restyle_widget`, which walk the agent through `widget_authoring_guide`, `create_widget` and `capture`.
 
