@@ -32,7 +32,7 @@ Some scripts need admin rights (restarting a service, editing the hosts file, `w
 administrator** for the script in Settings, then:
 
 - Each time you press **Run**, Windows shows its own administrator prompt (UAC). Say No and nothing runs.
-- It only ever starts from a click on Run: never on a timer, at widget start, or from `umbractl`/MCP.
+- It only ever starts from a click on Run: never on a timer, at widget start, or from `umbractl`/MCP (even with agent access on).
 - Its output shows in the widget, live, like any other script. The Windows prompt names *Windows PowerShell* for every
   kind of script: Umbra runs a small fixed PowerShell helper as administrator, which runs your script and sends its output back.
 - Stop and the time limit work as usual: they end the script and anything it started.
@@ -49,6 +49,26 @@ administrator** for the script in Settings, then:
 - **Notify me** (options): a Windows toast when a script fails or a running one stops on its own (default), on every
   finish, or never. The first click on Run asks whether Script Runner may notify; you can also switch on *Allow
   notifications* for this widget in Settings.
+
+## Let AI agents manage your scripts
+
+Switch on **Let AI agents manage my scripts** under *Your scripts* in Settings, and an AI agent (Claude Code or any MCP
+client through `umbractl mcp`, or a script using `umbractl`) can add, edit, delete, approve, run and stop your scripts:
+write a health check and run it, start a dev server and read its output, restart a tunnel.
+
+```powershell
+umbractl scripts                                            # every script: id, command line, approved, running
+umbractl scripts add --name "Disk check" --kind powershell --code-file .\disk.ps1
+umbractl scripts run "Disk check"                           # waits, then prints exit code, stdout, stderr
+umbractl scripts start tunnel; umbractl scripts output tunnel; umbractl scripts stop tunnel
+```
+
+- Off (the default): agents can only list your scripts (names and command lines), not read their output or change anything.
+- Only you can switch it on, in Settings. No command, MCP tool or restored backup can.
+- What an agent saves is approved like what you save in Settings, and it runs as you, with your files. Leave the switch on
+  only while you use agents you trust.
+- Scripts that run as administrator stay yours: agents can't create, change, approve, start or delete them.
+- Runs an agent starts don't appear in the widget's *Earlier runs*; the agent gets the result directly.
 
 ## Switches (a VPN, a tunnel)
 

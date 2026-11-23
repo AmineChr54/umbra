@@ -511,3 +511,50 @@ public class UmbraClientLocateTests
         Assert.Equal(2, w.Count);
     }
 }
+
+public class ScriptsCommandLineTests
+{
+    static Task<JsonObject> NoSend(string c, JsonObject a) => Task.FromResult(Protocol.Ok(null));
+    static Task<(string Cmd, JsonObject Args)> T(params string[] a) => CommandLine.TranslateAsync(a, NoSend);
+
+    [Fact]
+    public async Task Scripts_maps_list_and_one_script_ops()
+    {
+        var (cmd, args) = await T("scripts");
+        Assert.Equal(("scripts", "list"), (cmd, args["op"]!.GetValue<string>()));
+        (_, args) = await T("scripts", "start", "Bastion Tunnel", "--widget", "script-runner#2");
+        Assert.Equal(("run", "Bastion Tunnel", "script-runner#2"), (args["op"]!.GetValue<string>(), args["scriptId"]!.GetValue<string>(), args["id"]!.GetValue<string>()));
+        (_, args) = await T("scripts", "stop", "tunnel");
+        Assert.Equal("stop", args["op"]!.GetValue<string>());
+        await Assert.ThrowsAsync<ArgumentException>(() => T("scripts", "run"));
+        await Assert.ThrowsAsync<ArgumentException>(() => T("scripts", "explode"));
+    }
+
+    [Fact]
+    public async Task Scripts_add_and_edit_send_only_the_given_fields()
+    {
+        var (_, args) = await T("scripts", "add", "--name", "Ping", "--kind", "powershell", "--code", "ping 1.1.1.1", "--keeps-running", "--timeout", "30");
+        var s = args["script"]!.AsObject();
+        Assert.Equal(("Ping", "powershell", "ping 1.1.1.1", true, 30),
+            (s["title"]!.GetValue<string>(), s["kind"]!.GetValue<string>(), s["code"]!.GetValue<string>(), s["keepsRunning"]!.GetValue<bool>(), s["timeoutSeconds"]!.GetValue<int>()));
+
+        (_, args) = await T("scripts", "edit", "ping", "--keeps-running", "off", "--args", "-n 2");
+        s = args["script"]!.AsObject();
+        Assert.Equal("ping", args["scriptId"]!.GetValue<string>());
+        Assert.Equal(["args", "keepsRunning"], s.Select(p => p.Key).Order());
+        Assert.False(s["keepsRunning"]!.GetValue<bool>());
+
+        (_, args) = await T("scripts", "add", "--name", "Sync", "--kind", "bash", "--path", "~/bin/sync.sh");
+        Assert.Equal("~/bin/sync.sh", args["script"]!["path"]!.GetValue<string>()); // bash paths as bash sees them
+
+        await Assert.ThrowsAsync<ArgumentException>(() => T("scripts", "add", "--code", "x"));      // no name
+        await Assert.ThrowsAsync<ArgumentException>(() => T("scripts", "edit", "ping"));            // nothing to change
+    }
+
+    [Fact]
+    public void Mcp_has_one_scripts_tool()
+    {
+        Assert.Contains("scripts", McpServer.ToolCommands);
+        Assert.Single(McpServer.ToolCommands, c => c == "scripts");
+    }
+}

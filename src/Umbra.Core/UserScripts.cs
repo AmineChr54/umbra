@@ -8,8 +8,8 @@ namespace Umbra;
 /// <summary>
 /// A script the user added in Settings for a widget that declares <c>permissions.userScripts</c> (Script Runner). It
 /// becomes an ordinary <see cref="CommandSpec"/> (no parameters), so it goes through the same approval gate, runner,
-/// timeout and output cap as a declared command. Only the Settings page writes these; no control command, umbractl or
-/// MCP tool can add, change or approve one.
+/// timeout and output cap as a declared command. The Settings page writes these, and AI agents through the <c>scripts</c>
+/// control command only while the user switched that on in Settings (<see cref="AgentScripts"/>).
 /// </summary>
 public sealed partial class UserScript
 {

@@ -98,6 +98,28 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
                 ("op", Obj(("type", "string"), ("enum", new JsonArray("get", "set", "remove", "clear")), ("description", "Default get"))),
                 ("key", P("string", "Storage key; omit with get to read everything")),
                 ("value", Obj(("description", "Any JSON value, for set")))), "id")),
+        new("scripts", "scripts",
+            "The user's own scripts in Script Runner (PowerShell, Python, Bash or a program; ones that finish and ones that keep running, like a tunnel or a dev server). " +
+            "op: list (default; every script with its id, exact command line, approval status, and for one that keeps running whether it's up), get, output (what it printed so far), " +
+            "add, edit (only the fields you pass change), delete, approve, run (a script that finishes: waits and returns exitCode, stdout, stderr, durationMs; one that keeps running: starts it, the widget must be on), stop. " +
+            "list and get always work. output and everything else work only while the user has switched on \"Let AI agents manage my scripts\" in Settings > My widgets > Script Runner; if it is off, ask the user to switch it on (you can't). " +
+            "Saving with add or edit approves exactly that command. Scripts that run as administrator are the user's alone. Results of earlier runs from the widget are in widget_data (key \"results\").",
+            Schema(Obj(("id", P("string", "Widget id; default the first widget that takes scripts (script-runner)")),
+                ("op", Obj(("type", "string"), ("enum", new JsonArray("list", "get", "output", "add", "edit", "delete", "approve", "run", "stop")), ("description", "Default list"))),
+                ("scriptId", P("string", "The script's id from list (or its exact name); needed for every op but list and add")),
+                ("script", Obj(("type", "object"), ("description", "For add (title and kind, plus code or path, are required) and edit (only what changes)"),
+                    ("properties", Obj(
+                        ("title", P("string", "Name shown in the widget, 1-60 characters")),
+                        ("kind", Obj(("type", "string"), ("enum", new JsonArray("powershell", "python", "bash", "program")))),
+                        ("code", P("string", "The script's code (PowerShell or Python: any length up to 64 KB; Bash: one line). Use this or path")),
+                        ("path", P("string", "Full path of a script file, or for kind program the executable")),
+                        ("args", P("string", "Extra arguments on one line; \"quotes\" group one with spaces. No shell")),
+                        ("description", P("string", "One line shown under the name")),
+                        ("startIn", P("string", "Full path of the folder it runs in; default the widget's data folder")),
+                        ("timeoutSeconds", P("integer", "A script that finishes: 1-120 s, default 60")),
+                        ("keepsRunning", P("boolean", "A tunnel, server or watcher: no time limit, runs until stopped or the widget closes")),
+                        ("autoStart", P("boolean", "Keeps running only: start it whenever the widget is on")),
+                        ("restart", P("boolean", "Keeps running only: start it again when it exits on its own"))))))))),
         new("list_command_approvals", "approvals",
             "Read-only: the local commands that widgets declare in permissions.commands (exact command line) and whether the user approved each one (approved, pending, or changed since approval). " +
             "There is deliberately no tool to approve: the user approves in a prompt or in Settings > My widgets.",

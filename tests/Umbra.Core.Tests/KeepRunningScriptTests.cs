@@ -107,10 +107,11 @@ public class KeepRunningScriptTests
     }
 
     [Fact]
-    public void Automation_can_not_start_or_stop_a_script()
+    public void Automation_reaches_scripts_only_through_the_gated_scripts_command()
     {
-        Assert.DoesNotContain(Protocol.Commands, c => c.Cmd is "run" or "start" or "stop" or "kill"
-            || c.Cmd.Contains("script", StringComparison.OrdinalIgnoreCase) || c.Cmd.Contains("command", StringComparison.OrdinalIgnoreCase));
+        // Starting and stopping go through "scripts", which refuses them unless the user switched on agent access (AgentScriptsTests).
+        Assert.DoesNotContain(Protocol.Commands, c => c.Cmd is "run" or "start" or "stop" or "kill" || c.Cmd.Contains("command", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(["scripts"], Protocol.Commands.Select(c => c.Cmd).Where(c => c.Contains("script", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]

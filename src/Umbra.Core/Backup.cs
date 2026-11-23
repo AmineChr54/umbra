@@ -18,6 +18,19 @@ static class Backup
     /// <summary>The validated content of a backup file, ready to apply.</summary>
     public sealed record Parsed(Settings Settings, Dictionary<string, JsonObject> Data);
 
+    /// <summary>
+    /// What a restore (or Reset) never takes from the backup, for both hosts' <c>RestoreBackup</c>: the version and tour state
+    /// stay, the legacy restore stays done, and agent access to scripts can be turned off but never on.
+    /// </summary>
+    public static void KeepHostOwned(Settings incoming, Settings current)
+    {
+        incoming.General.LegacyRestoreDone = true;
+        incoming.General.LastSeenVersion = current.General.LastSeenVersion; // an old backup must not announce an update again
+        incoming.General.TourDone = current.General.TourDone; // nor re-offer or reset the tour
+        incoming.General.AgentScripts &= current.General.AgentScripts; // only the Settings switch turns agent access to scripts on
+        incoming.SettingsPanel = current.SettingsPanel; // where the Settings window sits is not part of a backup
+    }
+
     /// <summary>Builds the backup document for the given settings and the widget data currently on disk.</summary>
     public static JsonObject Create(Settings settings)
     {

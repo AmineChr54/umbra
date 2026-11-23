@@ -215,9 +215,9 @@ public class UserScriptTests
     }
 
     [Fact]
-    public void Automation_has_no_way_to_add_or_approve_a_script()
+    public void Automation_adds_or_approves_a_script_only_through_the_gated_scripts_command()
     {
-        Assert.DoesNotContain(Protocol.Commands, c => c.Cmd.Contains("script", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(["scripts"], Protocol.Commands.Select(c => c.Cmd).Where(c => c.Contains("script", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]

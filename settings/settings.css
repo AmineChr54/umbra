@@ -545,6 +545,9 @@ select:not(.select):focus, input:is([type=number], [type=text], [type=time]):not
 
 /* ---------- the user's own scripts (permissions.userScripts) ---------- */
 .scripts-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.agent-scripts { display: flex; align-items: center; gap: 16px; padding: 10px 12px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+.agent-text { flex: 1; min-width: 0; }
+.agent-title { font-size: 12.5px; font-weight: 600; margin-bottom: 2px; }
 .cmds > .cmds-title:not(:first-child) { margin-top: 6px; }
 .cmd.script .script-name { grid-column: 1; font-size: 13px; font-weight: 600; color: var(--text); }
 .cmd.script .script-actions { grid-column: 2; grid-row: 1 / span 3; display: flex; gap: 6px; }

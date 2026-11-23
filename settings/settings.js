@@ -945,6 +945,7 @@ function renderScripts(root, w) {
     head.append(add);
   }
   root.append(head);
+  root.append(agentScriptsSwitch());
   if (!scripts.length && !draft)
     root.append(mk("div", "cmd-desc", "Add a PowerShell, Python or Bash script, or any program. It shows up in the widget with a Run button."));
   for (const s of scripts) {
@@ -988,6 +989,27 @@ function renderScripts(root, w) {
     root.append(row);
   }
   if (draft && !draft.id) root.append(scriptEditor(w, draft));
+}
+
+/**
+ * "Let AI agents manage my scripts" (General.AgentScripts): umbractl and MCP may then add, change, approve, run and stop
+ * scripts. Only this switch turns it on; no control command can, and a restored backup never does.
+ */
+function agentScriptsSwitch() {
+  const g = state.settings.general;
+  const row = mk("div", "agent-scripts");
+  const text = mk("div", "agent-text");
+  text.append(mk("div", "agent-title", "Let AI agents manage my scripts"),
+    mk("div", "cmd-desc", g.agentScripts
+      ? "On: AI agents (umbractl, MCP) can add, change, approve, run and stop these scripts. They run as you, with your files, so only leave this on while you use agents you trust."
+      : "Off: AI agents can only list these scripts. On lets them read their output and add, change, approve, run and stop them (scripts that run as administrator stay yours)."));
+  const sw = mk("label", "switch");
+  const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!g.agentScripts });
+  box.setAttribute("aria-label", "Let AI agents manage my scripts");
+  box.addEventListener("change", () => { g.agentScripts = box.checked; save(true); renderInstalled(); });
+  sw.append(box, document.createElement("span"));
+  row.append(text, sw);
+  return row;
 }
 
 function scriptEditor(w, d) {

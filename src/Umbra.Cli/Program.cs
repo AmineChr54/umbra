@@ -126,6 +126,14 @@ static void PrintHelp()
           data <id> --remove <key>|--clear
           settings [page]                open the Settings window
           approvals [id]                 local commands widgets declare and whether you approved them (read-only)
+          scripts [list]                 your own scripts (Script Runner): id, command line, approved, running
+          scripts get|output <script>    one script; what it printed so far
+          scripts add --name <n> --kind powershell|python|bash|program (--code <c> | --code-file <f> | --path <f>)
+                  [--args "..."] [--description <t>] [--start-in <dir>] [--timeout <s>] [--keeps-running] [--auto-start] [--restart]
+          scripts edit <script> [same options]   change only what you pass
+          scripts delete|approve|run|start|stop <script>   run waits for a script that finishes and prints its result
+                                         all but list/get need "Let AI agents manage my scripts" on in Settings
+                                         (off by default); add/edit approve the exact command; [--widget <id>] picks the widget
           privacy [id]                  hosts, commands, saved data and blocked requests per widget (read-only)
           backup <file>                 save settings, layout, theme and widget data (no approvals)
           restore <file>                restore from a backup (validated; approvals are not restored)

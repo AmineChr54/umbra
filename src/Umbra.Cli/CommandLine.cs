@@ -176,6 +176,8 @@ static class CommandLine
                 var keys = Arg(a, 2, "keys (e.g. Ctrl+Alt+E, or off)");
                 return ("hotkeys", O(("action", a[1]), ("keys", keys.Equals("off", StringComparison.OrdinalIgnoreCase) ? "" : keys)));
             }
+            case "scripts" or "script":
+                return ("scripts", Scripts(a));
             case "approvals":
                 // List only. Approving a widget's command is a human action (prompt or Settings > My widgets).
                 return ("approvals", a.Length > 1 ? O(("id", a[1])) : new JsonObject());
@@ -264,6 +266,58 @@ static class CommandLine
         "off" or "false" or "0" or "no" => false,
         _ => throw new ArgumentException($"Expected on/off, got '{v}'"),
     };
+
+    const string ScriptsUsage = "Usage: scripts [list | get <script> | output <script> | add --name <name> (--code <code> | --code-file <file> | --path <file>) [options] | edit <script> [options] | delete <script> | approve <script> | run <script> | start <script> | stop <script>] [--widget <id>]. "
+        + "Options: --kind powershell|python|bash|program, --args \"...\", --description <text>, --start-in <folder>, --timeout <s>, --keeps-running [on|off], --auto-start [on|off], --restart [on|off]";
+
+    /// <summary>umbractl scripts ...: the user's own scripts (Script Runner). Changing, running and stopping needs the user's switch in Settings.</summary>
+    static JsonObject Scripts(string[] a)
+    {
+        var op = a.Length > 1 && !a[1].StartsWith("--", StringComparison.Ordinal) ? a[1] : "list";
+        if (op == "start") op = "run";
+        var o = new JsonObject { ["op"] = op };
+        if (Flag(a, "--widget") is string w) o["id"] = w;
+        switch (op)
+        {
+            case "list": return o;
+            case "get" or "output" or "delete" or "approve" or "run" or "stop":
+                o["scriptId"] = Arg(a, 2, "script id or name");
+                return o;
+            case "add" or "edit":
+            {
+                if (op == "edit") o["scriptId"] = Arg(a, 2, "script id or name");
+                var s = new JsonObject();
+                if (Flag(a, "--name") is string n) s["title"] = n;
+                if (Flag(a, "--kind") is string k) s["kind"] = k;
+                if (Flag(a, "--code") is string code) s["code"] = code;
+                if (Flag(a, "--code-file") is string cf)
+                {
+                    if (s["code"] is not null) throw new ArgumentException("Use --code or --code-file, not both");
+                    s["code"] = File.ReadAllText(Path.GetFullPath(cf));
+                    if (s["kind"] is null && Path.GetExtension(cf).ToLowerInvariant() is var ext && ext is ".py" or ".ps1")
+                        s["kind"] = ext == ".py" ? "python" : "powershell";
+                }
+                // Bash takes the path as bash sees it (~/bin/sync.sh, /mnt/c/...); the others a full Windows path.
+                if (Flag(a, "--path") is string p) s["path"] = Flag(a, "--kind") == "bash" ? p : Path.GetFullPath(p);
+                if (Flag(a, "--args") is string args) s["args"] = args;
+                if (Flag(a, "--description") is string d) s["description"] = d;
+                if (Flag(a, "--start-in") is string si) s["startIn"] = Path.GetFullPath(si);
+                if (Flag(a, "--timeout") is string t) s["timeoutSeconds"] = int.TryParse(t, NumberStyles.None, CultureInfo.InvariantCulture, out var secs) ? secs : throw new ArgumentException("--timeout must be a number of seconds");
+                foreach (var (flag, key) in new[] { ("--keeps-running", "keepsRunning"), ("--auto-start", "autoStart"), ("--restart", "restart") })
+                {
+                    var i = Array.IndexOf(a, flag);
+                    if (i < 0) continue;
+                    // "--keeps-running" alone means on; "--keeps-running off" switches it off.
+                    s[key] = i + 1 < a.Length && !a[i + 1].StartsWith("--", StringComparison.Ordinal) ? OnOff(a[i + 1]) : true;
+                }
+                if (op == "add" && s["title"] is null) throw new ArgumentException("Missing --name. " + ScriptsUsage);
+                if (s.Count == 0) throw new ArgumentException("Nothing to change. " + ScriptsUsage);
+                o["script"] = s;
+                return o;
+            }
+            default: throw new ArgumentException(ScriptsUsage);
+        }
+    }
 
     public static string Arg(string[] a, int i, string what) => i < a.Length ? a[i] : throw new ArgumentException($"Missing {what}. Run umbractl help.");
 
