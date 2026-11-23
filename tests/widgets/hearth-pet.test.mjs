@@ -33,8 +33,27 @@ test("parsePet reads the README example", () => {
   assert.equal(p.food, 62); assert.equal(p.water, 48); assert.equal(p.love, 70);
   assert.equal(p.mood, "content"); assert.equal(p.level, 2); assert.equal(p.xp, 7); assert.equal(p.nextXp, 16);
   assert.deepEqual(p.bond, { day: "2026-06-01", a: true, b: false, done: false, streak: 3 });
-  assert.deepEqual(p.rate, { food: 1.25, water: 1.875, love: 0.9375 });
+  assert.deepEqual(p.rate, { food: 1.25, water: 1.875, love: 0.9375, clean: 0 }, "a relay without clean: it never decays");
   assert.equal(p.min, 10);
+  assert.equal(p.hasClean, false);
+  assert.equal(p.clean, 100);
+  assert.deepEqual(P.actionsFor(p), ["feed", "water", "pet"], "no shower button on an old relay");
+});
+
+test("parsePet reads clean from a 2.1 relay; it decays, counts in the mood and makes the pet look dirty", () => {
+  const p = P.parsePet(pet({ clean: 30, decayPerHour: { food: 1.25, water: 1.875, love: 0.9375, clean: 0.8 } }));
+  assert.equal(p.hasClean, true);
+  assert.equal(p.clean, 30);
+  assert.deepEqual(P.actionsFor(p), ["feed", "water", "pet", "shower"]);
+  const cur = P.current({ pet: p, asOf: T0, trusted: true }, T0 + 10 * 3600000);
+  assert.equal(cur.clean, 22);
+  assert.equal(P.dirtLevel(cur), 1);
+  assert.equal(P.dirtLevel(P.current({ pet: p, asOf: T0, trusted: true }, T0 + 20 * 3600000)), 2);
+  assert.equal(P.dirtLevel(P.current({ pet: P.parsePet(pet()), asOf: T0, trusted: true }, T0 + 99 * 3600000)), 0, "never dirty without the stat");
+  assert.equal(P.bucketOf(40, 40, 40, 10), "sad");
+  assert.equal(P.bucketOf(40, 40, 40), "content");
+  const showered = P.applyCare({ pet: p, asOf: T0, trusted: true }, "shower", T0, "a");
+  assert.equal(Math.round(showered.pet.clean), 70);
 });
 
 test("parsePet rejects things that are not a pet and survives odd fields", () => {
@@ -45,7 +64,7 @@ test("parsePet rejects things that are not a pet and survives odd fields", () =>
   assert.equal(p.mood, "", "an unknown mood word is dropped, there is no dead state to show");
   assert.equal(p.nextXp, null);
   assert.equal(p.bond.done, true); assert.equal(p.bond.day, ""); assert.equal(p.bond.streak, 0);
-  assert.deepEqual(p.rate, P.DEFAULT_RATE);
+  assert.deepEqual(p.rate, { ...P.DEFAULT_RATE, clean: 0 });
   assert.equal(P.parsePet({ food: 500, water: -4, love: 50 }).food, 100);
   assert.equal(P.parsePet({ food: 500, water: -4, love: 50 }).water, 0);
 });

@@ -194,7 +194,7 @@ test("pet: stats decay from server time, are the same for both clients, and clie
   const r = createRelay();
   const { a, b } = await pairCouple(r);
   const p0 = (await a.sync(0)).pet;
-  assert.deepEqual([p0.food, p0.water, p0.love], [70, 70, 70]);
+  assert.deepEqual([p0.food, p0.water, p0.love, p0.clean], [70, 70, 70, 70]);
   r.advance(10 * HOUR);
   // idle sync: nothing is sent, but a full sync computes the decay from the server clock
   const p1 = (await b.sync(0)).pet;
@@ -202,7 +202,8 @@ test("pet: stats decay from server time, are the same for both clients, and clie
   assert.equal(p1.water, Math.round(70 - 1.875 * 10));
   assert.equal(p1.love, Math.round(70 - 0.9375 * 10));
   assert.deepEqual((await a.sync(0)).pet, p1);
-  assert.deepEqual(p1.decayPerHour, { food: 1.25, water: 1.875, love: 0.9375 });
+  assert.equal(p1.clean, Math.round(70 - 0.8 * 10));
+  assert.deepEqual(p1.decayPerHour, { food: 1.25, water: 1.875, love: 0.9375, clean: 0.8 });
   // client-supplied time parameters are ignored
   assert.deepEqual((await b.call("sync", { since: 0, now: 1, t: 1, at: 1 })).pet, p1);
 });

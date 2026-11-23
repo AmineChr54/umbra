@@ -109,7 +109,7 @@ Rules for clients:
 | `clear` | | `{ ok: true, until: ms }`, or `{ ok: true, noop: true }` when the board is empty | |
 | `unclear` | | `{ ok: true }`. Either side may restore the board within 60 s of the clear. | `nothing to restore`, `too late` |
 | `tap` | | `{ ok: true, together: bool }`; `together: true` when the other side tapped within the window before this tap | |
-| `care` | `action=feed\|water\|pet` | `{ ok: true, pet: {...} }` | `bad action`, `too soon` (plus `retryIn` seconds) |
+| `care` | `action=feed\|water\|pet\|shower` | `{ ok: true, pet: {...} }` | `bad action`, `too soon` (plus `retryIn` seconds) |
 | `set` | `names=A,B`, `since=YYYY-MM-DD`, `petName=...` (any combination, at least one) | `{ ok: true }` | `bad name`, `bad date`, `names needs two parts: a,b`, `nothing to set` |
 | `unpair` | | `{ ok: true, graceUntil: ms }` | |
 | `reinvite` | | `{ code, ttl: 600, rebinds: "a"\|"b" }` | |
@@ -164,20 +164,20 @@ open keep drawing what they already have; a fresh `sync` no longer contains the 
 `pet` (in `sync`, and in the answer to `care`):
 
 ```jsonc
-{ "food": 62, "water": 48, "love": 70,        // integers 10..100, computed from SERVER time
+{ "food": 62, "water": 48, "love": 70, "clean": 55, // integers 10..100, computed from SERVER time (clean since Hearth 2.1)
   "mood": "happy",                            // "happy" | "content" | "sad"   (there is no dead state)
   "level": 2, "xp": 7, "nextXp": 16,          // nextXp is null at the maximum level (50)
   "bond": { "day": "2026-06-01", "a": true, "b": false, "done": false, "streak": 3 },
-  "decayPerHour": { "food": 1.25, "water": 1.875, "love": 0.9375 }, "min": 10 }
+  "decayPerHour": { "food": 1.25, "water": 1.875, "love": 0.9375, "clean": 0.8 }, "min": 10 }
 ```
 
-- New pets start at 70 on all three. Each stat falls linearly by `decayPerHour` and **stops at `min` (10)**. A pet that
+- New pets start at 70 on all four (a pet from before 2.1 gets `clean` 70 on its first call; `mood` averages all four). Each stat falls linearly by `decayPerHour` and **stops at `min` (10)**. A pet that
   nobody feeds for a year is `sad` with 10/10/10 and recovers as soon as someone cares. Nothing a client sends can
   change the clock.
 - An idle `sync` does not resend the pet, so a client that wants to show the decay between syncs computes
   `max(min, value - decayPerHour * hoursSinceNow)` from the values and the `now` it last received.
-- `care?action=feed` adds 35 to `food`, `water` adds 35 to `water`, `pet` adds 25 to `love` (capped at 100), on top of the
-  decayed value. Each side may repeat an action after 5 minutes (`{ error: "too soon", retryIn }`).
+- `care?action=feed` adds 35 to `food`, `water` adds 35 to `water`, `pet` adds 25 to `love`, `shower` adds 40 to `clean`
+  (capped at 100), on top of the decayed value. Each side may repeat an action after 5 minutes (`{ error: "too soon", retryIn }`).
 - `xp`: +1 for a care that was needed (the stat was under 90), +5 when the daily bond completes. `level = min(50, 1 + floor(sqrt(xp / 4)))`.
 - `bond`: per UTC day. `a` and `b` say who cared today (any action); `done` is true when both did. `streak` counts
   consecutive UTC days with `done`; it reads 0 once a day was missed.
@@ -191,10 +191,12 @@ with the new pet, or `{ error }`). New fields of `pet`:
 ```jsonc
 { "coins": 42,                                  // Embers, shared by both partners
   "inv": { "ball": 1, "cocoa": 2 },             // what the pair owns (treats are counted)
-  "room": { "toy": "ball", "floorR": "lamp" },  // spot -> item: wallpaper, rug, window, wall, mantel, floorL, floorR, toy
+  "room": { "toy": "ball", "floorR": "lamp" },  // spot -> item: place, wallpaper, rug, window, wall, mantel, floorL, floorR, toy
   "wear": ["tophat", "shades"],                 // the outfit both PCs show; null until someone dressed it here
   "best": { "catch": 31 },                      // best mini-game scores
-  "quests": [{ "id": "feed2", "n": 2, "p": 1, "reward": 15, "claimed": false }],  // today's three (null until drawn)
+  "quests": [{ "id": "feed2", "n": 2, "p": 1, "reward": 15, "xp": 5, "tier": 1, "claimed": false }],  // today's three (null until drawn)
+  "questBonus": { "ready": false, "claimed": false, "xp": 15, "reward": 30 },   // the daily chest (null until drawn)
+  "weekly": { "id": "games15", "n": 15, "p": 4, "claimed": false, "endsAt": 0, "xp": 40, "reward": 100 }, // this ISO week's (null until drawn)
   "stickers": ["first_buy"], "gift": { "from": "a", "item": "cocoa", "t": 0 } | null,
   "log": [[t, "a", "feed", ""]],                // the diary, last 24 events
   "born": 0, "counts": { "games": 3 } }
@@ -207,8 +209,14 @@ with the new pet, or `{ error }`). New fields of `pet`:
 - `use?item=` gives a treat (adds its gains, xp +1, 60 s cooldown per side). `place?spot=&item=` puts an owned item in its
   spot (`item=` empty clears it). `dress?items=a,b` sets the outfit: level and days-together outfits once unlocked, shop
   outfits once owned, one per slot.
-- `play?game=catch|memory|seek&score=N`: the score is clamped to the game's max, 45 s cooldown per side and game, love +5.
-- `quests` draws today's quests (also drawn by any action); `claim?q=0..2` pays a done quest once (either side).
+- `place?spot=place&item=garden|beach|snowy|starry|cafe|treehouse` (bought in the shop, category `place`) moves the pet to
+  that scene; no place is the cozy room. Spots a place doesn't draw (a beach has no mantel) keep their items for later.
+- `play?game=catch|memory|seek|bubbles|hop&score=N`: the score is clamped to the game's max, 45 s cooldown per side and game, love +5.
+- `quests` draws today's quests and this week's quest (also drawn by any action). Daily quests are one easy, one medium
+  and one hard (`QUESTS[id].tier`), the same for both partners. `claim?q=0..2` pays a done quest once (either side):
+  its Embers and its `xp` (5 to 15). `claim?q=bonus` opens the daily chest once all three are claimed (+15 xp, +30 Embers).
+  `claim?q=week` pays the weekly quest (`WEEKLY`, one per ISO week starting Monday UTC): +40 xp, +100 Embers and a
+  surprise item from the shop the pair doesn't own yet (`item` in the answer; 100 more Embers when they own everything).
 - Stickers are awarded by the relay when their rule holds (`STICKERS`); new ones come back in `stickers`.
 - Rooms from before the pet world get these fields on their first call; `born` is then that day.
 
@@ -349,7 +357,8 @@ Anyone can call `/pair?new=1`, which creates two Durable Objects, and the write 
 Cloudflare rate-limiting rules so one client cannot burn the free quota:
 
 - `/pair?new=1`: for example 10 requests per minute per IP.
-- Write routes (`/hearth/stroke`, `undo`, `clear`, `unclear`, `tap`, `care`, `set`, `reinvite`): for example 120 requests
+- Write routes (`/hearth/stroke`, `undo`, `clear`, `unclear`, `tap`, `care`, `set`, `reinvite`, and the pet world's `buy`,
+  `gift`, `open`, `use`, `place`, `dress`, `play`, `claim`, `quests`): for example 120 requests
   per minute per IP (a drawing client sends about one `stroke` call per second).
 - With the Worker on a **custom domain or route in your own zone**, create these in the dashboard under Security, WAF,
   Rate limiting rules, with an expression such as

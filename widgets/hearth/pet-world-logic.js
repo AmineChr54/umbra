@@ -17,6 +17,7 @@
     smoothie: C("treat", 7, "Smoothie", { gain: { water: 45 }, note: "Water +45" }),
     cocoa: C("treat", 9, "Cocoa", { gain: { water: 35, love: 15 }, note: "Water +35, love +15" }),
     star_candy: C("treat", 15, "Star candy", { gain: { food: 20, water: 20, love: 20 }, note: "Everything +20" }),
+    bubble_soap: C("treat", 10, "Bubble soap", { gain: { clean: 50, love: 5 }, note: "Clean +50, love +5" }),
     ball: C("toy", 25, "Ball", { spot: "toy" }),
     yarn: C("toy", 30, "Yarn", { spot: "toy" }),
     duck: C("toy", 35, "Rubber duck", { spot: "toy" }),
@@ -39,6 +40,12 @@
     wall_sky: C("decor", 35, "Sky wallpaper", { spot: "wallpaper" }),
     wall_rose: C("decor", 35, "Rose wallpaper", { spot: "wallpaper" }),
     wall_night: C("decor", 50, "Starry wallpaper", { spot: "wallpaper" }),
+    garden: C("place", 80, "Garden", { spot: "place", note: "Sunflowers, a fence and a big sky" }),
+    beach: C("place", 100, "Beach", { spot: "place", note: "Sand, waves and a sunny umbrella" }),
+    snowy: C("place", 100, "Snowy cabin", { spot: "place", note: "A log cabin with snow outside" }),
+    starry: C("place", 120, "Starry hill", { spot: "place", note: "A hill under the moon and stars" }),
+    cafe: C("place", 120, "Cozy cafe", { spot: "place", note: "Pastries, plants and a chalkboard" }),
+    treehouse: C("place", 150, "Treehouse", { spot: "place", note: "Up in the leaves with the birds" }),
     tophat: C("outfit", 60, "Top hat", { slot: "head" }),
     beanie: C("outfit", 45, "Beanie", { slot: "head" }),
     headphones: C("outfit", 70, "Headphones", { slot: "head" }),
@@ -51,8 +58,10 @@
   const CATEGORIES = Object.freeze([
     Object.freeze({ id: "treat", label: "Treats" }), Object.freeze({ id: "toy", label: "Toys" }),
     Object.freeze({ id: "decor", label: "Decor" }), Object.freeze({ id: "outfit", label: "Outfits" }),
+    Object.freeze({ id: "place", label: "Places" }),
   ]);
   const SPOTS = Object.freeze([
+    Object.freeze({ id: "place", label: "Place" }),
     Object.freeze({ id: "wallpaper", label: "Wallpaper" }), Object.freeze({ id: "rug", label: "Rug" }),
     Object.freeze({ id: "window", label: "Window" }), Object.freeze({ id: "wall", label: "Wall" }),
     Object.freeze({ id: "mantel", label: "Mantel" }), Object.freeze({ id: "floorL", label: "Left corner" }),
@@ -65,29 +74,55 @@
   // ---------- games, quests, stickers (mirror the relay) ----------
 
   const GAMES = Object.freeze({
-    catch: Object.freeze({ max: 80, per: 0.34, cap: 20, label: "Berry Catch", unit: "berries", how: "Move the bowl and catch the berries. Acorns cost a heart." }),
-    memory: Object.freeze({ max: 40, per: 2, cap: 20, label: "Flame Memory", unit: "rounds", how: "Watch the flames light up, then press them in the same order." }),
-    seek: Object.freeze({ max: 15, per: 2, cap: 20, label: "Hide and Seek", unit: "found", how: "Watch where the blob hides while the pots shuffle, then pick one." }),
+    catch: Object.freeze({ max: 150, per: 0.2, cap: 20, label: "Berry Catch", unit: "points", how: "Move the bowl to catch berries. Golden ones count 3, catch in a row for a combo, acorns cost a heart." }),
+    memory: Object.freeze({ max: 40, per: 2, cap: 20, label: "Flame Memory", unit: "rounds", how: "Watch the flames light up, then press them in the same order. One more each round." }),
+    seek: Object.freeze({ max: 15, per: 2, cap: 20, label: "Hide and Seek", unit: "found", how: "Watch the cup the blob hides under while they shuffle, then pick it. Faster each round." }),
+    bubbles: Object.freeze({ v21: true, max: 150, per: 0.2, cap: 20, label: "Bubble Bath", unit: "bubbles", how: "Pop the soap bubbles before they float away. A pop bursts the bubbles touching it." }),
+    hop: Object.freeze({ v21: true, max: 60, per: 0.5, cap: 20, label: "Star Hop", unit: "stars", how: "Click or press Space to hop from cloud to cloud and grab the stars. Don't fall!" }),
   });
-  const GAME_IDS = Object.freeze(["catch", "memory", "seek"]);
+  const GAME_IDS = Object.freeze(["catch", "memory", "seek", "bubbles", "hop"]);
   /** What a score would pay (before the relay's daily cap). */
   const gameCoins = (game, score) => (GAMES[game] ? Math.min(GAMES[game].cap, Math.floor(Math.min(score, GAMES[game].max) * GAMES[game].per)) : 0);
 
+  /** Daily quests (the relay draws one easy, one medium and one hard a day): a title, what to do, a badge glyph. */
+  const Q = (tier, n, reward, xp, title, glyph, text) => Object.freeze({ tier, n, reward, xp, title, glyph, text });
   const QUESTS = Object.freeze({
-    feed2: { n: 2, reward: 15, text: (p) => `Feed ${p} twice` },
-    water2: { n: 2, reward: 15, text: (p) => `Give ${p} water twice` },
-    pet3: { n: 3, reward: 15, text: (p) => `Pet ${p} 3 times` },
-    both: { n: 1, reward: 25, text: (p) => `Both of you care for ${p}` },
-    play1: { n: 1, reward: 15, text: () => "Play a game" },
-    play3: { n: 3, reward: 25, text: () => "Play 3 games" },
-    treat1: { n: 1, reward: 20, text: (p) => `Give ${p} a treat` },
-    buy1: { n: 1, reward: 15, text: () => "Buy something in the shop" },
-    catch20: { n: 1, reward: 25, text: () => "Catch 20 berries in Berry Catch" },
-    memory6: { n: 1, reward: 25, text: () => "Reach round 6 in Flame Memory" },
-    seek3: { n: 1, reward: 25, text: (p) => `Find ${p} 3 times in Hide and Seek` },
-    care6: { n: 6, reward: 20, text: () => "Care 6 times between you" },
+    feed2: Q(1, 2, 15, 5, "Snack attack", "berry", (p) => `Feed ${p} twice`),
+    water2: Q(1, 2, 15, 5, "Stay hydrated", "drop", (p) => `Give ${p} water twice`),
+    pet3: Q(1, 3, 15, 5, "Cuddle time", "heart", (p) => `Pet ${p} 3 times`),
+    shower1: Q(1, 1, 15, 5, "Splish splash", "bubble", (p) => `Give ${p} a shower`),
+    play1: Q(1, 1, 15, 5, "Game on", "play", () => "Play any game"),
+    buy1: Q(1, 1, 15, 5, "Window shopping", "coin", () => "Buy something in the shop"),
+    treat1: Q(1, 1, 20, 5, "Sweet tooth", "cake", (p) => `Give ${p} a treat`),
+    care6: Q(2, 6, 20, 8, "Busy paws", "paw", () => "Care 6 times between you"),
+    play3: Q(2, 3, 25, 8, "Arcade night", "play", () => "Play 3 games"),
+    shower2: Q(2, 2, 25, 8, "Spa day", "bubble", (p) => `Shower ${p} twice`),
+    place1: Q(2, 1, 20, 8, "Interior designer", "house", () => "Put something in the room"),
+    catch20: Q(2, 1, 25, 8, "Berry picker", "berry", () => "Score 20 in Berry Catch"),
+    memory6: Q(2, 1, 25, 8, "Sharp mind", "flame", () => "Reach round 6 in Flame Memory"),
+    seek3: Q(2, 1, 25, 8, "Seeker", "eye", (p) => `Find ${p} 3 times in Hide and Seek`),
+    bubbles30: Q(2, 1, 25, 8, "Bubble master", "bubble", () => "Pop 30 bubbles in Bubble Bath"),
+    hop10: Q(2, 1, 25, 8, "Star hopper", "star", () => "Grab 10 stars in Star Hop"),
+    both: Q(3, 1, 30, 12, "Together", "heart", (p) => `Both of you care for ${p} today`),
+    team: Q(3, 1, 35, 12, "Team play", "team", () => "Both of you play a game today"),
+    record: Q(3, 1, 35, 12, "New record", "trophy", () => "Beat your best score in any game"),
+    full: Q(3, 1, 35, 15, "All topped up", "sparkle", () => "Get every bar to 80 at the same time"),
+    gift1: Q(3, 1, 30, 12, "Surprise!", "gift", () => "Wrap a gift for your partner"),
+    care10: Q(3, 10, 35, 12, "Devoted", "heart", () => "Care 10 times between you"),
   });
+  const TIER_LABELS = Object.freeze(["", "Easy", "Medium", "Hard"]);
   const questText = (id, petName) => (QUESTS[id] ? QUESTS[id].text(petName || "the blob") : "");
+  /** The weekly quest (one per ISO week, Monday UTC): title, what to do, badge. */
+  const W = (n, title, glyph, text) => Object.freeze({ n, title, glyph, text });
+  const WEEKLY = Object.freeze({
+    bond5: W(5, "Inseparable", "heart", () => "Fill the bond on 5 days this week"),
+    games15: W(15, "Game week", "play", () => "Play 15 games this week"),
+    shower4: W(4, "Squeaky clean", "bubble", (p) => `Shower ${p} 4 times this week`),
+    quests9: W(9, "Quest hunter", "flag", () => "Finish 9 daily quests this week"),
+    care25: W(25, "Caretakers", "paw", () => "Care 25 times this week"),
+    treats5: W(5, "Treat week", "cake", (p) => `Give ${p} 5 treats this week`),
+  });
+  const weeklyText = (id, petName) => (WEEKLY[id] ? WEEKLY[id].text(petName || "the blob") : "");
 
   /** Stickers, in album order: label, how to earn it, and a badge (colour + glyph) for the art. */
   const S = (label, how, color, glyph) => Object.freeze({ label, how, color, glyph });
@@ -112,6 +147,11 @@
     rich: S("Saver", "Have 300 Embers at once", "#FFF3B0", "coin"),
     collector: S("Collector", "Own 15 things", "#BFE6F5", "box"),
     birthday: S("Birthday party", "Care for the blob on its birthday", "#F7A8C4", "cake"),
+    first_shower: S("Squeaky clean", "Give the blob a shower", "#BFE6F5", "bubble"),
+    quests50: S("Quest legend", "Claim 50 quests", "#FFF3B0", "trophy"),
+    weekly1: S("Good week", "Finish a weekly quest", "#DDF0C8", "chest"),
+    weekly10: S("Ten good weeks", "Finish 10 weekly quests", "#F7A8C4", "chest"),
+    globetrotter: S("Globetrotter", "Own 3 places", "#BFE6F5", "house"),
   });
   const STICKER_IDS = Object.freeze(Object.keys(STICKERS));
 
@@ -179,14 +219,22 @@
     for (const [k, v] of Object.entries(obj(raw.room))) if (SPOTS.some((s) => s.id === k) && CATALOG[v] && CATALOG[v].spot === k) room[k] = v;
     const quests = Array.isArray(raw.quests) ? raw.quests.filter((q) => q && QUESTS[q.id]).map((q) => ({
       id: q.id, n: Math.max(1, Number(q.n) || 1), p: Math.max(0, Number(q.p) || 0), reward: Number(q.reward) || 0, claimed: !!q.claimed,
+      xp: Number(q.xp) || 2, tier: [1, 2, 3].includes(q.tier) ? q.tier : QUESTS[q.id].tier,
     })) : null;
+    const b = obj(raw.questBonus);
+    const questBonus = raw.questBonus ? { ready: !!b.ready, claimed: !!b.claimed, xp: Number(b.xp) || 0, reward: Number(b.reward) || 0 } : null;
+    const wk = obj(raw.weekly);
+    const weekly = raw.weekly && WEEKLY[wk.id] ? {
+      id: wk.id, n: Math.max(1, Number(wk.n) || 1), p: Math.max(0, Number(wk.p) || 0), claimed: !!wk.claimed,
+      endsAt: Number(wk.endsAt) || 0, xp: Number(wk.xp) || 0, reward: Number(wk.reward) || 0,
+    } : null;
     const gift = raw.gift && CATALOG[raw.gift.item] && (raw.gift.from === "a" || raw.gift.from === "b") ? { from: raw.gift.from, item: raw.gift.item, t: Number(raw.gift.t) || 0 } : null;
     return {
       coins: Math.max(0, Math.floor(Number(raw.coins))),
       inv, room,
       wear: Array.isArray(raw.wear) ? raw.wear.filter((x) => typeof x === "string") : null,
       best: obj(raw.best),
-      quests,
+      quests, questBonus, weekly,
       stickers: Array.isArray(raw.stickers) ? raw.stickers.filter((x) => STICKERS[x]) : [],
       gift,
       log: Array.isArray(raw.log) ? raw.log.filter((e) => Array.isArray(e) && e.length >= 3) : [],
@@ -196,8 +244,21 @@
   }
   const owned = (w, id) => !!(w && w.inv[id] > 0);
   const ownedOutfits = (w) => (w ? Object.keys(w.inv).filter((id) => CATALOG[id] && CATALOG[id].cat === "outfit") : []);
-  /** A quest that is done and not yet claimed. */
-  const claimable = (w) => (w && w.quests ? w.quests.filter((q) => q.p >= q.n && !q.claimed) : []);
+  /** Quests that are done and not yet claimed (daily ones, then "bonus" for the chest and "week" for the weekly). */
+  const claimable = (w) => {
+    if (!w) return [];
+    const out = w.quests ? w.quests.filter((q) => q.p >= q.n && !q.claimed) : [];
+    if (w.questBonus && w.questBonus.ready && !w.questBonus.claimed) out.push({ id: "bonus" });
+    if (w.weekly && w.weekly.p >= w.weekly.n && !w.weekly.claimed) out.push({ id: "week" });
+    return out;
+  };
+  /** "2 days left" / "5 h left" until the weekly quest ends. */
+  function timeLeft(endsAt, now) {
+    const h = Math.max(0, (endsAt - now) / 3600000);
+    if (h >= 48) return `${Math.floor(h / 24)} days left`;
+    if (h >= 1) return `${Math.floor(h)} h left`;
+    return "ends soon";
+  }
 
   /** An error from a world call -> a sentence. */
   function worldProblem(r) {
@@ -208,7 +269,9 @@
     if (e === "none left") return "None left. Buy more in the shop.";
     if (e === "too soon") return `Not yet: again in ${r.retryIn || 60} s.`;
     if (e === "not unlocked") return "That one isn't unlocked yet.";
-    if (e === "not found") return "The relay doesn't know this yet. It needs an update.";
+    if (e === "not found" || e === "bad item" || e === "bad game" || e === "bad quest" || e === "bad spot") return "The relay doesn't know this yet. It needs an update.";
+    if (e === "not done yet") return "Not done yet: keep going!";
+    if (e === "already claimed") return "Already claimed.";
     return "The relay did not take that. Please try again in a moment.";
   }
 
@@ -231,6 +294,9 @@
       case "feed": return `${who} fed ${pet}`;
       case "water": return `${who} gave ${pet} water`;
       case "pet": return `${who} petted ${pet}`;
+      case "shower": return `${who} gave ${pet} a shower`;
+      case "chest": return `${who} opened the daily chest`;
+      case "week": return `${who} finished the weekly quest` + (detail ? `: ${label(detail)} for ${pet}!` : "");
       case "bond": return `You both cared today: ${detail} day streak`;
       case "buy": return `${who} bought ${label(detail)}`;
       case "gift": return `${who} wrapped a gift`;
@@ -257,13 +323,29 @@
   const seekRound = (r) => ({ swaps: Math.min(12, 2 + r), ms: Math.max(180, 560 - r * 40) });
   /** Berry Catch: chance that a new falling thing is an acorn, rising over the 30 s. */
   const acornChance = (elapsedMs) => Math.min(0.35, 0.12 + elapsedMs / 30000 * 0.2);
+  /** Berry Catch: points for a catch with `combo` catches in a row before it (x2 from 5, x3 from 10). */
+  const catchPoints = (golden, combo) => (golden ? 3 : 1) * (combo >= 10 ? 3 : combo >= 5 ? 2 : 1);
+  /** Bubble Bath: indexes of the bubbles a pop at `i` bursts (it and every bubble touching a burst one). */
+  function bubbleChain(bubbles, i) {
+    const out = new Set([i]);
+    const queue = [i];
+    while (queue.length) {
+      const a = bubbles[queue.shift()];
+      bubbles.forEach((b, j) => {
+        if (out.has(j) || !b) return;
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d <= (a.r + b.r) * 1.02) { out.add(j); queue.push(j); }
+      });
+    }
+    return [...out];
+  }
 
   const api = {
     CATALOG, CATEGORIES, SPOTS, itemsFor, itemsForSpot, label,
-    GAMES, GAME_IDS, gameCoins, QUESTS, questText, STICKERS, STICKER_IDS, TRICKS, tricksFor,
+    GAMES, GAME_IDS, gameCoins, QUESTS, TIER_LABELS, questText, WEEKLY, weeklyText, STICKERS, STICKER_IDS, TRICKS, tricksFor,
     skyPhase, asleepAt, season, holiday, HOLIDAY_LINES,
-    parseWorld, owned, ownedOutfits, claimable, worldProblem, ago, diaryLine,
-    rng, memorySequence, seekRound, acornChance,
+    parseWorld, owned, ownedOutfits, claimable, timeLeft, worldProblem, ago, diaryLine,
+    rng, memorySequence, seekRound, acornChance, catchPoints, bubbleChain,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.HearthWorldLogic = api;

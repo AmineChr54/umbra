@@ -11,6 +11,7 @@
   "use strict";
 
   const M = root.HearthMascot || (typeof require === "function" ? require("./mascot.js") : null);
+  const PL = root.HearthPlaces || (typeof require === "function" ? require("./pet-places.js") : null);
   const P = M.PALETTE;
   const OUT = `stroke="${P.brown}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
   const OUT2 = `stroke="${P.brown}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"`;
@@ -182,6 +183,17 @@
     `<g class="pw-x pw-x-juggle">${[0, 1, 2].map((i) => `<circle class="pw-jb pw-d${i}" cx="120" cy="118" r="5" fill="${[P.pinkDeep, P.butter, "#9ED3EE"][i]}" ${OUT2}/>`).join("")}</g>` +
     `<g class="pw-x pw-x-fireworks">${[[80, 70], [160, 60], [120, 40]].map(([x, y], i) => `<g class="pw-burst pw-d${i}" transform="translate(${x} ${y})">` +
       [0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<path d="M0 -4 V-13" stroke="${[P.pinkDeep, P.butter, "#9ED3EE"][i]}" stroke-width="2.4" stroke-linecap="round" transform="rotate(${a})"/>`).join("") + `</g>`).join("")}</g>` +
+    `<g class="pw-x pw-x-shower"><g class="pw-showerhead">` +
+      `<path d="M250 20 V72 Q250 86 236 86 H150" fill="none" stroke="${P.brown}" stroke-width="10" stroke-linecap="round"/>` +
+      `<path d="M250 20 V72 Q250 86 236 86 H150" fill="none" stroke="#D4E0E6" stroke-width="5" stroke-linecap="round"/>` +
+      `<path d="M150 86 V94" stroke="${P.brown}" stroke-width="6"/>` +
+      `<path d="M98 106 Q120 80 142 106 Z" fill="#D4E0E6" ${OUT}/><rect x="96" y="104" width="48" height="6" rx="3" fill="#B9C8D0" ${OUT2}/>` +
+      `<path d="M150 94 Q150 90 136 92" fill="none" stroke="${P.brown}" stroke-width="5" stroke-linecap="round"/>` +
+      `</g><g class="pw-rain">` +
+      [[100, 0], [106, 1], [112, 2], [118, 0], [124, 1], [130, 2], [136, 0], [140, 1], [103, 2], [115, 1], [127, 0], [133, 2]].map(([x, d], i) =>
+        `<path class="pw-drop pw-dr${d}" d="M${x} ${114 + (i % 3) * 5} v9" stroke="#6FBFE6" stroke-width="2.6" stroke-linecap="round"/>`).join("") +
+      `</g><g class="pw-splash">` + [[92, 204], [150, 204], [80, 200], [162, 200]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="#BFE6F5" ${OUT2.replace("1.8", "1")}/>`).join("") +
+      `</g><g class="pw-puddle"><ellipse cx="120" cy="204" rx="50" ry="6" fill="#BFE6F5" opacity="0.7"/></g></g>` +
     `<g class="pw-x pw-x-butterfly"><g class="pw-fly"><path d="M0 0 q-7 -8 -9 -2 q2 5 9 2 q7 -8 9 -2 q-2 5 -9 2" fill="${P.pink}" ${OUT2.replace("1.8", "1")}/></g></g>` +
     `<g class="pw-x pw-x-read"><path d="M138 176 l10 -3 v12 l-10 3 Z M138 176 l-10 -3 v12 l10 3 Z" fill="${P.white}" ${OUT2}/></g>` +
     `<g class="pw-x pw-x-note">${[0, 1].map((i) => `<path class="pw-notefloat pw-d${i}" d="M${150 + i * 10} 120 v-10 l6 -2 v10" fill="none" stroke="${P.ink}" stroke-width="1.6"/><circle cx="${148 + i * 10}" cy="120" r="2.2" fill="${P.ink}"/>`).join("")}</g>`;
@@ -195,12 +207,12 @@
       mood: s.mood, outfit: s.outfit, level: s.level, title: typeof s.title === "string" ? s.title : "",
       room, phase: SKY[s.phase] ? s.phase : "day", season: ["winter", "spring", "summer", "autumn"].includes(s.season) ? s.season : "summer",
       holiday: typeof s.holiday === "string" ? s.holiday : "", gift: s.gift === "mine" || s.gift === "theirs" ? s.gift : "",
-      asleep: !!s.asleep, now: Number(s.now) || 0,
+      asleep: !!s.asleep, now: Number(s.now) || 0, dirt: s.dirt === 1 || s.dirt === 2 ? s.dirt : 0,
       pet: s.pet !== false, still: !!s.still,             // shop pictures: an empty room that does not move
     };
   }
   /** The key that decides a full redraw (the clock's hands, the walk and the looking are updated in place). */
-  const keyOf = (o) => JSON.stringify([o.mood, o.outfit, o.level, o.title, o.room, o.phase, o.season, o.holiday, o.gift, o.asleep]);
+  const keyOf = (o) => JSON.stringify([o.mood, o.outfit, o.level, o.title, o.room, o.phase, o.season, o.holiday, o.gift, o.asleep, o.dirt]);
 
   function renderRoom(opts) {
     const o = norm(opts);
@@ -225,14 +237,19 @@
     const rugArt = `<ellipse cx="120" cy="196" rx="84" ry="17" fill="${rug.fill}" stroke="${P.brown}" stroke-width="4"/>` +
       `<ellipse cx="120" cy="196" rx="64" ry="11" fill="none" stroke="${rug.ring}" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"/>`;
     // The blob: the mascot's own svg, placed on the rug inside a walker (moved by JS) and an act layer (tricks, idle acts).
-    const blob = !o.pet ? "" : M.renderSvg({ mood: o.mood, outfit: o.outfit, level: o.level, title: o.title }).replace("<svg ", `<svg x="68" y="112" width="104" height="104" `);
-    const night = dark ? `<rect class="pw-dark" x="-400" y="-400" width="1040" height="1040" fill="#1B2140" opacity="${dark}"/>` +
-      `<circle class="pw-fireglow" cx="120" cy="110" r="52" fill="${P.butter}" opacity="${o.phase === "night" ? 0.14 : 0.08}"/>` +
-      (lamp ? `<circle class="pw-lampglow" cx="206" cy="122" r="44" fill="${P.butter}" opacity="0.28"/>` : "") : "";
-    const label = (o.title ? o.title + ", " : "") + "the blob's room" + (o.asleep ? ", asleep" : "");
+    const blob = !o.pet ? "" : M.renderSvg({ mood: o.mood, outfit: o.outfit, level: o.level, title: o.title, dirt: o.dirt }).replace("<svg ", `<svg x="68" y="112" width="104" height="104" `);
+    const place = PL && o.room.place ? PL.get(o.room.place) : null;
+    const shows = (spot) => !place || place.shows.includes(spot);
+    const kit = { P, OUT, OUT2, SKY, starPath };
+    const night = dark && !(place && place.ownSky) ? `<rect class="pw-dark" x="-400" y="-400" width="1040" height="1040" fill="#1B2140" opacity="${dark}"/>` +
+      (place ? "" : `<circle class="pw-fireglow" cx="120" cy="110" r="52" fill="${P.butter}" opacity="${o.phase === "night" ? 0.14 : 0.08}"/>`) +
+      (lamp && shows("floorR") ? `<circle class="pw-lampglow" cx="206" cy="122" r="44" fill="${P.butter}" opacity="0.28"/>` : "") : "";
+    const label = (o.title ? o.title + ", " : "") + (place ? place.label : "the blob's room") + (o.asleep ? ", asleep" : "");
     return `<svg xmlns="http://www.w3.org/2000/svg" class="hm-scene pw-scene pw-${o.phase} pw-${o.season}${o.holiday ? " pw-h-" + o.holiday : ""}${o.asleep ? " pw-asleep" : ""}${o.still ? " pw-still" : ""}" viewBox="0 0 240 240" role="img" aria-label="${esc(label)}" data-mood="${esc(o.mood || "")}">` +
-      wall + floor + windowArt(o) + wallItem(o.room.wall, o.now) + hearth + mantelItem(o.room.mantel, o.holiday) +
-      floorL(o.room.floorL) + floorR(o.room.floorR, lamp && dark > 0) + holidayFloor(o.holiday) + rugArt + toyArt(o.room.toy) + giftArt(o.gift) +
+      (place ? place.back(o, kit) : wall + floor + windowArt(o) + hearth + mantelItem(o.room.mantel, o.holiday)) +
+      (shows("wall") ? wallItem(o.room.wall, o.now) : "") +
+      (shows("floorL") ? floorL(o.room.floorL) : "") + (shows("floorR") ? floorR(o.room.floorR, lamp && dark > 0) : "") + holidayFloor(o.holiday) +
+      (shows("rug") ? rugArt : "") + (shows("toy") ? toyArt(o.room.toy) : "") + giftArt(o.gift) +
       holidaySky(o.holiday) +
       (o.pet ? `<g class="pw-walker"><g class="pw-act">${blob}</g>${EXTRAS()}</g>` : "") + night +
       `</svg>`;
@@ -302,14 +319,17 @@
         M.REACTIONS.forEach((r) => svg.classList.remove("hm-react-" + r));
         void svg.getBoundingClientRect();
         svg.classList.add("hm-react-" + name);
-        playing.react = { name, at: Date.now(), until: Date.now() + M.REACTION_MS };
+        const ms = M.reactionMs ? M.reactionMs(name) : M.REACTION_MS;
+        playing.react = { name, at: Date.now(), until: Date.now() + ms };
         clearTimeout(timers.react);
-        timers.react = setTimeout(() => { playing.react = null; const n = blob(); if (n) n.classList.remove("hm-react-" + name); }, M.REACTION_MS);
+        timers.react = setTimeout(() => { playing.react = null; const n = blob(); if (n) n.classList.remove("hm-react-" + name); }, ms);
       },
       /** Play "pw-act-<name>" on the room for `ms` (a trick or an idle act). Returns false when motion is off. */
       act(name, ms) {
         const r = root();
         if (!r || motionOff()) return false;
+        // an idle act never cuts a shower short
+        if (playing.act && playing.act.name === "shower" && name !== "shower" && playing.act.until > Date.now()) return false;
         for (const c of [...r.classList]) if (c.startsWith("pw-act-")) r.classList.remove(c);
         void r.getBoundingClientRect();
         r.classList.add("pw-act-" + name);

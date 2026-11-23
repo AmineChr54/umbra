@@ -15,6 +15,9 @@
   const plate = `<ellipse cx="20" cy="33" rx="16" ry="3.6" fill="#fff" ${O}/>`;
   const shine = (x, y) => `<path d="M${x} ${y} q1.2 -1.4 2.6 -1" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>`;
   const TREATS = {
+    bubble_soap: plate +
+      `<rect x="8" y="20" width="24" height="12" rx="4" fill="#BFE6F5" ${O}/><path d="M11 23 h10" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>` +
+      [[14, 14, 4], [23, 11, 5.5], [31, 17, 3], [19, 5, 2.6]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#6B4F3A" stroke-width="1.4"/>` + shine(x - r * 0.5, y - r * 0.1)).join(""),
     berry_tart: plate +
       `<path d="M5.5 24 L9 31.5 H31 L34.5 24 Z" fill="#F2C98A" ${O}/>` +
       `<path d="M11 25.5 L12.5 30 M16 25.5 L16.8 30 M20 25.5 V30 M24 25.5 L23.2 30 M29 25.5 L27.5 30" fill="none" stroke="#B98563" stroke-width="1.2" stroke-linecap="round"/>` +
@@ -59,7 +62,7 @@
     if (!it) return "";
     if (it.cat === "outfit") return M.renderSvg({ mood: "content", outfit: [id], level: 5 });
     const room = it.spot ? { [it.spot]: id } : {};
-    const view = { wallpaper: "-40 -30 120 100", rug: "34 168 172 52", window: "-4 8 92 80", wall: "160 16 82 70", mantel: "66 -18 108 60", floorL: "-10 112 92 82", floorR: "162 100 88 92", toy: "28 160 58 46" }[it.spot];
+    const view = { place: "0 0 240 210", wallpaper: "-40 -30 120 100", rug: "34 168 172 52", window: "-4 8 92 80", wall: "160 16 82 70", mantel: "66 -18 108 60", floorL: "-10 112 92 82", floorR: "162 100 88 92", toy: "28 160 58 46" }[it.spot];
     if (view) {
       const svg = window.HearthWorld.renderRoom({ room, phase: "day", season: "summer", mood: "content", level: 1, pet: false, still: true });
       return svg.replace(/viewBox="0 0 240 240"/, `viewBox="${view}" preserveAspectRatio="xMidYMid meet"`);
@@ -67,20 +70,38 @@
     return TREATS[id] ? `<svg viewBox="0 0 40 40" aria-hidden="true">${TREATS[id]}</svg>` : "";
   }
 
-  function sticker(id, have) {
-    const s = WL.STICKERS[id];
-    const g = {
+  const GLYPHS = {
+      drop: "M18 8 C22 14 25 18 25 22 A7 7 0 0 1 11 22 C11 18 14 14 18 8 Z",
+      heart: "M18 27 C8 20 9 12 14 11 C16 10.5 17.5 12 18 13.5 C18.5 12 20 10.5 22 11 C27 12 28 20 18 27 Z",
+      bubble: "M15 13 A7 7 0 1 0 15.1 13 Z M25 8 A4 4 0 1 0 25.1 8 Z M25 22.5 A2.5 2.5 0 1 0 25.1 22.5 Z",
+      paw: "M18 18 C13 18 11 23 13 26 C15 28 21 28 23 26 C25 23 23 18 18 18 Z M11 14.5 A2.5 2.5 0 1 0 11.1 14.5 Z M15.5 9.5 A2.5 2.5 0 1 0 15.6 9.5 Z M20.5 9.5 A2.5 2.5 0 1 0 20.6 9.5 Z M25 14.5 A2.5 2.5 0 1 0 25.1 14.5 Z",
+      team: "M13 9 A3.5 3.5 0 1 0 13.1 9 Z M23 9 A3.5 3.5 0 1 0 23.1 9 Z M7 27 Q7 19 13 19 Q19 19 19 27 M17 27 Q17 19 23 19 Q29 19 29 27",
+      trophy: "M12 9 H24 V15 A6 6 0 0 1 12 15 Z M12 11 H8 Q8 17 13 17 M24 11 H28 Q28 17 23 17 M18 21 V25 M13 27 H23",
+      sparkle: "M18 7 Q19.5 16.5 29 18 Q19.5 19.5 18 29 Q16.5 19.5 7 18 Q16.5 16.5 18 7 Z",
+      chest: "M8 16 Q8 10 18 10 Q28 10 28 16 Z M8 16 H28 V27 H8 Z M16 16 V20 H20 V16",
+      cup: "M10 26 L13 12 H23 L26 26 Z M16 12 Q18 8 20 12",
+      cloud: "M10 24 A5 5 0 0 1 12 15 A6 6 0 0 1 23 13 A5 5 0 0 1 27 24 Z",
       play: "M15 11 L27 18 L15 25 Z", cake: "M10 22 H26 V28 H10 Z M12 16 H24 V22 H12 Z M18 10 V16", coin: "M18 10 A8 8 0 1 0 18.1 10 Z", gift: "M10 16 H26 V28 H10 Z M8 12 H28 V16 H8 Z M18 12 V28",
       flag: "M12 28 V9 M12 10 H25 L21 15 L25 20 H12", house: "M9 19 L18 10 L27 19 M12 17 V28 H24 V17", hat: "M10 26 H26 M13 26 V14 H23 V26", flame: "M18 28 C10 26 10 18 14 14 C14 18 17 19 18 16 C19 13 17 10 20 7 C22 12 27 15 26 21 C25 26 22 28 18 28 Z",
       star: "M18 7 L21 15 L29 15 L23 20 L25 28 L18 23 L11 28 L13 20 L7 15 L15 15 Z", crown: "M9 26 L8 12 L14 18 L18 10 L22 18 L28 12 L27 26 Z", berry: "M18 28 A8 8 0 1 0 18.1 28 Z M18 12 Q22 7 26 9",
       eye: "M7 18 Q18 8 29 18 Q18 28 7 18 Z M18 15 A3 3 0 1 0 18.1 15 Z", box: "M9 14 H27 V28 H9 Z M9 14 L13 9 H23 L27 14",
-    }[s.glyph] || "M18 10 A8 8 0 1 0 18.1 10 Z";
+  };
+  /** A round badge with a glyph (36 x 36). */
+  const badge = (glyph, color, cls) => `<svg class="${cls || ""}" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="${color}" stroke="#6B4F3A" stroke-width="2"/>` +
+    `<path d="${GLYPHS[glyph] || "M18 10 A8 8 0 1 0 18.1 10 Z"}" fill="#fff" stroke="#6B4F3A" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  const TIER_COLOR = ["", "#DDF0C8", "#BFE6F5", "#F7A8C4"];
+  const GAME_BADGE = { catch: ["berry", "#F7A8C4"], memory: ["flame", "#FFF3B0"], seek: ["cup", "#DDF0C8"], bubbles: ["bubble", "#BFE6F5"], hop: ["star", "#FFF3B0"] };
+
+  function sticker(id, have) {
+    const s = WL.STICKERS[id];
+    const g = GLYPHS[s.glyph] || "M18 10 A8 8 0 1 0 18.1 10 Z";
     return `<div class="px-sticker${have ? "" : " locked"}" title="${esc(s.label + ": " + s.how)}"><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="${have ? s.color : "#EEE"}" stroke="#6B4F3A" stroke-width="2"/>` +
       `<path d="${g}" fill="${have ? "#fff" : "none"}" stroke="#6B4F3A" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><b>${esc(s.label)}</b><span>${esc(have ? "Earned" : s.how)}</span></div>`;
   }
 
   /**
-   * The HTML of a panel. ctx: { world, panel, sub, level, me, names, petName, err, busy, local (best scores on an old relay) }.
+   * The HTML of a panel. ctx: { world, panel, sub, level, me, names, petName, err, busy, local (best scores on an old relay),
+   * now, celebrate (a claim that just happened), v21 (the relay has Hearth 2.1: places and the new games) }.
    */
   function panelHtml(ctx) {
     const w = ctx.world, pet = ctx.petName || "the blob";
@@ -88,10 +109,11 @@
     const msg = ctx.err ? `<p class="pt-err" role="alert">${esc(ctx.err)}</p>` : "";
     switch (ctx.panel) {
       case "play": {
-        const rows = WL.GAME_IDS.map((id) => {
+        const rows = WL.GAME_IDS.filter((id) => ctx.v21 || !WL.GAMES[id].v21).map((id) => {
           const g = WL.GAMES[id];
           const best = w ? w.best[id] || 0 : (ctx.local && ctx.local[id]) || 0;
-          return `<div class="px-row"><div class="px-txt"><b>${g.label}</b><span>${esc(g.how)}</span><span class="num">Best: ${best} ${g.unit}${w ? ` · up to ${g.cap} Embers` : ""}</span></div>` +
+          const [gl, gc] = GAME_BADGE[id] || ["play", "#FFF3B0"];
+          return `<div class="px-row px-game">${badge(gl, gc, "px-badge")}<div class="px-txt"><b>${g.label}</b><span>${esc(g.how)}</span><span class="num">Best: ${best} ${g.unit}${w ? ` · up to ${g.cap} Embers` : ""}</span></div>` +
             `<button class="btn primary" data-act="game" data-game="${id}" data-no-drag>Play</button></div>`;
         }).join("");
         return `<div class="pt-form px">${head("Play", coins)}${msg}${rows}${w ? "" : `<p class="pt-muted">Scores stay on this PC until the relay knows the pet's world.</p>`}</div>`;
@@ -110,7 +132,7 @@
           const it = WL.CATALOG[id], n = (w && w.inv[id]) || 0;
           const own = it.cat !== "treat" && n > 0;
           const afford = w && w.coins >= it.price;
-          return `<div class="px-item${own ? " own" : ""}"><span class="px-art">${itemArt(id)}</span><b>${esc(it.label)}</b>` +
+          return `<div class="px-item${own ? " own" : ""}${it.cat === "place" ? " px-wide" : ""}"><span class="px-art">${itemArt(id)}</span><b>${esc(it.label)}</b>` +
             `<span class="px-note">${esc(it.note || (it.cat === "treat" ? "" : own ? "Yours" : ""))}${it.cat === "treat" && n ? ` · have ${n}` : ""}</span>` +
             `<span class="px-buy">${own ? (it.cat === "outfit" ? `<button class="btn" data-act="wear" data-id="${id}" data-no-drag>Wear</button>` : `<button class="btn" data-act="panel" data-panel="room" data-no-drag>Place</button>`)
               : `<button class="btn${afford ? " primary" : ""}" data-act="buy" data-id="${id}" data-no-drag ${afford && !ctx.busy ? "" : "disabled"}>${ember(it.price)}</button>`}` +
@@ -118,26 +140,50 @@
             (!w || w.gift ? "" : `<button class="btn quiet px-giftbtn" data-act="gift" data-id="${id}" data-no-drag title="Wrap it as a gift for ${esc((ctx.names && ctx.names.partner) || "your partner")}" ${afford && !ctx.busy ? "" : "disabled"}>Gift</button>`) +
             `</span></div>`;
         }).join("");
-        return `<div class="pt-form px">${head("Shop", coins)}${tabs(cat, WL.CATEGORIES.map((c) => ["shop:" + c.id, c.label]))}${msg}<div class="px-grid">${tiles}</div>` +
+        return `<div class="pt-form px">${head("Shop", coins)}${tabs(cat, WL.CATEGORIES.filter((c) => ctx.v21 || c.id !== "place").map((c) => ["shop:" + c.id, c.label]))}${msg}<div class="px-grid">${tiles}</div>` +
           `<p class="pt-muted">Embers are shared: you both earn them by caring, playing and finishing quests. Gifts wait in the room until your partner opens them.</p></div>`;
       }
       case "room": {
-        const rows = WL.SPOTS.map((s) => {
+        const rows = WL.SPOTS.filter((s) => ctx.v21 || s.id !== "place").map((s) => {
           const items = WL.itemsForSpot(s.id).filter((id) => w.inv[id] > 0);
           const cur = w.room[s.id] || "";
-          const chips = [`<button class="px-chip${cur ? "" : " on"}" data-act="place" data-spot="${s.id}" data-id="" data-no-drag>None</button>`]
+          const chips = [`<button class="px-chip${cur ? "" : " on"}" data-act="place" data-spot="${s.id}" data-id="" data-no-drag>${s.id === "place" ? "Cozy room" : "None"}</button>`]
             .concat(items.map((id) => `<button class="px-chip${cur === id ? " on" : ""}" data-act="place" data-spot="${s.id}" data-id="${id}" data-no-drag>${esc(WL.label(id))}</button>`));
-          return `<div class="px-spot"><b>${s.label}</b><div class="px-chips">${items.length ? chips.join("") : `<span class="pt-muted">Nothing yet. <button class="px-link" data-act="panel" data-panel="shop:${s.id === "toy" ? "toy" : "decor"}" data-no-drag>Shop</button></span>`}</div></div>`;
+          return `<div class="px-spot"><b>${s.label}</b><div class="px-chips">${items.length ? chips.join("") : `<span class="pt-muted">${s.id === "place" ? "Only the cozy room for now." : "Nothing yet."} <button class="px-link" data-act="panel" data-panel="shop:${s.id === "toy" ? "toy" : s.id === "place" ? "place" : "decor"}" data-no-drag>Shop</button></span>`}</div></div>`;
         }).join("");
-        return `<div class="pt-form px">${head("Room", coins)}${msg}${rows}<p class="pt-muted">The room is shared: your partner sees it too.</p></div>`;
+        return `<div class="pt-form px">${head("Room", coins)}${msg}${rows}<p class="pt-muted">The room is shared: your partner sees it too. Some places have no wall or mantel, so those things wait for the cozy room.</p></div>`;
       }
       case "quests": {
-        const qs = w.quests;
-        const rows = qs ? qs.map((q, i) => `<div class="px-row"><div class="px-txt"><b>${esc(WL.questText(q.id, pet))}</b>` +
-          `<span class="pt-bar"><i style="width:${Math.round((Math.min(q.p, q.n) / q.n) * 100)}%"></i></span><span class="num">${Math.min(q.p, q.n)}/${q.n}</span></div>` +
-          (q.claimed ? `<span class="px-done">Done</span>` : `<button class="btn${q.p >= q.n ? " primary" : ""}" data-act="claim" data-q="${i}" data-no-drag ${q.p >= q.n && !ctx.busy ? "" : "disabled"}>${ember("+" + q.reward)}</button>`) + `</div>`).join("")
-          : `<p class="pt-muted">Loading today's quests...</p>`;
-        return `<div class="pt-form px">${head("Today's quests", coins)}${msg}${rows}<p class="pt-muted">New quests every day (UTC). Either of you can claim one, once.</p></div>`;
+        const qs = w.quests, cel = ctx.celebrate;
+        const pop = (q) => (cel && cel.q === String(q) ? " pop" : "");
+        const confetti = `<i class="qx-confetti" aria-hidden="true">${"<b></b>".repeat(8)}</i>`;
+        const rewards = (xp, coins, extra) => `<span class="qx-rw"><span class="qx-xp num">+${xp} XP</span>${ember("+" + coins)}${extra || ""}</span>`;
+        const bar = (p, n) => `<span class="qx-prog"><span class="pt-bar"><i style="width:${Math.round((Math.min(p, n) / n) * 100)}%"></i></span><span class="num">${Math.min(p, n)}/${n}</span></span>`;
+        const action = (done, claimed, q, label) => claimed ? `<span class="qx-done">&#10003; Claimed</span>`
+          : `<button class="btn${done ? " primary qx-ready" : ""}" data-act="claim" data-q="${q}" data-no-drag ${done && !ctx.busy ? "" : "disabled"}>${done ? label : "Not yet"}</button>`;
+        const cards = qs ? qs.map((q, i) => {
+          const d = WL.QUESTS[q.id], done = q.p >= q.n;
+          return `<div class="qx-card t${q.tier}${q.claimed ? " claimed" : done ? " ready" : ""}${pop(i)}">${badge(d.glyph, TIER_COLOR[q.tier], "qx-badge")}` +
+            `<div class="qx-body"><span class="qx-tier">${WL.TIER_LABELS[q.tier]}</span><b>${esc(d.title)}</b><span class="qx-what">${esc(WL.questText(q.id, pet))}</span>${bar(q.p, q.n)}</div>` +
+            `<div class="qx-side">${rewards(q.xp, q.reward)}${action(done, q.claimed, i, "Claim")}</div>${pop(i) ? confetti : ""}</div>`;
+        }).join("") : `<p class="pt-muted">Loading today's quests...</p>`;
+        const b = w.questBonus;
+        const claimedN = qs ? qs.filter((q) => q.claimed).length : 0;
+        const chest = b ? `<div class="qx-card qx-chest${b.claimed ? " claimed" : b.ready ? " ready" : ""}${pop("bonus")}">${badge("chest", "#FFE36E", "qx-badge")}` +
+          `<div class="qx-body"><span class="qx-tier">Daily chest</span><b>${b.claimed ? "Opened!" : "Claim all three"}</b><span class="qx-dots">${[0, 1, 2].map((i) => `<i class="${i < claimedN ? "on" : ""}"></i>`).join("")}</span></div>` +
+          `<div class="qx-side">${rewards(b.xp, b.reward)}${action(b.ready, b.claimed, "bonus", "Open")}</div>${pop("bonus") ? confetti : ""}</div>` : "";
+        const wk = w.weekly;
+        const week = wk ? (() => {
+          const d = WL.WEEKLY[wk.id], done = wk.p >= wk.n;
+          return `<div class="qx-card qx-week${wk.claimed ? " claimed" : done ? " ready" : ""}${pop("week")}">${badge(d.glyph, "#E9D7FF", "qx-badge")}` +
+            `<div class="qx-body"><span class="qx-tier">Weekly &middot; ${esc(WL.timeLeft(wk.endsAt, ctx.now || Date.now()))}</span><b>${esc(d.title)}</b><span class="qx-what">${esc(WL.weeklyText(wk.id, pet))}</span>${bar(wk.p, wk.n)}</div>` +
+            `<div class="qx-side">${rewards(wk.xp, wk.reward, `<span class="qx-gift" title="A surprise from the shop you don't own yet">+ surprise</span>`)}${action(done, wk.claimed, "week", "Claim")}</div>${pop("week") ? confetti : ""}</div>`;
+        })() : "";
+        const left = qs ? qs.filter((q) => !q.claimed).reduce((n, q) => n + q.xp, 0) + (b && !b.claimed ? b.xp : 0) : 0;
+        return `<div class="pt-form px qx">${head("Quests", coins)}${msg}` +
+          (qs ? `<p class="qx-sum">${left ? `<b class="num">${left} XP</b> left to earn today` : `<b>All done today!</b> Come back tomorrow`}</p>` : "") +
+          cards + chest + week +
+          `<p class="pt-muted">New quests every day at midnight UTC, a new weekly quest every Monday. Either of you can claim, once.</p></div>`;
       }
       case "stickers": {
         const have = new Set(w.stickers);
@@ -157,7 +203,7 @@
         const b = (panel, label, sub) => `<button class="px-menu" data-act="panel" data-panel="${panel}" data-no-drag><b>${label}</b><span>${sub}</span></button>`;
         const claim = w ? WL.claimable(w).length : 0;
         return `<div class="pt-form px">${head("More", coins)}<div class="px-menus">` +
-          (w ? b("quests", "Quests" + (claim ? ` <i class="px-dot">${claim}</i>` : ""), "Three a day, for Embers") + b("room", "Room", "Place what you bought") +
+          (w ? b("quests", "Quests" + (claim ? ` <i class="px-dot">${claim}</i>` : ""), "Daily, a chest and a weekly one") + b("room", "Room", "Places and decor") +
             b("stickers", "Stickers", `${w.stickers.length} of ${WL.STICKER_IDS.length}`) + b("diary", "Diary", "What you two did") : "") +
           b("tricks", "Tricks", "Show what it learned") + b("outfits", "Outfit", "Dress it up") + `</div></div>`;
       }

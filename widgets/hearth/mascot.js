@@ -30,7 +30,7 @@
   /** Faces. `love` is what a received tap shows. */
   const MOODS = Object.freeze(["happy", "content", "hungry", "thirsty", "sleepy", "sad", "love"]);
   /** One-shot reaction animations (restarted by `mount().react`). */
-  const REACTIONS = Object.freeze(["feed", "water", "pet", "tap"]);
+  const REACTIONS = Object.freeze(["feed", "water", "pet", "tap", "shower"]);
   /** An outfit occupies one slot; two outfits in the same slot never combine (the later one wins). */
   const SLOTS = Object.freeze(["head", "face", "neck"]);
   const OUTFIT_SLOT = Object.freeze({
@@ -49,6 +49,9 @@
   const STAGE_FROM_LEVEL = Object.freeze([1, 3, 6, 10, 15]);
   const STAGE_SCALE = Object.freeze([0.8, 0.87, 0.93, 0.97, 1]);
   const REACTION_MS = 1800;
+  /** Reactions that take longer than REACTION_MS. */
+  const REACTION_LONG = Object.freeze({ shower: 3400 });
+  const reactionMs = (name) => REACTION_LONG[name] || REACTION_MS;
 
   // ---------- selection (pure) ----------
 
@@ -81,6 +84,7 @@
       stage: stageForLevel(level),
       reaction: REACTIONS.includes(o.reaction) ? o.reaction : null,
       title: typeof o.title === "string" ? o.title.slice(0, 40) : "",
+      dirt: o.dirt === 1 || o.dirt === 2 ? o.dirt : 0,
     };
   }
 
@@ -288,7 +292,33 @@
     `<g class="hm-fx hm-fx-water" opacity="0">${droplet(66, 14, 0.9)}${droplet(100, 6, 1)}${droplet(134, 14, 0.9)}</g>` +
     `<g class="hm-fx hm-fx-pet" opacity="0"><g transform="translate(100 46)"><g class="hm-fx-hand"><path d="M-17 4 Q-19 -9 -9 -11 Q-8 -20 -1 -18 Q4 -22 9 -16 Q18 -16 18 -6 Q22 4 14 10 Q4 16 -6 14 Q-16 12 -17 4 Z" fill="#FFE2CF" ${OUT3}/><path d="M-6 -4 Q-4 2 -6 7 M3 -6 Q5 1 3 7" fill="none" stroke="${P.brown}" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/></g></g>` +
     `<g class="hm-fx-pet1">${heart(60, 44, 1, P.pink)}</g><g class="hm-fx-pet2">${heart(100, 30, 1.25, P.pinkDeep)}</g><g class="hm-fx-pet3">${heart(142, 44, 1, P.pink)}</g></g>` +
-    `<g class="hm-fx hm-fx-tap" opacity="0">${heart(100, 22, 2, P.pinkDeep)}</g>`;
+    `<g class="hm-fx hm-fx-tap" opacity="0">${heart(100, 22, 2, P.pinkDeep)}</g>` +
+    // shower (the shower head and the water are the room's, pet-world.js): foam bubbles pop up on the blob, then it shakes dry and sparkles
+    `<g class="hm-fx hm-fx-shower" opacity="0">` +
+      `<g class="hm-foam">` +
+      [[70, 70, 9, 0], [92, 52, 11, 1], [118, 58, 10, 2], [136, 82, 8, 0], [60, 104, 7, 1], [142, 112, 7, 2], [100, 44, 7, 0], [80, 84, 6, 2]].map(([x, y, r, d]) =>
+        `<g class="hm-bub hm-d${d}"><circle cx="${x}" cy="${y}" r="${r}" fill="#FFFFFF" stroke="${P.brown}" stroke-width="2" opacity="0.95"/>` +
+        `<path d="M${x - r * 0.45} ${y - r * 0.2} q${r * 0.2} ${-r * 0.4} ${r * 0.55} ${-r * 0.42}" fill="none" stroke="#BFE6F5" stroke-width="1.6" stroke-linecap="round"/></g>`).join("") + `</g>` +
+      `<g class="hm-sparkles">${star(40, 60, 0.7, "", 0)}${star(166, 70, 0.6, "", 1)}${star(150, 30, 0.5, "", 2)}${star(52, 26, 0.5, "", 1)}</g>` +
+    `</g>`;
+
+  /** Mud on the body (dirt 1: a few smudges; 2: more mud). Flies are outside the body (see dirtFlies). */
+  const MUD = "#7A5634";
+  const DIRT = (n) => !n.dirt ? "" :
+    `<g class="hm-dirt">` +
+      `<path d="M52 122 q8 -10 18 -3 q8 6 1 13 q-11 7 -19 -10 Z" fill="${MUD}" opacity="0.7"/>` +
+      `<path d="M128 64 q7 -7 14 -1 q5 6 -2 10 q-9 4 -12 -9 Z" fill="${MUD}" opacity="0.65"/>` +
+      `<circle cx="118" cy="148" r="7" fill="${MUD}" opacity="0.6"/><circle cx="130" cy="142" r="3.6" fill="${MUD}" opacity="0.6"/><circle cx="64" cy="98" r="3" fill="${MUD}" opacity="0.55"/>` +
+      (n.dirt >= 2 ? `<path d="M36 100 q10 -11 21 0 q8 11 -3 19 q-13 5 -18 -19 Z" fill="${MUD}" opacity="0.8"/>` +
+        `<path d="M144 106 q8 -8 16 0 q4 9 -5 13 q-11 3 -11 -13 Z" fill="${MUD}" opacity="0.75"/>` +
+        `<path d="M80 42 q7 -6 14 0 q3 7 -4 8 q-9 2 -10 -8 Z" fill="${MUD}" opacity="0.7"/>` +
+        `<circle cx="74" cy="152" r="6" fill="${MUD}" opacity="0.7"/><circle cx="150" cy="84" r="3" fill="${MUD}" opacity="0.6"/>` : "") +
+    `</g>`;
+  const dirtFlies = (n) => n.dirt < 2 ? "" :
+    `<g class="hm-flies">` +
+      [[150, 40, 0], [44, 60, 1]].map(([x, y, d]) => `<g transform="translate(${x} ${y})"><g class="hm-fly hm-d${d}"><ellipse cx="-5" cy="-6" rx="6.5" ry="4" fill="#FFFFFF" stroke="${P.brown}" stroke-width="1.6" opacity="0.9"/><ellipse cx="5" cy="-6" rx="6.5" ry="4" fill="#FFFFFF" stroke="${P.brown}" stroke-width="1.6" opacity="0.9"/><circle r="5.5" fill="${P.ink}"/></g></g>`).join("") +
+      `<path class="hm-stink" d="M152 78 q5 -6 0 -12 q-5 -6 0 -12 M162 84 q5 -6 0 -12 q-5 -6 0 -12" fill="none" stroke="#8FA65A" stroke-width="3.6" stroke-linecap="round" opacity="0.85"/>` +
+    `</g>`;
 
   // ---------- assemble ----------
 
@@ -303,6 +333,7 @@
       `<path d="M44 128 Q40 150 64 160" fill="none" stroke="${P.greenDeep}" stroke-width="7" stroke-linecap="round" opacity="0.55"/>`,
       `<ellipse cx="100" cy="134" rx="38" ry="25" fill="${P.butter}"/>`,
       `<ellipse cx="66" cy="62" rx="15" ry="8" fill="${P.white}" opacity="0.6" transform="rotate(-32 66 62)"/>`,
+      DIRT(n),
       `<g class="hm-face">${FACES[n.mood]()}</g>`,
     );
     for (const slotOrder of ["neck", "face", "head"]) {
@@ -316,12 +347,12 @@
       (n.stage >= 4 ? star(22, 66, 1, "", 0) + star(178, 128, 0.8, "", 1) + star(30, 148, 0.65, "", 2) : "") +
       `<g transform="${stage}">` +
         `<ellipse class="hm-shadow" cx="100" cy="172" rx="58" ry="8" fill="${P.brown}" opacity="0.16"/>` +
-        `<g class="hm-bounce"><g class="hm-react"><g class="hm-breathe">${body.join("")}</g></g>${floaters}${FX()}</g>` +
+        `<g class="hm-bounce"><g class="hm-react"><g class="hm-breathe">${body.join("")}</g></g>${floaters}${dirtFlies(n)}${FX()}</g>` +
       `</g>`;
   }
 
   const rootClass = (n) =>
-    `hm hm-mood-${n.mood} hm-stage-${n.stage}` + n.outfit.map((o) => " hm-wears-" + o).join("") + (n.reaction ? " hm-react-" + n.reaction : "");
+    `hm hm-mood-${n.mood} hm-stage-${n.stage}` + (n.dirt ? " hm-dirty-" + n.dirt : "") + n.outfit.map((o) => " hm-wears-" + o).join("") + (n.reaction ? " hm-react-" + n.reaction : "");
 
   const labelOf = (n) => (n.title ? n.title + ", " : "") + "Hearth blob, " + n.mood + (n.outfit.length ? ", wearing " + n.outfit.join(" and ") : "");
 
@@ -396,14 +427,14 @@
         void svg.getBoundingClientRect(); // restart the animation if the same reaction is played twice
         svg.classList.add("hm-react-" + name);
         clearTimeout(timer);
-        timer = setTimeout(() => svg.classList.remove("hm-react-" + name), REACTION_MS);
+        timer = setTimeout(() => svg.classList.remove("hm-react-" + name), reactionMs(name));
       },
       destroy() { clearTimeout(timer); el.innerHTML = ""; },
     };
   }
 
   const api = {
-    PALETTE, MOODS, REACTIONS, SLOTS, OUTFITS, OUTFIT_SLOT, CELEBRATION_OUTFITS, STAGE_COUNT, STAGE_FROM_LEVEL, REACTION_MS,
+    PALETTE, MOODS, REACTIONS, SLOTS, OUTFITS, OUTFIT_SLOT, CELEBRATION_OUTFITS, STAGE_COUNT, STAGE_FROM_LEVEL, REACTION_MS, reactionMs,
     stageForLevel, normalizeOutfit, normalize, moodFor, milestoneOutfit,
     renderSvg, renderScene, iconSvg, mount,
   };

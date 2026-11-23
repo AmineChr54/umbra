@@ -74,6 +74,24 @@ Besides Feed, Water and Pet, the blob now has a whole room, and most of it is sh
 The shared parts need a relay with the pet world (`tools/umbra-relay`, "Pet world" in its README). Until the relay is
 updated, the room, the games (with local best scores), tricks and pokes work and the shop, quests, stickers and diary stay hidden.
 
+## 2.1: showers, places, better quests and games
+
+- **Shower.** A fourth need, Clean, drops slowly (about four days from full to grubby). A dirty blob gets mud and, when
+  it's really dirty, flies; **Shower** brings a shower head into the room, pours water, covers it in foam, and it shakes dry.
+  Bubble soap in the shop cleans it too.
+- **Places.** Buy a whole new scene for the blob in the shop's **Places** tab: Garden, Beach, Snowy cabin, Starry hill,
+  Cozy cafe and Treehouse. Pick one (or the cozy room again) at the top of **Room**; your partner sees it too. Each follows
+  the time of day. Things a place has no spot for (a beach has no mantel) wait for the cozy room.
+- **Quests.** Every day one easy, one medium and one hard quest, each paying XP (5 to 15) and Embers; claim all three to
+  open the **daily chest** (+15 XP, +30 Embers). A **weekly quest** (new every Monday) pays +40 XP, +100 Embers and a
+  surprise from the shop you don't own yet.
+- **Games**, rebuilt on one sharp canvas that fits the card: Berry Catch (golden berries, combos), Flame Memory, Hide and
+  Seek (a real cup shuffle), and two new ones, **Bubble Bath** (pop bubbles, chains burst together) and **Star Hop**
+  (hop from cloud to cloud for stars).
+- No scrollbars anywhere: long panels scroll and fade softly at the edge.
+
+Showers, places, the chest, the weekly quest and the new games need the 2.1 relay; with an older one the widget hides them.
+
 ## Pairing, unpairing and "Invite again"
 
 - **Unpair** (the gear button, then Unpair) leaves the hearth. Your partner keeps it **for 7 days** and sees "Your

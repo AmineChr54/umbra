@@ -117,6 +117,16 @@ html[data-stale] .pt { opacity: 0.72; transition: opacity var(--hm-t); }
 .pt-cb[data-action="feed"] { --fill: #F2BE4B; }
 .pt-cb[data-action="water"] { --fill: #6EBBE0; }
 .pt-cb[data-action="pet"] { --fill: var(--hm-pink); }
+.pt-cb[data-action="shower"] { --fill: #9ED3EE; }
+.pt-cb[hidden] { display: none; }
+/* four needs (a relay with clean): four columns; when they get narrow, the number gives way to the bar (the countdown stays) */
+.pt-care.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+@container card (max-width: 379px) {
+  .pt-care.n4 .pt-cb { grid-template-columns: minmax(0, 1fr); grid-template-areas: "l" "b"; padding: 3px 6px 5px; text-align: center; }
+  .pt-care.n4 .pt-val { display: none; }
+  .pt-care.n4 .pt-cb.cooling .pt-cl { display: none; }
+  .pt-care.n4 .pt-cb.cooling .pt-val { display: block; grid-area: l; }
+}
 .pt-bar.xp { flex: 1; min-width: 40px; --fill: #9CCB78; }
 
 /* ---------- level, xp and the daily bond ---------- */
@@ -291,41 +301,69 @@ html[data-stale] .pt { opacity: 0.72; transition: opacity var(--hm-t); }
 .px-result .pt-head { align-self: stretch; }
 .px-big { margin: 0; font-size: 1.9rem; font-weight: 800; }
 
-/* ---------- mini-games (pet-games.js) ---------- */
+/* places in the shop: a wide picture of the whole scene */
+.px-item.px-wide { grid-column: span 2; }
+.px-item.px-wide .px-art { width: 100%; height: 72px; }
+.px-game .px-badge, .qx-badge { flex: none; width: 34px; height: 34px; }
 
-.gm { height: 100%; }
-.gm-box { flex: 1; min-height: 150px; display: flex; flex-direction: column; gap: 6px; }
-.gm-hud { display: flex; justify-content: space-between; font-weight: 800; color: var(--hm-ink); }
-.gm-hud span:nth-child(2) { color: var(--hm-pink-deep); }
-.gm-area {
-  position: relative; flex: 1; min-height: 130px; overflow: hidden; touch-action: none; cursor: none;
-  border: 2px solid var(--hm-brown); border-radius: 14px; background: linear-gradient(#D7F0FB, #FFF8DC);
+/* ---------- quests: cards by tier, the daily chest and the weekly quest ---------- */
+
+.qx-sum { margin: 0; font-size: 0.9rem; color: var(--hm-soft); }
+.qx-sum b { color: var(--hm-ink); }
+.qx-card {
+  position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+  border: 2px solid var(--hm-brown); border-radius: 14px; background: var(--hm-card);
 }
-.gm-area.gm-hit { animation: gm-shake calc(300ms * var(--motion-scale, 1)) ease-in-out; }
-.gm-bowl {
-  position: absolute; left: 0; bottom: 6px; width: 16%; min-width: 34px; height: 16px;
-  border: 2px solid var(--hm-brown); border-top: 0; border-radius: 0 0 18px 18px; background: var(--hm-pink);
+.qx-card.t1 { background: #F4FAEC; } .qx-card.t2 { background: #EEF7FC; } .qx-card.t3 { background: #FDF0F5; }
+.qx-chest { background: #FFF8DA; } .qx-week { background: #F6F0FF; }
+.qx-card.ready { box-shadow: 0 0 0 3px var(--hm-butter); }
+.qx-card.claimed { opacity: 0.72; }
+.qx-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.qx-body b { font-size: 0.95rem; line-height: 1.15; }
+.qx-tier { font-size: 0.87rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; color: var(--hm-soft); }
+.qx-what { font-size: 0.87rem; color: var(--hm-soft); line-height: 1.2; }
+.qx-prog { display: flex; align-items: center; gap: 6px; font-size: 0.87rem; font-weight: 800; }
+.qx-prog .pt-bar { flex: 1; --fill: #9CCB78; }
+.qx-week .qx-prog .pt-bar { --fill: #B99BEA; }
+.qx-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.qx-rw { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 6px; font-size: 0.85rem; font-weight: 800; }
+.qx-xp { color: #4C8A3A; }
+.qx-gift { color: #8A5CC8; }
+.qx-side .btn { padding: 0 10px; font-size: 0.87rem; }
+.qx-done { font-size: 0.87rem; font-weight: 800; color: #4C8A3A; }
+.qx-dots { display: flex; gap: 4px; padding-top: 2px; }
+.qx-dots i { width: 12px; height: 12px; border: 2px solid var(--hm-brown); border-radius: 50%; background: #fff; }
+.qx-dots i.on { background: #F2C14E; }
+.qx-ready { animation: qx-nudge calc(1.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.qx-card.pop { animation: qx-pop calc(500ms * var(--motion-scale, 1)) ease-out; }
+.qx-confetti { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.qx-confetti b { position: absolute; left: 50%; top: 50%; width: 7px; height: 4px; border-radius: 1px; background: var(--hm-pink-deep); opacity: 0;
+  animation: qx-confetti calc(1100ms * var(--motion-scale, 1)) ease-out forwards; }
+.qx-confetti b:nth-child(2n) { background: #F2C14E; } .qx-confetti b:nth-child(3n) { background: #7CC6EA; } .qx-confetti b:nth-child(5n) { background: #9CCB78; }
+.qx-confetti b:nth-child(1) { --dx: -80px; --dy: -30px; } .qx-confetti b:nth-child(2) { --dx: -50px; --dy: -46px; }
+.qx-confetti b:nth-child(3) { --dx: -16px; --dy: -54px; } .qx-confetti b:nth-child(4) { --dx: 20px; --dy: -50px; }
+.qx-confetti b:nth-child(5) { --dx: 54px; --dy: -42px; } .qx-confetti b:nth-child(6) { --dx: 84px; --dy: -24px; }
+.qx-confetti b:nth-child(7) { --dx: -66px; --dy: 10px; } .qx-confetti b:nth-child(8) { --dx: 70px; --dy: 12px; }
+@container card (max-width: 420px) {
+  .qx-card { flex-wrap: wrap; row-gap: 4px; }
+  .qx-side { flex: 1 1 100%; flex-direction: row; align-items: center; justify-content: space-between; padding-left: 42px; }
+  .qx-rw { justify-content: flex-start; }
 }
-.gm-bowl.gm-yum { animation: gm-yum calc(220ms * var(--motion-scale, 1)) ease-out; }
-.gm-berry, .gm-acorn { position: absolute; left: 0; top: 0; width: 18px; height: 18px; border: 2px solid var(--hm-brown); border-radius: 50%; }
-.gm-berry { background: var(--hm-pink-deep); }
-.gm-acorn { background: #A06A3D; border-radius: 50% 50% 45% 45%; box-shadow: inset 0 5px 0 #6B4F3A; }
-.gm-pads { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.gm-pad { display: grid; place-items: center; padding: 4px; border: 2px solid var(--hm-brown); border-radius: 14px; background: var(--hm-card); cursor: pointer; transition: transform var(--hm-t), background var(--hm-t); }
-.gm-pad svg { width: 34px; height: 40px; }
-.gm-pad.on { background: var(--hm-butter); transform: scale(1.08); }
-.gm-pads.gm-wrong .gm-pad { background: var(--hm-alert); }
-.gm-seek { position: relative; flex: 1; min-height: 120px; }
-.gm-pot { position: absolute; bottom: 8px; width: 28%; height: 60%; padding: 0; border: 0; background: none; cursor: pointer; z-index: 2; }
-.gm-pot svg { width: 100%; height: 100%; }
-.gm-pot.gm-right svg { filter: drop-shadow(0 0 6px #9CCB78); }
-.gm-pot.gm-miss svg { filter: grayscale(0.6); }
-.gm-hider { position: absolute; bottom: 30%; width: 28%; height: 55%; z-index: 1; transition: transform calc(400ms * var(--motion-scale, 1)) ease-in-out, opacity calc(300ms * var(--motion-scale, 1)); }
-.gm-hider.show { transform: translateY(-40%); z-index: 3; }
-.gm-hider.in { transform: translateY(20%); opacity: 0; }
-.gm-hider > svg { width: 100%; height: 100%; }
-@keyframes gm-shake { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-5px); } 70% { transform: translateX(5px); } }
-@keyframes gm-yum { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes qx-nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes qx-pop { 0% { transform: scale(1); } 40% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes qx-confetti { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 40px)) rotate(400deg); } }
+html[data-motion="off"] .qx-ready, html[data-motion="off"] .qx-card.pop, html[data-motion="off"] .qx-confetti { animation: none; display: none; }
+html[data-motion="off"] .qx-ready { display: inline-flex; }
+
+/* ---------- mini-games (pet-games.js): one canvas that fills the sheet, never scrolls ---------- */
+
+.pt-scroll.gm-full { overflow: hidden; display: flex; flex-direction: column; }
+.gm { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gm-box { flex: 1; min-height: 110px; display: flex; }
+.gm-cv {
+  display: block; flex: 1; width: 100%; height: 100%; min-height: 0;
+  border: 2px solid var(--hm-brown); border-radius: 14px; background: #FFF4E2; touch-action: none; cursor: pointer;
+}
 
 /* the world's controls only where there is room */
 @container card (max-height: 170px) { .pt-nav, .pt-coins, .pt-giftchip { display: none; } }
