@@ -41,6 +41,7 @@ administrator** for the script in Settings, then:
 ## Use it
 
 - **Run** a script; while it runs the output appears live and the button becomes **Stop**.
+- **Resize the output**: drag the handle between the scripts and the output panel (it shows when you hover the widget) to see more scripts or more output; double-click it to go back to the default. With the handle focused, the arrow keys move it too.
 - A script that keeps running gets an on/off switch, a green *Running · 2 h 14 m*, and its newest output lines.
   Turn it off here, on its row in Settings, or from the tray menu (*1 script running > Stop ...*). It also stops when you turn
   the widget off, edit or delete the script, or quit Umbra.

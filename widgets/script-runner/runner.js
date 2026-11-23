@@ -13,6 +13,7 @@ const services = new Map();  // id -> { running, since, exitCode, restarting, re
 let live = null;             // { id, text } live output of the selected script while it runs
 /** id -> { since, tail } set by Clear on live output: only what was printed after `tail` (the end of the text then) is shown. */
 let clearMarks = {};
+let listHeight = 0;          // the list's height set with the handle under it, in CSS px; 0 = the default (up to 190 px)
 let loadError = "";
 let first = true;
 let autoTimer = null;
@@ -105,9 +106,73 @@ async function loadState() {
   const ui = await umbra.store.get("ui", {});
   selected = ui && typeof ui.selected === "string" ? ui.selected : null;
   clearMarks = ui && ui.cleared && typeof ui.cleared === "object" && !Array.isArray(ui.cleared) ? ui.cleared : {};
+  listHeight = ui && Number.isFinite(ui.listHeight) && ui.listHeight > 0 ? ui.listHeight : 0;
 }
 const saveResults = () => umbra.store.set("results", results).catch((e) => console.error("Script Runner: could not save", e));
-const saveUi = () => umbra.store.set("ui", { selected, cleared: clearMarks }).catch(() => {});
+const saveUi = () => umbra.store.set("ui", { selected, cleared: clearMarks, listHeight }).catch(() => {});
+
+/* The handle between the list and the output panel: drag it to give one more height and the other less. */
+const splitEl = $("split"), outEl = $("out");
+const LIST_MIN = 52;   // about one row
+const OUT_MIN = 96;    // the output keeps its header and a few lines
+
+/**
+ * The tallest the list may be: no taller than its rows (scrollHeight), and the output keeps OUT_MIN. The list shrinks
+ * with the window (flex-shrink), so list + output is always the room there is.
+ */
+function listMax() {
+  const room = listEl.offsetHeight + outEl.offsetHeight - OUT_MIN;
+  return Math.max(LIST_MIN, Math.min(listEl.scrollHeight, room));
+}
+const clampList = (h) => Math.round(Math.min(Math.max(h, LIST_MIN), listMax()));
+/** Applies the chosen height (or the stylesheet's default), clamped to what fits now; the saved choice is kept for a bigger window. */
+function fitSplit() {
+  listEl.style.maxHeight = listHeight ? `${clampList(listHeight)}px` : "";
+}
+function setListHeight(h) {
+  listHeight = clampList(h);
+  fitSplit();
+  saveUi();
+}
+
+let dragFrom = null;   // { y, h } while the handle is held
+splitEl.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  dragFrom = { y: e.clientY, h: listEl.offsetHeight };
+  splitEl.setPointerCapture(e.pointerId);
+  splitEl.classList.add("drag");
+  document.body.classList.add("resizing");
+});
+splitEl.addEventListener("pointermove", (e) => {
+  if (!dragFrom) return;
+  // Stops where the list runs out of rows, or where the output would get too small.
+  listHeight = clampList(dragFrom.h + e.clientY - dragFrom.y);
+  listEl.style.maxHeight = `${listHeight}px`;
+});
+function endDrag() {
+  if (!dragFrom) return;
+  dragFrom = null;
+  splitEl.classList.remove("drag");
+  document.body.classList.remove("resizing");
+  saveUi();
+}
+splitEl.addEventListener("pointerup", endDrag);
+splitEl.addEventListener("pointercancel", endDrag);
+splitEl.addEventListener("lostpointercapture", endDrag);
+// Double-click: back to the default height.
+splitEl.addEventListener("dblclick", () => { listHeight = 0; fitSplit(); saveUi(); });
+splitEl.addEventListener("keydown", (e) => {
+  const step = e.shiftKey ? 88 : 22;
+  if (e.key === "ArrowUp") setListHeight(listEl.offsetHeight - step);
+  else if (e.key === "ArrowDown") setListHeight(listEl.offsetHeight + step);
+  else if (e.key === "Home") setListHeight(LIST_MIN);
+  else if (e.key === "End") setListHeight(Infinity);
+  else return;
+  e.preventDefault();
+});
+// A resized widget (edit mode) or zoom: keep the output on screen.
+addEventListener("resize", () => { if (!dragFrom) fitSplit(); });
 
 /**
  * Live output after a Clear. The host keeps a rolling tail (its start moves once it is full), so an offset would drift:
@@ -616,6 +681,7 @@ function render() {
   $("count").textContent = shown ? `${shown} script${shown > 1 ? "s" : ""}` : "";
   renderList();
   renderOutput();
+  if (!dragFrom) fitSplit();
   if (first) { first = false; requestAnimationFrame(() => umbra.rendered()); }
 }
 
