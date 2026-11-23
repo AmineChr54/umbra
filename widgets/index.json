@@ -448,12 +448,12 @@
     {
       "id": "quick-notes",
       "name": "Quick Notes",
-      "description": "A scratchpad on your desktop with note tabs you add, rename, reorder and delete (up to 12). Renders basic markdown as you type (headings, bold, lists), saves as you type and shows a character count. Everything stays on your PC.",
+      "description": "A scratchpad on your desktop with note tabs you add, rename, reorder and delete (up to 12). Renders basic markdown as you type (headings, bold, lists), and right-click formats text: bold, italic, underline, strikethrough, highlight and eight text colours. Paste or drop pictures and drag their corner to size them. Saves as you type; everything stays on your PC.",
       "author": "AmineChr54",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "category": "productivity",
       "manifestVersion": 1,
-      "changelog": "Tabs: + adds one, x or middle-click deletes it (with Undo), double-click renames it, drag moves it. Wrapped list items continue under their text.",
+      "changelog": "Right-click text to format it (bold, italic, underline, strikethrough, highlight, colours, headings, lists; also Ctrl+B/I/U). Paste or drop pictures and drag the corner to resize them. Tabs no longer widen when you hover them.",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [],
@@ -471,10 +471,10 @@
       "name": "Script Runner",
       "description": "Run your own PowerShell, Python or Bash scripts from the desktop: ones that finish (with exit code, time and output) and ones that keep running, like a tunnel or a server. Add them in Settings, give them a name, and press Run.",
       "author": "AmineChr54",
-      "version": "1.5.1",
+      "version": "1.6.0",
       "category": "developer",
       "manifestVersion": 1,
-      "changelog": "Scripts that keep running now always show the same on/off switch as a VPN toggle, instead of separate Start/Stop buttons.",
+      "changelog": "An eraser next to Copy clears a script's output: for a script that keeps running (or a run in progress) only what it prints from then on shows.",
       "preview": "preview.png",
       "platforms": [
         "windows"
@@ -660,6 +660,29 @@
         "weather.css",
         "weather.js",
         "widget.json"
+      ]
+    },
+    {
+      "id": "work-hours",
+      "name": "Work Hours",
+      "description": "A time tracker for a job with weekly hours: Start and Stop a timer (with a note), add or fix entries by hand, and see how far you are into your weekly target (20 h by default), what's left and how much a day that is. A toast before and at the target, overtime shown in red, a reminder when a timer was left running, a timesheet per week you can copy into a spreadsheet, and optional over/under time carried into the next week. No account, nothing leaves the PC.",
+      "author": "AmineChr54",
+      "version": "1.0.0",
+      "category": "productivity",
+      "manifestVersion": 1,
+      "preview": "preview.png",
+      "icon": "icon.png",
+      "hosts": [],
+      "notifications": true,
+      "files": [
+        "README.md",
+        "hours.js",
+        "icon.png",
+        "index.html",
+        "preview.png",
+        "widget.json",
+        "work.css",
+        "work.js"
       ]
     }
   ]
