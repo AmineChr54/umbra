@@ -183,6 +183,35 @@ open keep drawing what they already have; a fresh `sync` no longer contains the 
   consecutive UTC days with `done`; it reads 0 once a day was missed.
 - The pet is "born" at the first Hearth call of a room.
 
+### Pet world
+
+The pet's world lives in the same `pet` section (and the answer of every route below is `{ ok, pet, stickers, ... }`
+with the new pet, or `{ error }`). New fields of `pet`:
+
+```jsonc
+{ "coins": 42,                                  // Embers, shared by both partners
+  "inv": { "ball": 1, "cocoa": 2 },             // what the pair owns (treats are counted)
+  "room": { "toy": "ball", "floorR": "lamp" },  // spot -> item: wallpaper, rug, window, wall, mantel, floorL, floorR, toy
+  "wear": ["tophat", "shades"],                 // the outfit both PCs show; null until someone dressed it here
+  "best": { "catch": 31 },                      // best mini-game scores
+  "quests": [{ "id": "feed2", "n": 2, "p": 1, "reward": 15, "claimed": false }],  // today's three (null until drawn)
+  "stickers": ["first_buy"], "gift": { "from": "a", "item": "cocoa", "t": 0 } | null,
+  "log": [[t, "a", "feed", ""]],                // the diary, last 24 events
+  "born": 0, "counts": { "games": 3 } }
+```
+
+- Embers: +2 for a care that was needed (the same rule as its xp), +10 when the daily bond completes, quest rewards, and
+  games (`floor(score * per)`, at most `cap` per game and 80 per side per UTC day).
+- `buy?item=` and `gift?item=` cost the item's price (`SHOP` in `hearth.js`); a non-treat can be owned once. `gift` puts a
+  present in the room that only the other side can `open` (it then joins `inv`, love +10). One gift at a time.
+- `use?item=` gives a treat (adds its gains, xp +1, 60 s cooldown per side). `place?spot=&item=` puts an owned item in its
+  spot (`item=` empty clears it). `dress?items=a,b` sets the outfit: level and days-together outfits once unlocked, shop
+  outfits once owned, one per slot.
+- `play?game=catch|memory|seek&score=N`: the score is clamped to the game's max, 45 s cooldown per side and game, love +5.
+- `quests` draws today's quests (also drawn by any action); `claim?q=0..2` pays a done quest once (either side).
+- Stickers are awarded by the relay when their rule holds (`STICKERS`); new ones come back in `stickers`.
+- Rooms from before the pet world get these fields on their first call; `born` is then that day.
+
 ### Names and dates
 
 - `names=A,B` sets side `a`'s and side `b`'s name; either half may be empty to leave that side alone (`names=Ada,`).

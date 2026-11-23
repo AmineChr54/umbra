@@ -4,10 +4,10 @@
   "name": "Hearth",
   "description": "A cozy shared space for two people on two PCs. Pair once with a code, then switch between Us, a shared drawing Board and a Pet with the tabs at the top. Needs the Umbra relay, which stores your names, dates, drawings and pet state (deleted 7 days after unpairing or after 30 days unused) and never your location.",
   "author": "Yacine-DH",
-  "version": "1.8.1",
+  "version": "2.0.0",
   "category": "social",
   "manifestVersion": 1,
-  "changelog": "You can make Hearth small again: it resizes from a thin strip up to tall, with the tabs at the top. A new Hearth starts as the strip; drag its corner in edit mode to make room for the Board and the Pet.",
+  "changelog": "The pet gets a whole world: a living room that follows your clock and the seasons, Embers you both earn, a shop with treats, toys, decor and outfits, three mini-games, daily quests, stickers, gifts for your partner, a diary and tricks. Click the blob to poke it, hold and rub to make it purr. The shared parts need the updated relay.",
   "entry": "index.html",
   "preview": "preview.png",
   "icon": "icon.png",
@@ -31,6 +31,12 @@
         { "value": "pet", "label": "Pet" }
       ],
       "hint": "Switch any time with the Us, Board and Pet tabs at the top of the widget. Make it taller in edit mode for the Board and the Pet. Extra copies of Hearth share one pairing."
+    },
+    "petAlerts": {
+      "label": "Pet alerts",
+      "type": "toggle",
+      "default": false,
+      "hint": "A toast when the pet is hungry, thirsty or sad (at most every 4 hours), when your partner leaves you a gift and when a daily quest is ready to claim. Also allow notifications for Hearth."
     }
   }
 }

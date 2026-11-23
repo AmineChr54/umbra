@@ -35,8 +35,9 @@
   const SLOTS = Object.freeze(["head", "face", "neck"]);
   const OUTFIT_SLOT = Object.freeze({
     hat: "head", "flower-crown": "head", party: "head", anniversary: "head",
-    glasses: "face",
-    scarf: "neck", bow: "neck",
+    tophat: "head", beanie: "head", headphones: "head", star_clips: "head",
+    glasses: "face", shades: "face", monocle: "face",
+    scarf: "neck", bow: "neck", cape: "neck", bell: "neck",
   });
   const OUTFITS = Object.freeze(Object.keys(OUTFIT_SLOT));
   /** Outfits that are unlocked by a milestone rather than by a level. */
@@ -234,6 +235,45 @@
       `<path d="M128 163 L146 162" ${LINE(3).replace(P.ink, P.butter)}/>` +
       `<path d="M42 138 Q100 154 158 138 L156 153 Q100 169 44 153 Z" fill="${P.pink}" ${OUT}/>` +
       `<path d="M50 146 Q100 162 150 146" fill="none" stroke="${P.butter}" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 6"/>`,
+    tophat: () =>
+      `<rect x="70" y="4" width="60" height="52" rx="5" fill="${P.ink}" ${OUT}/>` +
+      `<rect x="70" y="38" width="60" height="11" fill="${P.pinkDeep}" stroke="${P.brown}" stroke-width="2.4"/>` +
+      `<rect x="46" y="51" width="108" height="13" rx="6.5" fill="${P.ink}" ${OUT}/>` +
+      `<path d="M80 12 V32" stroke="${P.white}" stroke-width="3" stroke-linecap="round" opacity="0.35"/>`,
+    beanie: () =>
+      `<path d="M56 62 C56 30 78 18 100 18 C122 18 144 30 144 62 Z" fill="${P.greenDeep}" ${OUT}/>` +
+      `<path d="M72 30 V58 M88 22 V58 M112 22 V58 M128 30 V58" stroke="${P.brown}" stroke-width="1.6" opacity="0.3"/>` +
+      `<rect x="50" y="52" width="100" height="16" rx="8" fill="${P.green}" ${OUT}/>` +
+      `<circle cx="100" cy="15" r="10" fill="${P.butter}" ${OUT3}/>`,
+    headphones: () =>
+      `<path d="M38 104 C36 40 164 40 162 104" fill="none" stroke="${P.brown}" stroke-width="11" stroke-linecap="round"/>` +
+      `<path d="M38 104 C36 40 164 40 162 104" fill="none" stroke="${P.pink}" stroke-width="5" stroke-linecap="round"/>` +
+      `<rect x="24" y="86" width="24" height="38" rx="11" fill="${P.pinkDeep}" ${OUT}/>` +
+      `<rect x="152" y="86" width="24" height="38" rx="11" fill="${P.pinkDeep}" ${OUT}/>` +
+      `<path d="M30 96 V114 M170 96 V114" stroke="${P.white}" stroke-width="2.4" stroke-linecap="round" opacity="0.6"/>`,
+    star_clips: () =>
+      `<g transform="translate(70 46) scale(1.5)"><path d="${STAR_D}" fill="${P.butter}" stroke="${P.brown}" stroke-width="1.6" stroke-linejoin="round"/></g>` +
+      `<g transform="translate(130 42) scale(1.8)"><path d="${STAR_D}" fill="${P.pink}" stroke="${P.brown}" stroke-width="1.4" stroke-linejoin="round"/></g>` +
+      `<circle cx="116" cy="30" r="2.4" fill="${P.butter}"/><circle cx="84" cy="34" r="2" fill="${P.pink}"/>`,
+    shades: () =>
+      `<rect x="54" y="88" width="38" height="24" rx="9" fill="${P.ink}" ${OUT3}/>` +
+      `<rect x="108" y="88" width="38" height="24" rx="9" fill="${P.ink}" ${OUT3}/>` +
+      `<path d="M92 96 Q100 91 108 96" fill="none" stroke="${P.brown}" stroke-width="3.4" stroke-linecap="round"/>` +
+      `<path d="M54 94 L44 90 M146 94 L156 90" fill="none" stroke="${P.brown}" stroke-width="3.4" stroke-linecap="round"/>` +
+      `<path d="M60 94 L70 92 M114 94 L124 92" stroke="${P.white}" stroke-width="2.6" stroke-linecap="round" opacity="0.7"/>`,
+    monocle: () =>
+      `<circle cx="126" cy="100" r="16" fill="${P.white}" fill-opacity="0.25" stroke="${P.butter}" stroke-width="4"/>` +
+      `<circle cx="126" cy="100" r="16" fill="none" stroke="${P.brown}" stroke-width="1.4"/>` +
+      `<path d="M140 108 Q152 126 146 146" fill="none" stroke="${P.butter}" stroke-width="2" stroke-dasharray="3 3"/>`,
+    cape: () =>
+      `<path d="M44 138 Q100 156 156 138 L166 170 Q100 184 34 170 Z" fill="${P.pinkDeep}" ${OUT}/>` +
+      `<path d="M52 150 Q100 166 148 150" fill="none" stroke="${P.butter}" stroke-width="2.6" stroke-linecap="round" opacity="0.8"/>` +
+      `<circle cx="100" cy="148" r="7" fill="${P.butter}" ${OUT3}/>`,
+    bell: () =>
+      `<path d="M46 140 Q100 158 154 140" fill="none" stroke="${P.brown}" stroke-width="10" stroke-linecap="round"/>` +
+      `<path d="M46 140 Q100 158 154 140" fill="none" stroke="${P.pinkDeep}" stroke-width="6" stroke-linecap="round"/>` +
+      `<circle cx="100" cy="160" r="10" fill="${P.butter}" ${OUT3}/>` +
+      `<path d="M94 162 H106 M100 162 V169" stroke="${P.brown}" stroke-width="2.4" stroke-linecap="round"/>`,
     bow: () =>
       `<path d="M100 148 C82 130 66 138 68 150 C70 163 86 162 100 148 Z" fill="${P.pink}" ${OUT}/>` +
       `<path d="M100 148 C118 130 134 138 132 150 C130 163 114 162 100 148 Z" fill="${P.pink}" ${OUT}/>` +

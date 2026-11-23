@@ -216,21 +216,34 @@
     "flower-crown": Object.freeze({ level: 12 }),
     party: Object.freeze({ days: 100 }),         // a celebration outfit: kept for ever once 100 days together have passed
     anniversary: Object.freeze({ days: 365 }),   // ... and once a year has passed
+    // bought with Embers in the pet's shop (a relay with the pet world); worn by both PCs once owned
+    tophat: Object.freeze({ shop: true }), beanie: Object.freeze({ shop: true }), headphones: Object.freeze({ shop: true }),
+    star_clips: Object.freeze({ shop: true }), shades: Object.freeze({ shop: true }), monocle: Object.freeze({ shop: true }),
+    cape: Object.freeze({ shop: true }), bell: Object.freeze({ shop: true }),
   });
-  const OUTFIT_LABELS = Object.freeze({ bow: "Bow", scarf: "Scarf", glasses: "Glasses", hat: "Hat", "flower-crown": "Flowers", party: "Party hat", anniversary: "Gold crown" });
-  const OUTFIT_ORDER = Object.freeze(["bow", "scarf", "glasses", "hat", "flower-crown", "party", "anniversary"]);
+  const OUTFIT_LABELS = Object.freeze({
+    bow: "Bow", scarf: "Scarf", glasses: "Glasses", hat: "Hat", "flower-crown": "Flowers", party: "Party hat", anniversary: "Gold crown",
+    tophat: "Top hat", beanie: "Beanie", headphones: "Headphones", star_clips: "Star clips", shades: "Shades", monocle: "Monocle", cape: "Cape", bell: "Bell collar",
+  });
+  const OUTFIT_ORDER = Object.freeze(["bow", "scarf", "glasses", "hat", "flower-crown", "party", "anniversary",
+    "tophat", "beanie", "headphones", "star_clips", "shades", "monocle", "cape", "bell"]);
 
-  /** [{ id, label, unlocked, hint }] in display order. `days` = whole days together (null when no date was set). */
-  function outfitList(level, days) {
+  /**
+   * [{ id, label, unlocked, hint }] in display order. `days` = whole days together (null when no date was set);
+   * `owned` = shop outfits the pair has bought (none on a relay without the pet world).
+   */
+  function outfitList(level, days, owned) {
     const lv = Math.max(1, Math.floor(num(level, 1)));
     const d = Number.isFinite(days) && days !== null ? days : -1;
+    const have = Array.isArray(owned) ? owned : [];
     return OUTFIT_ORDER.map((id) => {
       const u = OUTFIT_UNLOCKS[id];
+      if (u.shop) return { id, label: OUTFIT_LABELS[id], unlocked: have.includes(id), shop: true, hint: "Shop", full: "Buy it in the shop" };
       const unlocked = u.level ? lv >= u.level : d >= u.days;
       return { id, label: OUTFIT_LABELS[id], unlocked, hint: u.level ? "Level " + u.level : u.days + " days", full: u.level ? "Reach level " + u.level : "After " + u.days + " days together" };
     });
   }
-  const unlockedIds = (level, days) => outfitList(level, days).filter((o) => o.unlocked).map((o) => o.id);
+  const unlockedIds = (level, days, owned) => outfitList(level, days, owned).filter((o) => o.unlocked).map((o) => o.id);
 
   /** Ids unlocked in `next` but not in `prev` (for "New outfit: Scarf"). */
   const newlyUnlocked = (prev, next) => next.filter((id) => !prev.includes(id));

@@ -1,0 +1,94 @@
+/* Hearth pet world: the room's own motion (pet-world.js). The blob inside keeps its mascot.css animations.
+   Every duration is multiplied by --motion-scale; html[data-motion="off"] and prefers-reduced-motion stop all of it,
+   and the extras that tricks show stay hidden without their animation. */
+
+.pw-scene { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* the blob's feet (on the rug) are the pivot of everything it does */
+.pw-act, .pw-x { transform-box: view-box; transform-origin: 120px 214px; }
+.pw-walker { transition: transform calc(2.6s * var(--motion-scale, 1)) ease-in-out; }
+.pw-twinkle, .pw-bulb, .pw-snow, .pw-fall, .pw-fall2, .pw-firefly, .pw-flame, .pw-bob, .pw-jb, .pw-burst, .pw-notefloat, .pw-toy, .pw-gift, .pw-sway, .pw-cloud, .pw-bird {
+  transform-box: fill-box; transform-origin: 50% 50%;
+}
+.pw-flame, .pw-sway { transform-origin: 50% 100%; }
+
+/* ---------- ambient ---------- */
+
+.pw-twinkle { animation: pw-twinkle calc(2.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-bulb    { animation: pw-twinkle calc(1.8s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-snow    { animation: pw-snow calc(6s * var(--motion-scale, 1)) linear infinite; }
+.pw-fall    { animation: pw-fall calc(7s * var(--motion-scale, 1)) linear infinite; }
+.pw-fall2   { animation: pw-fall2 calc(4s * var(--motion-scale, 1)) linear infinite; }
+.pw-firefly { animation: pw-firefly calc(3.4s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-cloud   { animation: pw-drift calc(18s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-bird    { animation: pw-drift calc(9s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-sway    { animation: pw-sway calc(5s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-flame   { animation: pw-flick calc(0.9s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-bob     { animation: pw-bob calc(3.2s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-gift    { animation: pw-gift calc(2.4s * var(--motion-scale, 1)) ease-in-out infinite; cursor: pointer; }
+.pw-fireglow { animation: pw-glow calc(2.2s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-d1 { animation-delay: calc(0.7s * var(--motion-scale, 1)); }
+.pw-d2 { animation-delay: calc(1.5s * var(--motion-scale, 1)); }
+.pw-d3 { animation-delay: calc(2.3s * var(--motion-scale, 1)); }
+
+@keyframes pw-twinkle { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+@keyframes pw-snow    { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(4px, 66px); opacity: 0.6; } }
+@keyframes pw-fall    { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-8px, 66px) rotate(220deg); opacity: 0.5; } }
+@keyframes pw-fall2   { 0% { transform: translateY(-20px) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(90px) rotate(300deg); opacity: 0; } }
+@keyframes pw-firefly { 0%, 100% { transform: translate(0, 0); opacity: 0.2; } 50% { transform: translate(3px, -4px); opacity: 1; } }
+@keyframes pw-drift   { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(5px); } }
+@keyframes pw-sway    { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2.5deg); } }
+@keyframes pw-flick   { 0%, 100% { transform: scale(1, 1); } 40% { transform: scale(0.85, 1.15); } 70% { transform: scale(1.1, 0.9); } }
+@keyframes pw-bob     { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes pw-gift    { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-6deg); } 90% { transform: rotate(6deg); } 95% { transform: rotate(-3deg); } }
+@keyframes pw-glow    { 0%, 100% { opacity: 0.16; } 50% { opacity: 0.26; } }
+
+/* ---------- acts: idle life and tricks (pet-life.js adds pw-act-<name> to the room for a moment) ---------- */
+
+.pw-x { display: none; }
+.pw-act-hop .pw-act       { animation: pw-hop calc(0.55s * var(--motion-scale, 1)) ease-out 2; }
+.pw-act-jump .pw-act      { animation: pw-jump calc(1.1s * var(--motion-scale, 1)) ease-out 1; }
+.pw-act-spin .pw-act      { animation: pw-spin calc(0.9s * var(--motion-scale, 1)) ease-in-out 2; }
+.pw-act-dizzy .pw-act     { animation: pw-spin calc(0.5s * var(--motion-scale, 1)) linear 3, pw-wobble calc(0.8s * var(--motion-scale, 1)) ease-in-out calc(1.5s * var(--motion-scale, 1)) 2; }
+.pw-act-sit .pw-act       { animation: pw-sit calc(2.2s * var(--motion-scale, 1)) ease-in-out 1; }
+.pw-act-wave .pw-act      { animation: pw-wobble calc(0.6s * var(--motion-scale, 1)) ease-in-out 3; }
+.pw-act-dance .pw-act     { animation: pw-dance calc(0.8s * var(--motion-scale, 1)) ease-in-out 3; }
+.pw-act-yawn .pw-act      { animation: pw-yawn calc(1.6s * var(--motion-scale, 1)) ease-in-out 1; }
+.pw-act-stretch .pw-act   { animation: pw-stretch calc(1.6s * var(--motion-scale, 1)) ease-in-out 1; }
+.pw-act-purr .pw-act      { animation: pw-purr calc(0.12s * var(--motion-scale, 1)) linear 12; }
+.pw-act-squish .pw-act    { animation: pw-yawn calc(0.5s * var(--motion-scale, 1)) ease-in-out 1; }
+.pw-act-play .pw-toy      { animation: pw-toyplay calc(0.7s * var(--motion-scale, 1)) ease-out 3; }
+.pw-act-play .pw-act      { animation: pw-hop calc(0.7s * var(--motion-scale, 1)) ease-out 3; }
+
+.pw-act-juggle .pw-x-juggle, .pw-act-fireworks .pw-x-fireworks, .pw-act-butterfly .pw-x-butterfly,
+.pw-act-read .pw-x-read, .pw-act-sing .pw-x-note { display: inline; }
+.pw-act-juggle .pw-jb      { animation: pw-juggle calc(0.9s * var(--motion-scale, 1)) linear 3; transform-box: view-box; transform-origin: 120px 118px; }
+.pw-act-fireworks .pw-burst { animation: pw-burst calc(1s * var(--motion-scale, 1)) ease-out 2 both; }
+.pw-act-fireworks .pw-act  { animation: pw-hop calc(0.6s * var(--motion-scale, 1)) ease-out 3; }
+.pw-act-butterfly .pw-fly  { animation: pw-flight calc(4.2s * var(--motion-scale, 1)) ease-in-out 1 both; }
+.pw-act-sing .pw-notefloat { animation: pw-note calc(1.4s * var(--motion-scale, 1)) ease-out 2 both; }
+.pw-act-sing .pw-act       { animation: pw-sway calc(0.7s * var(--motion-scale, 1)) ease-in-out 4; }
+
+@keyframes pw-hop     { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
+@keyframes pw-jump    { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.08, 0.9); } 50% { transform: translateY(-34px) scale(0.95, 1.06); } 85% { transform: translateY(0) scale(1.06, 0.94); } }
+@keyframes pw-spin    { 0%, 100% { transform: scaleX(1); } 25% { transform: scaleX(0.2); } 50% { transform: scaleX(-1); } 75% { transform: scaleX(-0.2); } }
+@keyframes pw-wobble  { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-7deg); } 75% { transform: rotate(7deg); } }
+@keyframes pw-sit     { 0%, 100% { transform: scale(1, 1); } 20%, 80% { transform: scale(1.1, 0.85); } }
+@keyframes pw-dance   { 0%, 100% { transform: translateX(0) rotate(0); } 25% { transform: translateX(-6px) rotate(-8deg) translateY(-4px); } 75% { transform: translateX(6px) rotate(8deg) translateY(-4px); } }
+@keyframes pw-yawn    { 0%, 100% { transform: scale(1, 1); } 40% { transform: scale(0.96, 1.08); } 70% { transform: scale(1.04, 0.95); } }
+@keyframes pw-stretch { 0%, 100% { transform: scale(1, 1); } 45% { transform: scale(0.9, 1.14); } }
+@keyframes pw-purr    { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(0.8px); } }
+@keyframes pw-toyplay { 0%, 100% { transform: translate(0, 0) rotate(0); } 40% { transform: translate(8px, -14px) rotate(90deg); } 70% { transform: translate(14px, 0) rotate(180deg); } }
+@keyframes pw-juggle  { 0% { transform: rotate(0deg) translateY(-26px) rotate(0deg); } 100% { transform: rotate(360deg) translateY(-26px) rotate(-360deg); } }
+@keyframes pw-burst   { 0% { transform: scale(0.2); opacity: 0; } 30% { opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes pw-flight  { 0% { transform: translate(-60px, 150px); } 30% { transform: translate(20px, 110px); } 60% { transform: translate(70px, 150px); } 100% { transform: translate(140px, 70px); } }
+@keyframes pw-note    { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(6px, -20px); opacity: 0; } }
+
+/* ---------- reduced motion: a still picture, extras hidden ---------- */
+
+html[data-motion="off"] .pw-scene *, html[data-motion="off"] .pw-scene { animation: none !important; transition: none !important; }
+html[data-motion="off"] .pw-x { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .pw-scene * { animation: none !important; transition: none !important; }
+  .pw-x { display: none !important; }
+}
