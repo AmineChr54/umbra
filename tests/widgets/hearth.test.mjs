@@ -868,7 +868,9 @@ test("manifest: id, one declared host, notifications, the view option, a preview
   assert.equal(v.type, "select");
   assert.equal(v.default, "overview");
   assert.deepEqual(v.choices.map((c) => c.value), ["overview", "board", "pet"]);
-  assert.deepEqual(Object.keys(manifest.options), ["view"]);
+  assert.deepEqual(Object.keys(manifest.options), ["view", "petAlerts"]);
+  assert.equal(manifest.options.petAlerts.type, "toggle");
+  assert.equal(manifest.options.petAlerts.default, false, "pet toasts are opt-in");
   // The base size is the strip: Umbra resizes from 50 % to 300 % of it and zooms by the smaller stretch, so a small base
   // lets the user go from a thin strip to a tall card. A tall base (1.8.0: 340 x 540) blocked shrinking below 270 px.
   assert.equal(manifest.width, 300);

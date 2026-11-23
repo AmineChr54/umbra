@@ -157,10 +157,10 @@
       `<path d="M${x} ${y - 29} q-9 -10 -12 -3 q3 5 12 3 q9 -10 12 -3 q-3 5 -12 3" fill="${P.butter}" ${OUT2}/></g>`;
   }
   function holidayFloor(h) {
-    if (h === "halloween") return `<g class="pw-pumpkin"><ellipse cx="216" cy="190" rx="13" ry="10" fill="#F2913D" ${OUT}/>` +
+    if (h === "halloween") return `<g class="pw-pumpkin" transform="translate(-40 24)"><ellipse cx="216" cy="190" rx="13" ry="10" fill="#F2913D" ${OUT}/>` +
       `<path d="M216 180 q2 -6 6 -6" stroke="#5E9E5A" stroke-width="3" fill="none" stroke-linecap="round"/>` +
       `<path d="M210 187 l3 -3 l3 3 Z M218 187 l3 -3 l3 3 Z M209 193 q7 5 14 0" fill="${P.ink}" stroke="${P.ink}" stroke-width="1"/></g>`;
-    if (h === "birthday") return `<g class="pw-cake"><rect x="196" y="176" width="30" height="16" rx="3" fill="${P.white}" ${OUT}/>` +
+    if (h === "birthday") return `<g class="pw-cake" transform="translate(-38 30)"><rect x="196" y="176" width="30" height="16" rx="3" fill="${P.white}" ${OUT}/>` +
       `<path d="M196 182 q5 4 10 0 q5 4 10 0 q5 4 10 0" fill="none" stroke="${P.pink}" stroke-width="3"/>` +
       `<rect x="209" y="164" width="4" height="12" fill="#9ED3EE" ${OUT2}/><path class="pw-flame" d="M211 158 q3 4 0 6 q-3 -2 0 -6 Z" fill="#F2C14E"/></g>`;
     return "";
@@ -226,7 +226,7 @@
     // The blob: the mascot's own svg, placed on the rug inside a walker (moved by JS) and an act layer (tricks, idle acts).
     const blob = M.renderSvg({ mood: o.mood, outfit: o.outfit, level: o.level, title: o.title }).replace("<svg ", `<svg x="68" y="112" width="104" height="104" `);
     const night = dark ? `<rect class="pw-dark" x="-400" y="-400" width="1040" height="1040" fill="#1B2140" opacity="${dark}"/>` +
-      `<circle class="pw-fireglow" cx="120" cy="110" r="52" fill="${P.butter}" opacity="${o.phase === "night" ? 0.22 : 0.1}"/>` +
+      `<circle class="pw-fireglow" cx="120" cy="110" r="52" fill="${P.butter}" opacity="${o.phase === "night" ? 0.14 : 0.08}"/>` +
       (lamp ? `<circle class="pw-lampglow" cx="206" cy="122" r="44" fill="${P.butter}" opacity="0.28"/>` : "") : "";
     const label = (o.title ? o.title + ", " : "") + "the blob's room" + (o.asleep ? ", asleep" : "");
     return `<svg xmlns="http://www.w3.org/2000/svg" class="hm-scene pw-scene pw-${o.phase} pw-${o.season}${o.holiday ? " pw-h-" + o.holiday : ""}${o.asleep ? " pw-asleep" : ""}" viewBox="0 0 240 240" role="img" aria-label="${esc(label)}" data-mood="${esc(o.mood || "")}">` +

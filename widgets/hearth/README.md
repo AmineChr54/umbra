@@ -55,6 +55,25 @@ copy that is already paired then asks you to **Allow**. Only that click hands th
 
 Several copies on one PC cost no extra traffic: they talk to each other and only one of them asks the relay.
 
+## The pet's world (2.0)
+
+Besides Feed, Water and Pet, the blob now has a whole room, and most of it is shared between you two:
+
+- **A living room** that follows this PC's clock (dawn, day, dusk, night with the moon; the blob sleeps from 23:00 to
+  07:00, click to wake it) and the season (snow, petals, fireflies, leaves), with decorations for New Year, the winter
+  holidays, Valentine's Day, Halloween, your anniversary and the blob's birthday. It wanders, looks at your pointer, chases
+  butterflies, plays with its toy and reads by the bookshelf. Click it to poke it, hold and rub to make it purr.
+- **Embers**, shared coins you both earn by caring, playing and finishing quests, spent in the **Shop**: treats (bigger
+  boosts than plain care), toys, decor for eight spots in the room, and outfits. Anything can also be wrapped as a
+  **gift** that waits by the hearth until your partner opens it.
+- **Play**: Berry Catch, Flame Memory and Hide and Seek, with best scores and Embers (capped per day).
+- **Quests** (three a day), **Stickers** (20 to collect), the **Diary** of what you both did, and **Tricks** it learns as it levels up.
+- The outfit is now shared: both PCs show what it wears.
+- **Pet alerts** (option, off by default): toasts when it is hungry or sad, when a gift waits and when a quest can be claimed.
+
+The shared parts need a relay with the pet world (`tools/umbra-relay`, "Pet world" in its README). Until the relay is
+updated, the room, the games (with local best scores), tricks and pokes work and the shop, quests, stickers and diary stay hidden.
+
 ## Pairing, unpairing and "Invite again"
 
 - **Unpair** (the gear button, then Unpair) leaves the hearth. Your partner keeps it **for 7 days** and sees "Your

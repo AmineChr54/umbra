@@ -15,6 +15,7 @@
   const L = window.HearthPetLogic;
   const M = window.HearthMascot;
   const core = window.HearthCore;
+  const W = window.HearthWorld, WL = window.HearthWorldLogic, X = window.HearthPetExtras, G = window.HearthGames;
   const PREFS_KEY = "pet";          // umbra.store key of this copy: { outfit: [...], bubbles: { id: shownAt } }
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,12 +31,15 @@
     cd: {},                     // action -> local ms when the button is ready again
     inflight: {},               // action -> true while a care call runs
     nameOverride: null,         // { value, until }: the name we just sent, shown until the sync agrees
-    prefs: { outfit: [], bubbles: {} },
+    prefs: { outfit: [], bubbles: {}, best: {} },
     prefsLoaded: false, saveTimer: 0,
     ui: { sheet: null, hatch: false, later: false, draft: "", err: "", busy: false, focus: false },
     bubble: null,               // { id, text, until, kind }
     flashUntil: 0,              // the "love" face after a pet
     timer: 0, lastIdleCheck: 0, openDone: false,
+    // the pet's world (a relay with Embers, shop, room...): null on an older relay
+    world: null, worldBusy: false, migrated: false, awakeUntil: 0, lifeStop: null, gameStop: null, result: null,
+    alerts: { sad: 0, gift: 0, quest: "" },
   };
 
   // ---------- small helpers ----------
@@ -73,7 +77,7 @@
   function savePrefs() {
     clearTimeout(S.saveTimer);
     S.saveTimer = setTimeout(async () => {
-      try { await S.store.set(PREFS_KEY, { outfit: S.prefs.outfit, bubbles: S.prefs.bubbles }); } catch (e) { /* not essential */ }
+      try { await S.store.set(PREFS_KEY, { outfit: S.prefs.outfit, bubbles: S.prefs.bubbles, best: S.prefs.best }); } catch (e) { /* not essential */ }
     }, 600);
   }
   async function loadPrefs() {
@@ -84,6 +88,7 @@
         const b = {};
         if (p.bubbles && typeof p.bubbles === "object") for (const [k, v] of Object.entries(p.bubbles).slice(0, 20)) if (Number.isFinite(v)) b[k] = v;
         S.prefs.bubbles = b;
+        if (p.best && typeof p.best === "object") for (const id of WL.GAME_IDS) if (Number.isFinite(p.best[id])) S.prefs.best[id] = p.best[id];
       }
     } catch (e) { /* defaults */ }
     S.prefsLoaded = true;
@@ -121,6 +126,7 @@
     S.view = v;
     const pet = L.parsePet(v.sync && v.sync.pet);
     if (!pet) return;
+    if (!S.worldBusy && !Object.keys(S.inflight).length) adoptWorld(v.sync.pet);
     const sig = L.petSig(pet);
     if (sig === S.lastSig) return;
     if (Object.keys(S.inflight).length) return;
@@ -173,6 +179,7 @@
     const o = offline ? null : L.careOutcome(r);
     if (o && o.kind === "ok") {
       S.base = { pet: o.pet, asOf: serverNow(), trusted: true };
+      adoptWorld(r.pet);
       S.lastSig = L.petSig(o.pet);
       if (o.pet.level > beforeCur.level) {
         const gained = L.newlyUnlocked(L.unlockedIds(beforeCur.level, days()), L.unlockedIds(o.pet.level, days()));
@@ -233,6 +240,7 @@
     if (S.ui.focus) focusName();
   }
   function closeSheet() {
+    if (S.gameStop) { S.gameStop(); S.gameStop = null; }
     S.ui.sheet = null; S.ui.err = ""; S.ui.busy = false; S.ui.focus = false;
     paintSheet();
   }
@@ -259,8 +267,8 @@
     if (S.ui.sheet === "outfits") {
       const cur = S.base ? L.current(S.base, serverNow()) : null;
       const level = cur ? cur.level : 1;
-      const list = L.outfitList(level, days());
-      const worn = L.sanitizeOutfit(S.prefs.outfit, list.filter((o) => o.unlocked).map((o) => o.id), M);
+      const list = L.outfitList(level, days(), WL.ownedOutfits(S.world));
+      const worn = wornNow(cur);
       const tiles = list.map((o) =>
         `<button class="pt-tile${worn.includes(o.id) ? " on" : ""}${o.unlocked ? "" : " locked"}" data-act="outfit" data-id="${o.id}" data-no-drag aria-pressed="${worn.includes(o.id)}" ${o.unlocked ? "" : "disabled"} title="${esc(o.unlocked ? o.label : o.label + ": " + o.full)}">` +
         `<span class="pt-art">${M.renderSvg({ mood: "content", outfit: [o.id], level: 5 })}</span><span class="pt-tl">${esc(o.label)}</span>` +
@@ -268,8 +276,14 @@
       return `<div class="pt-form" data-no-drag><div class="pt-head"><h3>Outfit</h3>` +
         `<button class="btn" data-act="outfit-none" data-no-drag ${worn.length ? "" : "disabled"}>Take off</button><button class="btn primary" data-act="sheet-close" data-no-drag>Done</button></div>` +
         `<div class="pt-tiles">${tiles}</div>` +
-        `<p class="pt-muted">Levels and milestones unlock outfits. The choice is saved on this PC only for now.</p></div>`;
+        `<p class="pt-muted">${S.world ? "Levels, milestones and the shop unlock outfits. You both see what it wears." : "Levels and milestones unlock outfits. The choice is saved on this PC only for now."}</p></div>`;
     }
+    if (S.ui.sheet === "panel") {
+      const cur = S.base ? L.current(S.base, serverNow()) : null;
+      return X.panelHtml({ world: S.world, panel: S.ui.panel, sub: S.ui.sub, level: cur ? cur.level : 1, me: me(), names: names(),
+        petName: effectiveName(), err: S.ui.err, busy: S.worldBusy, local: S.prefs.best, result: S.result });
+    }
+    if (S.ui.sheet === "game") return `<div class="pt-form px gm" data-no-drag><div class="pt-head"><h3>${esc(WL.GAMES[S.ui.game].label)}</h3><button class="btn" data-act="game-quit" data-no-drag>Stop</button></div><div class="gm-box" data-gamebox></div></div>`;
     return "";
   }
 
@@ -278,7 +292,13 @@
     if (S.ui.sheet === "name") return JSON.stringify(["name", S.ui.hatch, S.ui.busy, S.ui.err]);
     if (S.ui.sheet === "outfits") {
       const cur = S.base ? L.current(S.base, serverNow()) : null;
-      return JSON.stringify(["outfits", cur ? cur.level : 1, days(), S.prefs.outfit]);
+      return JSON.stringify(["outfits", cur ? cur.level : 1, days(), S.prefs.outfit, S.world && S.world.wear, S.world && WL.ownedOutfits(S.world)]);
+    }
+    if (S.ui.sheet === "game") return JSON.stringify(["game", S.ui.game, S.ui.gameRun]);
+    if (S.ui.sheet === "panel") {
+      const w = S.world;
+      return JSON.stringify(["panel", S.ui.panel, S.ui.sub, S.ui.err, S.worldBusy, w && [w.coins, w.inv, w.room, w.quests, w.stickers, w.gift, w.log.length, w.best],
+        S.ui.panel === "result" ? S.result : null, S.ui.panel === "tricks" ? (S.base ? L.current(S.base, serverNow()).level : 1) : 0]);
     }
     return "";
   }
@@ -296,7 +316,13 @@
     const hadFocus = el.contains(active) && active.tagName === "INPUT";
     const caret = hadFocus ? active.selectionStart : 0;
     el._key = key;
+    if (S.gameStop) { S.gameStop(); S.gameStop = null; }
     el.innerHTML = sheetHtml();
+    if (S.ui.sheet === "game") {
+      const box = el.querySelector("[data-gamebox]");
+      const game = S.ui.game;
+      S.gameStop = G.start(box, game, (score) => { S.gameStop = null; gameOver(game, score); });
+    }
     if (S.ui.sheet === "name" && (hadFocus || S.ui.focus)) {
       const input = el.querySelector("input");
       if (input && !input.disabled) { input.focus(); const c = hadFocus ? caret : input.value.length; input.setSelectionRange(c, c); }
@@ -316,10 +342,17 @@
       `<span class="pt-lv num" data-lv></span>` +
       `<span class="pt-streak num" data-streak hidden></span>` +
       `<button class="btn pt-outfit" data-act="outfits" data-no-drag>Outfit</button>` +
+      `<span class="pt-coins" data-coins hidden></span>` +
+      `<button class="pt-giftchip" data-act="open-gift" data-no-drag hidden></button>` +
       `</div>` +
       `<div class="pt-bubble" data-bubble role="status" hidden></div>` +
       `<span class="pt-safe" data-safe hidden>Sad, but safe. It never leaves.</span>` +
       `<div class="pt-care" data-care>${care}</div>` +
+      `<div class="pt-nav" data-nav>` +
+      `<button class="pt-nb" data-act="panel" data-panel="play" data-no-drag>Play</button>` +
+      `<button class="pt-nb" data-act="panel" data-panel="shop" data-no-drag data-world>Shop</button>` +
+      `<button class="pt-nb" data-act="panel" data-panel="quests" data-no-drag data-world>Quests<i class="px-dot" data-qdot hidden></i></button>` +
+      `<button class="pt-nb" data-act="panel" data-panel="more" data-no-drag>More</button></div>` +
       `<div class="pt-foot"><div class="pt-xp"><b class="num" data-xplv></b><span class="pt-bar xp" aria-hidden="true"><i data-xpfill></i></span><span class="num" data-xptext></span></div>` +
       `<div class="pt-bond" data-bond></div></div>` +
       `<div class="pt-sheet" data-sheet hidden></div>`;
@@ -339,9 +372,28 @@
     if (S.ui.sheet === "name" && S.ui.hatch && name && !S.ui.busy) closeSheet();
 
     // the face
-    const outfit = L.sanitizeOutfit(S.prefs.outfit, unlocked, M);
-    const mood = cur ? L.displayMood(cur, { mascot: M, tapped: now < S.flashUntil }) : "content";
-    S.mount.update({ mood, outfit, level: cur ? cur.level : 1, title: name });
+    const outfit = wornNow(cur);
+    const asleep = isAsleep();
+    const mood = cur ? (asleep && now >= S.flashUntil ? "sleepy" : L.displayMood(cur, { mascot: M, tapped: now < S.flashUntil })) : "content";
+    const d = new Date();
+    const w = S.world;
+    S.mount.update({
+      mood, outfit, level: cur ? cur.level : 1, title: name, now,
+      room: w ? w.room : {}, phase: WL.skyPhase(d.getHours()), season: WL.season(d.getMonth()),
+      holiday: WL.holiday(d, w ? w.born : 0, v.togetherSince), asleep,
+      gift: w && w.gift ? (w.gift.from === me() ? "mine" : "theirs") : "",
+    });
+    S.mount.clock(now);
+    put(E.coins, "hidden", !w);
+    if (w) { const html = X.ember(umbra.fmt(w.coins, 0)); if (E.coins._html !== html) { E.coins._html = html; E.coins.innerHTML = html; } put(E.coins, "title", "Embers: shared by you both, spent in the shop"); }
+    const theirs = w && w.gift && w.gift.from !== me();
+    put(E.giftchip, "hidden", !theirs);
+    if (theirs) put(E.giftchip, "text", `A gift from ${names().partner || "your partner"}! Open it`);
+    for (const b of E.worldBtns) put(b, "hidden", !w);
+    const claim = w ? WL.claimable(w).length : 0;
+    put(E.qdot, "hidden", !claim);
+    if (claim) put(E.qdot, "text", String(claim));
+    alerts(cur, w);
 
     put(E.pname, "text", name || "Unnamed blob");
     put(E.rename, "aria-label", name ? "Rename " + name : "Name your blob");
@@ -425,15 +477,146 @@
     "sheet-close"() { if (S.ui.sheet === "name" && S.ui.hatch) S.ui.later = true; closeSheet(); },
     outfit(el) {
       const cur = S.base ? L.current(S.base, serverNow()) : null;
-      const unlocked = L.unlockedIds(cur ? cur.level : 1, days());
-      S.prefs.outfit = L.toggleOutfit(S.prefs.outfit, el.dataset.id, unlocked, M);
+      const next = L.toggleOutfit(wornNow(cur), el.dataset.id, unlockedNow(cur), M);
+      if (S.world) { dress(next); return; }
+      S.prefs.outfit = next;
       savePrefs(); paintSheet(); paint();
     },
-    "outfit-none"() { S.prefs.outfit = []; savePrefs(); paintSheet(); paint(); },
+    "outfit-none"() { if (S.world && S.world.wear !== null) { dress([]); return; } S.prefs.outfit = []; savePrefs(); paintSheet(); paint(); },
+    panel(el) {
+      const [panel, sub] = String(el.dataset.panel).split(":");
+      if (panel === "outfits") { openSheet("outfits", false); return; }
+      S.ui.sheet = "panel"; S.ui.panel = panel; S.ui.sub = sub || (panel === "shop" ? S.ui.sub || "treat" : ""); S.ui.err = "";
+      if (panel === "shop" && !["treat", "toy", "decor", "outfit"].includes(S.ui.sub)) S.ui.sub = "treat";
+      if (panel === "quests" && S.world && !S.world.quests) worldCall("quests", {});
+      paintSheet();
+    },
+    buy(el) { worldCall("buy", { item: el.dataset.id }, (r) => showBubble({ id: "buy", text: `${WL.label(el.dataset.id)}! Thank you!`, ms: 4000 }, false)); },
+    gift(el) { worldCall("gift", { item: el.dataset.id }, () => showBubble({ id: "gift", text: `I'll keep the present safe for ${names().partner || "your partner"}.`, ms: 5000 }, false)); },
+    use(el) {
+      const id = el.dataset.id;
+      worldCall("use", { item: id }, () => { react("feed"); S.flashUntil = Date.now() + 2500; closeSheet(); showBubble({ id: "treat", text: `${WL.label(id)}! My favourite.`, ms: 4500 }, false); });
+    },
+    place(el) { worldCall("place", { spot: el.dataset.spot, item: el.dataset.id }); },
+    wear(el) { const cur = S.base ? L.current(S.base, serverNow()) : null; dress(L.toggleOutfit(wornNow(cur), el.dataset.id, unlockedNow(cur), M)); },
+    claim(el) { worldCall("claim", { q: el.dataset.q }, (r) => showBubble({ id: "quest", text: `Quest done! +${r.coins} Embers.`, ms: 4500 }, false)); },
+    "open-gift"() {
+      const g = S.world && S.world.gift;
+      if (!g || g.from === me()) return;
+      worldCall("open", {}, (r) => { react("pet"); S.flashUntil = Date.now() + 2500; showBubble({ id: "open", text: `A ${WL.label(r.item).toLowerCase()} from ${names().partner || "your partner"}!`, ms: 6000 }, false); });
+    },
+    game(el) { S.ui.sheet = "game"; S.ui.game = el.dataset.game; S.ui.gameRun = (S.ui.gameRun || 0) + 1; S.ui.err = ""; paintSheet(); },
+    "game-quit"() { closeSheet(); },
+    trick(el) { closeSheet(); trick(el.dataset.trick); },
   };
+
+  // ---------- the pet's world ----------
+
+  /** Take the world part of a relay pet (the answer of a call or a sync). */
+  function adoptWorld(raw) {
+    const w = WL.parseWorld(raw);
+    const before = S.world;
+    S.world = w;
+    if (!w) return;
+    // A relay that just learned the world: bring the outfit this PC chose, once.
+    if (w.wear === null && !S.migrated && S.prefsLoaded && S.prefs.outfit.length) { S.migrated = true; dress(S.prefs.outfit); }
+    // stickers earned by the partner show up in the diary; the newest of mine get a bubble from the call itself
+    if (before && w.gift && (!before.gift || before.gift.t !== w.gift.t) && w.gift.from !== me()) showBubble({ id: "gift-came", text: `${names().partner || "Your partner"} left a present for you!`, ms: 7000 }, false);
+  }
+  /** Outfit worn now: the shared one on a world relay (after it was set once), else this PC's choice. */
+  function wornNow(cur) {
+    const unlocked = unlockedNow(cur);
+    if (S.world && S.world.wear !== null) return L.sanitizeOutfit(S.world.wear, unlocked.concat(S.world.wear.filter((id) => WL.CATALOG[id])), M);
+    return L.sanitizeOutfit(S.prefs.outfit, unlocked, M);
+  }
+  const unlockedNow = (cur) => L.unlockedIds(cur ? cur.level : 1, days(), WL.ownedOutfits(S.world));
+  function dress(list) {
+    if (!S.world) { S.prefs.outfit = list; savePrefs(); paintSheet(); paint(); return; }
+    worldCall("dress", { items: list.join(",") });
+  }
+
+  /** One world call: busy while it runs, adopt the pet it returns, say what was earned, or show why not. */
+  async function worldCall(route, params, onOk) {
+    if (!S.client || S.worldBusy) return null;
+    S.worldBusy = true; S.ui.err = ""; paintSheet();
+    let r = null;
+    try { r = await S.client.call(route, params); } catch (e) { r = null; }
+    S.worldBusy = false;
+    if (r && r.ok === true) {
+      const pet = L.parsePet(r.pet);
+      if (pet) { S.base = { pet, asOf: serverNow(), trusted: true }; S.lastSig = L.petSig(pet); }
+      adoptWorld(r.pet);
+      if (Array.isArray(r.stickers) && r.stickers.length) {
+        const st = WL.STICKERS[r.stickers[0]];
+        setTimeout(() => showBubble({ id: "sticker", text: `New sticker: ${st ? st.label : r.stickers[0]}!`, ms: 6000 }, false), 1800);
+      }
+      if (onOk) onOk(r);
+    } else {
+      S.ui.err = r ? WL.worldProblem(r) : core.MSG.offline;
+      if (!S.ui.sheet) showBubble({ id: "world-error", kind: "error", text: S.ui.err, ms: 6000 }, false);
+    }
+    paintSheet(); paint(); schedule();
+    return r;
+  }
+
+  async function gameOver(game, score) {
+    const local = S.prefs.best[game] || 0;
+    if (score > local) { S.prefs.best[game] = score; savePrefs(); }
+    S.result = { game, score, record: score > local, coins: 0 };
+    S.ui.sheet = "panel"; S.ui.panel = "result"; S.ui.err = "";
+    paintSheet();
+    react("tap");
+    if (!S.world) return;
+    const r = await worldCall("play", { game, score });
+    S.result = Object.assign({}, S.result, r && r.ok ? { coins: r.coins, record: r.record, capped: r.capped } : { err: S.ui.err });
+    S.ui.err = "";
+    paintSheet();
+  }
+
+  const isAsleep = () => WL.asleepAt(new Date().getHours()) && Date.now() >= S.awakeUntil;
+
+  /** A click or a rub on the blob in the room. */
+  function poke(kind) {
+    if (!connected()) return;
+    if (isAsleep()) {
+      S.awakeUntil = Date.now() + 3 * 60 * 1000;
+      showBubble({ id: "woken", text: "Mmh... I was sleeping. Hello!", ms: 4000 }, false);
+      paint(); return;
+    }
+    if (kind === "purr") { S.mount.act("purr", 1500); react("pet"); S.flashUntil = Date.now() + 2000; showBubble({ id: "purr", text: "Purrr...", ms: 2500 }, false); }
+    else if (kind === "dizzy") { S.mount.act("dizzy", 2600); showBubble({ id: "dizzy", text: "Whoa, the room is spinning!", ms: 3000 }, false); }
+    else {
+      S.mount.act("squish", 600);
+      const lines = ["Hehe!", "That tickles!", "Boop!", "Hi there!", "Again!"];
+      showBubble({ id: "poke", text: lines[Math.floor(Math.random() * lines.length)], ms: 2000 }, false);
+    }
+    paint(); schedule();
+  }
+  function trick(id) {
+    const ms = { sit: 2300, wave: 2000, spin: 1900, jump: 1200, dance: 2500, juggle: 2800, fireworks: 2200 }[id] || 2000;
+    if (!S.mount.act(id, ms)) { showBubble({ id: "trick", text: "Ta-da! (Animations are off.)", ms: 3000 }, false); return; }
+    setTimeout(() => showBubble({ id: "trick", text: ["Ta-da!", "Did you see that?", "I practised!"][Math.floor(Math.random() * 3)], ms: 2500 }, false), ms);
+  }
+
+  /** Optional toasts (option "Pet alerts"): sad or hungry at most every 4 h, a gift from the partner, a quest to claim. One copy only. */
+  function alerts(cur, w) {
+    if (!(umbra.options && umbra.options.petAlerts) || typeof umbra.notify !== "function" || !S.view) return;
+    if (!(S.view.toaster !== undefined ? S.view.toaster : S.view.leader)) return;
+    const now = Date.now(), pet = effectiveName() || "Your blob";
+    const say = (tag, title, body) => umbra.notify({ title, body, tag: "hearth-pet-" + tag }).catch(() => {});
+    if (cur && (cur.bucket === "sad" || cur.food < 30 || cur.water < 30) && now - S.alerts.sad > 4 * 3600000) {
+      S.alerts.sad = now;
+      say("needs", `${pet} misses you`, cur.food < 30 ? `${pet} is hungry.` : cur.water < 30 ? `${pet} is thirsty.` : `${pet} is a little sad. A bit of care helps right away.`);
+    }
+    if (w && w.gift && w.gift.from !== me() && S.alerts.gift !== w.gift.t) { S.alerts.gift = w.gift.t; say("gift", "A present is waiting", `${names().partner || "Your partner"} left a gift by the hearth.`); }
+    const q = w ? WL.claimable(w) : [];
+    const day = new Date().toISOString().slice(0, 10);
+    if (q.length && S.alerts.quest !== day) { S.alerts.quest = day; say("quest", "Quest done", `Claim your Embers for "${WL.questText(q[0].id, pet)}".`); }
+  }
 
   function bind(root) {
     root.addEventListener("click", (e) => {
+      if (e.target.closest(".pw-gift-theirs")) { ACTS["open-gift"](); return; }
       const el = e.target.closest("[data-act]");
       if (!el || el.disabled) return;
       const fn = ACTS[el.dataset.act];
@@ -471,9 +654,16 @@
     S.els = {
       scene: q("[data-scene]"), pname: q("[data-pname]"), rename: q(".pt-icon"), lv: q("[data-lv]"), bubble: q("[data-bubble]"),
       safe: q("[data-safe]"), outfitBtn: q(".pt-outfit"), streak: q("[data-streak]"), care, xplv: q("[data-xplv]"), xpfill: q("[data-xpfill]"), xptext: q("[data-xptext]"),
-      bond: q("[data-bond]"), sheet: q("[data-sheet]"),
+      bond: q("[data-bond]"), sheet: q("[data-sheet]"), coins: q("[data-coins]"), giftchip: q(".pt-giftchip"),
+      worldBtns: [...el.querySelectorAll("[data-world]")], qdot: q("[data-qdot]"),
     };
-    S.mount = M.mount(S.els.scene, { mood: "content", level: 1 }, { scene: true });
+    S.mount = W.mount(S.els.scene, { mood: "content", level: 1 });
+    if (S.lifeStop) S.lifeStop();
+    S.lifeStop = X.life(S.els.scene, {
+      mount: () => (connected() ? S.mount : null),
+      state: () => ({ asleep: isAsleep(), toy: !!(S.world && S.world.room.toy), books: !!(S.world && S.world.room.floorR === "bookshelf") }),
+      poke,
+    });
     bind(el);
     S.view = client.getView();
     absorb(S.view);
