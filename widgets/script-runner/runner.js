@@ -190,7 +190,7 @@ async function runScript(id) {
   render();
   poll();
   const t0 = Date.now();
-  let entry;
+  let entry, rawOut = "", rawErr = "";
   try {
     const r = await umbra.run(id);
     let kind = r.exitCode === 0 ? "ok" : "fail";
@@ -200,7 +200,8 @@ async function runScript(id) {
     else if (r.timedOut && r.elevated) { kind = "timeout"; note = `Timed out.${stuck}`; }
     else if (r.timedOut) { kind = "timeout"; note = "Timed out and was stopped. Raise its time limit in Settings > My widgets > Script Runner (max 120 s), or make it a script that keeps running."; }
     else if (r.truncated) { note = "Output was larger than 1 MB and was cut."; }
-    entry = { at: Date.now(), exitCode: r.exitCode, ms: r.durationMs ?? Date.now() - t0, stdout: String(r.stdout || "").slice(0, MAX_KEEP), stderr: String(r.stderr || "").slice(0, MAX_KEEP), kind, note, truncated: !!r.truncated };
+    rawOut = String(r.stdout || ""); rawErr = String(r.stderr || "");
+    entry = { at: Date.now(), exitCode: r.exitCode, ms: r.durationMs ?? Date.now() - t0, stdout: rawOut.slice(0, MAX_KEEP), stderr: rawErr.slice(0, MAX_KEEP), kind, note, truncated: !!r.truncated };
   } catch (err) {
     const d = describeError(err);
     entry = { at: Date.now(), exitCode: null, ms: Date.now() - t0, stdout: "", stderr: "", kind: d.kind, note: d.note };
@@ -211,8 +212,12 @@ async function runScript(id) {
   // Cleared while it ran: the saved output starts where the Clear was too.
   if (clearMarks[id]) {
     if (clearMarks[id].since === startedAt) {
-      entry.stdout = afterClear(id, startedAt, entry.stdout).text;
-      entry.stderr = "";
+      // The mark is the end of the live text (stdout and stderr together), so it is in one of the two full streams:
+      // that one keeps what came after it; the other is kept whole (its lines can't be placed around the Clear).
+      const tail = clearMarks[id].tail || "";
+      const inOut = tail && rawOut.includes(tail), inErr = !inOut && tail && rawErr.includes(tail);
+      if (inOut) entry.stdout = afterClear(id, startedAt, rawOut).text.slice(0, MAX_KEEP);
+      if (inErr) entry.stderr = afterClear(id, startedAt, rawErr).text.slice(0, MAX_KEEP);
       entry.cleared = true;
     }
     delete clearMarks[id]; saveUi();

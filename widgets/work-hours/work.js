@@ -64,7 +64,7 @@
     saveRunning();
     if (entry.e - entry.s >= 1000) { entries.push(entry); saveEntries(); }
     $("note").value = "";
-    if (entry.e - entry.s < MIN) showToast("Under a minute, saved anyway", "Remove", () => removeEntry(entry.id, false));
+    if (entry.e - entry.s >= 1000 && entry.e - entry.s < MIN) showToast("Under a minute, saved anyway", "Remove", () => removeEntry(entry.id, false));
     sync();
   }
   function discard() {
