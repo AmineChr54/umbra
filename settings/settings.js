@@ -1002,7 +1002,7 @@ function agentScriptsSwitch() {
   text.append(mk("div", "agent-title", "Let AI agents manage my scripts"),
     mk("div", "cmd-desc", g.agentScripts
       ? "On: AI agents (umbractl, MCP) can add, change, approve, run and stop these scripts. They run as you, with your files, so only leave this on while you use agents you trust."
-      : "Off: AI agents can only list these scripts and read their output. On lets them add, change, approve, run and stop them (scripts that run as administrator stay yours)."));
+      : "Off: AI agents can only list these scripts. On lets them read their output and add, change, approve, run and stop them (scripts that run as administrator stay yours)."));
   const sw = mk("label", "switch");
   const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!g.agentScripts });
   box.setAttribute("aria-label", "Let AI agents manage my scripts");

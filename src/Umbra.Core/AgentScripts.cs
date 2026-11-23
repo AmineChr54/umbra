@@ -5,7 +5,7 @@ namespace Umbra;
 
 /// <summary>
 /// The <c>scripts</c> control command (umbractl scripts, the MCP <c>scripts</c> tool): AI agents manage the user's own scripts
-/// (<see cref="UserScripts"/>, Script Runner). Listing and reading output always work; adding, editing, deleting, approving,
+/// (<see cref="UserScripts"/>, Script Runner). Listing them always works; reading output, adding, editing, deleting, approving,
 /// running and stopping work only while the user switched on <see cref="GeneralSettings.AgentScripts"/> in Settings. That
 /// switch is off by default and only the Settings page changes it: no control command, umbractl or MCP tool, and no backup.
 /// A script that runs as administrator stays the user's alone (created, changed, approved and started only in Settings or by
@@ -15,7 +15,7 @@ static class AgentScripts
 {
     public const string SwitchName = "Let AI agents manage my scripts";
     public static readonly string[] Ops = ["list", "get", "output", "add", "edit", "delete", "approve", "run", "stop"];
-    static readonly string[] Reads = ["list", "get", "output"];
+    static readonly string[] Reads = ["list", "get"];
     static readonly string[] Fields = ["title", "description", "kind", "mode", "path", "code", "args", "startIn", "timeoutSeconds", "keepsRunning", "autoStart", "restart", "runAsAdmin"];
 
     /// <param name="Allowed">The user's <see cref="GeneralSettings.AgentScripts"/> switch.</param>
@@ -26,9 +26,9 @@ static class AgentScripts
     public static bool IsRead(string op) => Reads.Contains(op);
 
     static string Off(WidgetManifest m) =>
-        $"AI agents can't change, run or stop scripts yet: the user has to switch on \"{SwitchName}\" in Settings > My widgets > {m.Name}. Reading (list, get, output) works without it.";
+        $"AI agents can't change, run or stop scripts yet: the user has to switch on \"{SwitchName}\" in Settings > My widgets > {m.Name}. Listing them (list, get) works without it.";
 
-    const string AdminOnly = "A script that runs as administrator is created, changed, approved and started only by the user (Settings, or a click on the widget)";
+    const string AdminOnly = "A script that runs as administrator is created, changed, approved, started and deleted only by the user (Settings, or a click on the widget)";
 
     public static async Task<JsonNode?> ExecuteAsync(Context c, string op, JsonObject a)
     {
@@ -77,6 +77,7 @@ static class AgentScripts
             case "delete":
             {
                 var s = Find(c, a);
+                if (s.RunAsAdmin) throw new WidgetCommandException(AdminOnly);
                 svc.DeleteUserScript(m, s.Id);
                 Log.Write($"[{m.Id}] user script '{s.Id}' deleted by an AI agent (umbractl/MCP)");
                 return new JsonObject { ["deleted"] = s.Id };

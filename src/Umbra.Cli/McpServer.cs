@@ -102,7 +102,7 @@ sealed class McpServer(Func<string, JsonObject, Task<JsonObject>> send)
             "The user's own scripts in Script Runner (PowerShell, Python, Bash or a program; ones that finish and ones that keep running, like a tunnel or a dev server). " +
             "op: list (default; every script with its id, exact command line, approval status, and for one that keeps running whether it's up), get, output (what it printed so far), " +
             "add, edit (only the fields you pass change), delete, approve, run (a script that finishes: waits and returns exitCode, stdout, stderr, durationMs; one that keeps running: starts it, the widget must be on), stop. " +
-            "list, get and output always work. Everything else works only while the user has switched on \"Let AI agents manage my scripts\" in Settings > My widgets > Script Runner; if it is off, ask the user to switch it on (you can't). " +
+            "list and get always work. output and everything else work only while the user has switched on \"Let AI agents manage my scripts\" in Settings > My widgets > Script Runner; if it is off, ask the user to switch it on (you can't). " +
             "Saving with add or edit approves exactly that command. Scripts that run as administrator are the user's alone. Results of earlier runs from the widget are in widget_data (key \"results\").",
             Schema(Obj(("id", P("string", "Widget id; default the first widget that takes scripts (script-runner)")),
                 ("op", Obj(("type", "string"), ("enum", new JsonArray("list", "get", "output", "add", "edit", "delete", "approve", "run", "stop")), ("description", "Default list"))),

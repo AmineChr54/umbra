@@ -49,9 +49,9 @@ public class AgentScriptsTests
         Assert.Equal("mine", row["id"]!.GetValue<string>());
         Assert.Null(row["code"]); // the code itself only while agents may manage scripts
         Assert.NotNull(await Do(off, "get", "Mine")); // by name too
-        Assert.NotNull(await Do(off, "output", "mine"));
 
-        foreach (var op in new[] { "add", "edit", "delete", "approve", "run", "stop" })
+        // Output (what a script printed, maybe tokens or paths) is behind the switch like every change.
+        foreach (var op in new[] { "output", "add", "edit", "delete", "approve", "run", "stop" })
         {
             var ex = await Assert.ThrowsAsync<WidgetCommandException>(() => Do(off, op, "mine", Missing()));
             Assert.Contains(AgentScripts.SwitchName, ex.Message);
@@ -119,6 +119,8 @@ public class AgentScriptsTests
         await Assert.ThrowsAsync<WidgetCommandException>(() => Do(on, "edit", "admin", new JsonObject { ["args"] = "--x" }));
         await Assert.ThrowsAsync<WidgetCommandException>(() => Do(on, "approve", "admin"));
         await Assert.ThrowsAsync<WidgetCommandException>(() => Do(on, "run", "admin"));
+        await Assert.ThrowsAsync<WidgetCommandException>(() => Do(on, "delete", "admin"));
+        Assert.Contains(svc.UserScriptsOf(m), s => s.Id == "admin");
         await Do(on, "add", script: Missing("Plain"));
         await Assert.ThrowsAsync<WidgetCommandException>(() => Do(on, "edit", "plain", new JsonObject { ["runAsAdmin"] = true }));
         Assert.False(svc.UserScriptsOf(m).Single(s => s.Id == "plain").RunAsAdmin);
@@ -153,6 +155,19 @@ public class AgentScriptsTests
         await Do(on, "edit", "hello", new JsonObject { ["code"] = "Write-Output changed" });
         r = (await Do(on, "run", "hello"))!.AsObject();
         Assert.Equal("changed", r["stdout"]!.GetValue<string>().Trim());
+    }
+
+    [Theory]
+    [InlineData(false, true, false)]  // a backup (or umbractl restore) never turns agent access on
+    [InlineData(true, false, false)]  // Reset or an older backup turns it off
+    [InlineData(true, true, true)]
+    [InlineData(false, false, false)]
+    public void A_restore_turns_agent_access_off_but_never_on(bool current, bool inBackup, bool expected)
+    {
+        var now = new Settings(); now.General.AgentScripts = current;
+        var restored = new Settings(); restored.General.AgentScripts = inBackup;
+        Backup.KeepHostOwned(restored, now);
+        Assert.Equal(expected, restored.General.AgentScripts);
     }
 
     [Fact]

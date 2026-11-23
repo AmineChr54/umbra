@@ -1121,11 +1121,7 @@ sealed class App : ApplicationContext, IUmbraHost
         foreach (var id in _windows.Keys.ToList()) CloseWidget(id);
         var s = backup.Settings;
         if (Theme.DiscoverAll().All(t => t.Id != s.General.Theme)) s.General.Theme = Theme.DefaultId;
-        s.General.LegacyRestoreDone = true;
-        s.General.LastSeenVersion = Settings.General.LastSeenVersion; // an old backup must not announce an update again
-        s.General.TourDone = Settings.General.TourDone; // nor re-offer or reset the tour
-        s.General.AgentScripts &= Settings.General.AgentScripts; // a restore or reset can turn agent access to scripts off, never on
-        s.SettingsPanel = Settings.SettingsPanel; // where this window sits is not part of a backup
+        Backup.KeepHostOwned(s, Settings);
         Settings = s;
         SaveSettings();
         _hotkeys.Apply(Settings.Hotkeys);

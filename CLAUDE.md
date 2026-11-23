@@ -170,12 +170,12 @@ New automation goes through the control protocol so the CLI, MCP and tests stay 
   sees ids and names only (`umbra.commands()`), the host builds a fixed argv (no shell, no parameters) that passes
   `CommandSpec.Validate`, and code typed in Settings runs from a file named after its hash, rewritten from `scripts.json` before each run.
   A declared command id always wins. Automation reaches scripts only through the `scripts` control command (`AgentScripts.cs`; umbractl
-  `scripts`, MCP `scripts`): list, get and output always; add, edit, delete, approve, run and stop only while the user's
+  `scripts`, MCP `scripts`): list and get always; output, add, edit, delete, approve, run and stop only while the user's
   **Let AI agents manage my scripts** switch (`General.AgentScripts`) is on. It is off by default and only the Settings page turns it on:
-  no control command (`set-general` doesn't know it), and a restored backup or reset can turn it off but never on (`App.RestoreBackup`).
+  no control command (`set-general` doesn't know it), and a restored backup or reset can turn it off but never on (`Backup.KeepHostOwned`).
   An agent's add/edit approves exactly that command, like saving in Settings, and runs go through the same `CommandService.RunAsync`/
   `StartFromSettings` gates (widget on, approved program identity, timeout, output cap). Run-as-administrator scripts stay the user's:
-  `scripts` never creates, changes, approves or runs one. Every change and run is logged as "by an AI agent". Tested in `AgentScriptsTests`.
+  `scripts` never creates, changes, approves, runs or deletes one. Every change and run is logged as "by an AI agent". Tested in `AgentScriptsTests`.
   The one exception to the 120 s timeout (#322): a user script the user marked **Keeps running** in Settings (`CommandSpec.KeepsRunning`,
   never settable from widget.json) has no timeout and keeps only a 64 KB output tail; it runs in a kill-on-close job (dies with Umbra),
   at most one per widget + script and 8 in all, and stops on Stop (widget, Settings, tray), when the widget's last window closes,

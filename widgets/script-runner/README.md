@@ -63,11 +63,11 @@ umbractl scripts run "Disk check"                           # waits, then prints
 umbractl scripts start tunnel; umbractl scripts output tunnel; umbractl scripts stop tunnel
 ```
 
-- Off (the default): agents can only list your scripts and read their output.
+- Off (the default): agents can only list your scripts (names and command lines), not read their output or change anything.
 - Only you can switch it on, in Settings. No command, MCP tool or restored backup can.
 - What an agent saves is approved like what you save in Settings, and it runs as you, with your files. Leave the switch on
   only while you use agents you trust.
-- Scripts that run as administrator stay yours: agents can't create, change, approve or start them.
+- Scripts that run as administrator stay yours: agents can't create, change, approve, start or delete them.
 - Runs an agent starts don't appear in the widget's *Earlier runs*; the agent gets the result directly.
 
 ## Switches (a VPN, a tunnel)
