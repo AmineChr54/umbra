@@ -39,7 +39,7 @@
   /** The tab's own name, else the first line of its note without markdown, else "Note N". */
   function label(i) {
     if ((names[i] || "").trim()) return names[i].trim();
-    const first = (notes[i] || "").split("\n").map((l) => l.replace(/^\s*(#{1,3}|[-*]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim()).find(Boolean);
+    const first = (notes[i] || "").split("\n").filter((l) => !isImg(l)).map((l) => plain(l.replace(/^\s*(#{1,3}|[-*]|\d+\.)\s+/, "")).trim()).find(Boolean);
     return first ? first.slice(0, 40) : `Note ${i + 1}`;
   }
 
@@ -118,6 +118,7 @@
   function offerUndo(gone) {
     const st = $("undo");
     clearTimeout(undoTimer);
+    pendingUndo = gone;
     st.hidden = false;
     st.replaceChildren(`Deleted “${gone.label.slice(0, 20)}” · `);
     const b = Object.assign(document.createElement("button"), { type: "button", className: "undo", textContent: "Undo" });
@@ -133,7 +134,7 @@
       await saveTabs();
     };
     st.append(b);
-    undoTimer = setTimeout(() => { st.hidden = true; }, 8000);
+    undoTimer = setTimeout(() => { st.hidden = true; pendingUndo = null; }, 8000);
   }
 
   function renameTab(i) {
@@ -264,20 +265,90 @@
   }
 
   // ---- rendering: one div per line, raw markdown kept as text, markers dimmed ----
+  // Inline formats are kept as text markers. The line with the caret shows them dimmed; other lines fold them away (CSS).
   const span = (cls, t) => { const s = document.createElement("span"); s.className = cls; s.textContent = t; return s; };
-  function inline(parent, t) {
-    t.split(/(\*\*[^*\n]+\*\*)/).forEach((p) => {
-      if (!p) return;
-      if (/^\*\*[^*\n]+\*\*$/.test(p)) {
-        const b = document.createElement("b");
-        b.append(span("mk", "**"), p.slice(2, -2), span("mk", "**"));
-        parent.appendChild(b);
-      } else parent.appendChild(document.createTextNode(p));
-    });
+  const COLORS = ["red", "orange", "yellow", "green", "blue", "purple", "pink", "gray"];
+  // Earliest match wins; at the same spot the longer marker (** before *) does.
+  const TOKEN = new RegExp([
+    `\\{(${COLORS.join("|")}):([^{}\\n]+?)\\}`,
+    // A closing marker isn't followed by one more of its character, so ***x*** reads as bold around italic.
+    "\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*(?!\\*)",
+    "__(?=\\S)(.+?)(?<=\\S)__(?!_)",
+    "~~(?=\\S)(.+?)(?<=\\S)~~(?!~)",
+    "==(?=\\S)(.+?)(?<=\\S)==(?!=)",
+    "(?<![*\\w])\\*(?![\\s*])(.+?)(?<![\\s*])\\*(?![*\\w])",
+  ].join("|"), "g");
+  const FORMATS = { b: ["**", "**", "b"], i: ["*", "*", "i"], u: ["__", "__", "u"], s: ["~~", "~~", "s"], h: ["==", "==", "mark"] };
+  /** Top-level formatted runs of one line: { kind, color?, start, end, open, close, inner }. */
+  function tokens(t) {
+    const out = [];
+    TOKEN.lastIndex = 0;
+    let m;
+    while ((m = TOKEN.exec(t))) {
+      const [all] = m;
+      let tok;
+      if (m[1]) tok = { kind: "c", color: m[1], open: `{${m[1]}:`, close: "}", inner: m[2] };
+      else if (m[3] !== undefined) tok = { kind: "b", inner: m[3] };
+      else if (m[4] !== undefined) tok = { kind: "u", inner: m[4] };
+      else if (m[5] !== undefined) tok = { kind: "s", inner: m[5] };
+      else if (m[6] !== undefined) tok = { kind: "h", inner: m[6] };
+      else tok = { kind: "i", inner: m[7] };
+      if (tok.kind !== "c") { tok.open = FORMATS[tok.kind][0]; tok.close = FORMATS[tok.kind][1]; }
+      tok.start = m.index; tok.end = m.index + all.length;
+      out.push(tok);
+    }
+    return out;
   }
+  /** The text with every format marker removed. */
+  const plain = (t) => { let o = "", at = 0; for (const k of tokens(t)) { o += t.slice(at, k.start) + plain(k.inner); at = k.end; } return o + t.slice(at); };
+  function inline(parent, t) {
+    let at = 0;
+    for (const k of tokens(t)) {
+      if (k.start > at) parent.appendChild(document.createTextNode(t.slice(at, k.start)));
+      // Markers sit outside the styled element, so an underline or highlight never runs under them.
+      const el = document.createElement(k.kind === "c" ? "span" : FORMATS[k.kind][2]);
+      if (k.kind === "c") el.className = `c-${k.color}`;
+      inline(el, k.inner);
+      parent.append(span("mk fm", k.open), el, span("mk fm", k.close));
+      at = k.end;
+    }
+    if (at < t.length) parent.appendChild(document.createTextNode(t.slice(at)));
+  }
+
+  // Pasted images: their own line "![](img:<id> <width>)"; the picture is in the "images" store key as a data URL.
+  const IMG = /^!\[\]\(img:([a-z0-9]{6,16})(?: (\d{1,4}))?\)$/;
+  const MIN_IMG = 40;
+  let images = await umbra.store.get("images", {});
+  if (!images || typeof images !== "object" || Array.isArray(images)) images = {};
+  const isImg = (t) => IMG.test(t);
+  // umbra.store holds 1 MB per widget for everything: notes, names and pictures. Stay a little under it.
+  const STORE_LIMIT = 1024 * 1024, SAFE = 980 * 1024;
+  let imgBytes = JSON.stringify(images).length;
+  const usedBytes = () => imgBytes + notes.reduce((n, t) => n + new Blob([t]).size + 8, 0) + JSON.stringify(names).length + 256;
+  /** The widest an image may be: the editor's text width. */
+  const maxImg = () => Math.max(MIN_IMG, ed.clientWidth - 24);
+  function buildImage(d, t) {
+    const [, id, w] = IMG.exec(t);
+    d.className = "img";
+    d.appendChild(span("mk src", t));
+    const box = document.createElement("span");
+    box.className = "imgbox"; box.contentEditable = "false"; box.dataset.noDrag = "";
+    if (images[id]) {
+      const img = new Image();
+      img.src = images[id]; img.alt = ""; img.draggable = false;
+      if (w) img.style.width = `${Math.min(Number(w), maxImg())}px`;
+      const grip = document.createElement("span");
+      grip.className = "grip"; grip.title = "Drag to resize";
+      box.append(img, grip);
+    } else box.append(span("missing", "Image not found"));
+    d.appendChild(box);
+    return d;
+  }
+
   function buildLine(t) {
     const d = document.createElement("div");
     if (t === "") { d.appendChild(document.createElement("br")); return d; }
+    if (isImg(t)) return buildImage(d, t);
     let m = HEAD.exec(t);
     if (m) { d.className = "h" + m[2].length; d.appendChild(span("mk", m[1] + m[2] + m[3])); inline(d, m[4]); return d; }
     m = LIST.exec(t);
@@ -335,12 +406,15 @@
     let i = 0;
     while (i < lines.length - 1 && abs > lines[i].length) { abs -= lines[i].length + 1; i++; }
     const div = ed.childNodes[i];
+    // A picture's line: its text is never shown, and the browser moves a caret out of hidden text, so the caret goes
+    // before or after the picture itself.
+    if (isImg(lines[i]) && div) return abs > 0 ? [div, div.childNodes.length] : [div, 0];
     const w = document.createTreeWalker(div, NodeFilter.SHOW_TEXT);
     let n;
     while ((n = w.nextNode())) { if (abs <= n.length) return [n, abs]; abs -= n.length; }
     return [div, 0];
   }
-  function setSel(s, e) {
+  function setSel(s, e = s) {
     if (document.activeElement !== ed) return;
     const [a, ao] = point(s), [b, bo] = point(e);
     const r = document.createRange();
@@ -354,12 +428,45 @@
     hang(Array.from(ed.childNodes));
     if (s != null) setSel(s, e == null ? s : e);
     mark();
+    markCur();
   }
+
+  /**
+   * The line holding the caret gets "cur": its format markers show (dimmed) so they can be edited; elsewhere they fold away.
+   * A caret on an image line selects that image (outline; Backspace or Delete removes it).
+   */
+  let curLine = null;
+  function markCur() {
+    const s = getSelection();
+    let ln = null;
+    if (document.activeElement === ed && s.rangeCount && ed.contains(s.focusNode)) {
+      ln = s.focusNode;
+      while (ln && ln.parentNode !== ed) ln = ln.parentNode;
+    }
+    if (ln === curLine && (!ln || ln.classList.contains("cur"))) return;
+    if (curLine) curLine.classList.remove("cur");
+    curLine = ln;
+    if (ln) ln.classList.add("cur");
+  }
+  document.addEventListener("selectionchange", markCur);
+  ed.addEventListener("focus", markCur);
+  ed.addEventListener("blur", () => { if (curLine) curLine.classList.remove("cur"); curLine = null; });
+  /** Index of the line holding the caret when the selection is collapsed, else -1. */
+  function caretLine() {
+    const s = getSelection();
+    if (!s.rangeCount || !s.isCollapsed || !ed.contains(s.focusNode)) return -1;
+    return s.focusNode === ed ? Math.min(s.focusOffset, lines.length - 1) : lineOf(s.focusNode, s.focusOffset).line;
+  }
+  const lineStartAbs = (i) => toAbs({ line: i, ch: 0 });
+  const lineEndAbs = (i) => toAbs({ line: i, ch: lines[i].length });
 
   // ---- state, saving, history ----
   function count() {
-    const n = getText().length;
-    $("count").textContent = `${umbra.fmt(n, 0)} character${n === 1 ? "" : "s"}`;
+    const n = lines.filter((l) => !isImg(l)).join("\n").length;
+    const pics = lines.filter(isImg).length;
+    const pct = Math.min(100, Math.round((usedBytes() / STORE_LIMIT) * 100));
+    $("count").textContent = `${umbra.fmt(n, 0)} character${n === 1 ? "" : "s"}`
+      + (pics ? ` · ${pics} image${pics > 1 ? "s" : ""}` : "") + (imgBytes && pct >= 5 ? ` · ${pct}% full` : "");
   }
   function commit() {
     notes[active] = getText();
@@ -393,6 +500,7 @@
     ed.style.fontSize = `${Number(umbra.options.fontSize) || 14}px`;
     fullRender((notes[active] || "").slice(0, MAX));
     hist = []; hi = -1; pushHist(true);
+    gcImages();
     count();
   }
 
@@ -402,6 +510,355 @@
     fullRender(text, s, e);
     commit(); pushHist(true);
   }
+
+  // ---- formatting: everything goes through the text, so saving, undo and the caret model stay as they are ----
+  /** The line index holding absolute offset `abs`. */
+  function lineAtAbs(abs) {
+    let i = 0;
+    while (i < lines.length - 1 && abs > lines[i].length) { abs -= lines[i].length + 1; i++; }
+    return i;
+  }
+  /** Characters at the start of a line that belong to its list/heading marker (and indent). */
+  function prefixLen(l) {
+    const m = LIST.exec(l) || HEAD.exec(l);
+    if (m) return m[1].length + m[2].length + m[3].length;
+    return /^\s*/.exec(l)[0].length;
+  }
+  /** Every format run of a line, nested ones too, as absolute offsets: { kind, color, start, end, a, b } (a-b is the inner text). */
+  function allTokens(t, base) {
+    const out = [];
+    for (const k of tokens(t)) {
+      const a = base + k.start + k.open.length, b = base + k.end - k.close.length;
+      out.push({ ...k, start: base + k.start, end: base + k.end, a, b });
+      out.push(...allTokens(k.inner, a));
+    }
+    return out;
+  }
+  const tokensOfLine = (i) => allTokens(lines[i], lineStartAbs(i));
+  /** The selection split per line, without list/heading markers, image lines or spaces at either end. */
+  function segments(text, s, e) {
+    const out = [];
+    for (let i = lineAtAbs(s), last = lineAtAbs(e); i <= last; i++) {
+      const l = lines[i];
+      if (isImg(l)) continue;
+      const ls = lineStartAbs(i);
+      let a = Math.max(s, ls + prefixLen(l)), b = Math.min(e, ls + l.length);
+      while (a < b && /\s/.test(text[a])) a++;
+      while (b > a && /\s/.test(text[b - 1])) b--;
+      if (a < b) out.push({ line: i, a, b });
+    }
+    return out;
+  }
+  /** The word around `pos` (letters, digits, _ ' -), or null. */
+  function wordAt(text, pos) {
+    const W = /[\p{L}\p{N}_'’-]/u;
+    let a = pos, b = pos;
+    while (a > 0 && W.test(text[a - 1])) a--;
+    while (b < text.length && W.test(text[b])) b++;
+    return a < b ? { s: a, e: b } : null;
+  }
+  /** A run of this kind that holds the segment (its inner text covers it, or the selection is the whole run). */
+  function enclosing(seg, kind) {
+    const list = tokensOfLine(seg.line).filter((k) => k.kind === kind && ((k.a <= seg.a && seg.b <= k.b) || (k.start === seg.a && k.end === seg.b)));
+    return list.sort((x, y) => (x.end - x.start) - (y.end - y.start))[0] || null;
+  }
+
+  /** Edits on a copy of the text that keep the selection where it belongs. */
+  function editor(text, s, e) {
+    const st = { text, s, e };
+    // An opening marker pushes a selection edge that sits on it; a closing marker doesn't.
+    st.insert = (at, str, opening) => {
+      st.text = st.text.slice(0, at) + str + st.text.slice(at);
+      const mv = (p) => (p > at || (opening && p === at) ? p + str.length : p);
+      st.s = mv(st.s); st.e = mv(st.e);
+    };
+    st.remove = (at, n) => {
+      st.text = st.text.slice(0, at) + st.text.slice(at + n);
+      const mv = (p) => (p >= at + n ? p - n : p > at ? at : p);
+      st.s = mv(st.s); st.e = mv(st.e);
+    };
+    return st;
+  }
+
+  /** Bold, italic, underline, strike, highlight (kind b/i/u/s/h) or a color (kind "c", color or null for none): toggles. */
+  function applyFormat(kind, color, sel = getSel()) {
+    if (!sel) return;
+    const text = getText();
+    let { s, e } = sel;
+    if (s === e) {
+      const w = isImg(lines[lineAtAbs(s)]) ? null : wordAt(text, s);
+      if (w) ({ s, e } = w);
+      else {
+        // Nothing to format yet: an empty pair with the caret inside, ready to type into.
+        if (kind === "c" && !color) return;
+        const open = kind === "c" ? `{${color}:` : FORMATS[kind][0], close = kind === "c" ? "}" : FORMATS[kind][1];
+        edit(text.slice(0, s) + open + close + text.slice(s), s + open.length);
+        return;
+      }
+    }
+    const segs = segments(text, s, e);
+    if (!segs.length) return;
+    const enc = segs.map((g) => enclosing(g, kind));
+    const removing = kind === "c" ? !color || enc.every((k) => k && k.color === color) : enc.every(Boolean);
+    const st = editor(text, sel.s === sel.e ? s : sel.s, sel.s === sel.e ? e : sel.e);
+    // Last segment first, so the offsets of the earlier ones stay right.
+    for (let i = segs.length - 1; i >= 0; i--) {
+      const g = segs[i], k = enc[i];
+      if (k && (removing || kind === "c")) {
+        st.remove(k.end - k.close.length, k.close.length);
+        st.remove(k.start, k.open.length);
+        if (kind === "c" && !removing) { st.insert(k.b - k.open.length, "}", false); st.insert(k.start, `{${color}:`, true); }
+      } else if (!removing && !k) {
+        const open = kind === "c" ? `{${color}:` : FORMATS[kind][0], close = kind === "c" ? "}" : FORMATS[kind][1];
+        st.insert(g.b, close, false);
+        st.insert(g.a, open, true);
+      }
+    }
+    edit(st.text, st.s, st.e);
+  }
+
+  /** Strip every format from the selection (from the runs it touches), or from the caret's line. */
+  function clearFormat(sel = getSel()) {
+    if (!sel) return;
+    const text = getText();
+    let { s, e } = sel;
+    if (s === e) { const i = lineAtAbs(s); s = lineStartAbs(i); e = lineEndAbs(i); }
+    const st = editor(text, sel.s, sel.e);
+    for (let i = lineAtAbs(e); i >= lineAtAbs(s); i--) {
+      const ls = lineStartAbs(i);
+      const top = tokens(lines[i]).map((k) => ({ ...k, start: ls + k.start, end: ls + k.end })).filter((k) => k.start < e && k.end > s);
+      for (const k of top.reverse()) {
+        // Remove markers from the end of the run backwards, nested ones included.
+        const inside = allTokens(lines[i], ls).filter((t) => t.start >= k.start && t.end <= k.end);
+        const cuts = inside.flatMap((t) => [[t.end - t.close.length, t.close.length], [t.start, t.open.length]]).sort((x, y) => y[0] - x[0]);
+        for (const [at, n] of cuts) st.remove(at, n);
+      }
+    }
+    if (st.text !== text) edit(st.text, st.s, st.e);
+  }
+
+  /** Heading 1-3, normal text, bulleted or numbered list for the lines in the selection (toggles). */
+  function setBlock(type, sel = getSel()) {
+    if (!sel) return;
+    const first = lineAtAbs(sel.s), last = lineAtAbs(sel.e);
+    const idx = [];
+    for (let i = first; i <= last; i++) if (!isImg(lines[i])) idx.push(i);
+    if (!idx.length) return;
+    const bare = (l) => { const m = LIST.exec(l) || HEAD.exec(l); return m ? { ind: m[1], body: m[4] } : { ind: /^\s*/.exec(l)[0], body: l.replace(/^\s*/, "") }; };
+    const is = (l) => (type === "ul" ? /^\s*[-*]\s/.test(l) : type === "ol" ? /^\s*\d+\.\s/.test(l) : /^h\d$/.test(type) ? new RegExp(`^\\s*#{${type[1]}}\\s`).test(l) && !/^\s*#{4}/.test(l) : false);
+    const off = type !== "p" && idx.every((i) => is(lines[i]));
+    const out = lines.slice();
+    const delta = new Map();
+    let n = 0;
+    for (const i of idx) {
+      const { ind, body } = bare(lines[i]);
+      let pre = "";
+      if (!off) pre = type === "ul" ? "- " : type === "ol" ? `${++n}. ` : type[0] === "h" ? `${"#".repeat(Number(type[1]))} ` : "";
+      out[i] = ind + pre + body;
+      delta.set(i, { old: prefixLen(lines[i]), now: ind.length + pre.length });
+    }
+    // Keep the caret on the same character of its line.
+    const place = (abs) => {
+      const i = lineAtAbs(abs), ch = abs - lineStartAbs(i), d = delta.get(i);
+      const nch = d ? Math.max(d.now, ch - d.old + d.now) : ch;
+      let p = 0;
+      for (let j = 0; j < i; j++) p += out[j].length + 1;
+      return p + Math.min(nch, out[i].length);
+    };
+    edit(out.join("\n"), place(sel.s), place(sel.e));
+  }
+
+  /** Text of the selection without format markers or image lines (for pasting elsewhere). */
+  function plainOf(sel) {
+    return getText().slice(sel.s, sel.e).split("\n").filter((l) => !isImg(l)).map(plain).join("\n");
+  }
+
+  // ---- images: paste or drop a picture; it is shrunk to fit the 1 MB store and gets its own line ----
+  const newImgId = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(16).padStart(2, "0")).join("");
+  /** Shrink to at most 1000 px and re-encode (WebP, or JPEG where the engine can't write WebP) until it is small. */
+  async function compressImage(blob) {
+    const bmp = await createImageBitmap(blob);
+    let best = null;
+    try {
+      for (const [side, q] of [[1000, 0.8], [800, 0.72], [640, 0.62], [480, 0.55]]) {
+        const k = Math.min(1, side / Math.max(bmp.width, bmp.height));
+        const w = Math.max(1, Math.round(bmp.width * k)), h = Math.max(1, Math.round(bmp.height * k));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const g = c.getContext("2d");
+        g.drawImage(bmp, 0, 0, w, h);
+        let url = c.toDataURL("image/webp", q);
+        if (!url.startsWith("data:image/webp")) {
+          g.globalCompositeOperation = "destination-over"; g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
+          url = c.toDataURL("image/jpeg", q);
+        }
+        best = { url, w, h };
+        if (url.length <= 110 * 1024) break;
+      }
+    } finally { bmp.close?.(); }
+    return best;
+  }
+  function setStatus(t) { $("status").textContent = t; }
+  async function insertImages(files, sel) {
+    let text = getText();
+    sel = sel || getSel() || { s: text.length, e: text.length };
+    for (const f of files) {
+      if (!/^image\//.test(f.type)) continue;
+      if (f.size > 30 * 1024 * 1024) { setStatus("That image is too large"); continue; }
+      setStatus("Adding image...");
+      let pic;
+      try { pic = await compressImage(f); } catch { setStatus("Couldn't read that image"); continue; }
+      if (!pic || usedBytes() + pic.url.length + 64 > SAFE) { setStatus("No room for this image: notes hold 1 MB in all. Delete an image to make room."); return; }
+      const id = newImgId();
+      images[id] = pic.url;
+      imgBytes = JSON.stringify(images).length;
+      try { await umbra.store.set("images", images); }
+      catch { delete images[id]; imgBytes = JSON.stringify(images).length; setStatus("No room for this image: notes hold 1 MB in all."); return; }
+      // Its own line: replaces an empty line, else goes after the caret's line; a line after it to type on.
+      text = getText();
+      const i = lineAtAbs(Math.min(sel.s, text.length));
+      const line = `![](img:${id} ${Math.round(Math.min(220, pic.w, maxImg()))})`;
+      const ls = lineStartAbs(i), le = lineEndAbs(i);
+      let next, caret;
+      if (lines[i] === "") { next = text.slice(0, ls) + line + text.slice(le); caret = ls + line.length; }
+      else { next = text.slice(0, le) + "\n" + line + text.slice(le); caret = le + 1 + line.length; }
+      // The caret goes to a text line after the picture: the next one, or a new empty one.
+      const after = next.slice(caret + 1).split("\n")[0];
+      if (caret >= next.length || isImg(after)) next = next.slice(0, caret) + "\n" + next.slice(caret);
+      caret += 1;
+      if (next.length > MAX) { delete images[id]; imgBytes = JSON.stringify(images).length; umbra.store.set("images", images).catch(() => {}); setStatus("This note is full"); return; }
+      edit(next, caret);
+      sel = { s: caret, e: caret };
+    }
+  }
+  /** Drop pictures no tab (or this tab's undo, or a deleted tab's Undo) still shows. */
+  let pendingUndo = null;
+  function gcImages() {
+    const keep = new Set();
+    const scan = (t) => { for (const l of String(t || "").split("\n")) { const m = IMG.exec(l); if (m) keep.add(m[1]); } };
+    notes.forEach(scan); hist.forEach((h) => scan(h.text)); scan(getText());
+    if (pendingUndo) scan(pendingUndo.text);
+    const gone = Object.keys(images).filter((id) => !keep.has(id));
+    if (!gone.length) return;
+    for (const id of gone) delete images[id];
+    imgBytes = JSON.stringify(images).length;
+    umbra.store.set("images", images).catch(() => {});
+  }
+
+  // Click a picture to select it; drag its corner to resize (never wider than the note).
+  ed.addEventListener("click", (e) => {
+    const box = e.target.closest(".imgbox");
+    if (!box || e.target.closest(".grip")) return;
+    const i = Array.prototype.indexOf.call(ed.childNodes, box.parentNode);
+    if (i < 0) return;
+    ed.focus({ preventScroll: true });
+    setSel(lineEndAbs(i));
+    markCur();
+  });
+  ed.addEventListener("pointerdown", (e) => {
+    const grip = e.target.closest(".grip");
+    if (!grip || e.button !== 0) return;
+    e.preventDefault();
+    const img = grip.parentNode.querySelector("img");
+    const div = grip.closest(".img");
+    const i = Array.prototype.indexOf.call(ed.childNodes, div);
+    const m = IMG.exec(lines[i] || "");
+    if (!img || !m) return;
+    const x0 = e.clientX, w0 = img.getBoundingClientRect().width;
+    let w = w0;
+    div.classList.add("sizing");
+    try { grip.setPointerCapture(e.pointerId); } catch { /* the pointer is gone already */ }
+    const move = (ev) => { w = Math.max(MIN_IMG, Math.min(maxImg(), w0 + ev.clientX - x0)); img.style.width = `${w}px`; };
+    const up = () => {
+      grip.removeEventListener("pointermove", move);
+      grip.removeEventListener("pointerup", up);
+      grip.removeEventListener("pointercancel", up);
+      div.classList.remove("sizing");
+      if (Math.round(w) === Math.round(w0)) return;
+      const out = lines.slice();
+      out[i] = `![](img:${m[1]} ${Math.round(w)})`;
+      ed.focus({ preventScroll: true });
+      let p = 0; for (let j = 0; j <= i; j++) p += out[j].length + (j < i ? 1 : 0);
+      edit(out.join("\n"), p);
+    };
+    grip.addEventListener("pointermove", move);
+    grip.addEventListener("pointerup", up);
+    grip.addEventListener("pointercancel", up);
+  });
+  ed.addEventListener("dragover", (e) => { if (Array.from(e.dataTransfer?.items || []).some((x) => x.kind === "file")) e.preventDefault(); });
+  ed.addEventListener("drop", (e) => {
+    const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith("image/"));
+    if (!files.length) return;
+    e.preventDefault();
+    const r = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+    let sel = null;
+    if (r && ed.contains(r.startContainer)) { const p = toAbs(r.startContainer === ed ? { line: r.startOffset, ch: 0 } : lineOf(r.startContainer, r.startOffset)); sel = { s: p, e: p }; }
+    insertImages(files, sel);
+  });
+
+  // ---- right-click menu: formats for the selection (Shift+right-click still opens Umbra's own menu) ----
+  const menu = document.createElement("div");
+  menu.className = "fmenu"; menu.hidden = true; menu.setAttribute("role", "menu"); menu.dataset.noDrag = "";
+  const ICON = {
+    b: '<b>B</b>', i: '<i>I</i>', u: '<u>U</u>', s: '<s>S</s>', h: '<span class="hl">H</span>',
+  };
+  menu.innerHTML = `
+    <div class="frow">${["b", "i", "u", "s", "h"].map((k) => `<button type="button" class="fbtn" data-f="${k}" title="${{ b: "Bold (Ctrl+B)", i: "Italic (Ctrl+I)", u: "Underline (Ctrl+U)", s: "Strikethrough (Ctrl+Shift+X)", h: "Highlight (Ctrl+Shift+H)" }[k]}">${ICON[k]}</button>`).join("")}</div>
+    <div class="frow colors">${COLORS.map((c) => `<button type="button" class="sw c-${c}" data-c="${c}" title="${c[0].toUpperCase() + c.slice(1)} text"><span></span></button>`).join("")}<button type="button" class="sw none" data-c="" title="No colour"><span></span></button></div>
+    <div class="fsep"></div>
+    <div class="frow blocks"><button type="button" class="fbtn wide" data-blk="h1" title="Heading 1">H1</button><button type="button" class="fbtn wide" data-blk="h2" title="Heading 2">H2</button><button type="button" class="fbtn wide" data-blk="h3" title="Heading 3">H3</button><button type="button" class="fbtn wide" data-blk="p" title="Normal text">Aa</button></div>
+    <button type="button" class="fitem" data-blk="ul"><span class="ico">•</span>Bulleted list</button>
+    <button type="button" class="fitem" data-blk="ol"><span class="ico">1.</span>Numbered list</button>
+    <div class="fsep"></div>
+    <button type="button" class="fitem" data-act="clear"><span class="ico">⌫</span>Clear formatting</button>
+    <button type="button" class="fitem" data-act="copy"><span class="ico">⧉</span>Copy as plain text</button>`;
+  document.querySelector(".notes").appendChild(menu);
+  let menuSel = null;
+  function openMenu(x, y) {
+    menuSel = getSel();
+    if (!menuSel) return;
+    // Show what's already applied at the selection.
+    const segs = segments(getText(), menuSel.s, menuSel.e);
+    const probe = segs.length ? segs : [{ line: lineAtAbs(menuSel.s), a: menuSel.s, b: menuSel.e }];
+    for (const b of menu.querySelectorAll("[data-f]")) b.classList.toggle("on", probe.every((g) => enclosing(g, b.dataset.f)));
+    const col = probe.map((g) => enclosing(g, "c")?.color || "");
+    for (const b of menu.querySelectorAll("[data-c]")) b.classList.toggle("on", col.every((c) => c === b.dataset.c) && !!b.dataset.c);
+    const ln = lines[lineAtAbs(menuSel.s)] || "";
+    const blk = /^\s*#\s/.test(ln) ? "h1" : /^\s*##\s/.test(ln) ? "h2" : /^\s*###\s/.test(ln) ? "h3" : /^\s*[-*]\s/.test(ln) ? "ul" : /^\s*\d+\.\s/.test(ln) ? "ol" : "p";
+    for (const b of menu.querySelectorAll("[data-blk]")) b.classList.toggle("on", b.dataset.blk === blk);
+    menu.querySelector('[data-act="copy"]').disabled = menuSel.s === menuSel.e;
+    menu.hidden = false;
+    const r = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(4, Math.min(x, innerWidth - r.width - 4))}px`;
+    menu.style.top = `${Math.max(4, Math.min(y, innerHeight - r.height - 4))}px`;
+  }
+  function closeMenu() { menu.hidden = true; menuSel = null; }
+  ed.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    // A right-click outside the selection moves the caret there first (as the browser does).
+    openMenu(e.clientX, e.clientY);
+  });
+  menu.addEventListener("mousedown", (e) => e.preventDefault()); // keep the editor's focus and selection
+  menu.addEventListener("click", async (e) => {
+    const b = e.target.closest("button");
+    if (!b || !menuSel) return;
+    const sel = menuSel;
+    closeMenu();
+    if (document.activeElement !== ed) ed.focus({ preventScroll: true });
+    setSel(sel.s, sel.e);
+    if (b.dataset.f) applyFormat(b.dataset.f, null, sel);
+    else if (b.dataset.c !== undefined) applyFormat("c", b.dataset.c || null, sel);
+    else if (b.dataset.blk) setBlock(b.dataset.blk, sel);
+    else if (b.dataset.act === "clear") clearFormat(sel);
+    else if (b.dataset.act === "copy") {
+      const t = plainOf(sel);
+      try { await navigator.clipboard.writeText(t); setStatus("Copied"); } catch { setStatus("Couldn't copy"); }
+    }
+  });
+  window.addEventListener("pointerdown", (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(); }, true);
+  window.addEventListener("blur", closeMenu);
+  ed.addEventListener("scroll", closeMenu);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { e.preventDefault(); closeMenu(); } }, true);
 
   // ---- input ----
   function onInput() {
@@ -428,7 +885,7 @@
     });
     hang(built);
     if (sel) setSel(sel.s, sel.e);
-    mark(); commit(); pushHist();
+    mark(); markCur(); commit(); pushHist();
   }
   ed.addEventListener("input", onInput);
   ed.addEventListener("compositionstart", () => { composing = true; });
@@ -437,9 +894,49 @@
     if (ev.inputType === "insertParagraph" || ev.inputType === "insertLineBreak") ev.preventDefault();
     if (ev.inputType === "historyUndo") { ev.preventDefault(); undoRedo(-1); }
     if (ev.inputType === "historyRedo") { ev.preventDefault(); undoRedo(1); }
+    if (ev.inputType.startsWith("format")) { ev.preventDefault(); return; } // the browser's own bold/italic: formats are text here
+    if (ev.defaultPrevented) return;
+    // Typing on a picture's line starts a new line after it.
+    const cl = caretLine();
+    if (cl >= 0 && isImg(lines[cl]) && (ev.inputType === "insertText" || ev.inputType === "insertReplacementText")) {
+      ev.preventDefault();
+      const at = lineEndAbs(cl), text = getText(), ins = "\n" + (ev.data || "");
+      edit(text.slice(0, at) + ins + text.slice(at), at + ins.length);
+      return;
+    }
+    // A selection that takes in a picture: replace whole picture lines through the text, never half of one.
+    const sel = getSel();
+    if (sel && sel.s !== sel.e && /^(delete|insertText$|insertReplacementText$)/.test(ev.inputType) && ev.inputType !== "deleteByCut" && touchesImg(sel)) {
+      ev.preventDefault();
+      const r = snapToImages(sel), text = getText(), ins = ev.inputType.startsWith("insert") ? (ev.data || "") : "";
+      edit(text.slice(0, r.s) + ins + text.slice(r.e), r.s + ins.length);
+    }
+  });
+  function touchesImg(sel) {
+    for (let i = lineAtAbs(sel.s), last = lineAtAbs(sel.e); i <= last; i++) if (isImg(lines[i])) return true;
+    return false;
+  }
+  /** Widen a selection so a picture line it touches is taken whole. */
+  function snapToImages(sel) {
+    let { s, e } = sel;
+    const a = lineAtAbs(s), b = lineAtAbs(e);
+    if (isImg(lines[a])) s = lineStartAbs(a);
+    if (isImg(lines[b])) e = lineEndAbs(b);
+    return { s, e };
+  }
+  ed.addEventListener("cut", (ev) => {
+    const sel = getSel();
+    if (!sel || sel.s === sel.e || !touchesImg(sel)) return;
+    ev.preventDefault();
+    const r = snapToImages(sel), text = getText();
+    ev.clipboardData.setData("text/plain", text.slice(r.s, r.e));
+    edit(text.slice(0, r.s) + text.slice(r.e), r.s);
   });
   ed.addEventListener("paste", (ev) => {
     ev.preventDefault();
+    // A picture (a screenshot, an image copied in the browser) wins over any text that comes with it.
+    const pics = Array.from(ev.clipboardData.files || []).filter((f) => f.type.startsWith("image/"));
+    if (pics.length) { insertImages(pics, getSel()); return; }
     const t = (ev.clipboardData.getData("text/plain") || "").replace(/\r\n?/g, "\n");
     if (!t) return;
     const text = getText();
@@ -457,7 +954,14 @@
       undoRedo(k.toLowerCase() === "y" || ev.shiftKey ? 1 : -1);
       return;
     }
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey) {
+      const f = { b: "b", i: "i", u: "u" }[k.toLowerCase()];
+      const fs = { x: "s", h: "h" }[k.toLowerCase()];
+      if (f && !ev.shiftKey) { ev.preventDefault(); applyFormat(f); return; }
+      if (fs && ev.shiftKey) { ev.preventDefault(); applyFormat(fs); return; }
+    }
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (imageKeys(ev, k)) return;
     const sel = getSel();
     if (!sel) return;
     const text = getText();
@@ -501,9 +1005,48 @@
       }
     }
   });
+  /** Keys around pictures: the caret on a picture's line selects it; arrows step over it, Backspace/Delete remove it. */
+  function imageKeys(ev, k) {
+    const cl = caretLine();
+    if (cl < 0) return false;
+    const text = getText();
+    const removeLine = (i, caretOn) => {
+      const out = lines.slice(); out.splice(i, 1);
+      if (!out.length) out.push("");
+      const t = out.join("\n");
+      let p = 0; for (let j = 0; j < caretOn; j++) p += out[j].length + 1;
+      edit(t, Math.min(t.length, p + (caretOn < out.length ? out[caretOn].length : 0)));
+    };
+    if (isImg(lines[cl])) {
+      if (k === "Backspace" || k === "Delete") { ev.preventDefault(); removeLine(cl, Math.max(0, cl - 1)); return true; }
+      if ((k === "ArrowLeft" || k === "ArrowUp") && !ev.shiftKey) { ev.preventDefault(); if (cl > 0) setSel(lineEndAbs(cl - 1)); return true; }
+      if ((k === "ArrowRight" || k === "ArrowDown") && !ev.shiftKey) { ev.preventDefault(); if (cl < lines.length - 1) setSel(lineStartAbs(cl + 1)); return true; }
+      if (k === "Enter") { ev.preventDefault(); const at = lineEndAbs(cl); edit(text.slice(0, at) + "\n" + text.slice(at), at + 1); return true; }
+      if (k === "Home" || k === "End") { ev.preventDefault(); return true; }
+      return false;
+    }
+    const ch = getSel().s - lineStartAbs(cl);
+    if (k === "Backspace" && ch === 0 && cl > 0 && isImg(lines[cl - 1])) {
+      ev.preventDefault();
+      if (lines[cl] === "") removeLine(cl, cl - 1); else setSel(lineEndAbs(cl - 1));
+      return true;
+    }
+    if (k === "Delete" && ch === lines[cl].length && cl < lines.length - 1 && isImg(lines[cl + 1])) {
+      ev.preventDefault();
+      if (lines[cl] === "") removeLine(cl, cl); else setSel(lineEndAbs(cl + 1));
+      return true;
+    }
+    if (k === "ArrowRight" && !ev.shiftKey && ch === lines[cl].length && isImg(lines[cl + 1] || "")) { ev.preventDefault(); setSel(lineEndAbs(cl + 1)); return true; }
+    if (k === "ArrowLeft" && !ev.shiftKey && ch === 0 && cl > 0 && isImg(lines[cl - 1])) { ev.preventDefault(); setSel(lineEndAbs(cl - 1)); return true; }
+    return false;
+  }
+
   ed.addEventListener("blur", flush);
   umbra.store.onChange(async () => {
     if (dirty || renaming >= 0 || tabDrag) return;
+    images = await umbra.store.get("images", {});
+    if (!images || typeof images !== "object" || Array.isArray(images)) images = {};
+    imgBytes = JSON.stringify(images).length;
     [notes, names, active] = await Promise.all([umbra.store.get("notes", []), umbra.store.get("names", null), umbra.store.get("active", active)]);
     normalize(); drawTabs(); load();
   });
