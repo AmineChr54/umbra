@@ -36,6 +36,7 @@
     ui: { sheet: null, hatch: false, later: false, draft: "", err: "", busy: false, focus: false },
     bubble: null,               // { id, text, until, kind }
     flashUntil: 0,              // the "love" face after a pet
+    pendingReact: "",           // a partner reaction to play once the room is repainted
     timer: 0, lastIdleCheck: 0, openDone: false,
     // the pet's world (a relay with Embers, shop, room...): null on an older relay
     world: null, worldBusy: false, migrated: false, awakeUntil: 0, lifeStop: null, gameStop: null, result: null,
@@ -141,7 +142,7 @@
     const seen = quiet ? null : L.detectPartnerCare(before, pet, v.me);
     if (seen) {
       const line = L.careLine(v.names.partner, effectiveName(), seen.actions) + (pet.bond.done && !before.bond.done ? ". You both cared today!" : "");
-      if (seen.actions[0]) { react(seen.actions[0]); if (seen.actions[0] === "pet") S.flashUntil = Date.now() + 2500; }
+      if (seen.actions[0]) { S.pendingReact = seen.actions[0]; if (seen.actions[0] === "pet") S.flashUntil = Date.now() + 2500; }
       showBubble(L.chooseBubble(bubbleCtx({ trigger: "partner", line })), false);
     }
     if (!quiet && pet.level > before.level) {
@@ -154,6 +155,7 @@
     if (!connected()) return;
     absorb(v);
     paint();
+    if (S.pendingReact) { react(S.pendingReact); S.pendingReact = ""; }
     schedule();
   }
 
@@ -168,9 +170,9 @@
     S.quietUntil = t + 15000;
     S.cd[action] = t + L.COOLDOWN_S * 1000;
     S.base = L.applyCare(before, action, serverNow(), me());
-    react(action);
     if (action === "pet") S.flashUntil = t + 2500;
     paint(); schedule();
+    react(action);                           // after the paint: a mood or face change redraws the room first
 
     let r = null, offline = false;
     try { r = await S.client.call("care", { action }); } catch (e) { offline = true; }
@@ -303,6 +305,7 @@
     return "";
   }
 
+  const panelId = () => [S.ui.sheet, S.ui.panel, S.ui.game].join(":");
   function paintSheet() {
     if (!S.els) return;
     const el = S.els.sheet;
@@ -317,7 +320,11 @@
     const caret = hadFocus ? active.selectionStart : 0;
     el._key = key;
     if (S.gameStop) { S.gameStop(); S.gameStop = null; }
-    el.innerHTML = sheetHtml();
+    // Same panel, new content (a buy, a claim): keep the scroll position instead of jumping back to the top.
+    const prev = el.firstElementChild, keepTop = prev && el._panel === panelId() ? prev.scrollTop : 0;
+    el._panel = panelId();
+    el.innerHTML = `<div class="pt-scroll hm-fade">${sheetHtml()}</div>`;
+    if (keepTop) el.firstElementChild.scrollTop = keepTop;
     if (S.ui.sheet === "game") {
       const box = el.querySelector("[data-gamebox]");
       const game = S.ui.game;
@@ -495,7 +502,7 @@
     gift(el) { worldCall("gift", { item: el.dataset.id }, () => showBubble({ id: "gift", text: `I'll keep the present safe for ${names().partner || "your partner"}.`, ms: 5000 }, false)); },
     use(el) {
       const id = el.dataset.id;
-      worldCall("use", { item: id }, () => { react("feed"); S.flashUntil = Date.now() + 2500; closeSheet(); showBubble({ id: "treat", text: `${WL.label(id)}! My favourite.`, ms: 4500 }, false); });
+      worldCall("use", { item: id }, () => { S.flashUntil = Date.now() + 2500; closeSheet(); paint(); react("feed"); showBubble({ id: "treat", text: `${WL.label(id)}! My favourite.`, ms: 4500 }, false); });
     },
     place(el) { worldCall("place", { spot: el.dataset.spot, item: el.dataset.id }); },
     wear(el) { const cur = S.base ? L.current(S.base, serverNow()) : null; dress(L.toggleOutfit(wornNow(cur), el.dataset.id, unlockedNow(cur), M)); },
@@ -503,7 +510,7 @@
     "open-gift"() {
       const g = S.world && S.world.gift;
       if (!g || g.from === me()) return;
-      worldCall("open", {}, (r) => { react("pet"); S.flashUntil = Date.now() + 2500; showBubble({ id: "open", text: `A ${WL.label(r.item).toLowerCase()} from ${names().partner || "your partner"}!`, ms: 6000 }, false); });
+      worldCall("open", {}, (r) => { S.flashUntil = Date.now() + 2500; paint(); react("pet"); showBubble({ id: "open", text: `A ${WL.label(r.item).toLowerCase()} from ${names().partner || "your partner"}!`, ms: 6000 }, false); });
     },
     game(el) { S.ui.sheet = "game"; S.ui.game = el.dataset.game; S.ui.gameRun = (S.ui.gameRun || 0) + 1; S.ui.err = ""; paintSheet(); },
     "game-quit"() { closeSheet(); },
@@ -539,8 +546,11 @@
   async function worldCall(route, params, onOk) {
     if (!S.client || S.worldBusy) return null;
     S.worldBusy = true; S.ui.err = ""; paintSheet();
-    let r = null;
-    try { r = await S.client.call(route, params); } catch (e) { r = null; }
+    let r = null, local = null;
+    try { r = await S.client.call(route, params); } catch (e) {
+      r = null;
+      if (e && e.local) { local = e; console.error("Hearth: " + route + " failed before reaching the relay:", e.message); }
+    }
     S.worldBusy = false;
     if (r && r.ok === true) {
       const pet = L.parsePet(r.pet);
@@ -552,7 +562,7 @@
       }
       if (onOk) onOk(r);
     } else {
-      S.ui.err = r ? WL.worldProblem(r) : core.MSG.offline;
+      S.ui.err = r ? WL.worldProblem(r) : local ? (local.message === "Not paired" ? core.MSG.ended : core.MSG.broken) : core.MSG.offline;
       if (!S.ui.sheet) showBubble({ id: "world-error", kind: "error", text: S.ui.err, ms: 6000 }, false);
     }
     paintSheet(); paint(); schedule();
@@ -583,7 +593,7 @@
       showBubble({ id: "woken", text: "Mmh... I was sleeping. Hello!", ms: 4000 }, false);
       paint(); return;
     }
-    if (kind === "purr") { S.mount.act("purr", 1500); react("pet"); S.flashUntil = Date.now() + 2000; showBubble({ id: "purr", text: "Purrr...", ms: 2500 }, false); }
+    if (kind === "purr") { S.flashUntil = Date.now() + 2000; paint(); S.mount.act("purr", 1500); react("pet"); showBubble({ id: "purr", text: "Purrr...", ms: 2500 }, false); }
     else if (kind === "dizzy") { S.mount.act("dizzy", 2600); showBubble({ id: "dizzy", text: "Whoa, the room is spinning!", ms: 3000 }, false); }
     else {
       S.mount.act("squish", 600);

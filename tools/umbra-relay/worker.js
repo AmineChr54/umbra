@@ -20,7 +20,7 @@
 // GET only (except the two report routes), because widgets can only fetch with GET. Every response is JSON with status 200, errors as { error }
 // (the host's fetch throws away the body of a non-2xx answer).
 
-import { GRACE_MS, handleHearth } from "./hearth.js";
+import { GRACE_MS, HEARTH_ROUTES, handleHearth } from "./hearth.js";
 import { STATS_ROUTES, handleStats } from "./stats.js";
 import { REPORT_ROUTES, REPORT_LIMITS, handleReports } from "./reports.js";
 
@@ -28,8 +28,6 @@ const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no I, L, O, 0, 1
 const CODE_TTL_MS = 10 * 60 * 1000;
 const ROOM_IDLE_MS = 30 * 24 * 60 * 60 * 1000; // a room nobody has beaten for 30 days is deleted
 const MAX_HEARTH_URL = 6000; // a stroke batch is kept under ~4 KB by the client; anything near the edge limit is refused
-const HEARTH_ROUTES = new Set(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite",
-  "buy", "gift", "open", "use", "place", "dress", "play", "claim", "quests"]);
 
 const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
 const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");

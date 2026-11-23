@@ -136,9 +136,19 @@ html[data-stale] .pt { opacity: 0.72; transition: opacity var(--hm-t); }
 
 .pt-sheet {
   position: absolute; inset: 0; z-index: 6;
-  overflow: auto;
-  padding: 4px 4px 2px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
   background: var(--hm-card);
+}
+/* the sheet's content scrolls inside it, so the fade shows the card colour, never the room behind */
+.pt-scroll { flex: 1; min-height: 0; overflow: auto; padding: 4px 4px 2px; }
+/* the panel's title row stays put while its content scrolls; it gets a soft edge instead of the top fade */
+.pt-scroll .pt-head { position: sticky; top: -4px; z-index: 2; margin: -4px -4px 0; padding: 4px 4px 3px; background: var(--hm-card); transition: box-shadow var(--hm-t); }
+.pt-scroll.can-up .pt-head { box-shadow: 0 6px 8px -6px rgba(107, 79, 58, 0.45); }
+.pt-scroll.hm-fade.can-up:not(.can-down) { -webkit-mask-image: none; mask-image: none; }
+.pt-scroll.hm-fade.can-up.can-down {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hm-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hm-fade)), transparent);
 }
 .pt-head { display: flex; align-items: center; gap: 6px; }
 .pt-head h3 { flex: 1; }

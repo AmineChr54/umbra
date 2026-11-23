@@ -286,7 +286,8 @@
   const FX = () =>
     `<g class="hm-fx hm-fx-feed" opacity="0"><g transform="translate(100 18)"><circle r="8" fill="${P.pinkDeep}" ${OUT3}/><path d="M0 -8 Q6 -15 11 -11 Q6 -6 0 -8 Z" fill="${P.greenDeep}" stroke="${P.brown}" stroke-width="2"/></g></g>` +
     `<g class="hm-fx hm-fx-water" opacity="0">${droplet(66, 14, 0.9)}${droplet(100, 6, 1)}${droplet(134, 14, 0.9)}</g>` +
-    `<g class="hm-fx hm-fx-pet" opacity="0"><g class="hm-fx-pet1">${heart(60, 44, 1, P.pink)}</g><g class="hm-fx-pet2">${heart(100, 30, 1.25, P.pinkDeep)}</g><g class="hm-fx-pet3">${heart(142, 44, 1, P.pink)}</g></g>` +
+    `<g class="hm-fx hm-fx-pet" opacity="0"><g transform="translate(100 46)"><g class="hm-fx-hand"><path d="M-17 4 Q-19 -9 -9 -11 Q-8 -20 -1 -18 Q4 -22 9 -16 Q18 -16 18 -6 Q22 4 14 10 Q4 16 -6 14 Q-16 12 -17 4 Z" fill="#FFE2CF" ${OUT3}/><path d="M-6 -4 Q-4 2 -6 7 M3 -6 Q5 1 3 7" fill="none" stroke="${P.brown}" stroke-width="1.8" stroke-linecap="round" opacity="0.45"/></g></g>` +
+    `<g class="hm-fx-pet1">${heart(60, 44, 1, P.pink)}</g><g class="hm-fx-pet2">${heart(100, 30, 1.25, P.pinkDeep)}</g><g class="hm-fx-pet3">${heart(142, 44, 1, P.pink)}</g></g>` +
     `<g class="hm-fx hm-fx-tap" opacity="0">${heart(100, 22, 2, P.pinkDeep)}</g>`;
 
   // ---------- assemble ----------

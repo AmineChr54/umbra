@@ -10,23 +10,61 @@
   const head = (title, extra) => `<div class="pt-head"><h3>${title}</h3>${extra || ""}<button class="btn primary" data-act="sheet-close" data-no-drag>Done</button></div>`;
   const tabs = (cur, list) => `<div class="px-tabs">${list.map(([id, label]) => `<button class="px-tab${id === cur ? " on" : ""}" data-act="panel" data-panel="${id}" data-no-drag>${label}</button>`).join("")}</div>`;
 
+  // Treats, each its own little picture (40x40). Drinks stand on their own; food sits on a plate.
+  const O = 'stroke="#6B4F3A" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"';
+  const plate = `<ellipse cx="20" cy="33" rx="16" ry="3.6" fill="#fff" ${O}/>`;
+  const shine = (x, y) => `<path d="M${x} ${y} q1.2 -1.4 2.6 -1" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>`;
+  const TREATS = {
+    berry_tart: plate +
+      `<path d="M5.5 24 L9 31.5 H31 L34.5 24 Z" fill="#F2C98A" ${O}/>` +
+      `<path d="M11 25.5 L12.5 30 M16 25.5 L16.8 30 M20 25.5 V30 M24 25.5 L23.2 30 M29 25.5 L27.5 30" fill="none" stroke="#B98563" stroke-width="1.2" stroke-linecap="round"/>` +
+      `<ellipse cx="20" cy="24" rx="14.5" ry="3.8" fill="#E5648F" ${O}/>` +
+      [[13, 22.2, 3.2], [20, 21.6, 3.4], [27, 22.2, 3.2], [16.5, 18.6, 3], [23.5, 18.6, 3]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#C23A6B" ${O}/>` + shine(x - 1.6, y - 0.4)).join("") +
+      `<path d="M20 15.6 Q23.5 11.4 27 13 Q24 16.4 20 15.6 Z" fill="#B7DA98" ${O}/>`,
+    honey_cake: plate +
+      `<rect x="8" y="16" width="24" height="16" rx="3" fill="#F6D58A" ${O}/>` +
+      `<rect x="8.9" y="22.6" width="22.2" height="3" fill="#FFF3B0"/>` +
+      `<path d="M8 17 Q8 13 20 13 Q32 13 32 17 V19 Q30.5 21.5 29 19 V18 Q26 23.5 23 18.5 Q21 21 19 18.5 Q16 22.5 13 18.5 Q11 21.5 9.5 19.5 Q8 20.5 8 19 Z" fill="#F2A93B" ${O}/>` +
+      `<ellipse cx="17" cy="5.6" rx="3" ry="2.4" fill="#fff" stroke="#6B4F3A" stroke-width="1.2" opacity="0.95"/><ellipse cx="21.6" cy="5.2" rx="3" ry="2.4" fill="#fff" stroke="#6B4F3A" stroke-width="1.2" opacity="0.95"/>` +
+      `<ellipse cx="19.4" cy="9.6" rx="5" ry="3.6" fill="#FFD447" ${O}/><path d="M18 6.4 V12.8 M21 6.4 V12.8" stroke="#4A3426" stroke-width="1.6"/><circle cx="15.6" cy="9" r="0.9" fill="#4A3426"/>` + shine(12, 16.2),
+    fish_snack: plate +
+      `<path d="M6 21 Q14 11 25 19 L33 13.5 Q31.5 21 33 28.5 L25 23 Q14 31 6 21 Z" fill="#F2A04B" ${O}/>` +
+      `<path d="M15 16.8 Q17.5 21 15 25.2 M19.5 17.6 Q21.5 21 19.5 24.4" fill="none" stroke="#C9762B" stroke-width="1.3" stroke-linecap="round"/>` +
+      `<circle cx="10.6" cy="19.6" r="1.6" fill="#4A3426"/><path d="M8.6 23.4 Q10 24.6 11.6 23.6" fill="none" stroke="#4A3426" stroke-width="1.2" stroke-linecap="round"/>`,
+    smoothie:
+      `<path d="M24.5 3 L21.5 17" stroke="#6B4F3A" stroke-width="4.4" stroke-linecap="round"/><path d="M24.5 3 L21.5 17" stroke="#9ED3EE" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M10 10 H30 L27 35 H13 Z" fill="#fff" ${O}/>` +
+      `<path d="M11.4 15 H28.6 L26.2 33.4 H13.8 Z" fill="#F7A8C4"/>` +
+      `<path d="M11.4 15 Q15 13 18 15 Q21.5 17 25 15 Q27 14 28.6 15" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<circle cx="29" cy="11" r="4" fill="#E5648F" ${O}/><path d="M27.6 7.6 Q29.6 5.4 31.4 7" fill="none" stroke="#7DBE5B" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<path d="M15 20 V29" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.7"/>`,
+    cocoa:
+      `<path d="M14 8 Q12 5.5 14 3.5 M19.5 8 Q17.5 5 19.5 2.6 M25 8 Q23 5.5 25 3.5" fill="none" stroke="#B98563" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>` +
+      `<path d="M28 16 Q35 16 35 22 Q35 28 28 28" fill="none" stroke="#6B4F3A" stroke-width="5" stroke-linecap="round"/><path d="M28 16 Q35 16 35 22 Q35 28 28 28" fill="none" stroke="#F7A8C4" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M8 11 H29 V30 Q29 35 24 35 H13 Q8 35 8 30 Z" fill="#F7A8C4" ${O}/>` +
+      `<ellipse cx="18.5" cy="11.4" rx="10" ry="2.6" fill="#8A5A3C" ${O}/>` +
+      `<rect x="12.5" y="8.6" width="5" height="4" rx="1.4" fill="#fff" ${O}/><rect x="18.8" y="8" width="5" height="4" rx="1.4" fill="#fff" ${O}/>` +
+      `<path d="M13 20 Q15.5 17.5 18 20 Q20.5 17.5 23 20 Q23 23 18 26 Q13 23 13 20 Z" fill="#fff" opacity="0.85"/>`,
+    star_candy:
+      `<path d="M20 22 V37" stroke="#6B4F3A" stroke-width="4.4" stroke-linecap="round"/><path d="M20 22 V37" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M20 3 L24.2 12.2 L34 13 L26.6 19.6 L28.8 29.2 L20 24.2 L11.2 29.2 L13.4 19.6 L6 13 L15.8 12.2 Z" fill="#FFE36E" ${O}/>` +
+      `<path d="M20 8.5 L22.6 14.2 L28.6 14.8 L24 18.8 L25.4 24.6 L20 21.6 L14.6 24.6 L16 18.8 L11.4 14.8 L17.4 14.2 Z" fill="#F7A8C4" opacity="0.55"/>` +
+      `<circle cx="17.4" cy="15.6" r="1" fill="#4A3426"/><circle cx="22.6" cy="15.6" r="1" fill="#4A3426"/><path d="M18.4 18.4 Q20 19.8 21.6 18.4" fill="none" stroke="#4A3426" stroke-width="1.1" stroke-linecap="round"/>` +
+      `<path d="M33 4 l1 2.2 2.2 1 -2.2 1 -1 2.2 -1 -2.2 -2.2 -1 2.2 -1 Z" fill="#fff" stroke="#6B4F3A" stroke-width="1"/>`,
+  };
+
   /** A small picture of an item for the shop and the room. */
   function itemArt(id) {
     const it = WL.CATALOG[id];
     if (!it) return "";
     if (it.cat === "outfit") return M.renderSvg({ mood: "content", outfit: [id], level: 5 });
     const room = it.spot ? { [it.spot]: id } : {};
-    const view = { wallpaper: "-40 -30 120 120", rug: "40 160 160 60", window: "0 10 80 90", wall: "166 20 70 70", mantel: "70 -16 100 54", floorL: "4 110 64 90", floorR: "178 96 56 100", toy: "34 152 48 50" }[it.spot];
+    const view = { wallpaper: "-40 -30 120 100", rug: "34 168 172 52", window: "-4 8 92 80", wall: "160 16 82 70", mantel: "66 -18 108 60", floorL: "-10 112 92 82", floorR: "162 100 88 92", toy: "28 160 58 46" }[it.spot];
     if (view) {
-      const svg = window.HearthWorld.renderRoom({ room, phase: "day", season: "summer", mood: "content", level: 1 });
-      return svg.replace(/viewBox="0 0 240 240"/, `viewBox="${view}" preserveAspectRatio="xMidYMid slice"`);
+      const svg = window.HearthWorld.renderRoom({ room, phase: "day", season: "summer", mood: "content", level: 1, pet: false, still: true });
+      return svg.replace(/viewBox="0 0 240 240"/, `viewBox="${view}" preserveAspectRatio="xMidYMid meet"`);
     }
-    const color = { berry_tart: "#E5648F", honey_cake: "#F2C14E", fish_snack: "#9ED3EE", smoothie: "#F7A8C4", cocoa: "#B98563", star_candy: "#FFF3B0" }[id] || "#F7A8C4";
-    return `<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="20" cy="31" rx="15" ry="5" fill="#fff" stroke="#6B4F3A" stroke-width="2"/>` +
-      (id === "star_candy" ? `<path d="M20 6 L24 16 L34 16 L26 22 L29 32 L20 26 L11 32 L14 22 L6 16 L16 16 Z" fill="${color}" stroke="#6B4F3A" stroke-width="2" stroke-linejoin="round"/>`
-        : id === "smoothie" || id === "cocoa" ? `<path d="M12 10 H28 L26 30 H14 Z" fill="${color}" stroke="#6B4F3A" stroke-width="2" stroke-linejoin="round"/><path d="M22 10 L26 3" stroke="#6B4F3A" stroke-width="2"/>`
-          : id === "fish_snack" ? `<path d="M8 22 Q18 10 28 22 Q18 34 8 22 Z M28 22 L35 16 V28 Z" fill="${color}" stroke="#6B4F3A" stroke-width="2" stroke-linejoin="round"/><circle cx="14" cy="20" r="1.6" fill="#4A3426"/>`
-            : `<path d="M8 28 Q8 14 20 12 Q32 14 32 28 Z" fill="${color}" stroke="#6B4F3A" stroke-width="2" stroke-linejoin="round"/><circle cx="20" cy="10" r="3.4" fill="#E5648F" stroke="#6B4F3A" stroke-width="1.6"/>`) + `</svg>`;
+    return TREATS[id] ? `<svg viewBox="0 0 40 40" aria-hidden="true">${TREATS[id]}</svg>` : "";
   }
 
   function sticker(id, have) {
