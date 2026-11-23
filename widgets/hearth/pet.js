@@ -105,7 +105,11 @@
     paint();
     schedule();
   }
-  const react = (name) => { if (S.mount && connected()) S.mount.react(name); };
+  const react = (name) => {
+    if (!S.mount || !connected()) return;
+    if (name === "shower") S.mount.act("shower", M.reactionMs ? M.reactionMs("shower") : 3400);
+    S.mount.react(name);
+  };
 
   function bubbleCtx(extra) {
     const cur = S.base ? L.current(S.base, serverNow()) : null;
@@ -283,7 +287,8 @@
     if (S.ui.sheet === "panel") {
       const cur = S.base ? L.current(S.base, serverNow()) : null;
       return X.panelHtml({ world: S.world, panel: S.ui.panel, sub: S.ui.sub, level: cur ? cur.level : 1, me: me(), names: names(),
-        petName: effectiveName(), err: S.ui.err, busy: S.worldBusy, local: S.prefs.best, result: S.result });
+        petName: effectiveName(), err: S.ui.err, busy: S.worldBusy, local: S.prefs.best, result: S.result, now: Date.now(), celebrate: S.celebrate,
+        v21: !!(S.base && S.base.pet && S.base.pet.hasClean) });
     }
     if (S.ui.sheet === "game") return `<div class="pt-form px gm" data-no-drag><div class="pt-head"><h3>${esc(WL.GAMES[S.ui.game].label)}</h3><button class="btn" data-act="game-quit" data-no-drag>Stop</button></div><div class="gm-box" data-gamebox></div></div>`;
     return "";
@@ -299,7 +304,7 @@
     if (S.ui.sheet === "game") return JSON.stringify(["game", S.ui.game, S.ui.gameRun]);
     if (S.ui.sheet === "panel") {
       const w = S.world;
-      return JSON.stringify(["panel", S.ui.panel, S.ui.sub, S.ui.err, S.worldBusy, w && [w.coins, w.inv, w.room, w.quests, w.stickers, w.gift, w.log.length, w.best],
+      return JSON.stringify(["panel", S.ui.panel, S.ui.sub, S.ui.err, S.worldBusy, S.celebrate, w && [w.coins, w.inv, w.room, w.quests, w.questBonus, w.weekly, w.stickers, w.gift, w.log.length, w.best],
         S.ui.panel === "result" ? S.result : null, S.ui.panel === "tricks" ? (S.base ? L.current(S.base, serverNow()).level : 1) : 0]);
     }
     return "";
@@ -323,12 +328,14 @@
     // Same panel, new content (a buy, a claim): keep the scroll position instead of jumping back to the top.
     const prev = el.firstElementChild, keepTop = prev && el._panel === panelId() ? prev.scrollTop : 0;
     el._panel = panelId();
-    el.innerHTML = `<div class="pt-scroll hm-fade">${sheetHtml()}</div>`;
+    el.innerHTML = `<div class="pt-scroll hm-fade${S.ui.sheet === "game" ? " gm-full" : ""}">${sheetHtml()}</div>`;
     if (keepTop) el.firstElementChild.scrollTop = keepTop;
     if (S.ui.sheet === "game") {
       const box = el.querySelector("[data-gamebox]");
       const game = S.ui.game;
-      S.gameStop = G.start(box, game, (score) => { S.gameStop = null; gameOver(game, score); });
+      const cur = S.base ? L.current(S.base, serverNow()) : null;
+      const petSvg = M.renderSvg({ mood: "happy", outfit: wornNow(cur), level: cur ? cur.level : 1 });
+      S.gameStop = G.start(box, game, (score) => { S.gameStop = null; gameOver(game, score); }, { petSvg });
     }
     if (S.ui.sheet === "name" && (hadFocus || S.ui.focus)) {
       const input = el.querySelector("input");
@@ -385,7 +392,7 @@
     const d = new Date();
     const w = S.world;
     S.mount.update({
-      mood, outfit, level: cur ? cur.level : 1, title: name, now,
+      mood, outfit, level: cur ? cur.level : 1, title: name, now, dirt: L.dirtLevel(cur),
       room: w ? w.room : {}, phase: WL.skyPhase(d.getHours()), season: WL.season(d.getMonth()),
       holiday: WL.holiday(d, w ? w.born : 0, v.togetherSince), asleep,
       gift: w && w.gift ? (w.gift.from === me() ? "mine" : "theirs") : "",
@@ -413,9 +420,12 @@
     put(E.streak, "title", "Days in a row that both of you cared for the blob");
     put(E.outfitBtn, "hidden", !cur);
 
-    // care buttons: the three needs and their cooldowns
+    // care buttons: the needs and their cooldowns (the shower only where the relay has the clean stat)
+    const shown = L.actionsFor(cur || (S.base && S.base.pet));
+    put(E.careRow, "class", "pt-care n" + shown.length);
     for (const id of L.ACTION_IDS) {
       const b = E.care[id], a = L.ACTIONS[id];
+      put(b.btn, "hidden", !shown.includes(id));
       const left = L.cooldownLeft(S.cd, id, now);
       const val = cur ? cur[a.stat] : null;
       put(b.label, "text", a.label);
@@ -424,7 +434,7 @@
       put(b.btn, "disabled", !cur || left > 0 || !!S.inflight[id]);
       put(b.btn, "class", "pt-cb" + (val !== null && val < 30 ? " low" : "") + (left > 0 ? " cooling" : ""));
       put(b.btn, "title", left > 0 ? `${a.label} again in ${L.fmtClock(left)}` : "");
-      put(b.btn, "aria-label", `${a.label} ${name || "your blob"}. ${a.stat === "love" ? "Love" : a.stat === "food" ? "Food" : "Water"} ${val === null ? "unknown" : val + " of 100"}.` +
+      put(b.btn, "aria-label", `${a.label} ${name || "your blob"}. ${{ love: "Love", food: "Food", water: "Water", clean: "Clean" }[a.stat]} ${val === null ? "unknown" : val + " of 100"}.` +
         (left > 0 ? ` Ready again in ${L.fmtClock(left)}.` : ""));
     }
 
@@ -494,7 +504,7 @@
       const [panel, sub] = String(el.dataset.panel).split(":");
       if (panel === "outfits") { openSheet("outfits", false); return; }
       S.ui.sheet = "panel"; S.ui.panel = panel; S.ui.sub = sub || (panel === "shop" ? S.ui.sub || "treat" : ""); S.ui.err = "";
-      if (panel === "shop" && !["treat", "toy", "decor", "outfit"].includes(S.ui.sub)) S.ui.sub = "treat";
+      if (panel === "shop" && !WL.CATEGORIES.some((c) => c.id === S.ui.sub)) S.ui.sub = "treat";
       if (panel === "quests" && S.world && !S.world.quests) worldCall("quests", {});
       paintSheet();
     },
@@ -506,7 +516,18 @@
     },
     place(el) { worldCall("place", { spot: el.dataset.spot, item: el.dataset.id }); },
     wear(el) { const cur = S.base ? L.current(S.base, serverNow()) : null; dress(L.toggleOutfit(wornNow(cur), el.dataset.id, unlockedNow(cur), M)); },
-    claim(el) { worldCall("claim", { q: el.dataset.q }, (r) => showBubble({ id: "quest", text: `Quest done! +${r.coins} Embers.`, ms: 4500 }, false)); },
+    claim(el) {
+      const q = el.dataset.q;
+      worldCall("claim", { q }, (r) => {
+        S.celebrate = { q, at: Date.now(), xp: r.xp || 0, coins: r.coins || 0, item: r.item || "" };
+        S.flashUntil = Date.now() + 2500; paint(); react("tap");
+        const what = `+${r.xp || 0} XP, +${r.coins} Embers`;
+        const text = q === "week" ? (r.item ? `Weekly quest done! ${what} and a surprise: ${WL.label(r.item)}!` : `Weekly quest done! ${what}!`)
+          : q === "bonus" ? `The daily chest! ${what}.` : `Quest done! ${what}.`;
+        showBubble({ id: "quest", text, ms: 6000 }, false);
+        setTimeout(() => { if (S.celebrate && Date.now() - S.celebrate.at >= 1500) { S.celebrate = null; paintSheet(); } }, 1600);
+      });
+    },
     "open-gift"() {
       const g = S.world && S.world.gift;
       if (!g || g.from === me()) return;
@@ -614,14 +635,19 @@
     if (!(S.view.toaster !== undefined ? S.view.toaster : S.view.leader)) return;
     const now = Date.now(), pet = effectiveName() || "Your blob";
     const say = (tag, title, body) => umbra.notify({ title, body, tag: "hearth-pet-" + tag }).catch(() => {});
-    if (cur && (cur.bucket === "sad" || cur.food < 30 || cur.water < 30) && now - S.alerts.sad > 4 * 3600000) {
+    const muddy = cur && cur.hasClean && cur.clean < 22;
+    if (cur && (cur.bucket === "sad" || cur.food < 30 || cur.water < 30 || muddy) && now - S.alerts.sad > 4 * 3600000) {
       S.alerts.sad = now;
-      say("needs", `${pet} misses you`, cur.food < 30 ? `${pet} is hungry.` : cur.water < 30 ? `${pet} is thirsty.` : `${pet} is a little sad. A bit of care helps right away.`);
+      say("needs", `${pet} misses you`, cur.food < 30 ? `${pet} is hungry.` : cur.water < 30 ? `${pet} is thirsty.` : muddy ? `${pet} is all muddy. Shower time!` : `${pet} is a little sad. A bit of care helps right away.`);
     }
     if (w && w.gift && w.gift.from !== me() && S.alerts.gift !== w.gift.t) { S.alerts.gift = w.gift.t; say("gift", "A present is waiting", `${names().partner || "Your partner"} left a gift by the hearth.`); }
     const q = w ? WL.claimable(w) : [];
     const day = new Date().toISOString().slice(0, 10);
-    if (q.length && S.alerts.quest !== day) { S.alerts.quest = day; say("quest", "Quest done", `Claim your Embers for "${WL.questText(q[0].id, pet)}".`); }
+    if (q.length && S.alerts.quest !== day) {
+      S.alerts.quest = day;
+      const what = q[0].id === "bonus" ? "Open the daily chest" : q[0].id === "week" ? "Claim the weekly quest" : `Claim "${WL.QUESTS[q[0].id].title}"`;
+      say("quest", "Quest done", `${what} for XP and Embers.`);
+    }
   }
 
   function bind(root) {
@@ -664,7 +690,7 @@
     S.els = {
       scene: q("[data-scene]"), pname: q("[data-pname]"), rename: q(".pt-icon"), lv: q("[data-lv]"), bubble: q("[data-bubble]"),
       safe: q("[data-safe]"), outfitBtn: q(".pt-outfit"), streak: q("[data-streak]"), care, xplv: q("[data-xplv]"), xpfill: q("[data-xpfill]"), xptext: q("[data-xptext]"),
-      bond: q("[data-bond]"), sheet: q("[data-sheet]"), coins: q("[data-coins]"), giftchip: q(".pt-giftchip"),
+      bond: q("[data-bond]"), sheet: q("[data-sheet]"), coins: q("[data-coins]"), giftchip: q(".pt-giftchip"), careRow: q("[data-care]"),
       worldBtns: [...el.querySelectorAll("[data-world]")], qdot: q("[data-qdot]"),
     };
     S.mount = W.mount(S.els.scene, { mood: "content", level: 1 });

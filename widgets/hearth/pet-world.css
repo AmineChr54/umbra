@@ -13,6 +13,13 @@
   transform-box: fill-box; transform-origin: 50% 50%;
 }
 .pw-flame, .pw-sway { transform-origin: 50% 100%; }
+.pw-wave, .pw-steam, .pw-shoot { transform-box: fill-box; transform-origin: 50% 50%; }
+.pw-wave  { animation: pw-wave calc(3.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-steam { animation: pw-steam calc(2.4s * var(--motion-scale, 1)) ease-in-out infinite; }
+.pw-shoot { opacity: 0; animation: pw-shoot calc(9s * var(--motion-scale, 1)) ease-in infinite; }
+@keyframes pw-wave  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(10px); } }
+@keyframes pw-steam { 0% { transform: translateY(4px); opacity: 0; } 40% { opacity: 0.8; } 100% { transform: translateY(-8px); opacity: 0; } }
+@keyframes pw-shoot { 0%, 86% { transform: translate(0, 0); opacity: 0; } 88% { opacity: 1; } 96%, 100% { transform: translate(60px, 24px); opacity: 0; } }
 
 /* ---------- ambient ---------- */
 
@@ -63,7 +70,19 @@
 .pw-act-play .pw-act      { animation: pw-hop calc(0.7s * var(--motion-scale, 1)) ease-out 3; }
 
 .pw-act-juggle .pw-x-juggle, .pw-act-fireworks .pw-x-fireworks, .pw-act-butterfly .pw-x-butterfly,
-.pw-act-read .pw-x-read, .pw-act-sing .pw-x-note { display: inline; }
+.pw-act-read .pw-x-read, .pw-act-sing .pw-x-note, .pw-act-shower .pw-x-shower { display: inline; }
+/* shower (3.4 s): the head swings in, water pours, a puddle, then it goes back up */
+.pw-showerhead, .pw-rain, .pw-puddle, .pw-splash { transform-box: fill-box; transform-origin: 50% 0%; }
+.pw-act-shower .pw-showerhead { animation: pw-showerhead calc(3.4s * var(--motion-scale, 1)) ease-in-out 1 both; }
+.pw-act-shower .pw-rain { animation: pw-rainwin calc(3.4s * var(--motion-scale, 1)) linear 1 both; }
+.pw-act-shower .pw-drop { animation: pw-pour calc(0.5s * var(--motion-scale, 1)) linear infinite; }
+.pw-act-shower .pw-dr1 { animation-delay: calc(-0.17s * var(--motion-scale, 1)); }
+.pw-act-shower .pw-dr2 { animation-delay: calc(-0.34s * var(--motion-scale, 1)); }
+.pw-act-shower .pw-puddle, .pw-act-shower .pw-splash { animation: pw-puddle calc(3.4s * var(--motion-scale, 1)) ease-out 1 both; }
+@keyframes pw-showerhead { 0% { transform: translateY(-130px); } 14%, 76% { transform: translateY(0); } 90%, 100% { transform: translateY(-130px); } }
+@keyframes pw-rainwin { 0%, 12% { opacity: 0; } 17%, 70% { opacity: 1; } 76%, 100% { opacity: 0; } }
+@keyframes pw-pour { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(78px); opacity: 0.2; } }
+@keyframes pw-puddle { 0%, 20% { opacity: 0; transform: scaleX(0.4); } 40%, 80% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1.1); } }
 .pw-act-juggle .pw-jb      { animation: pw-juggle calc(0.9s * var(--motion-scale, 1)) linear 3; transform-box: view-box; transform-origin: 120px 118px; }
 .pw-act-fireworks .pw-burst { animation: pw-burst calc(1s * var(--motion-scale, 1)) ease-out 2 both; }
 .pw-act-fireworks .pw-act  { animation: pw-hop calc(0.6s * var(--motion-scale, 1)) ease-out 3; }

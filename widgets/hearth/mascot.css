@@ -69,6 +69,33 @@
 .hm-react-tap   .hm-react { animation: hm-hop calc(0.5s * var(--motion-scale, 1)) ease-out 2; }
 .hm-react-tap   .hm-fx-tap { animation: hm-pulse calc(1.5s * var(--motion-scale, 1)) ease-out 1 both; }
 
+/* shower (3.4 s): foam, shake dry, sparkles (the shower head and the water are in pet-world.css) */
+.hm-bub, .hm-fly { transform-box: fill-box; transform-origin: 50% 50%; }
+.hm-react-shower .hm-fx-shower { animation: hm-show calc(3.4s * var(--motion-scale, 1)) linear 1 both; }
+.hm-bub { opacity: 0; }
+.hm-react-shower .hm-bub { animation: hm-foam calc(2.2s * var(--motion-scale, 1)) ease-out calc(0.7s * var(--motion-scale, 1)) 1 both; }
+.hm-react-shower .hm-bub.hm-d1 { animation-delay: calc(0.85s * var(--motion-scale, 1)); }
+.hm-react-shower .hm-bub.hm-d2 { animation-delay: calc(1s * var(--motion-scale, 1)); }
+.hm-sparkles { opacity: 0; }
+.hm-react-shower .hm-sparkles { animation: hm-sparkle calc(3.4s * var(--motion-scale, 1)) ease-out 1 both; }
+.hm-react-shower .hm-react { animation: hm-shakedry calc(3.4s * var(--motion-scale, 1)) ease-in-out 1 both; }
+.hm-react-shower .hm-dirt, .hm-react-shower .hm-flies { animation: hm-wash calc(1.6s * var(--motion-scale, 1)) ease-in 1 both; }
+@keyframes hm-foam { 0% { transform: scale(0); opacity: 0; } 18% { transform: scale(1.15); opacity: 1; } 30% { transform: scale(1); } 70% { transform: scale(1); opacity: 1; } 86% { transform: scale(1.4); opacity: 0.6; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes hm-sparkle { 0%, 76% { opacity: 0; } 84% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes hm-shakedry {
+  0%, 74% { transform: rotate(0); }
+  77% { transform: rotate(-5deg) scale(1.03, 0.97); } 80% { transform: rotate(5deg); } 83% { transform: rotate(-5deg) scale(1.03, 0.97); }
+  86% { transform: rotate(4deg); } 89% { transform: rotate(-2deg); } 92%, 100% { transform: rotate(0); }
+}
+@keyframes hm-wash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* dirt: flies buzz around, stink lines wave */
+.hm-fly { animation: hm-buzz calc(1.6s * var(--motion-scale, 1)) ease-in-out infinite; }
+.hm-fly.hm-d1 { animation-duration: calc(2.1s * var(--motion-scale, 1)); animation-direction: reverse; }
+.hm-stink { animation: hm-stinkwave calc(2s * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes hm-buzz { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(8px, -5px); } 50% { transform: translate(2px, 6px); } 75% { transform: translate(-7px, -2px); } }
+@keyframes hm-stinkwave { 0%, 100% { opacity: 0.35; transform: translateY(0); } 50% { opacity: 0.85; transform: translateY(-4px); } }
+
 @keyframes hm-chomp  { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.06, 0.93); } }
 @keyframes hm-mouth  { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.4); } }
 @keyframes hm-berry  { 0% { transform: translateY(0); opacity: 0; } 12% { opacity: 1; } 78% { transform: translateY(98px); opacity: 1; } 100% { transform: translateY(100px); opacity: 0; } }

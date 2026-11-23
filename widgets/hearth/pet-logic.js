@@ -16,15 +16,20 @@
 
   // ---------- constants from the README ----------
 
-  const STATS = Object.freeze(["food", "water", "love"]);
+  /** The three stats every relay sends, then clean (a relay from Hearth 2.1 on; older ones have none: `hasClean` false). */
+  const CORE = Object.freeze(["food", "water", "love"]);
+  const STATS = Object.freeze(["food", "water", "love", "clean"]);
   /** care?action=...  `gain` is the README's number and is used for the optimistic preview only. */
   const ACTIONS = Object.freeze({
     feed: Object.freeze({ id: "feed", stat: "food", gain: 35, label: "Feed", verb: "fed" }),
     water: Object.freeze({ id: "water", stat: "water", gain: 35, label: "Water", verb: "gave water to" }),
     pet: Object.freeze({ id: "pet", stat: "love", gain: 25, label: "Pet", verb: "petted" }),
+    shower: Object.freeze({ id: "shower", stat: "clean", gain: 40, label: "Shower", verb: "showered" }),
   });
-  const ACTION_IDS = Object.freeze(["feed", "water", "pet"]);
-  const DEFAULT_RATE = Object.freeze({ food: 1.25, water: 1.875, love: 0.9375 }); // used only when a (old) answer has no decayPerHour
+  const ACTION_IDS = Object.freeze(["feed", "water", "pet", "shower"]);
+  const DEFAULT_RATE = Object.freeze({ food: 1.25, water: 1.875, love: 0.9375, clean: 0.8 }); // used only when a (old) answer has no decayPerHour
+  /** The actions this pet has (no shower on a relay without the clean stat). */
+  const actionsFor = (pet) => ACTION_IDS.filter((id) => id !== "shower" || !pet || pet.hasClean);
   const MIN_STAT = 10, MAX_STAT = 100;
   const COOLDOWN_S = 300;            // "Each side may repeat an action after 5 minutes"; the real value always comes from `retryIn`
   const MAX_LEVEL = 50;
@@ -68,23 +73,25 @@
   /** A clean pet from `sync.pet` or the answer to `care`, or null when it is not one. Stats stay as sent. */
   function parsePet(raw) {
     if (!raw || typeof raw !== "object") return null;
-    if (!STATS.every((k) => Number.isFinite(Number(raw[k])))) return null;
+    if (!CORE.every((k) => Number.isFinite(Number(raw[k])))) return null;
+    const hasClean = Number.isFinite(Number(raw.clean)) && raw.clean !== null && raw.clean !== "";
     const rate = raw.decayPerHour && typeof raw.decayPerHour === "object" ? raw.decayPerHour : {};
     const b = raw.bond && typeof raw.bond === "object" ? raw.bond : {};
     const bond = { day: /^\d{4}-\d{2}-\d{2}$/.test(b.day) ? b.day : "", a: !!b.a, b: !!b.b, done: !!(b.a && b.b), streak: Math.max(0, Math.floor(num(b.streak, 0))) };
     return {
       food: clamp(num(raw.food, 0), 0, MAX_STAT), water: clamp(num(raw.water, 0), 0, MAX_STAT), love: clamp(num(raw.love, 0), 0, MAX_STAT),
+      clean: hasClean ? clamp(num(raw.clean, 0), 0, MAX_STAT) : MAX_STAT, hasClean,
       mood: BUCKETS.includes(raw.mood) ? raw.mood : "",
       level: Math.max(1, Math.floor(num(raw.level, 1))), xp: Math.max(0, num(raw.xp, 0)),
       nextXp: raw.nextXp === null ? null : Number.isFinite(Number(raw.nextXp)) ? Number(raw.nextXp) : nextXpAt(Math.max(1, Math.floor(num(raw.level, 1)))),
       bond,
-      rate: { food: num(rate.food, DEFAULT_RATE.food), water: num(rate.water, DEFAULT_RATE.water), love: num(rate.love, DEFAULT_RATE.love) },
+      rate: { food: num(rate.food, DEFAULT_RATE.food), water: num(rate.water, DEFAULT_RATE.water), love: num(rate.love, DEFAULT_RATE.love), clean: hasClean ? num(rate.clean, DEFAULT_RATE.clean) : 0 },
       min: clamp(num(raw.min, MIN_STAT), 0, MAX_STAT),
     };
   }
 
   /** A change detector for "is this a new pet answer": the numbers that move when the relay writes (not the extrapolation). */
-  const petSig = (p) => (p ? [p.food, p.water, p.love, p.xp, p.level, p.bond.day, p.bond.a, p.bond.b, p.bond.streak].join("|") : "");
+  const petSig = (p) => (p ? [p.food, p.water, p.love, p.clean, p.xp, p.level, p.bond.day, p.bond.a, p.bond.b, p.bond.streak].join("|") : "");
 
   // ---------- showing the decay between syncs ----------
 
@@ -97,9 +104,12 @@
     return { day, a: false, b: false, done: false, streak: lastDone && lastDone === prevDay(day) ? bond.streak : 0 };
   }
 
-  /** happy | content | sad from the three stats. Mirrors tools/umbra-relay/hearth.js petView (average >= 65 / >= 35); the README
-   *  only promises the three words. Used while extrapolating; a fresh answer's own `mood` wins (see `current`). */
-  const bucketOf = (food, water, love) => { const avg = (food + water + love) / 3; return avg >= 65 ? "happy" : avg >= 35 ? "content" : "sad"; };
+  /** happy | content | sad from the stats. Mirrors tools/umbra-relay/hearth.js petView (average >= 65 / >= 35, clean counted when
+   *  the relay has it); the README only promises the three words. Used while extrapolating; a fresh answer's own `mood` wins. */
+  const bucketOf = (food, water, love, clean) => {
+    const avg = clean === undefined || clean === null ? (food + water + love) / 3 : (food + water + love + clean) / 4;
+    return avg >= 65 ? "happy" : avg >= 35 ? "content" : "sad";
+  };
 
   /**
    * The pet at `nowMs` from a base { pet, asOf, trusted } (asOf = the server time the stats are from).
@@ -111,11 +121,11 @@
     const hours = base.trusted ? Math.max(0, nowMs - base.asOf) / 3600000 : 0;
     const exact = {};
     for (const k of STATS) exact[k] = Math.max(Math.min(p.min, p[k]), Math.min(MAX_STAT, p[k] - p.rate[k] * hours));
-    const food = Math.round(exact.food), water = Math.round(exact.water), love = Math.round(exact.love);
+    const food = Math.round(exact.food), water = Math.round(exact.water), love = Math.round(exact.love), clean = Math.round(exact.clean);
     const ageMs = base.trusted ? Math.max(0, nowMs - base.asOf) : 0;
-    const bucket = p.mood && ageMs < 120000 ? p.mood : bucketOf(food, water, love);
+    const bucket = p.mood && ageMs < 120000 ? p.mood : bucketOf(food, water, love, p.hasClean ? clean : null);
     return {
-      food, water, love, exact, bucket, ageMs,
+      food, water, love, clean, hasClean: !!p.hasClean, exact, bucket, ageMs,
       level: p.level, xp: p.xp, nextXp: p.nextXp,
       bond: base.trusted ? rollBond(p.bond, nowMs) : Object.assign({}, p.bond),
       min: p.min,
@@ -170,6 +180,9 @@
     return o.tapped ? "love" : pet.bucket === "sad" ? "sad" : pet.bucket === "happy" ? "happy" : "content"; // no mascot module: the relay's word
   }
 
+  /** How dirty the pet looks: 0 clean, 1 a bit grubby (under 40), 2 muddy with flies (under 22). Always 0 without the clean stat. */
+  const dirtLevel = (pet) => (!pet || !pet.hasClean ? 0 : pet.clean < 22 ? 2 : pet.clean < 40 ? 1 : 0);
+
   // ---------- cooldowns ----------
 
   /** Seconds left (whole, rounded up) of `action`'s cooldown, 0 when ready. `cd` is { feed: untilMs, ... } in local time. */
@@ -193,7 +206,7 @@
    */
   function detectPartnerCare(before, next, me) {
     if (!before || !next) return null;
-    const actions = ACTION_IDS.filter((id) => next[ACTIONS[id].stat] - before.exact[ACTIONS[id].stat] >= 1.5);
+    const actions = ACTION_IDS.filter((id) => (id !== "shower" || next.hasClean) && next[ACTIONS[id].stat] - before.exact[ACTIONS[id].stat] >= 1.5);
     const peer = me === "a" ? "b" : "a";
     const bondFlip = before.bond.day === next.bond.day && next.bond[peer] && !before.bond[peer];
     if (!actions.length && !bondFlip) return null;
@@ -293,6 +306,7 @@
     feed: ["Yum, thank you!", "Nom nom nom.", "That hit the spot."],
     water: ["Ahh, so fresh.", "Glug glug, thank you!", "Just what I needed."],
     pet: ["That feels lovely.", "More snuggles, please.", "I love you both."],
+    shower: ["Squeaky clean!", "Bubbles! So many bubbles!", "Ahh, I smell like flowers now.", "Brrr, towel please!"],
   });
 
   /**
@@ -327,6 +341,7 @@
     if (ctx.mood === "hungry") lines.push({ id: "hungry", text: "My tummy is rumbling." });
     if (ctx.mood === "thirsty") lines.push({ id: "thirsty", text: "I could use some water." });
     if (ctx.mood === "sleepy") lines.push({ id: "sleepy", text: "I would love a cuddle." });
+    if (p.hasClean && p.clean < 30) lines.push({ id: "dirty", text: "I'm a bit muddy. Shower time?" });
     if (!p.bond.done && side.you && !side.partner) lines.push({ id: "partner-missing", text: `${partner} has not visited me today.` });
     if (!p.bond.done && !side.you && side.partner) lines.push({ id: "your-turn", text: `${partner} visited me today. Your turn, ${you}!` });
     if (!side.you && !side.partner) lines.push({ id: "hello", text: `Hello, ${you}! Come say hi today.` });
@@ -335,7 +350,7 @@
   }
 
   const api = {
-    STATS, ACTIONS, ACTION_IDS, DEFAULT_RATE, MIN_STAT, MAX_STAT, COOLDOWN_S, MAX_LEVEL, NAME_MAX, BUBBLE, LINES,
+    CORE, STATS, ACTIONS, ACTION_IDS, actionsFor, dirtLevel, DEFAULT_RATE, MIN_STAT, MAX_STAT, COOLDOWN_S, MAX_LEVEL, NAME_MAX, BUBBLE, LINES,
     OUTFIT_UNLOCKS, OUTFIT_LABELS, OUTFIT_ORDER,
     utcDay, prevDay, msToUtcMidnight,
     levelOfXp, xpAtLevel, nextXpAt, curveAgrees, progress,
