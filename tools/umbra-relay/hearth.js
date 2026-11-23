@@ -38,6 +38,91 @@ export const PET = {
   bondXp: 5,                                                    // extra xp when both partners cared on the same UTC day
 };
 
+// ---------- the pet's world: Embers (shared coins), the shop, the room, games, quests, stickers, gifts, a diary ----------
+// All of it lives inside `h.pet` (the same hot row, still small) and reaches clients through `petView`. Every write is a
+// click of a partner: nothing here polls or runs on a timer.
+
+/** Items. cat: treat (used up by `use`), toy and decor (placed in the room), outfit (worn with `dress`). */
+export const SHOP = Object.freeze({
+  // treats: `gain` is added to the stats (capped at 100)
+  berry_tart: { cat: "treat", price: 8, gain: { food: 30, love: 8 } },
+  honey_cake: { cat: "treat", price: 12, gain: { food: 45, love: 12 } },
+  fish_snack: { cat: "treat", price: 10, gain: { food: 50 } },
+  smoothie: { cat: "treat", price: 7, gain: { water: 45 } },
+  cocoa: { cat: "treat", price: 9, gain: { water: 35, love: 15 } },
+  star_candy: { cat: "treat", price: 15, gain: { food: 20, water: 20, love: 20 } },
+  // toys: one at a time on the rug
+  ball: { cat: "toy", spot: "toy", price: 25 },
+  yarn: { cat: "toy", spot: "toy", price: 30 },
+  duck: { cat: "toy", spot: "toy", price: 35 },
+  kite: { cat: "toy", spot: "toy", price: 45 },
+  // decor, by where it goes
+  plant: { cat: "decor", spot: "floorL", price: 40 },
+  cactus: { cat: "decor", spot: "floorL", price: 35 },
+  lamp: { cat: "decor", spot: "floorR", price: 50 },
+  bookshelf: { cat: "decor", spot: "floorR", price: 70 },
+  painting: { cat: "decor", spot: "wall", price: 45 },
+  clock: { cat: "decor", spot: "wall", price: 40 },
+  photo: { cat: "decor", spot: "wall", price: 30 },
+  lights: { cat: "decor", spot: "mantel", price: 35 },
+  candles: { cat: "decor", spot: "mantel", price: 25 },
+  curtains_rose: { cat: "decor", spot: "window", price: 30 },
+  curtains_sage: { cat: "decor", spot: "window", price: 30 },
+  rug_sky: { cat: "decor", spot: "rug", price: 30 },
+  rug_sage: { cat: "decor", spot: "rug", price: 30 },
+  rug_gold: { cat: "decor", spot: "rug", price: 40 },
+  wall_mint: { cat: "decor", spot: "wallpaper", price: 35 },
+  wall_sky: { cat: "decor", spot: "wallpaper", price: 35 },
+  wall_rose: { cat: "decor", spot: "wallpaper", price: 35 },
+  wall_night: { cat: "decor", spot: "wallpaper", price: 50 },
+  // outfits bought in the shop (level and anniversary outfits are free once unlocked)
+  tophat: { cat: "outfit", slot: "head", price: 60 },
+  beanie: { cat: "outfit", slot: "head", price: 45 },
+  headphones: { cat: "outfit", slot: "head", price: 70 },
+  star_clips: { cat: "outfit", slot: "head", price: 40 },
+  shades: { cat: "outfit", slot: "face", price: 55 },
+  monocle: { cat: "outfit", slot: "face", price: 50 },
+  cape: { cat: "outfit", slot: "neck", price: 80 },
+  bell: { cat: "outfit", slot: "neck", price: 35 },
+});
+/** Outfits that need no shop: unlocked by level or by days together (the date set on the Us tab). */
+export const FREE_OUTFITS = Object.freeze({
+  bow: { slot: "neck", level: 2 }, scarf: { slot: "neck", level: 3 }, glasses: { slot: "face", level: 5 },
+  hat: { slot: "head", level: 8 }, "flower-crown": { slot: "head", level: 12 },
+  party: { slot: "head", days: 100 }, anniversary: { slot: "head", days: 365 },
+});
+export const ROOM_SPOTS = Object.freeze(["wallpaper", "rug", "window", "wall", "mantel", "floorL", "floorR", "toy"]);
+/** Mini-games: the best score that counts, Embers per point, the most Embers one game pays. */
+export const GAMES = Object.freeze({
+  catch: { max: 80, per: 0.34, cap: 20 },   // Berry Catch: berries caught in 30 s
+  memory: { max: 40, per: 2, cap: 20 },     // Flame Memory: rounds remembered
+  seek: { max: 15, per: 2, cap: 20 },       // Hide and Seek: rounds found
+});
+/** Daily quests: three a day, picked from these by the UTC day and the room. `n` is the target. */
+export const QUESTS = Object.freeze({
+  feed2: { n: 2, reward: 15 }, water2: { n: 2, reward: 15 }, pet3: { n: 3, reward: 15 },
+  both: { n: 1, reward: 25 }, play1: { n: 1, reward: 15 }, play3: { n: 3, reward: 25 },
+  treat1: { n: 1, reward: 20 }, buy1: { n: 1, reward: 15 }, catch20: { n: 1, reward: 25 },
+  memory6: { n: 1, reward: 25 }, seek3: { n: 1, reward: 25 }, care6: { n: 6, reward: 20 },
+});
+/** Stickers for the album, in order. */
+export const STICKERS = Object.freeze([
+  "first_game", "first_treat", "first_buy", "first_gift", "first_quest", "decorated", "fashion",
+  "streak7", "streak30", "level10", "level25", "level50", "quests10", "games25", "catch40", "memory10", "seek8",
+  "rich", "collector", "birthday",
+]);
+export const WORLD = Object.freeze({
+  careCoins: 2,              // per care that was needed (the same rule as its xp)
+  bondCoins: 10,             // when the daily bond completes
+  gameCooldownMs: 45 * 1000, // per side and game
+  gameCoinsPerDay: 80,       // per side: what games can pay in one UTC day
+  gameXpPerDay: 6,           // per side
+  treatCooldownMs: 60 * 1000,
+  maxCoins: 99999, maxCount: 99,
+  logSize: 24,
+  giftLove: 10,
+});
+
 const SECTIONS = ["names", "since", "petName", "pet", "taps", "together", "board"];
 const pad = (n) => String(n).padStart(10, "0");
 const skey = (id) => "s:" + pad(id);
@@ -85,7 +170,116 @@ export function petView(p, now) {
     level, xp: p.xp, nextXp: level >= 50 ? null : 4 * level * level,
     bond: { day, a: b.a, b: b.b, done: b.a && b.b, streak: p.lastDone === day || p.lastDone === prevDay(day) ? p.streak : 0 },
     decayPerHour: PET.rate, min: PET.min,                         // so a client can extrapolate between syncs
+    // the world (see "Pet world" in the README)
+    coins: p.coins || 0,
+    inv: { ...(p.inv || {}) },
+    room: { ...(p.room || {}) },
+    wear: Array.isArray(p.wear) ? [...p.wear] : null,
+    best: { ...(p.best || {}) },
+    quests: questView(p, day),
+    stickers: [...(p.ach || [])],
+    gift: p.gift ? { ...p.gift } : null,
+    log: (p.log || []).map((e) => [...e]),
+    born: p.born || 0,
+    counts: { ...(p.n || {}) },
   };
+}
+
+/** Fill in the world fields of a pet stored before they existed. */
+function worldOf(p, now) {
+  if (typeof p.coins !== "number") p.coins = 0;
+  if (!p.inv || typeof p.inv !== "object") p.inv = {};
+  if (!p.room || typeof p.room !== "object") p.room = {};
+  if (p.wear !== null && !Array.isArray(p.wear)) p.wear = null;  // null: never dressed on the relay (a client may bring its local choice)
+  if (!p.best || typeof p.best !== "object") p.best = {};
+  if (!Array.isArray(p.ach)) p.ach = [];
+  if (!Array.isArray(p.log)) p.log = [];
+  if (!p.n || typeof p.n !== "object") p.n = {};
+  if (p.gift === undefined) p.gift = null;
+  if (!p.born) p.born = now;
+  if (!p.earn || typeof p.earn !== "object") p.earn = {};
+  return p;
+}
+
+/** Small deterministic hash (FNV-1a) for picking the day's quests. */
+function hash(s) {
+  let x = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0; }
+  return x >>> 0;
+}
+/** The three quest ids of a UTC day for a room: always the same for both partners, different from day to day. */
+export function questsFor(day, room) {
+  const ids = Object.keys(QUESTS);
+  const out = [];
+  let x = hash(day + ":" + (room || ""));
+  while (out.length < 3) {
+    const id = ids[x % ids.length];
+    if (!out.includes(id)) out.push(id);
+    x = hash(String(x) + id);
+  }
+  return out;
+}
+/** Today's quests with progress, starting fresh when the stored ones are from another day. */
+function questsToday(p, day, room) {
+  if (!p.q || p.q.day !== day) p.q = { day, ids: questsFor(day, room), p: [0, 0, 0], c: [false, false, false] };
+  return p.q;
+}
+function questView(p, day) {
+  if (!p.q || p.q.day !== day) return null;                       // not drawn yet today: the first action of the day draws them
+  return p.q.ids.map((id, i) => ({ id, n: QUESTS[id].n, p: Math.min(QUESTS[id].n, p.q.p[i]), reward: QUESTS[id].reward, claimed: !!p.q.c[i] }));
+}
+/** Count `amount` towards today's quests that match `ids` (a quest id or a list of them). */
+function questStep(p, day, room, ids, amount = 1) {
+  const q = questsToday(p, day, room);
+  const want = Array.isArray(ids) ? ids : [ids];
+  q.ids.forEach((id, i) => { if (want.includes(id)) q.p[i] = Math.min(QUESTS[id].n, q.p[i] + amount); });
+}
+/** A diary line: [time, side, kind, detail]. The oldest fall off. */
+function logEvent(p, now, side, kind, detail) {
+  p.log.push([now, side, kind, detail === undefined ? "" : detail]);
+  while (p.log.length > WORLD.logSize) p.log.shift();
+}
+const addCoins = (p, n) => { p.coins = Math.min(WORLD.maxCoins, Math.max(0, (p.coins || 0) + n)); };
+const owns = (p, id) => (p.inv[id] || 0) > 0;
+
+/** Days together from the Us tab's date, or -1 when none is set. */
+function daysTogether(since, now) {
+  if (!since) return -1;
+  return Math.floor((Date.parse(utcDay(now) + "T00:00:00Z") - Date.parse(since + "T00:00:00Z")) / 86400000);
+}
+/** May this outfit be worn now? Free ones by level or days together, shop ones when owned. */
+function canWear(h, id, now) {
+  const free = FREE_OUTFITS[id];
+  if (free) return free.level ? levelOf(h.pet.xp) >= free.level : daysTogether(h.since, now) >= free.days;
+  const item = SHOP[id];
+  return !!item && item.cat === "outfit" && owns(h.pet, id);
+}
+const slotOf = (id) => (FREE_OUTFITS[id] || SHOP[id] || {}).slot;
+
+/** Stickers earned by the state as it is now; returns the new ones (also written to the diary). */
+function checkStickers(h, now, side) {
+  const p = h.pet, have = new Set(p.ach), n = p.n;
+  const filled = ROOM_SPOTS.filter((s) => p.room[s]).length;
+  const outfits = Object.keys(p.inv).filter((id) => SHOP[id] && SHOP[id].cat === "outfit").length;
+  const owned = Object.keys(p.inv).filter((id) => SHOP[id] && SHOP[id].cat !== "treat").length;
+  const lv = levelOf(p.xp);
+  const rules = {
+    first_game: (n.games || 0) >= 1, first_treat: (n.treats || 0) >= 1, first_buy: (n.buys || 0) >= 1,
+    first_gift: (n.gifts || 0) >= 1, first_quest: (n.quests || 0) >= 1, decorated: filled >= 4, fashion: outfits >= 3,
+    streak7: p.streak >= 7, streak30: p.streak >= 30, level10: lv >= 10, level25: lv >= 25, level50: lv >= 50,
+    quests10: (n.quests || 0) >= 10, games25: (n.games || 0) >= 25, catch40: (p.best.catch || 0) >= 40,
+    memory10: (p.best.memory || 0) >= 10, seek8: (p.best.seek || 0) >= 8, rich: p.coins >= 300, collector: owned >= 15,
+    birthday: !!p.bdayDone,
+  };
+  const got = STICKERS.filter((id) => rules[id] && !have.has(id));
+  for (const id of got) { p.ach.push(id); logEvent(p, now, side, "sticker", id); }
+  return got;
+}
+/** Answer of a world action: ok, the pet as clients see it, and what was just earned. */
+function worldAnswer(h, now, side, extra) {
+  const stickers = checkStickers(h, now, side);
+  bump(h, "pet");
+  return { ok: true, ...(extra || {}), stickers, pet: petView(h.pet, now) };
 }
 
 // ---------- validation ----------
@@ -143,7 +337,7 @@ function newHearth(now) {
   return {
     rev: 1, rv, brs: 1,                                  // brs: rev of the last clear / unclear (a sync older than this resets the board)
     names: { a: "", b: "" }, since: "", petName: "",
-    pet: { food: PET.start, water: PET.start, love: PET.start, t: now, xp: 0, bond: { day, a: false, b: false }, streak: 0, lastDone: "" },
+    pet: worldOf({ food: PET.start, water: PET.start, love: PET.start, t: now, xp: 0, bond: { day, a: false, b: false }, streak: 0, lastDone: "" }, now),
     cd: {},                                              // care cooldowns, "<side><action>" -> time
     taps: { a: { n: 0, at: 0 }, b: { n: 0, at: 0 } },    // shown to the other side
     tw: { a: 0, b: 0 },                                  // taps not yet matched into a together moment
@@ -206,7 +400,11 @@ export async function handleHearth(s, route, q, env, now) {
 
   const h = v.get("h") || newHearth(now);
   const fresh = !v.get("h");
+  const migrated = !h.pet.born;
+  worldOf(h.pet, now);                                             // rooms from before the pet world get its fields, once
+  const room = q.get("room") || "";
   const save = async (extra) => { h.seen = now; await s.put({ h, ...(extra || {}) }); };
+  if (migrated && !fresh && !h.gone) await save();                // so `born` stays the day the world arrived
 
   if (h.gone) {
     if (route === "unpair") return { ok: true, graceUntil: h.gone.at + GRACE_MS };
@@ -335,17 +533,187 @@ export async function handleHearth(s, route, q, env, now) {
       const bond = h.pet.bond.day === day ? { ...h.pet.bond } : { day, a: false, b: false };
       bond[me] = true;
       let { xp, streak, lastDone } = h.pet;
-      if (gainsXp) xp += 1;
+      const p = h.pet;
+      if (gainsXp) { xp += 1; addCoins(p, WORLD.careCoins); }
+      let bonded = false;
       if (bond.a && bond.b && lastDone !== day) {
         streak = lastDone === prevDay(day) ? streak + 1 : 1;
         lastDone = day;
         xp += PET.bondXp;
+        addCoins(p, WORLD.bondCoins);
+        bonded = true;
       }
-      h.pet = { ...cur, t: now, xp, bond, streak, lastDone };
+      Object.assign(p, cur, { t: now, xp, bond, streak, lastDone });
+      questStep(p, day, room, { feed: "feed2", water: "water2", pet: "pet3" }[action]);
+      questStep(p, day, room, "care6");
+      if (bonded) { questStep(p, day, room, "both"); logEvent(p, now, me, "bond", streak); }
+      logEvent(p, now, me, action);
+      // The pet's birthday (the day it hatched, a year or more ago): caring for it that day earns its sticker.
+      if (p.born && utcDay(p.born).slice(5) === day.slice(5) && utcDay(p.born) < day) p.bdayDone = true;
       h.cd[cd] = now;
+      const out = worldAnswer(h, now, me, { coins: (gainsXp ? WORLD.careCoins : 0) + (bonded ? WORLD.bondCoins : 0) });
+      await save();
+      return out;
+    }
+
+    case "buy": case "gift": {
+      const id = q.get("item") || "";
+      const item = Object.prototype.hasOwnProperty.call(SHOP, id) ? SHOP[id] : null;
+      if (!item) return { error: "bad item" };
+      const p = h.pet;
+      if (route === "gift" && p.gift) return { error: "a gift is already waiting" };
+      if (route === "buy" && item.cat !== "treat" && owns(p, id)) return { error: "already yours" };
+      if ((p.inv[id] || 0) >= WORLD.maxCount) return { error: "too many" };
+      if (p.coins < item.price) return { error: "not enough embers", need: item.price - p.coins };
+      addCoins(p, -item.price);
+      if (route === "buy") {
+        p.inv[id] = (p.inv[id] || 0) + 1;
+        p.n.buys = (p.n.buys || 0) + 1;
+        logEvent(p, now, me, "buy", id);
+      } else {
+        p.gift = { from: me, item: id, t: now };
+        logEvent(p, now, me, "gift", id);
+      }
+      questStep(p, utcDay(now), room, "buy1");
+      const out = worldAnswer(h, now, me);
+      await save();
+      return out;
+    }
+
+    case "open": {
+      const p = h.pet;
+      if (!p.gift) return { error: "no gift" };
+      if (p.gift.from === me) return { error: "it is for your partner" };
+      const id = p.gift.item;
+      p.inv[id] = Math.min(WORLD.maxCount, (p.inv[id] || 0) + 1);
+      p.n.gifts = (p.n.gifts || 0) + 1;
+      const cur = petStats(p, now);
+      cur.love = Math.min(PET.max, cur.love + WORLD.giftLove);
+      Object.assign(p, cur, { t: now });
+      logEvent(p, now, me, "open", id);
+      p.gift = null;
+      const out = worldAnswer(h, now, me, { item: id });
+      await save();
+      return out;
+    }
+
+    case "use": {
+      const id = q.get("item") || "";
+      const item = Object.prototype.hasOwnProperty.call(SHOP, id) ? SHOP[id] : null;
+      if (!item || item.cat !== "treat") return { error: "bad item" };
+      const p = h.pet;
+      if (!owns(p, id)) return { error: "none left" };
+      const cd = me + "use", last = h.cd[cd] || 0;
+      if (now >= last && now - last < WORLD.treatCooldownMs) return { error: "too soon", retryIn: Math.ceil((WORLD.treatCooldownMs - (now - last)) / 1000) };
+      p.inv[id] -= 1;
+      if (p.inv[id] <= 0) delete p.inv[id];
+      const cur = petStats(p, now);
+      for (const [k, v] of Object.entries(item.gain)) cur[k] = Math.min(PET.max, cur[k] + v);
+      Object.assign(p, cur, { t: now, xp: p.xp + 1 });
+      p.n.treats = (p.n.treats || 0) + 1;
+      h.cd[cd] = now;
+      questStep(p, utcDay(now), room, "treat1");
+      logEvent(p, now, me, "use", id);
+      const out = worldAnswer(h, now, me);
+      await save();
+      return out;
+    }
+
+    case "place": {
+      const spot = q.get("spot") || "";
+      const id = q.get("item") || "";
+      if (!ROOM_SPOTS.includes(spot)) return { error: "bad spot" };
+      const p = h.pet;
+      if (id) {
+        const item = Object.prototype.hasOwnProperty.call(SHOP, id) ? SHOP[id] : null;
+        if (!item || item.spot !== spot) return { error: "bad item" };
+        if (!owns(p, id)) return { error: "not yours yet" };
+        p.room[spot] = id;
+      } else delete p.room[spot];
+      logEvent(p, now, me, "place", id);
+      const out = worldAnswer(h, now, me);
+      await save();
+      return out;
+    }
+
+    case "dress": {
+      const raw = q.get("items");
+      if (raw === null) return { error: "bad request" };
+      const ids = raw ? raw.split(",") : [];
+      if (ids.length > 3) return { error: "bad outfit" };
+      const bySlot = {};
+      for (const id of ids) {
+        const slot = slotOf(id);
+        if (!slot) return { error: "bad outfit" };
+        if (!canWear(h, id, now)) return { error: "not unlocked" };
+        bySlot[slot] = id;
+      }
+      h.pet.wear = ["head", "face", "neck"].filter((sl) => bySlot[sl]).map((sl) => bySlot[sl]);
+      const out = worldAnswer(h, now, me);
+      await save();
+      return out;
+    }
+
+    case "play": {
+      const game = q.get("game") || "";
+      const g = Object.prototype.hasOwnProperty.call(GAMES, game) ? GAMES[game] : null;
+      if (!g) return { error: "bad game" };
+      const score = Number(q.get("score"));
+      if (!Number.isInteger(score) || score < 0) return { error: "bad score" };
+      const cd = me + "g" + game, last = h.cd[cd] || 0;
+      if (now >= last && now - last < WORLD.gameCooldownMs) return { error: "too soon", retryIn: Math.ceil((WORLD.gameCooldownMs - (now - last)) / 1000) };
+      const p = h.pet, day = utcDay(now);
+      const counted = Math.min(score, g.max);
+      // What games may still pay today on this side.
+      const e = p.earn[me] && p.earn[me].day === day ? p.earn[me] : { day, coins: 0, xp: 0 };
+      const full = Math.min(g.cap, Math.floor(counted * g.per));
+      const coins = Math.max(0, Math.min(full, WORLD.gameCoinsPerDay - e.coins));
+      const xp = counted > 0 && e.xp < WORLD.gameXpPerDay ? 1 : 0;
+      e.coins += coins; e.xp += xp;
+      p.earn[me] = e;
+      addCoins(p, coins);
+      const cur = petStats(p, now);
+      cur.love = Math.min(PET.max, cur.love + 5);                    // playing together cheers it up
+      Object.assign(p, cur, { t: now, xp: p.xp + xp });
+      const record = counted > (p.best[game] || 0);
+      if (record) p.best[game] = counted;
+      p.n.games = (p.n.games || 0) + 1;
+      h.cd[cd] = now;
+      questStep(p, day, room, ["play1", "play3"]);
+      const goal = { catch: ["catch20", 20], memory: ["memory6", 6], seek: ["seek3", 3] }[game];
+      if (counted >= goal[1]) questStep(p, day, room, goal[0]);
+      logEvent(p, now, me, "play", game + ":" + counted);
+      const out = worldAnswer(h, now, me, { coins, record, capped: coins < full });
+      await save();
+      return out;
+    }
+
+    case "claim": {
+      const i = Number(q.get("q"));
+      if (!Number.isInteger(i) || i < 0 || i > 2) return { error: "bad quest" };
+      const p = h.pet;
+      const qs = questsToday(p, utcDay(now), room);
+      const id = qs.ids[i];
+      if (qs.c[i]) return { error: "already claimed" };
+      if (qs.p[i] < QUESTS[id].n) return { error: "not done yet" };
+      qs.c[i] = true;
+      addCoins(p, QUESTS[id].reward);
+      p.xp += 2;
+      p.n.quests = (p.n.quests || 0) + 1;
+      logEvent(p, now, me, "quest", id);
+      const out = worldAnswer(h, now, me, { coins: QUESTS[id].reward });
+      await save();
+      return out;
+    }
+
+    case "quests": {
+      // Draws today's quests (before any action has) so a client can show them; changes nothing else.
+      const p = h.pet, day = utcDay(now);
+      if (p.q && p.q.day === day) return { ok: true, pet: petView(p, now) };
+      questsToday(p, day, room);
       bump(h, "pet");
       await save();
-      return { ok: true, pet: petView(h.pet, now) };
+      return { ok: true, pet: petView(p, now) };
     }
 
     case "set": {

@@ -10,7 +10,7 @@
 //   GET /unpair?room=R&me=a|b&key=K     -> { ok }                                (peer sees paired:false)
 //
 // Hearth (see README.md for every parameter and response):
-//   GET /hearth/sync|stroke|undo|clear|unclear|tap|care|set|unpair|reinvite?room=R&me=a|b&key=K&...
+//   GET /hearth/sync|stroke|undo|clear|unclear|tap|care|set|unpair|reinvite|buy|gift|open|use|place|dress|play|claim|quests?room=R&me=a|b&key=K&...
 //
 // Stats (see stats.js): anonymous install counts from the app and page views from the website, no ids of any kind.
 //   GET /stats/install?w=ID   GET /stats/view?p=PATH&r=HOST   GET /stats/installs   GET /stats/summary (Bearer token)
@@ -28,7 +28,8 @@ const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no I, L, O, 0, 1
 const CODE_TTL_MS = 10 * 60 * 1000;
 const ROOM_IDLE_MS = 30 * 24 * 60 * 60 * 1000; // a room nobody has beaten for 30 days is deleted
 const MAX_HEARTH_URL = 6000; // a stroke batch is kept under ~4 KB by the client; anything near the edge limit is refused
-const HEARTH_ROUTES = new Set(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite"]);
+const HEARTH_ROUTES = new Set(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite",
+  "buy", "gift", "open", "use", "place", "dress", "play", "claim", "quests"]);
 
 const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
 const hex = (b) => [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
