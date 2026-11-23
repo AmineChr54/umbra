@@ -8,6 +8,23 @@
   const mascot = window.HearthMascot;
   const app = document.getElementById("app");
 
+  // No scrollbars anywhere in Hearth (hearth.css hides them). Instead, a scrolling area marked .hm-fade softly fades
+  // out at an edge that has more behind it (.can-up / .can-down, kept in step here).
+  function fadeEdges(el) {
+    const up = el.scrollTop > 1, down = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    if (el.classList.contains("can-up") !== up) el.classList.toggle("can-up", up);
+    if (el.classList.contains("can-down") !== down) el.classList.toggle("can-down", down);
+  }
+  let fadeQueued = false;
+  const fadeAll = () => {
+    if (fadeQueued) return;
+    fadeQueued = true;
+    requestAnimationFrame(() => { fadeQueued = false; app.querySelectorAll(".hm-fade").forEach(fadeEdges); });
+  };
+  document.addEventListener("scroll", (e) => { const t = e.target; if (t && t.classList && t.classList.contains("hm-fade")) fadeEdges(t); }, true);
+  new MutationObserver(fadeAll).observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "class"] });
+  window.addEventListener("resize", fadeAll);
+
   const VIEWS = ["overview", "board", "pet"];
   const TABS = [["overview", "Us"], ["board", "Board"], ["pet", "Pet"]];
   const TAB_KEY = "tab";

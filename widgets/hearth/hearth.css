@@ -34,6 +34,18 @@
 }
 
 html, body { height: 100%; background: #000; }
+
+/* No scrollbars anywhere in Hearth: areas still scroll with the wheel, touch and keys, and .hm-fade areas fade out softly
+   at an edge with more to see (hearth.js sets .can-up / .can-down). */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.hm-fade { --hm-fade: 22px; overscroll-behavior: contain; }
+.hm-fade.can-down { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hm-fade)), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hm-fade)), transparent); }
+.hm-fade.can-up { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--hm-fade)); mask-image: linear-gradient(to bottom, transparent, #000 var(--hm-fade)); }
+.hm-fade.can-up.can-down {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--hm-fade), #000 calc(100% - var(--hm-fade)), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--hm-fade), #000 calc(100% - var(--hm-fade)), transparent);
+}
 body { margin: 0; padding: 5px; overflow: hidden; font-family: var(--hm-font); }
 
 .card {

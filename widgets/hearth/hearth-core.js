@@ -20,7 +20,8 @@
   "use strict";
 
   const HOST = "umbra-buddy-relay.umbra-server.workers.dev";
-  const HEARTH_ROUTES = Object.freeze(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite"]);
+  const HEARTH_ROUTES = Object.freeze(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite",
+    "buy", "gift", "open", "use", "place", "dress", "play", "claim", "quests"]);
   const MAX_URL = 6000; // the relay answers { error: "too long" } above this
   const CODE_TTL_MS = 10 * 60 * 1000;
   /** umbra.store keys (per copy). `pair` is the only place the key lives. */
@@ -91,12 +92,15 @@
   /** /pair?code=ABCD2345 (side b joins, or the side a reinvite names) */
   const pairJoinUrl = (code) => relayUrl("pair", { code });
 
+  /** An error raised before anything was sent: a bug or a state problem in the widget, never "the relay is unreachable". */
+  function localError(message) { const e = new Error(message); e.local = true; return e; }
+
   /** /hearth/<route>?room&me&key&...extra. Throws for an unknown route, a bad pairing or a URL the relay would refuse. */
   function hearthUrl(route, pairing, extra) {
-    if (!HEARTH_ROUTES.includes(route)) throw new Error("Unknown Hearth route: " + route);
-    if (!isPairing(pairing)) throw new Error("Not paired");
+    if (!HEARTH_ROUTES.includes(route)) throw localError("Unknown Hearth route: " + route);
+    if (!isPairing(pairing)) throw localError("Not paired");
     const u = relayUrl("hearth/" + route, Object.assign({ room: pairing.room, me: pairing.me, key: pairing.key }, extra));
-    if (u.length > MAX_URL) throw new Error("Request too long");
+    if (u.length > MAX_URL) throw localError("Request too long");
     return u;
   }
 
@@ -277,6 +281,7 @@
 
   const MSG = Object.freeze({
     offline: "Could not reach the relay. Try again in a moment.",
+    broken: "Something went wrong inside Hearth. Please report it from Umbra's Settings.",
     server: "The relay did not understand that. Please try again in a moment.",
     badCode: "That code does not look right. Check it and try again.",
     unknownCode: "That code is wrong or has expired. Ask your partner for a new one.",
@@ -671,7 +676,7 @@
      * rejects when the relay can't be reached. A successful change triggers a prompt sync. `paired: false` answers are handled here.
      */
     async function call(route, params) {
-      if (!pairing) throw new Error("Not paired");
+      if (!pairing) throw localError("Not paired");
       const p = pairing;
       const r = await deps.fetchJson(hearthUrl(route, p, params));
       const c = classify(r);

@@ -3,9 +3,11 @@
    and the extras that tricks show stay hidden without their animation. */
 
 .pw-scene { display: block; width: 100%; height: 100%; overflow: visible; }
+/* shop and room pictures: a still frame */
+.pw-still, .pw-still * { animation: none !important; transition: none !important; }
 
 /* the blob's feet (on the rug) are the pivot of everything it does */
-.pw-act, .pw-x { transform-box: view-box; transform-origin: 120px 214px; }
+.pw-act, .pw-x { transform-box: view-box; transform-origin: 120px 201px; }
 .pw-walker { transition: transform calc(2.6s * var(--motion-scale, 1)) ease-in-out; }
 .pw-twinkle, .pw-bulb, .pw-snow, .pw-fall, .pw-fall2, .pw-firefly, .pw-flame, .pw-bob, .pw-jb, .pw-burst, .pw-notefloat, .pw-toy, .pw-gift, .pw-sway, .pw-cloud, .pw-bird {
   transform-box: fill-box; transform-origin: 50% 50%;

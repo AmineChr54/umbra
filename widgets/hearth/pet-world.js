@@ -196,6 +196,7 @@
       room, phase: SKY[s.phase] ? s.phase : "day", season: ["winter", "spring", "summer", "autumn"].includes(s.season) ? s.season : "summer",
       holiday: typeof s.holiday === "string" ? s.holiday : "", gift: s.gift === "mine" || s.gift === "theirs" ? s.gift : "",
       asleep: !!s.asleep, now: Number(s.now) || 0,
+      pet: s.pet !== false, still: !!s.still,             // shop pictures: an empty room that does not move
     };
   }
   /** The key that decides a full redraw (the clock's hands, the walk and the looking are updated in place). */
@@ -224,16 +225,16 @@
     const rugArt = `<ellipse cx="120" cy="196" rx="84" ry="17" fill="${rug.fill}" stroke="${P.brown}" stroke-width="4"/>` +
       `<ellipse cx="120" cy="196" rx="64" ry="11" fill="none" stroke="${rug.ring}" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"/>`;
     // The blob: the mascot's own svg, placed on the rug inside a walker (moved by JS) and an act layer (tricks, idle acts).
-    const blob = M.renderSvg({ mood: o.mood, outfit: o.outfit, level: o.level, title: o.title }).replace("<svg ", `<svg x="68" y="112" width="104" height="104" `);
+    const blob = !o.pet ? "" : M.renderSvg({ mood: o.mood, outfit: o.outfit, level: o.level, title: o.title }).replace("<svg ", `<svg x="68" y="112" width="104" height="104" `);
     const night = dark ? `<rect class="pw-dark" x="-400" y="-400" width="1040" height="1040" fill="#1B2140" opacity="${dark}"/>` +
       `<circle class="pw-fireglow" cx="120" cy="110" r="52" fill="${P.butter}" opacity="${o.phase === "night" ? 0.14 : 0.08}"/>` +
       (lamp ? `<circle class="pw-lampglow" cx="206" cy="122" r="44" fill="${P.butter}" opacity="0.28"/>` : "") : "";
     const label = (o.title ? o.title + ", " : "") + "the blob's room" + (o.asleep ? ", asleep" : "");
-    return `<svg xmlns="http://www.w3.org/2000/svg" class="hm-scene pw-scene pw-${o.phase} pw-${o.season}${o.holiday ? " pw-h-" + o.holiday : ""}${o.asleep ? " pw-asleep" : ""}" viewBox="0 0 240 240" role="img" aria-label="${esc(label)}" data-mood="${esc(o.mood || "")}">` +
+    return `<svg xmlns="http://www.w3.org/2000/svg" class="hm-scene pw-scene pw-${o.phase} pw-${o.season}${o.holiday ? " pw-h-" + o.holiday : ""}${o.asleep ? " pw-asleep" : ""}${o.still ? " pw-still" : ""}" viewBox="0 0 240 240" role="img" aria-label="${esc(label)}" data-mood="${esc(o.mood || "")}">` +
       wall + floor + windowArt(o) + wallItem(o.room.wall, o.now) + hearth + mantelItem(o.room.mantel, o.holiday) +
       floorL(o.room.floorL) + floorR(o.room.floorR, lamp && dark > 0) + holidayFloor(o.holiday) + rugArt + toyArt(o.room.toy) + giftArt(o.gift) +
       holidaySky(o.holiday) +
-      `<g class="pw-walker"><g class="pw-act">${blob}</g>${EXTRAS()}</g>` + night +
+      (o.pet ? `<g class="pw-walker"><g class="pw-act">${blob}</g>${EXTRAS()}</g>` : "") + night +
       `</svg>`;
   }
 
@@ -247,6 +248,8 @@
    */
   function mount(el, state) {
     let cur = norm(state), key = "", timers = {}, walkX = 0, lookAt = [0, 0];
+    // What is playing right now, so a redraw in the middle (a mood or face change) carries it on instead of wiping it.
+    const playing = { react: null, act: null };
     const root = () => el.querySelector("svg.pw-scene");
     const blob = () => el.querySelector("svg.pw-scene svg.hm");
     function draw() {
@@ -256,6 +259,25 @@
       el.innerHTML = renderRoom(cur);
       walk(walkX, true);
       look(lookAt[0], lookAt[1]);
+      resume();
+    }
+    /** Put a running reaction or act back on the new markup, rewound to where it was (negative delays on every animated part). */
+    function resume() {
+      const t = Date.now();
+      for (const [kind, node, prefix] of [["react", blob(), "hm-react-"], ["act", root(), "pw-act-"]]) {
+        const p = playing[kind];
+        if (!p || !node) continue;
+        const left = p.until - t;
+        if (left <= 120) { playing[kind] = null; continue; }
+        node.classList.add(prefix + p.name);
+        rewind(node, t - p.at);
+      }
+    }
+    function rewind(node, ms) {
+      if (!(ms > 0) || typeof node.getAnimations !== "function") return;
+      for (const a of node.getAnimations({ subtree: true })) {
+        try { if (a.playState !== "finished") a.currentTime = (Number(a.currentTime) || 0) + ms; } catch (e) { /* ignore */ }
+      }
     }
     function walk(x, instant) {
       walkX = Math.max(-46, Math.min(46, Number(x) || 0));
@@ -280,8 +302,9 @@
         M.REACTIONS.forEach((r) => svg.classList.remove("hm-react-" + r));
         void svg.getBoundingClientRect();
         svg.classList.add("hm-react-" + name);
+        playing.react = { name, at: Date.now(), until: Date.now() + M.REACTION_MS };
         clearTimeout(timers.react);
-        timers.react = setTimeout(() => svg.classList.remove("hm-react-" + name), M.REACTION_MS);
+        timers.react = setTimeout(() => { playing.react = null; const n = blob(); if (n) n.classList.remove("hm-react-" + name); }, M.REACTION_MS);
       },
       /** Play "pw-act-<name>" on the room for `ms` (a trick or an idle act). Returns false when motion is off. */
       act(name, ms) {
@@ -290,8 +313,9 @@
         for (const c of [...r.classList]) if (c.startsWith("pw-act-")) r.classList.remove(c);
         void r.getBoundingClientRect();
         r.classList.add("pw-act-" + name);
+        playing.act = { name, at: Date.now(), until: Date.now() + (ms || 2400) };
         clearTimeout(timers.act);
-        timers.act = setTimeout(() => { const n = root(); if (n) n.classList.remove("pw-act-" + name); }, ms || 2400);
+        timers.act = setTimeout(() => { playing.act = null; const n = root(); if (n) n.classList.remove("pw-act-" + name); }, ms || 2400);
         return true;
       },
       look, walk,

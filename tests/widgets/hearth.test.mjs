@@ -214,6 +214,15 @@ test("urls: HTTPS to the declared host, all parameters encoded, unknown routes a
   for (const r of H.HEARTH_ROUTES) assert.doesNotThrow(() => H.hearthUrl(r, p));
 });
 
+test("the widget knows every route the relay serves (a missing one breaks a whole feature silently)", async () => {
+  const { HEARTH_ROUTES: relay } = await import("../../tools/umbra-relay/hearth.js");
+  assert.deepEqual([...H.HEARTH_ROUTES].sort(), [...relay].sort());
+  const p = { room: "0".repeat(31) + "1", me: "a", key: "f".repeat(32) };
+  for (const r of ["buy", "gift", "open", "use", "place", "dress", "play", "claim", "quests"]) {
+    assert.match(H.hearthUrl(r, p, { item: "berry_tart" }), new RegExp("/hearth/" + r + "\?"));
+  }
+});
+
 test("pairing records and fingerprints", () => {
   const p = { room: "0".repeat(31) + "1", me: "b", key: "f".repeat(32) };
   assert.equal(H.isPairing(p), true);

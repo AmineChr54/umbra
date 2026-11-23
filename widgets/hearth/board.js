@@ -375,7 +375,7 @@
       ui.preview = null;
       el.gallery.innerHTML = head("Saved pictures") +
         (gallery.length
-          ? `<p class="bd-gal-sub num">${gallery.length} of ${L.GALLERY.maxItems}. ${archiveFolder ? "Every picture is also in your " + esc(archiveFolder) + " folder." : "The oldest goes first when it is full."}</p><div class="bd-thumbs">` +
+          ? `<p class="bd-gal-sub num">${gallery.length} of ${L.GALLERY.maxItems}. ${archiveFolder ? "Every picture is also in your " + esc(archiveFolder) + " folder." : "The oldest goes first when it is full."}</p><div class="bd-thumbs hm-fade">` +
             gallery.slice().reverse().map((g) => `<button type="button" class="thumb" data-a="gal-open" data-id="${esc(g.id)}" title="${esc(fmt(g.at))}"><img alt="Saved picture from ${esc(fmt(g.at))}" src="${g.png}"></button>`).join("") + "</div>"
           : '<p class="bd-gal-sub">Nothing saved yet. Press Save to keep a small copy of the board.</p>');
     }

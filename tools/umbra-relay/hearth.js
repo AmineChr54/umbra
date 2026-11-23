@@ -29,6 +29,10 @@ export const LIMITS = {
   removalLog: 64,           // undone stroke ids remembered for incremental sync
 };
 
+/** Every /hearth/<route> the Worker serves. The widget keeps the same list (widgets/hearth/hearth-core.js, checked by a test). */
+export const HEARTH_ROUTES = new Set(["sync", "stroke", "undo", "clear", "unclear", "tap", "care", "set", "unpair", "reinvite",
+  "buy", "gift", "open", "use", "place", "dress", "play", "claim", "quests"]);
+
 export const PET = {
   min: 10, max: 100, start: 70,                                 // a stat never goes below `min`: the pet is sad, never dead
   rate: { food: 1.25, water: 1.875, love: 0.9375 },             // points lost per hour, from SERVER time
