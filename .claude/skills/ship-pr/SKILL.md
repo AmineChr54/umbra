@@ -1,5 +1,5 @@
 ---
-name: ship
+name: ship-pr
 description: Commit and push the current issue or task, open a PR, wait for CI, then hand it to a fresh-context reviewer agent that merges it if everything is okay. Use for "ship this", "commit and PR this", "turn this into a PR and get it reviewed and merged".
 ---
 
