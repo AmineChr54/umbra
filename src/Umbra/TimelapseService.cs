@@ -32,6 +32,9 @@ sealed class TimelapseService : IDisposable
     /// <summary>How long stills must keep failing before the session gives up (see <see cref="MaxFailures"/>).</summary>
     public static readonly TimeSpan FailureWindow = TimeSpan.FromMinutes(2);
 
+    /// <summary>The shortest wait before reopening a camera after a failed still, so a short interval doesn't blink its light every second.</summary>
+    public static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(5);
+
     /// <summary>How often a paused session checks whether it may go on.</summary>
     public static readonly TimeSpan PausePoll = TimeSpan.FromSeconds(1);
 
@@ -278,6 +281,12 @@ sealed class TimelapseService : IDisposable
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     Log.Write($"[{s.Instance}] timelapse still failed: {ex.Message}");
+                    if (ex is UnauthorizedAccessException)
+                    {
+                        // The camera privacy switch was turned off meanwhile: retrying won't help, so say so at once.
+                        lock (_gate) s.Error = CameraError(ex);
+                        break;
+                    }
                     // Reopen for the next still: a camera that was lost (display off, sleep, another app, privacy switch)
                     // or left in a bad state ("PhotoState") usually works again with a new MediaCapture.
                     Close();
@@ -289,6 +298,7 @@ sealed class TimelapseService : IDisposable
                     }
                 }
                 due = TimelapsePlan.NextDue(due, s.Plan.Interval, _now());
+                if (failures > 0 && due < _now() + RetryDelay) due = _now() + RetryDelay;
             }
         }
         catch (OperationCanceledException) { }
