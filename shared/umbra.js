@@ -252,8 +252,9 @@
    * Windows toast from this widget. Needs permissions.notifications and the user's per-widget switch; 5 per 10 minutes.
    * Clicking opens url (HTTPS, host in permissions.hosts). tag replaces this widget's earlier toast with the same tag.
    * actions (up to 2 of { id, label }) become buttons; a click calls the umbra.onNotificationAction handlers.
+   * silent: true shows it without the system sound (for a widget that just played its own).
    */
-  const notify = ({ title, body, url, tag, actions }) => request({ type: "notify", title, body, url, tag, actions }, 10000);
+  const notify = ({ title, body, url, tag, actions, silent }) => request({ type: "notify", title, body, url, tag, actions, silent: silent === true }, 10000);
   /**
    * true when this widget may notify. When the user has not decided yet, Umbra shows its own "Allow notifications?"
    * prompt, but only when called right after a click on the widget (otherwise it rejects); waits up to 2 minutes for the answer.

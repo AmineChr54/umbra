@@ -82,8 +82,13 @@ public class TimelapseTests : IDisposable
     sealed class FakeCamera : ITimelapseCamera
     {
         public int Shots, FailFrom = int.MaxValue;
-        public bool Opened, Disposed;
-        public Task OpenAsync(CancellationToken ct) { Opened = true; return Task.CompletedTask; }
+        public bool Opened, Disposed, OpenFails;
+        public Task OpenAsync(CancellationToken ct)
+        {
+            if (OpenFails) throw new UnauthorizedAccessException("blocked");
+            Opened = true;
+            return Task.CompletedTask;
+        }
         public Task CaptureAsync(string path, CancellationToken ct)
         {
             if (Shots >= FailFrom) throw new IOException("camera gone");
@@ -187,6 +192,63 @@ public class TimelapseTests : IDisposable
         Assert.Equal(3, cam.Shots);
         Assert.Equal(3, Assert.Single(renders).Frames.Count); // the 3 good stills still become a video
         Assert.Contains("camera", svc.Status("demo")["error"]!.GetValue<string>());
+    }
+
+    /// <summary>A service whose camera factory hands out the cameras <paramref name="next"/> makes (one per open), on a fake clock.</summary>
+    (TimelapseService Service, List<FakeCamera> Cameras, FakeClock Clock) MakeReopening(Func<int, FakeCamera> next)
+    {
+        var cams = new List<FakeCamera>();
+        var clock = new FakeClock();
+        var svc = new TimelapseService(_root, () => { var c = next(cams.Count); cams.Add(c); return c; },
+            (_, _, output, _) => { File.WriteAllText(output, "mp4"); return Task.CompletedTask; },
+            () => clock.Now, clock.Delay, _ => 10_000_000_000);
+        return (svc, cams, clock);
+    }
+
+    [Fact]
+    public async Task A_camera_that_stops_answering_is_reopened_and_the_session_goes_on()
+    {
+        // The first camera dies after 2 stills (the "PhotoState" case), the next one fails its first still too, the third works.
+        var (svc, cams, _) = MakeReopening(i => new FakeCamera { FailFrom = i switch { 0 => 2, 1 => 0, _ => int.MaxValue } });
+        svc.Start("demo", "demo", TimelapsePlan.Create(5, 1, 10), Out);
+        await svc.Completion;
+
+        Assert.Equal(3, cams.Count);
+        Assert.Equal(10, cams.Sum(c => c.Shots));
+        Assert.All(cams, c => Assert.True(c.Disposed));
+        var status = svc.Status("demo");
+        Assert.Null(status["error"]);
+        Assert.NotNull(status["file"]);
+    }
+
+    [Fact]
+    public async Task A_camera_that_cant_be_reopened_gives_up_only_after_the_failure_window()
+    {
+        var (svc, cams, clock) = MakeReopening(i => new FakeCamera { FailFrom = i == 0 ? 3 : int.MaxValue, OpenFails = i > 0 });
+        var started = clock.Now;
+        DateTime? gaveUp = null;
+        svc.Changed += (_, s) => { if (s["state"]!.GetValue<string>() == "rendering") gaveUp ??= clock.Now; };
+        svc.Start("demo", "demo", TimelapsePlan.Create(5, 100, 10), Out);
+        await svc.Completion;
+
+        Assert.Equal(3, cams[0].Shots);
+        Assert.True(cams.Count > TimelapseService.MaxFailures); // every failure tried a fresh camera
+        Assert.True(gaveUp - started >= TimelapseService.FailureWindow);
+        var status = svc.Status("demo");
+        Assert.Contains("stopped answering", status["error"]!.GetValue<string>());
+        Assert.NotNull(status["file"]); // the 3 good stills still become a video
+        Assert.All(cams, c => Assert.True(c.Disposed));
+    }
+
+    [Fact]
+    public async Task The_first_open_failing_still_ends_the_session_at_once_with_the_reason()
+    {
+        var (svc, cams, _) = MakeReopening(_ => new FakeCamera { OpenFails = true });
+        svc.Start("demo", "demo", TimelapsePlan.Create(5, 1, 10), Out);
+        await svc.Completion;
+
+        Assert.Single(cams);
+        Assert.Contains("Windows blocked the camera", svc.Status("demo")["error"]!.GetValue<string>());
     }
 
     [Fact]

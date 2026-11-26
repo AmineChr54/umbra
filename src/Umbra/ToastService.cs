@@ -64,10 +64,10 @@ sealed class ToastService
     /// without one every toast stacks. <paramref name="onUrl"/> / <paramref name="onAction"/> run on a thread-pool thread. Throws if Windows rejects it.
     /// </summary>
     public void Show(string instance, string widgetName, string title, string body, string? url, string? tag,
-        IReadOnlyList<NotifyAction> actions, Action<string> onUrl, Action<string> onAction)
+        IReadOnlyList<NotifyAction> actions, bool silent, Action<string> onUrl, Action<string> onAction)
     {
         var xml = new XmlDocument();
-        xml.LoadXml(Notifier.ToastXml(widgetName, title, body, actions));
+        xml.LoadXml(Notifier.ToastXml(widgetName, title, body, actions, silent));
         var toast = new ToastNotification(xml)
         {
             Group = Notifier.ToastKey(instance),

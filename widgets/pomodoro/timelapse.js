@@ -53,6 +53,7 @@
   /** Plain-words version of a host error. */
   function friendly(msg) {
     const m = String(msg || "");
+    if (/stopped answering/i.test(m)) return "The camera stopped working (another app may be using it, or it was turned off).";
     if (/disk space/i.test(m)) return `${m.replace(/\.?$/, ".")} A slower speed needs less.`;
     if (/click/i.test(m)) return "Click Start on the widget to begin the timelapse.";
     if (/den(y|ied)|not allowed|approv|declin/i.test(m)) return "Camera access was not allowed for this widget. Allow it in Settings > My widgets.";

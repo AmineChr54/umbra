@@ -63,13 +63,19 @@ public sealed class Notifier
         return list;
     }
 
+    /// <summary>The optional <c>silent</c> flag of <c>umbra.notify</c>: only a JSON <c>true</c> counts.</summary>
+    public static bool IsSilent(JsonNode? msg) => msg?["silent"]?.GetValueKind() == JsonValueKind.True;
+
     static string? Str(JsonNode? n) => n is JsonValue v && v.GetValueKind() == JsonValueKind.String ? v.GetValue<string>() : null;
 
     /// <summary>Short stable hex name for a toast tag or group (Windows caps both at 64 characters and the widget text is free-form).</summary>
     public static string ToastKey(string s) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(s)), 0, 8).ToLowerInvariant();
 
-    /// <summary>The toast payload: title, optional body, the widget's name as attribution, up to two buttons. Text is XML-escaped by <see cref="XElement"/>.</summary>
-    public static string ToastXml(string widgetName, string title, string body, IReadOnlyList<NotifyAction> actions)
+    /// <summary>
+    /// The toast payload: title, optional body, the widget's name as attribution, up to two buttons, and no sound when
+    /// <paramref name="silent"/> (the widget played its own). Text is XML-escaped by <see cref="XElement"/>.
+    /// </summary>
+    public static string ToastXml(string widgetName, string title, string body, IReadOnlyList<NotifyAction> actions, bool silent = false)
     {
         var binding = new XElement("binding", new XAttribute("template", "ToastGeneric"), new XElement("text", title));
         if (body.Length > 0) binding.Add(new XElement("text", body));
@@ -78,6 +84,7 @@ public sealed class Notifier
         if (actions.Count > 0)
             toast.Add(new XElement("actions", actions.Select(a => new XElement("action",
                 new XAttribute("content", a.Label), new XAttribute("arguments", ActionPrefix + a.Id), new XAttribute("activationType", "foreground")))));
+        if (silent) toast.Add(new XElement("audio", new XAttribute("silent", "true")));
         return toast.ToString(SaveOptions.DisableFormatting);
     }
 

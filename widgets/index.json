@@ -404,12 +404,12 @@
     {
       "id": "pomodoro",
       "name": "Pomodoro",
-      "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Pause, skip, add 5 minutes, a toast at each phase change and a daily tally of focus minutes. Optional webcam timelapse of the whole session (replaces Study Time-Lapse). Survives restarts.",
+      "description": "A focus session like Windows Focus: pick the total minutes, optionally split into 22-33 min focus blocks with 5 min breaks, then follow the ring. Breaks and focus periods start on their own. Pause, skip, add 5 minutes, a sound as a break starts and ends, a toast at each phase change and a daily tally of focus minutes. Optional webcam timelapse of the whole session (replaces Study Time-Lapse). Survives restarts.",
       "author": "AmineChr54",
-      "version": "2.3.4",
+      "version": "2.4.0",
       "category": "productivity",
       "manifestVersion": 1,
-      "changelog": "Starting a session asks once whether Pomodoro may show notifications, so the phase toasts actually appear.",
+      "changelog": "Breaks and focus periods start on their own again (the old switch could be stuck off since 1.x). A soft chime as a break starts and a brighter one as it ends. The timelapse reopens the camera when it stops answering instead of ending.",
       "preview": "preview.png",
       "icon": "icon.png",
       "hosts": [],
@@ -422,6 +422,7 @@
         "pomodoro.js",
         "preview.png",
         "session.js",
+        "sounds.js",
         "timelapse.css",
         "timelapse.js",
         "widget.json"
