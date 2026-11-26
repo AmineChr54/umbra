@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: Reviews one Umbra PR with fresh context against its issue and CLAUDE.md, tests it on this PC (local CI in Docker and on the host, the real app as a portable copy, captures of what changed), then merges it if everything is okay. Started by the ship skill with a PR number and head SHA. Use only when merging is intended; for a review without a merge use host-reviewer.
+description: Reviews one Umbra PR with fresh context against its issue and CLAUDE.md, tests it on this PC (local CI in Docker and on the host, the real app as a portable copy, captures of what changed), then merges it if everything is okay. Started by the ship-pr skill with a PR number and head SHA. Use only when merging is intended; for a review without a merge use host-reviewer.
 tools: Read, Glob, Grep, Bash, PowerShell
 ---
 

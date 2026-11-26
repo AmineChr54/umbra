@@ -23,8 +23,13 @@ const side = () => (pair?.side === "right" ? "right" : "left");
 
 async function save(p) {
   pair = p;
+  stayAwake();
   if (p) await umbra.store.set("pair", p); else await umbra.store.remove("pair");
 }
+
+// While paired, keep beating when Umbra hides this widget (a background group tab, hide-on-fullscreen): otherwise it is
+// suspended after 30 s and the friend sees us offline until the widget is shown again.
+const stayAwake = () => umbra.keepAlive?.(!!pair);
 
 // The two stars are the owners' own drawings, white on transparent. star1.png is always the left star and star2.png the
 // right one, so both PCs show the same picture; pair.side says which of them is "me" here. Whoever creates the code starts
@@ -142,7 +147,7 @@ async function beat() {
   } catch (e) { offline = true; }   // keep the last known state when the relay is unreachable
 }
 
-const loaded = umbra.ready.then(async () => { pair = await umbra.store.get("pair", null); names = await umbra.store.get("names", null); });
+const loaded = umbra.ready.then(async () => { pair = await umbra.store.get("pair", null); names = await umbra.store.get("names", null); stayAwake(); });
 umbra.every(async () => { await loaded; await beat(); if (!pop || pop.type === "menu") render(); });
 umbra.onSettings(render);
-umbra.store.onChange(async () => { names = await umbra.store.get("names", null); pair = await umbra.store.get("pair", null); peer = pair ? { online: false, seen: 0 } : null; render(); });
+umbra.store.onChange(async () => { names = await umbra.store.get("names", null); pair = await umbra.store.get("pair", null); stayAwake(); peer = pair ? { online: false, seen: 0 } : null; render(); });
