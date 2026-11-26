@@ -37,13 +37,13 @@ sealed class App : IUmbraHost
     /// <summary>The click-gated "Allow notifications?" prompt state (umbra.requestNotifications).</summary>
     public NotificationConsent NotificationConsent { get; } = new();
 
-    /// <summary>Shows a widget's notification unless its rate limit is used up (the other checks are done by the window).</summary>
-    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag, IReadOnlyList<NotifyAction> actions)
+    /// <summary>Shows a widget's notification unless its rate limit is used up (the other checks are done by the window); <paramref name="silent"/> asks for no sound.</summary>
+    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag, IReadOnlyList<NotifyAction> actions, bool silent = false)
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
         Log.Write($"[{instance}] notify: {title}");
         _notifications ??= new LinuxNotifications(DBus.Session, (inst, t, action) => Window(inst)?.NotificationAction(t, action));
-        _ = _notifications.ShowAsync(instance, widgetName, title, body, url, tag, actions)
+        _ = _notifications.ShowAsync(instance, widgetName, title, body, url, tag, actions, silent)
             .ContinueWith(t => Log.Write($"[{instance}] notification failed: {t.Exception?.GetBaseException().Message}"), TaskContinuationOptions.OnlyOnFaulted);
         return true;
     }

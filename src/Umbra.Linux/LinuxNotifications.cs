@@ -84,14 +84,19 @@ sealed class LinuxNotifications
         return _bodyMarkup.Value;
     }
 
-    /// <summary>Shows one notification (the caller already applied the rate limit). A tag replaces the widget's earlier notification with that tag.</summary>
-    public async Task ShowAsync(string instance, string widgetName, string title, string body, string? url, string? tag, IReadOnlyList<NotifyAction> actions)
+    /// <summary>
+    /// Shows one notification (the caller already applied the rate limit). A tag replaces the widget's earlier notification with that tag;
+    /// <paramref name="silent"/> sends the <c>suppress-sound</c> hint (the widget played its own sound).
+    /// </summary>
+    public async Task ShowAsync(string instance, string widgetName, string title, string body, string? url, string? tag, IReadOnlyList<NotifyAction> actions, bool silent = false)
     {
         if (_bus == IntPtr.Zero) { Log.Write($"[{instance}] notify: no session bus"); return; }
         EnsureSubscribed();
         var markup = await BodyMarkupAsync();
         var replaces = tag is not null && _byTag.TryGetValue((instance, tag), out var old) ? old : 0u;
-        var hints = V.Dict([("desktop-entry", V.Str(DesktopEntry.AppId)), ("urgency", "byte 1")]);
+        List<(string, string)> hintList = [("desktop-entry", V.Str(DesktopEntry.AppId)), ("urgency", "byte 1")];
+        if (silent) hintList.Add(("suppress-sound", V.Bool(true)));
+        var hints = V.Dict(hintList);
         var args = $"({V.Str(widgetName)}, {V.UInt(replaces)}, {V.Str(Icon())}, {V.Str(title)}, {V.Str(markup ? EscapeMarkup(body) : body)}, "
             + $"{ActionList(url is not null, actions)}, {hints}, -1)";
         try

@@ -196,3 +196,35 @@ test("no input asks for the keyboard from its own focus event (the host refocus 
   const js = readFileSync(new URL("../../widgets/pomodoro/pomodoro.js", import.meta.url), "utf8");
   assert.doesNotMatch(js, /(onfocus\s*=|addEventListener\(\s*["']focus(in)?["'])[^\n]*requestFocus/);
 });
+
+const Sounds = createRequire(import.meta.url)("../../widgets/pomodoro/sounds.js");
+
+test("break sounds: a soft one as a break starts (and at the end), a bright one as focus starts again", () => {
+  const s = S.create(60, true);
+  assert.equal(Sounds.kindFor({ type: "phaseStart", idx: 1, kind: "break" }, s), "break");
+  assert.equal(Sounds.kindFor({ type: "phaseStart", idx: 2, kind: "focus" }, s), "focus");
+  assert.equal(Sounds.kindFor({ type: "phaseStart", idx: 1 }, s), "break"); // kind read from the plan when the event lacks it
+  assert.equal(Sounds.kindFor({ type: "done" }, s), "break");
+  for (const type of ["start", "pause", "phaseEnd", "extend", "end"]) assert.equal(Sounds.kindFor({ type, idx: 0 }, s), null);
+  assert.equal(Sounds.kindFor(null, s), null);
+  assert.notDeepEqual(Sounds.VOICES.break, Sounds.VOICES.focus);
+});
+
+test("break sounds: without Web Audio play() answers false, so the toast keeps its own sound", async () => {
+  assert.equal(await Sounds.play("break"), false);
+  assert.equal(await Sounds.play("nope"), false);
+});
+
+test("a camera that stopped answering gets plain words", () => {
+  assert.match(T.friendly("The camera stopped answering (The op is invalid. PhotoState)"), /^The camera stopped working/);
+});
+
+test("auto-continue reads its own option, not 1.x's autoStart (saved as false for 1.x users)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const js = readFileSync(new URL("../../widgets/pomodoro/pomodoro.js", import.meta.url), "utf8");
+  const manifest = JSON.parse(readFileSync(new URL("../../widgets/pomodoro/widget.json", import.meta.url), "utf8"));
+  assert.match(js, /umbra\.options\.autoContinue !== false/);
+  assert.doesNotMatch(js, /options\.autoStart/);
+  assert.equal(manifest.options.autoContinue.default, true);
+  assert.equal(manifest.options.autoStart, undefined);
+});

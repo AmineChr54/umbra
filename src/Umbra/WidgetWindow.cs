@@ -1161,7 +1161,7 @@ sealed class WidgetWindow : Form, IWidgetView
         else if (title.Length == 0) error = "A title is required";
         else if (url is not null && !Manifest.AllowsUrl(url)) error = "url must be HTTPS on a host in permissions.hosts";
         else if (actions is null) error = actionError;
-        else if (!_app.Notify(Instance, InstanceId.Label(Manifest, Instance), title, body, url, tag, actions)) error = "Rate limit reached (5 per 10 minutes)";
+        else if (!_app.Notify(Instance, InstanceId.Label(Manifest, Instance), title, body, url, tag, actions, Notifier.IsSilent(msg))) error = "Rate limit reached (5 per 10 minutes)";
         reply["ok"] = error is null;
         if (error is not null) reply["error"] = error;
         Post(reply);

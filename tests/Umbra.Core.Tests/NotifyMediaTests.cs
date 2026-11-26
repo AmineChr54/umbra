@@ -52,6 +52,23 @@ public class NotifyMediaTests
     }
 
     [Fact]
+    public void ToastXml_is_silent_only_when_asked()
+    {
+        var quiet = System.Xml.Linq.XDocument.Parse(Notifier.ToastXml("W", "T", "B", [], silent: true));
+        Assert.Equal("true", (string?)Assert.Single(quiet.Descendants("audio")).Attribute("silent"));
+        Assert.Empty(System.Xml.Linq.XDocument.Parse(Notifier.ToastXml("W", "T", "B", [])).Descendants("audio"));
+    }
+
+    [Theory]
+    [InlineData("""{"silent":true}""", true)]
+    [InlineData("""{"silent":false}""", false)]
+    [InlineData("""{"silent":"true"}""", false)]
+    [InlineData("""{"silent":1}""", false)]
+    [InlineData("""{}""", false)]
+    public void IsSilent_needs_a_json_true(string json, bool expected) =>
+        Assert.Equal(expected, Notifier.IsSilent(System.Text.Json.Nodes.JsonNode.Parse(json)));
+
+    [Fact]
     public void ToastKey_is_short_stable_and_distinct()
     {
         Assert.Equal(Notifier.ToastKey("sp500#2"), Notifier.ToastKey("sp500#2"));

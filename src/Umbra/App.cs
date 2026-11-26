@@ -860,9 +860,10 @@ sealed class App : ApplicationContext, IUmbraHost
     /// <summary>"Name" for the first copy of a widget, "Name (2)" for the others.</summary>
     /// <summary>
     /// Shows a widget's notification as a Windows toast (clicking opens <paramref name="url"/>; buttons go back to the widget) unless its
-    /// rate limit is used up. Falls back to a tray balloon when toasts can't be created or shown.
+    /// rate limit is used up. Falls back to a tray balloon when toasts can't be created or shown. <paramref name="silent"/> drops the
+    /// toast's sound (the balloon has no such switch).
     /// </summary>
-    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag = null, IReadOnlyList<NotifyAction>? actions = null)
+    public bool Notify(string instance, string widgetName, string title, string body, string? url, string? tag = null, IReadOnlyList<NotifyAction>? actions = null, bool silent = false)
     {
         if (!_notifier.TryAcquire(instance, DateTime.UtcNow)) return false;
         Log.Write($"[{instance}] notify: {title}");
@@ -871,7 +872,7 @@ sealed class App : ApplicationContext, IUmbraHost
         {
             try
             {
-                toasts.Show(instance, widgetName, title, body, url, tag, actions ?? [],
+                toasts.Show(instance, widgetName, title, body, url, tag, actions ?? [], silent,
                     u => _ui.Post(_ => WebHost.OpenExternal(u), null),
                     id => _ui.Post(_ => Window(instance)?.NotificationAction(tag, id), null));
                 return true;

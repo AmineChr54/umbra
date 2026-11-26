@@ -8,7 +8,7 @@ const app = q("app"), arc = q("arc");
 const R = 54, CIRC = 2 * Math.PI * R, MIN = 60000;
 const LIVE_MS = 60000; // a phase change older than this (caught up after a restart) gets no toast
 
-const T = window.PomodoroTimelapse;
+const T = window.PomodoroTimelapse, Sounds = window.PomodoroSounds;
 let session = null, setup = { minutes: 60, breaks: false }, log = {}, timer = null, menuOpen = false;
 // Timelapse: settings in store key "timelapse"; tlState is the host's latest state, tlError a plain-words failure.
 // The camera only starts from a click (Start focus session, or Start on the status pill), never automatically. The host has no
@@ -22,7 +22,8 @@ const fmtClock = (ms) => {
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${String(m).padStart(2, "0")}:${ss}`;
 };
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
-const auto = () => umbra.options.autoStart !== false;
+// "autoContinue", not 1.x's "autoStart": that one was saved as false (its old default) for everyone who had 1.x.
+const auto = () => umbra.options.autoContinue !== false;
 const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
 const store = (k, v) => umbra.store.set(k, v).catch(() => {});
 
@@ -37,7 +38,7 @@ function emit(events) {
     for (const fn of listeners) { try { fn(e, session); } catch (err) { console.error(err); } }
   }
   const last = events.filter((e) => e.type === "phaseStart" || e.type === "done").at(-1);
-  if (last && Date.now() - last.at < LIVE_MS) notify(last);
+  if (last && Date.now() - last.at < LIVE_MS) announce(last);
 }
 
 function apply(r) {
@@ -63,7 +64,17 @@ function phaseTitle(s, i = s.idx) {
   return s.phases[i].kind === "focus" ? `Focus period ${n} of ${of}` : `${s.phases[i].min} min break`;
 }
 
-function notify(e) {
+/**
+ * A live phase change: the break sound (when on), then the toast. The toast is silent when the sound played, so the user hears
+ * one sound; when the page may not play audio yet (no click since a reload) the toast keeps the Windows sound.
+ */
+function announce(e) {
+  const s = session; // apply() clears a finished session right after emit, so the toast gets it now
+  const kind = umbra.options.sound === false ? null : Sounds.kindFor(e, s);
+  (kind ? Sounds.play(kind) : Promise.resolve(false)).catch(() => false).then((played) => notify(e, s, played));
+}
+
+function notify(e, session, silent) {
   if (umbra.options.notify === false || !session) return;
   let title, body;
   if (e.type === "done") { title = "Focus session complete"; body = `You focused for ${fmtMin(Math.round((session.focused || 0) / MIN))}.`; }
@@ -74,7 +85,7 @@ function notify(e) {
       : `${p.min} minutes of focus.${nxt ? ` Up next: ${nxt.min} min break.` : " Last one."}`;
     if (!e.auto) body += " Start it from the widget.";
   }
-  umbra.notify?.({ title, body, tag: "pomodoro-phase" })?.catch?.(() => {});
+  umbra.notify?.({ title, body, tag: "pomodoro-phase", silent: !!silent })?.catch?.(() => {});
 }
 
 /**
@@ -240,6 +251,7 @@ q("tl-act").onclick = startTl;
 q("start").onclick = startSession;
 q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
+document.addEventListener("pointerdown", () => Sounds.unlock(), true); // a press lets later break sounds play
 document.addEventListener("pointerdown", (e) => { if (menuOpen && !e.target.closest("#menu, #more")) { menuOpen = false; render(); } });
 const menuAction = (fn) => () => { menuOpen = false; if (session) apply(fn(session, now())); };
 q("reset").onclick = menuAction((s, t) => S.end(s, t)); // same as End session in the menu: keeps the focus time and makes the video

@@ -23,8 +23,14 @@ interface ITimelapseCamera : IDisposable
 /// </summary>
 sealed class TimelapseService : IDisposable
 {
-    /// <summary>The session gives up after this many failed stills in a row (camera unplugged, taken by another app).</summary>
+    /// <summary>
+    /// The session gives up after this many failed stills in a row (camera unplugged, taken by another app), and only once
+    /// they span <see cref="FailureWindow"/>: each failure reopens the camera, so a short dropout doesn't end the recording.
+    /// </summary>
     public const int MaxFailures = 5;
+
+    /// <summary>How long stills must keep failing before the session gives up (see <see cref="MaxFailures"/>).</summary>
+    public static readonly TimeSpan FailureWindow = TimeSpan.FromMinutes(2);
 
     /// <summary>How often a paused session checks whether it may go on.</summary>
     public static readonly TimeSpan PausePoll = TimeSpan.FromSeconds(1);
@@ -228,6 +234,8 @@ sealed class TimelapseService : IDisposable
         {
             var due = _now();
             var failures = 0;
+            var firstFailure = DateTime.MinValue;
+            var everOpened = false;
             while (frames.Count < s.Plan.Frames)
             {
                 var wait = due - _now();
@@ -246,14 +254,21 @@ sealed class TimelapseService : IDisposable
                     lock (_gate) { s.LowDisk = true; s.Error = "The disk is almost full, so recording stopped"; }
                     break;
                 }
-                if (camera is null)
+                if (!everOpened)
                 {
+                    // The session's first open: a failure here (privacy setting, no camera) ends it at once with the reason.
                     camera = _camera();
                     await camera.OpenAsync(ct).ConfigureAwait(false);
+                    everOpened = true;
                 }
                 var file = TimelapsePlan.FramePath(s.Dir, frames.Count);
                 try
                 {
+                    if (camera is null)
+                    {
+                        camera = _camera(); // after a failed still or a pause: a fresh capture object
+                        await camera.OpenAsync(ct).ConfigureAwait(false);
+                    }
                     await camera.CaptureAsync(file, ct).ConfigureAwait(false);
                     frames.Add(file);
                     failures = 0;
@@ -263,7 +278,15 @@ sealed class TimelapseService : IDisposable
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     Log.Write($"[{s.Instance}] timelapse still failed: {ex.Message}");
-                    if (++failures >= MaxFailures) { lock (_gate) s.Error = $"The camera stopped answering ({ex.Message})"; break; }
+                    // Reopen for the next still: a camera that was lost (display off, sleep, another app, privacy switch)
+                    // or left in a bad state ("PhotoState") usually works again with a new MediaCapture.
+                    Close();
+                    if (failures++ == 0) firstFailure = _now();
+                    if (failures >= MaxFailures && _now() - firstFailure >= FailureWindow)
+                    {
+                        lock (_gate) s.Error = $"The camera stopped answering ({ex.Message})";
+                        break;
+                    }
                 }
                 due = TimelapsePlan.NextDue(due, s.Plan.Interval, _now());
             }
@@ -385,10 +408,13 @@ sealed class TimelapseService : IDisposable
         /// <summary>Stills are taken at the largest photo size up to this width (720p): enough for a 720p video, small on disk.</summary>
         const uint MaxWidth = 1280;
         MediaCapture? _capture;
+        /// <summary>Set by <see cref="MediaCapture.Failed"/>: the device was lost or stopped, so every later still would fail too.</summary>
+        volatile string? _failed;
 
         public async Task OpenAsync(CancellationToken ct)
         {
             _capture = new MediaCapture();
+            _capture.Failed += (_, e) => _failed = string.IsNullOrWhiteSpace(e.Message) ? $"0x{e.Code:X8}" : e.Message.Trim();
             await _capture.InitializeAsync(new MediaCaptureInitializationSettings
             {
                 StreamingCaptureMode = StreamingCaptureMode.Video,
@@ -418,6 +444,7 @@ sealed class TimelapseService : IDisposable
 
         public async Task CaptureAsync(string jpegPath, CancellationToken ct)
         {
+            if (_failed is { } why) throw new TimelapseException($"The camera failed: {why}"); // the service reopens it
             var folder = await StorageFolder.GetFolderFromPathAsync(Path.GetDirectoryName(jpegPath)!).AsTask(ct).ConfigureAwait(false);
             var file = await folder.CreateFileAsync(Path.GetFileName(jpegPath), CreationCollisionOption.ReplaceExisting).AsTask(ct).ConfigureAwait(false);
             await _capture!.CapturePhotoToStorageFileAsync(ImageEncodingProperties.CreateJpeg(), file).AsTask(ct).ConfigureAwait(false);
