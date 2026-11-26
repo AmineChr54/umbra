@@ -82,10 +82,11 @@ public class TimelapseTests : IDisposable
     sealed class FakeCamera : ITimelapseCamera
     {
         public int Shots, FailFrom = int.MaxValue;
-        public bool Opened, Disposed, OpenFails;
+        public bool Opened, Disposed, OpenFails, OpenBlocked;
         public Task OpenAsync(CancellationToken ct)
         {
-            if (OpenFails) throw new UnauthorizedAccessException("blocked");
+            if (OpenBlocked) throw new UnauthorizedAccessException("blocked");
+            if (OpenFails) throw new IOException("camera busy");
             Opened = true;
             return Task.CompletedTask;
         }
@@ -241,9 +242,47 @@ public class TimelapseTests : IDisposable
     }
 
     [Fact]
+    public async Task Reopens_wait_between_tries_even_at_a_one_second_interval()
+    {
+        var (svc, cams, _) = MakeReopening(i => new FakeCamera { FailFrom = i == 0 ? 3 : int.MaxValue, OpenFails = i > 0 });
+        svc.Start("demo", "demo", TimelapsePlan.Create(1, 100, 10), Out);
+        await svc.Completion;
+
+        // About one reopen per RetryDelay over the failure window, not one per second.
+        var most = (int)(TimelapseService.FailureWindow / TimelapseService.RetryDelay) + 3;
+        Assert.InRange(cams.Count, TimelapseService.MaxFailures, most);
+        Assert.Contains("stopped answering", svc.Status("demo")["error"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task A_camera_blocked_by_privacy_after_a_pause_says_so_at_once()
+    {
+        var cams = new List<FakeCamera>();
+        var clock = new FakeClock();
+        var started = clock.Now;
+        TimelapseService? svc = null;
+        var hidden = false;
+        svc = new TimelapseService(_root, () => { var c = new FakeCamera { OpenBlocked = cams.Count > 0 }; cams.Add(c); return c; },
+            (_, _, o, _) => { File.WriteAllText(o, "x"); return Task.CompletedTask; }, () => clock.Now,
+            async (d, ct) =>
+            {
+                // hidden after the 2nd still (camera closed), shown again after three pause polls: that reopen is refused
+                if (cams.Sum(c => c.Shots) == 2 && !hidden) { hidden = true; svc!.SetPaused("demo", true); }
+                else if (hidden && d == TimelapseService.PausePoll && ++clock.Polls == 3) svc!.SetPaused("demo", false);
+                await clock.Delay(d, ct);
+            }, _ => 10_000_000_000);
+        svc.Start("demo", "demo", TimelapsePlan.Create(5, 100, 10), Out);
+        await svc.Completion;
+
+        Assert.Equal(2, cams.Count);
+        Assert.Contains("Windows blocked the camera", svc.Status("demo")["error"]!.GetValue<string>());
+        Assert.True(clock.Now - started < TimelapseService.FailureWindow);
+    }
+
+    [Fact]
     public async Task The_first_open_failing_still_ends_the_session_at_once_with_the_reason()
     {
-        var (svc, cams, _) = MakeReopening(_ => new FakeCamera { OpenFails = true });
+        var (svc, cams, _) = MakeReopening(_ => new FakeCamera { OpenBlocked = true });
         svc.Start("demo", "demo", TimelapsePlan.Create(5, 1, 10), Out);
         await svc.Completion;
 
