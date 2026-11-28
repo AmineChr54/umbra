@@ -207,8 +207,10 @@
     }
     /** Inside a press on the widget: lets the sound start later without a click. */
     function unlock() {
-      const c = context();
-      if (c && c.state !== "running") c.resume().then(sleepSoon).catch(() => {}); // suspended again unless something starts
+      const c = context(); // a fresh context may already be running
+      if (!c) return;
+      if (c.state === "running") sleepSoon(); // suspended again unless something starts
+      else c.resume().then(sleepSoon).catch(() => {});
     }
     /** A short listen while choosing (only when no session sound plays): fades in, plays a few seconds, fades out. */
     function listen(id, v) {
