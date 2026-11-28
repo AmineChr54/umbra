@@ -1,6 +1,6 @@
 html, body { height: 100%; overflow: hidden; background: var(--bg, #000); }
 [hidden] { display: none !important; }
-.pm { position: relative; height: 100%; }
+.pm { position: relative; height: 100%; overflow: hidden; }
 .view { height: 100%; display: flex; flex-direction: column; padding: 14px 16px 16px; gap: 10px; }
 .head { display: flex; align-items: center; justify-content: space-between; height: 24px; flex: none; }
 .title { font-family: var(--font-display); font-size: 14px; font-weight: 600; color: var(--text-2); letter-spacing: 0.01em; }
@@ -82,3 +82,58 @@ html, body { height: 100%; overflow: hidden; background: var(--bg, #000); }
 .menu button:hover { background: var(--surface-3); }
 .menu button.danger { color: var(--down); }
 .menu button:disabled { color: var(--text-3); cursor: default; background: none; }
+
+/* Ambient sound: setup card, run-view button, and the sheet */
+.amb .switch { cursor: default; }
+.amb-open { flex: 1; min-width: 0; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer; }
+.amb-open small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amb-open .chev { color: var(--text-3); font-weight: 400; }
+.amb-open:hover .chev { color: var(--text); }
+.amb-open:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 4px; border-radius: 6px; }
+.amb-knob { display: flex; cursor: pointer; }
+.amb-knob input { position: absolute; opacity: 0; pointer-events: none; }
+.amb-knob input:checked + .knob { background: var(--accent); border-color: var(--accent); }
+.amb-knob input:checked + .knob::after { background: #000; transform: translateX(14px); }
+.amb-knob input:focus-visible + .knob { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+.run .head { position: relative; align-self: stretch; }
+.amb-btn { position: absolute; right: -4px; top: -2px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; color: var(--text-3); background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.amb-btn:hover { color: var(--text); background: var(--surface-3); }
+.amb-btn:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+.amb-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.amb-btn .spk { fill: currentColor; stroke-width: 1.2; }
+.amb-btn .w1, .amb-btn .w2 { display: none; }
+.amb-btn.on .x { display: none; }
+.amb-btn.on .w1, .amb-btn.on .w2 { display: inline; }
+.amb-btn.on { color: var(--text-2); }
+.amb-btn.playing { color: var(--accent); }
+.pm.brk .amb-btn.playing { color: var(--up); }
+.amb-btn.blocked { color: var(--accent-strong); }
+.amb-btn.blocked::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: amb-pulse calc(1400ms * var(--motion-scale, 1)) ease-in-out infinite; }
+@keyframes amb-pulse { 50% { opacity: 0.25; } }
+
+.sheet { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; gap: 9px; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px 16px; background: var(--bg, #000); }
+.sheet-tools { display: flex; align-items: center; gap: 10px; }
+.sheet .btn { height: 26px; padding: 0 12px; border-radius: 8px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; flex: none; }
+.seg button { height: 26px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-3); background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.seg button[aria-selected="true"] { color: var(--text); background: var(--surface-3); }
+.amb-body { display: flex; flex-direction: column; gap: 9px; min-height: 0; }
+.amb-body.off { opacity: 0.55; } /* still clickable: picking a sound turns it on */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tile { height: 30px; padding: 0 4px; font: inherit; font-size: 11.5px; font-weight: 600; line-height: 1.15; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+.tile:hover { border-color: var(--line-strong); color: var(--text); }
+.tile[aria-checked="true"] { color: #000; background: var(--accent); border-color: var(--accent); }
+.sheet.brk .tile[aria-checked="true"] { background: var(--up); border-color: var(--up); }
+.amb-row { display: grid; grid-template-columns: 64px 1fr 34px; align-items: center; gap: 8px; font-size: 12px; color: var(--text-3); }
+.amb-row b { font-weight: 600; color: var(--text-2); text-align: right; }
+.amb-row input { width: 100%; accent-color: var(--accent); }
+.sheet.brk .amb-row input { accent-color: var(--up); }
+.amb-mix { display: flex; flex-direction: column; gap: 6px; }
+.amb-label { font-size: 12px; color: var(--text-3); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { height: 24px; padding: 0 8px; font: inherit; font-size: 11.5px; color: var(--text-3); background: none; border: 1px solid var(--line); border-radius: 7px; cursor: pointer; }
+.chip:hover { color: var(--text); border-color: var(--line-strong); }
+.chip[aria-checked="true"] { color: var(--text); border-color: var(--text-2); background: var(--surface-3); }
+.amb-note, .amb-foot { margin: 0; font-size: 11.5px; color: var(--text-3); }
+.amb-foot { margin-top: auto; }

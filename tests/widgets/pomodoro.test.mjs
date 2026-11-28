@@ -228,3 +228,42 @@ test("auto-continue reads its own option, not 1.x's autoStart (saved as false fo
   assert.equal(manifest.options.autoContinue.default, true);
   assert.equal(manifest.options.autoStart, undefined);
 });
+
+const A = createRequire(import.meta.url)("../../widgets/pomodoro/ambience.js");
+const running = (kind) => ({ running: true, idx: 1, phases: [{ kind: "focus", min: 25 }, { kind, min: 5 }, { kind: "focus", min: 25 }] });
+
+test("ambient: defaults are off, brown noise for focus and rain for breaks; bad values are cleaned", () => {
+  assert.deepEqual(A.clean(null), A.DEFAULTS);
+  const c = A.clean({ on: true, focus: { a: "jazz", av: 7, b: "brown", bv: -1 }, brk: { a: null, av: "x", b: "rain" } });
+  assert.equal(c.on, true);
+  assert.deepEqual(c.focus, { a: "brown", av: 1, b: null, bv: 0 }); // unknown sound -> default; mix never repeats the main sound
+  assert.deepEqual(c.brk, { a: null, av: 0.5, b: null, bv: 0.4 });  // silence on breaks keeps no mix
+  assert.equal(A.clean({ focus: { a: null } }).focus.a, "brown");    // focus can't be silence
+});
+
+test("ambient: plays only while a session runs and the switch is on; breaks get their own sound", () => {
+  const on = A.clean({ on: true, focus: { a: "brown", av: 0.6, b: "rain", bv: 0.3 }, brk: { a: "fire", av: 0.5 } });
+  assert.equal(A.want(null, on), null);
+  assert.equal(A.want({ ...running("focus"), running: false }, on), null);
+  assert.equal(A.want(running("focus"), { ...on, on: false }), null);
+  assert.equal(A.want(running("focus"), on, { away: true }), null);
+  assert.deepEqual(A.want({ ...running("break"), idx: 0 }, on), { phase: "focus", layers: [{ id: "brown", v: 0.6 }, { id: "rain", v: 0.3 }] });
+  assert.deepEqual(A.want(running("break"), on), { phase: "brk", layers: [{ id: "fire", v: 0.5 }] });
+  assert.equal(A.want(running("break"), { ...on, brk: { ...on.brk, a: null } }), null); // silence
+  assert.equal(A.want(running("break"), on, { throughBreaks: true }).phase, "focus");
+});
+
+test("ambient: summary names what plays", () => {
+  const on = A.clean({ on: true, focus: { a: "brown", b: "rain" }, brk: { a: null } });
+  assert.equal(A.summary(A.clean(null), false), "Off");
+  assert.equal(A.summary(on, false), "Brown noise + Rain · break: silence");
+  assert.equal(A.summary(on, true), "Brown noise + Rain, breaks too");
+});
+
+test("ambient: the player reports unsupported without Web Audio and never throws", async () => {
+  const p = A.engine();
+  assert.equal(await p.sync(null), "idle");
+  assert.equal(await p.sync({ phase: "focus", layers: [{ id: "brown", v: 0.5 }] }), "unsupported");
+  p.unlock(); p.listen("rain", 0.5);
+  assert.equal(p.playing(), false);
+});
