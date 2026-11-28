@@ -8,7 +8,10 @@ const app = q("app"), arc = q("arc");
 const R = 54, CIRC = 2 * Math.PI * R, MIN = 60000;
 const LIVE_MS = 60000; // a phase change older than this (caught up after a restart) gets no toast
 
-const T = window.PomodoroTimelapse, Sounds = window.PomodoroSounds;
+const T = window.PomodoroTimelapse, Sounds = window.PomodoroSounds, A = window.PomodoroAmbience;
+// Ambient sound (store key "ambient", see ambience.js): render() syncs the player every second; it starts only after a click.
+let amb = A.clean(null), ambState = "idle", sheetTab = "focus";
+const player = A.engine();
 let session = null, setup = { minutes: 60, breaks: false }, log = {}, timer = null, menuOpen = false;
 // Timelapse: settings in store key "timelapse"; tlState is the host's latest state, tlError a plain-words failure.
 // The camera only starts from a click (Start focus session, or Start on the status pill), never automatically. The host has no
@@ -101,6 +104,7 @@ function askNotifications() {
 const now = () => Date.now();
 function startSession() {
   askNotifications();
+  player.unlock(); // inside the Start click, so the ambient sound may fade in
   setup.minutes = S.clampTotal(setup.minutes);
   store("setup", setup);
   apply(S.start(S.create(setup.minutes, setup.breaks), now()));
@@ -222,8 +226,75 @@ function render() {
   q("run").hidden = !session;
   if (session) renderRun(); else { app.classList.remove("brk", "paused"); renderSetup(); renderTlSetup(); }
   renderTl();
+  renderAmb();
+  syncAmbient();
   schedule();
 }
+
+// ---- ambient sound ----
+const throughBreaks = () => umbra.options.ambientThroughBreaks === true;
+function syncAmbient() {
+  const w = A.want(session, amb, { throughBreaks: throughBreaks(), away: !!umbra.settings.paused });
+  player.sync(w).then((st) => { if (st !== ambState) { ambState = st; renderAmb(); } }).catch(() => {});
+}
+function renderAmb() {
+  setText(q("amb-sum"), A.summary(amb, throughBreaks()));
+  q("amb-on").checked = amb.on;
+  const b = q("amb-btn"), title = !amb.on ? "Ambient sound: off"
+    : ambState === "blocked" ? "Click the widget to start the ambient sound"
+    : ambState === "unsupported" ? "Ambient sound isn't available here" : "Ambient sound";
+  const cls = `amb-btn${amb.on ? " on" : ""}${amb.on && ambState === "playing" ? " playing" : ""}${amb.on && ambState === "blocked" ? " blocked" : ""}`;
+  if (b.className !== cls) b.className = cls;
+  if (b.title !== title) { b.title = title; b.setAttribute("aria-label", title); }
+}
+// The sheet is drawn only when opened or changed, never by the 1-second render.
+function renderSheet() {
+  const sheet = q("amb-sheet");
+  if (sheet.hidden) return;
+  const tab = throughBreaks() ? "focus" : sheetTab, m = amb[tab];
+  sheet.classList.toggle("brk", tab === "brk");
+  q("amb-on2").checked = amb.on;
+  q("amb-tab-focus").setAttribute("aria-selected", String(tab === "focus"));
+  q("amb-tab-brk").setAttribute("aria-selected", String(tab === "brk"));
+  q("amb-tab-brk").disabled = throughBreaks();
+  q("amb-note").hidden = !throughBreaks();
+  q("amb-body").classList.toggle("off", !amb.on);
+  const tiles = q("amb-tiles"), mix = q("amb-mix");
+  tiles.replaceChildren(...(tab === "brk" ? [null] : []).concat(A.IDS).map((id) => radio("tile", A.name(id), m.a === id, () => pick(tab, { a: id }, id))));
+  mix.replaceChildren(...[null, ...A.IDS.filter((id) => id !== m.a)].map((id) => radio("chip", id ? A.name(id) : "None", m.b === id, () => pick(tab, { b: id }, id))));
+  q("amb-av").value = m.av; setText(q("amb-av-val"), `${Math.round(m.av * 100)}%`);
+  q("amb-bv").value = m.bv; setText(q("amb-bv-val"), `${Math.round(m.bv * 100)}%`);
+  q("amb-bv-row").hidden = !m.b;
+  q("amb-av").disabled = q("amb-bv").disabled = !m.a;
+  mix.parentElement.hidden = !m.a;
+  setText(q("amb-foot"), tab === "brk" ? "Crossfades from the focus sound as a break starts, and back when it ends."
+    : "Fades in over 5 s as focus starts and crossfades at each break.");
+}
+function radio(cls, label, on, fn) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = cls; b.textContent = label;
+  b.setAttribute("role", "radio"); b.setAttribute("aria-checked", String(on));
+  b.onclick = fn;
+  return b;
+}
+let ambSave = 0, ambSaved = "";
+function setAmb(next) {
+  amb = A.clean(next);
+  clearTimeout(ambSave); ambSave = setTimeout(() => { ambSaved = JSON.stringify(amb); store("ambient", amb); }, 400); // a dragged slider saves once
+  renderSheet(); render();
+}
+/** Choose a sound; with nothing playing it plays a few seconds so the user hears what they picked. */
+function pick(tab, patch, id) {
+  setAmb({ ...amb, on: true, [tab]: { ...amb[tab], ...patch } });
+  const m = amb[tab];
+  if (id && !player.playing()) player.listen(id, patch.a ? m.av : m.bv);
+}
+function openSheet() {
+  q("amb-sheet").hidden = false;
+  if (session) sheetTab = session.phases[session.idx].kind === "break" ? "brk" : "focus"; // open on what plays now
+  renderSheet();
+}
+function closeSheet() { q("amb-sheet").hidden = true; (session ? q("amb-btn") : q("amb-open")).focus(); }
 
 // One timer per second, only while a phase runs and the PC is awake. A recording keeps it going while the PC is locked or
 // the display is off: the camera doesn't pause for those, and only this timer can notice that the session ended and stop it.
@@ -251,7 +322,18 @@ q("tl-act").onclick = startTl;
 q("start").onclick = startSession;
 q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
-document.addEventListener("pointerdown", () => Sounds.unlock(), true); // a press lets later break sounds play
+document.addEventListener("pointerdown", () => { Sounds.unlock(); player.unlock(); }, true); // a press lets later sounds play
+q("amb-open").onclick = openSheet;
+q("amb-btn").onclick = openSheet;
+q("amb-close").onclick = closeSheet;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !q("amb-sheet").hidden) closeSheet(); });
+q("amb-on").onchange = () => setAmb({ ...amb, on: q("amb-on").checked });
+q("amb-on2").onchange = () => setAmb({ ...amb, on: q("amb-on2").checked });
+q("amb-tab-focus").onclick = () => { sheetTab = "focus"; renderSheet(); };
+q("amb-tab-brk").onclick = () => { sheetTab = "brk"; renderSheet(); };
+const tabNow = () => (throughBreaks() ? "focus" : sheetTab);
+q("amb-av").oninput = () => setAmb({ ...amb, [tabNow()]: { ...amb[tabNow()], av: +q("amb-av").value } });
+q("amb-bv").oninput = () => setAmb({ ...amb, [tabNow()]: { ...amb[tabNow()], bv: +q("amb-bv").value } });
 document.addEventListener("pointerdown", (e) => { if (menuOpen && !e.target.closest("#menu, #more")) { menuOpen = false; render(); } });
 const menuAction = (fn) => () => { menuOpen = false; if (session) apply(fn(session, now())); };
 q("reset").onclick = menuAction((s, t) => S.end(s, t)); // same as End session in the menu: keeps the focus time and makes the video
@@ -259,7 +341,7 @@ q("m-skip").onclick = menuAction((s, t) => S.skip(s, t, auto()));
 q("m-add").onclick = menuAction((s, t) => S.extend(s, 5, t));
 q("m-end").onclick = menuAction((s, t) => S.end(s, t));
 
-umbra.onSettings(() => tick());
+umbra.onSettings(() => { tick(); renderSheet(); });
 umbra.onTimeChanged?.(() => tick());
 document.addEventListener("visibilitychange", () => tick());
 umbra.store.onChange?.(async (k) => {
@@ -267,6 +349,7 @@ umbra.store.onChange?.(async (k) => {
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   let changed = false;
   if (!k || k === "log") { const v = await umbra.store.get("log", {}); if (!same(v, log)) { log = v; changed = true; } }
+  if (!k || k === "ambient") { const v = A.clean(await umbra.store.get("ambient", null)); if (JSON.stringify(v) !== ambSaved && !same(v, amb)) { amb = v; changed = true; renderSheet(); } } // ambSaved: our own save's echo
   if (!k || k === "setup") { const v = { ...setup, ...(await umbra.store.get("setup", {})) }; if (!same(v, setup)) { setup = v; changed = true; } }
   if (!k || k === "session") {
     const s = await umbra.store.get("session", null), v = S.valid(s) && !s.done ? s : null;
@@ -284,6 +367,7 @@ umbra.store.onChange?.(async (k) => {
   session = S.valid(s) && !s.done ? s : null; // a stored finished session (older versions) loads as idle
   if (s && !session) umbra.store.remove("session").catch(() => {});
   tl = T.clean(await umbra.store.get("timelapse", null));
+  amb = A.clean(await umbra.store.get("ambient", null));
   try {
     umbra.timelapse.onChange(onTlState);
     const st = await umbra.timelapse.status();

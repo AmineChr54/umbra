@@ -32,6 +32,14 @@
           <span class="knob" aria-hidden="true"></span>
         </label>
       </div>
+      <div class="card amb" data-no-drag>
+        <div class="switch">
+          <button type="button" class="amb-open" id="amb-open" aria-haspopup="dialog">
+            <span class="switch-text"><span>Ambient sound <span class="chev" aria-hidden="true">&rsaquo;</span></span><small id="amb-sum">Off</small></span>
+          </button>
+          <label class="amb-knob"><input type="checkbox" id="amb-on" aria-label="Ambient sound"><span class="knob" aria-hidden="true"></span></label>
+        </div>
+      </div>
       <div class="card tl" data-no-drag>
         <label class="switch">
           <span class="switch-text"><span>Timelapse</span><small class="num" id="tl-sum">Off</small></span>
@@ -58,6 +66,9 @@
     <section class="view run" id="run" hidden>
       <header class="head">
         <span class="title num" id="phase">Focus period 1 of 1</span>
+        <button class="amb-btn" id="amb-btn" data-no-drag aria-haspopup="dialog" aria-label="Ambient sound" title="Ambient sound">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9.5h3.2L11.5 6v12l-4.3-3.5H4z"/><path class="w1" d="M15 9.5a3.6 3.6 0 0 1 0 5"/><path class="w2" d="M17.6 7a7.2 7.2 0 0 1 0 10"/><path class="x" d="M15.5 9.5l5 5m0-5l-5 5"/></svg>
+        </button>
       </header>
       <div class="dial">
         <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -97,11 +108,38 @@
         <button class="link" id="tl-act"></button>
       </div>
     </section>
+
+    <!-- Ambient sound: focus and break each get a sound, an optional second one mixed in, and volumes (ambience.js) -->
+    <section class="sheet" id="amb-sheet" data-no-drag role="dialog" aria-labelledby="amb-title" hidden>
+      <header class="head">
+        <span class="title" id="amb-title">Ambient sound</span>
+        <span class="sheet-tools">
+          <label class="amb-knob"><input type="checkbox" id="amb-on2" aria-label="Ambient sound on"><span class="knob" aria-hidden="true"></span></label>
+          <button class="btn" id="amb-close">Done</button>
+        </span>
+      </header>
+      <div class="seg" role="tablist" aria-label="Phase">
+        <button role="tab" id="amb-tab-focus" aria-selected="true">Focus</button>
+        <button role="tab" id="amb-tab-brk" aria-selected="false">Break</button>
+      </div>
+      <p class="amb-note" id="amb-note" hidden>The focus sound keeps playing through breaks (Settings &gt; My widgets &gt; Pomodoro).</p>
+      <div class="amb-body" id="amb-body">
+        <div class="tiles" id="amb-tiles" role="radiogroup" aria-label="Sound"></div>
+        <label class="amb-row"><span>Volume</span><input type="range" id="amb-av" min="0" max="1" step="0.05"><b class="num" id="amb-av-val">60%</b></label>
+        <div class="amb-mix">
+          <span class="amb-label">Mix with</span>
+          <div class="chips" id="amb-mix" role="radiogroup" aria-label="Mix with"></div>
+        </div>
+        <label class="amb-row" id="amb-bv-row"><span>Its volume</span><input type="range" id="amb-bv" min="0" max="1" step="0.05"><b class="num" id="amb-bv-val">40%</b></label>
+      </div>
+      <p class="amb-foot" id="amb-foot">Fades in over 5 s as focus starts and crossfades at each break.</p>
+    </section>
   </main>
   <script src="https://umbra.local/shared/umbra.js"></script>
   <script src="session.js"></script>
   <script src="timelapse.js"></script>
   <script src="sounds.js"></script>
+  <script src="ambience.js"></script>
   <script src="pomodoro.js"></script>
 </body>
 </html>
