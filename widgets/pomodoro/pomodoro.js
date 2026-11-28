@@ -104,7 +104,7 @@ function askNotifications() {
 const now = () => Date.now();
 function startSession() {
   askNotifications();
-  player.unlock(); // inside the Start click, so the ambient sound may fade in
+  if (amb.on) player.unlock(); // inside the Start click, so the ambient sound may fade in
   setup.minutes = S.clampTotal(setup.minutes);
   store("setup", setup);
   apply(S.start(S.create(setup.minutes, setup.breaks), now()));
@@ -322,7 +322,7 @@ q("tl-act").onclick = startTl;
 q("start").onclick = startSession;
 q("toggle").onclick = toggle;
 q("more").onclick = (e) => { e.stopPropagation(); menuOpen = !menuOpen; render(); };
-document.addEventListener("pointerdown", () => { Sounds.unlock(); player.unlock(); }, true); // a press lets later sounds play
+document.addEventListener("pointerdown", () => { Sounds.unlock(); if (amb.on) player.unlock(); }, true); // a press lets later sounds play
 q("amb-open").onclick = openSheet;
 q("amb-btn").onclick = openSheet;
 q("amb-close").onclick = closeSheet;
